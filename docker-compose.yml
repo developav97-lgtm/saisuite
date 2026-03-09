@@ -1,8 +1,10 @@
-version: '3.9'
-
 services:
+
+  # ── PostgreSQL ───────────────────────────────────────────────────
   db:
     image: postgres:16-alpine
+    container_name: saisuite-db
+    restart: unless-stopped
     environment:
       POSTGRES_DB: saisuite_dev
       POSTGRES_USER: saisuite
@@ -11,9 +13,17 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U saisuite -d saisuite_dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
+  # ── Django API ───────────────────────────────────────────────────
   backend:
     build: ./backend
+    container_name: saisuite-api
+    restart: unless-stopped
     command: python manage.py runserver 0.0.0.0:8000
     volumes:
       - ./backend:/app
@@ -22,21 +32,29 @@ services:
     env_file:
       - ./backend/.env
     depends_on:
-      - db
+      db:
+        condition: service_healthy
 
+  # ── Angular (dev server) ─────────────────────────────────────────
+  # Descomentar cuando Angular esté inicializado:
+  #   cd frontend && ng new . --routing --style=scss --strict
   frontend:
-    build: ./frontend
-    command: ng serve --host 0.0.0.0
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: saisuite-frontend
     volumes:
       - ./frontend:/app
       - /app/node_modules
     ports:
       - "4200:4200"
-    depends_on:
-      - backend
+    command: ng serve --host 0.0.0.0 --poll 2000
 
+  # ── n8n ──────────────────────────────────────────────────────────
   n8n:
     image: n8nio/n8n
+    container_name: saisuite-n8n
+    restart: unless-stopped
     ports:
       - "5678:5678"
     environment:
