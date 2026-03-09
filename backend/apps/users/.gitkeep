@@ -1,0 +1,3 @@
+# App: users
+# Generar con: python manage.py startapp users
+# Luego seguir Flujo_Feature_SaiSuite_v1.docx

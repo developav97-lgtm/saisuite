@@ -1,0 +1,3 @@
+# App: sync_agent
+# Generar con: python manage.py startapp sync_agent
+# Luego seguir Flujo_Feature_SaiSuite_v1.docx
