@@ -1,1 +1,3 @@
-# sync_agent — urls
+from django.urls import path
+
+urlpatterns = []

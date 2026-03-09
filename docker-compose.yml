@@ -36,8 +36,6 @@ services:
         condition: service_healthy
 
   # ── Angular (dev server) ─────────────────────────────────────────
-  # Descomentar cuando Angular esté inicializado:
-  #   cd frontend && ng new . --routing --style=scss --strict
   frontend:
     build:
       context: ./frontend

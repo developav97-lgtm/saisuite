@@ -1,7 +1,17 @@
 FROM node:20-alpine
+
 WORKDIR /app
+
+# Instalar Angular CLI globalmente
+RUN npm install -g @angular/cli@18
+
+# Copiar dependencias e instalar
 COPY package*.json ./
 RUN npm install
+
+# Copiar el resto del código
 COPY . .
+
 EXPOSE 4200
-CMD ["npx", "ng", "serve", "--host", "0.0.0.0"]
+
+CMD ["ng", "serve", "--host", "0.0.0.0", "--poll", "2000"]
