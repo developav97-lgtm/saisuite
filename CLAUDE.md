@@ -54,22 +54,15 @@ Antes de generar código, leer el documento relevante según la tarea:
 - Servicios globales en `core/`. Servicios de feature en `features/[x]/services/`.
 - JWT se añade automáticamente via interceptor. Nunca añadir headers manualmente.
 
-## Frontend UI — PrimeNG (DEC-007)
-
-Framework de componentes: **PrimeNG** con preset `Aura` customizado.
-
-```
-npm install primeng @primeuix/themes primeicons  ← ya instalado
-```
-
-Reglas obligatorias:
-- NUNCA usar Angular Material, Bootstrap ni Tailwind
+#### UI Framework: PrimeNG (DEC-007)
+- Framework de componentes: **PrimeNG** con preset `Aura` customizado — `npm install primeng @primeuix/themes primeicons` ← ya instalado
+- **NUNCA** usar Angular Material, Bootstrap ni Tailwind
 - Importar módulos PrimeNG solo en el feature module (no AppModule)
-- Notificaciones: MessageService + p-toast (no alert())
-- Confirmaciones: ConfirmationService + p-confirmdialog (no confirm())
-- Tablas: p-table con paginación server-side
-- Dark mode: clase .app-dark en <html>, gestionada por ThemeService
-- Tema: azules corporativos ValMen Tech — HEX PENDIENTES de recibir
+- Notificaciones: `MessageService` + `p-toast` — nunca `alert()`
+- Confirmaciones: `ConfirmationService` + `p-confirmdialog` — nunca `confirm()`
+- Tablas: `p-table` con paginación server-side
+- Dark mode: clase `.app-dark` en `<html>`, gestionada por `ThemeService`
+- Tema: azules corporativos ValMen Tech — ⚠️ HEX pendientes de recibir
 
 ### Base de datos
 - Multi-tenant: company_id en TODAS las tablas de negocio.
@@ -78,6 +71,8 @@ Reglas obligatorias:
 - `unique_together: (company, sai_key)` en todos los modelos espejo de Firebird.
 - Dinero: siempre `NUMERIC(15,2)`. Nunca `float`.
 - Fechas con hora: `TIMESTAMPTZ` en UTC. Solo fecha: `DATE`.
+- `DEFAULT_AUTO_FIELD = BigAutoField` en settings es inerte — todos los modelos
+  heredan UUID de `BaseModel`. No eliminar, es el default seguro de Django.
 
 ### General
 - Commits: `<tipo>(<scope>): <descripción en imperativo>` — ej: `feat(invoices): add list endpoint`

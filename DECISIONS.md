@@ -145,32 +145,26 @@ haya >2 deploys por semana o cuando se incorpore un segundo desarrollador.
 ```
 
 ---
-## DEC-007 — Framework UI Frontend: PrimeNG
-**Fecha:** 2026-03-11
-**Estado:** ✅ Aplicado
+### [2026-03-11] DECISIÓN: Framework UI Frontend — PrimeNG
 
-**Decisión:** PrimeNG es el framework de componentes UI oficial del frontend Angular de Saicloud.
+**Contexto:** El frontend Angular necesita un framework de componentes UI para
+construir las pantallas del ERP (tablas, formularios, diálogos, notificaciones).
+Había que elegir entre las opciones principales del ecosistema Angular.
 
-**Instalación aplicada:**
-```bash
-npm install primeng @primeuix/themes primeicons
-```
+**Opciones consideradas:**
+- Angular Material: nativo de Angular, pero personalización de tema limitada y dark mode complejo
+- Bootstrap / ng-bootstrap: conocido, pero integración menos nativa con Angular CDR
+- Tailwind CSS puro: flexible, pero sin componentes ERP listos (tablas, diálogos, etc.)
+- PrimeNG: biblioteca rica en componentes ERP, sistema de temas propio con dark mode nativo
 
-**Configuración:**
-- Preset base: `Aura` de `@primeuix/themes`
-- Preset customizado: `SaicloudPreset` — paleta de azules corporativos ValMen Tech
-- Dark mode: clase CSS `.app-dark` en `<html>`, gestionada por `ThemeService`
-- ⚠️ **Pendiente:** recibir HEX oficiales de ValMen Tech para reemplazar tokens `{blue.X}`
+**Decisión:** PrimeNG con preset `Aura` customizado (`SaicloudPreset`) — paleta de
+azules corporativos ValMen Tech. Dark mode via clase `.app-dark` en `<html>`.
 
-**Alternativas descartadas:**
-- Angular Material: personalización de tema limitada, dark mode más complejo
-- Bootstrap / ng-bootstrap: integración menos nativa con Angular CDR
-- Tailwind CSS puro: sin componentes ERP listos (tablas, diálogos, etc.)
+**Razón:** PrimeNG tiene los componentes que SaiSuite necesita listos para producción
+(`p-table` con paginación server-side, `p-dialog`, `p-confirmdialog`, `p-toast`).
+Su sistema de temas permite personalización profunda de colores corporativos y dark mode
+sin duplicar estilos.
 
-**Reglas derivadas (obligatorias):**
-1. Nunca usar Angular Material, Bootstrap ni Tailwind donde exista equivalente PrimeNG
-2. Importar módulos PrimeNG en el feature module — no en AppModule
-3. Notificaciones → `MessageService` + `p-toast`
-4. Confirmaciones → `ConfirmationService` + `p-confirmdialog`
-5. Tablas → `p-table` con paginación y columnas ordenables
-*Última actualización: Marzo 2026*
+**Consecuencia:** NUNCA usar Angular Material, Bootstrap ni Tailwind en este proyecto.
+Los HEX corporativos de ValMen Tech están pendientes de recibir — hasta entonces se usan
+los tokens `{blue.X}` del preset base. Al recibirlos, actualizar `app.config.ts`.

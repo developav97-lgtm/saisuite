@@ -88,11 +88,25 @@
 - Angular 18 inicializado con soporte nativo para Claude Code (.claude/)
 - Documentos técnicos .docx copiados a docs/
 
+**Sesión 11 Marzo 2026:**
+- Decidido framework UI frontend: PrimeNG con preset Aura customizado (DEC-007)
+- Instalado: npm install primeng @primeuix/themes primeicons
+- Configurado SaicloudPreset con paleta de azules corporativos en app.config.ts
+- Dark mode configurado via clase .app-dark en <html>, gestionado por ThemeService
+- CLAUDE.md actualizado: sección PrimeNG integrada dentro de ### Frontend Angular
+- DECISIONS.md actualizado: DEC-007 agregado con formato estándar del archivo
+- Notion actualizado: DEC-007 creada, checkboxes de Local y GitHub marcados como completados
+- Validación completa del repo: estructura, BaseModel, docker-compose y settings confirmados correctos
+- ⚠️ Pendiente: recibir HEX corporativos de ValMen Tech para reemplazar tokens {blue.X} en app.config.ts
+
 **Próxima sesión debe:**
 - Esperar confirmación de Saiopen
 - Al confirmar: definir módulos exactos y ajustar Esquema_BD si es necesario
+- Al recibir HEX corporativos: actualizar SaicloudPreset en app.config.ts
 - Arrancar Semana 1: configurar MFA + IAM AWS → montar staging → primera feature
 
 ---
+
+*Última actualización: 11 Marzo 2026*
 
 *Última actualización: 9 Marzo 2026*
