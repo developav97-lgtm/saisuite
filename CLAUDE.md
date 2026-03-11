@@ -54,6 +54,23 @@ Antes de generar código, leer el documento relevante según la tarea:
 - Servicios globales en `core/`. Servicios de feature en `features/[x]/services/`.
 - JWT se añade automáticamente via interceptor. Nunca añadir headers manualmente.
 
+## Frontend UI — PrimeNG (DEC-007)
+
+Framework de componentes: **PrimeNG** con preset `Aura` customizado.
+
+```
+npm install primeng @primeuix/themes primeicons  ← ya instalado
+```
+
+Reglas obligatorias:
+- NUNCA usar Angular Material, Bootstrap ni Tailwind
+- Importar módulos PrimeNG solo en el feature module (no AppModule)
+- Notificaciones: MessageService + p-toast (no alert())
+- Confirmaciones: ConfirmationService + p-confirmdialog (no confirm())
+- Tablas: p-table con paginación server-side
+- Dark mode: clase .app-dark en <html>, gestionada por ThemeService
+- Tema: azules corporativos ValMen Tech — HEX PENDIENTES de recibir
+
 ### Base de datos
 - Multi-tenant: company_id en TODAS las tablas de negocio.
 - PKs: UUID v4 en todos los modelos expuestos por API.

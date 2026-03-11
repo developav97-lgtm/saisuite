@@ -145,5 +145,32 @@ haya >2 deploys por semana o cuando se incorpore un segundo desarrollador.
 ```
 
 ---
+## DEC-007 — Framework UI Frontend: PrimeNG
+**Fecha:** 2026-03-11
+**Estado:** ✅ Aplicado
 
+**Decisión:** PrimeNG es el framework de componentes UI oficial del frontend Angular de Saicloud.
+
+**Instalación aplicada:**
+```bash
+npm install primeng @primeuix/themes primeicons
+```
+
+**Configuración:**
+- Preset base: `Aura` de `@primeuix/themes`
+- Preset customizado: `SaicloudPreset` — paleta de azules corporativos ValMen Tech
+- Dark mode: clase CSS `.app-dark` en `<html>`, gestionada por `ThemeService`
+- ⚠️ **Pendiente:** recibir HEX oficiales de ValMen Tech para reemplazar tokens `{blue.X}`
+
+**Alternativas descartadas:**
+- Angular Material: personalización de tema limitada, dark mode más complejo
+- Bootstrap / ng-bootstrap: integración menos nativa con Angular CDR
+- Tailwind CSS puro: sin componentes ERP listos (tablas, diálogos, etc.)
+
+**Reglas derivadas (obligatorias):**
+1. Nunca usar Angular Material, Bootstrap ni Tailwind donde exista equivalente PrimeNG
+2. Importar módulos PrimeNG en el feature module — no en AppModule
+3. Notificaciones → `MessageService` + `p-toast`
+4. Confirmaciones → `ConfirmationService` + `p-confirmdialog`
+5. Tablas → `p-table` con paginación y columnas ordenables
 *Última actualización: Marzo 2026*
