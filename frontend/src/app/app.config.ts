@@ -1,14 +1,17 @@
 import { ApplicationConfig, provideBrowserGlobalErrorListeners, provideZoneChangeDetection } from '@angular/core';
 import { provideRouter } from '@angular/router';
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
+import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { providePrimeNG } from 'primeng/config';
 import { definePreset } from '@primeuix/themes';
 import Aura from '@primeuix/themes/aura';
 import { routes } from './app.routes';
+import { authInterceptor } from './core/interceptors/auth.interceptor';
 
 const SaicloudPreset = definePreset(Aura, {
   semantic: {
     primary: {
-      50:  '{blue.50}',
+      50: '{blue.50}',
       100: '{blue.100}',
       200: '{blue.200}',
       300: '{blue.300}',
@@ -24,9 +27,11 @@ const SaicloudPreset = definePreset(Aura, {
 });
 export const appConfig: ApplicationConfig = {
   providers: [
-    provideBrowserGlobalErrorListeners(),
     provideZoneChangeDetection({ eventCoalescing: true }),
     provideRouter(routes),
+    provideHttpClient(withInterceptors([authInterceptor])),
+    provideAnimationsAsync(),
+    provideBrowserGlobalErrorListeners(),
     providePrimeNG({
       theme: {
         preset: SaicloudPreset,

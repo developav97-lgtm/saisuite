@@ -1,0 +1,47 @@
+<!-- frontend/src/app/core/components/topbar/topbar.component.html -->
+<header class="sc-topbar">
+
+    <!-- Lado izquierdo: toggle + logo -->
+    <div class="sc-topbar__left">
+        <button class="sc-topbar__toggle" (click)="toggleSidebar.emit()" pRipple aria-label="Toggle menú">
+            <i class="pi pi-bars"></i>
+        </button>
+
+        <a class="sc-topbar__brand" routerLink="/dashboard">
+            <div class="sc-topbar__brand-icon">
+                <i class="pi pi-cloud"></i>
+            </div>
+            <span class="sc-topbar__brand-name">Saicloud</span>
+        </a>
+    </div>
+
+    <!-- Lado derecho: acciones -->
+    <div class="sc-topbar__right">
+
+        <!-- Notificaciones -->
+        <button class="sc-topbar__action" pRipple aria-label="Notificaciones">
+            <i class="pi pi-bell"></i>
+            <span class="sc-topbar__badge">3</span>
+        </button>
+
+        <!-- Dark mode -->
+        <button class="sc-topbar__action" (click)="themeService.toggleDarkMode()" pRipple
+            [attr.aria-label]="themeService.isDark ? 'Modo claro' : 'Modo oscuro'">
+            <i class="pi" [class.pi-sun]="themeService.isDark" [class.pi-moon]="!themeService.isDark"></i>
+        </button>
+
+        <!-- Separador -->
+        <div class="sc-topbar__sep"></div>
+
+        <!-- Avatar usuario -->
+        <button class="sc-topbar__user" pRipple aria-label="Perfil de usuario">
+            <p-avatar label="JD" shape="circle" styleClass="sc-topbar__avatar" />
+            <div class="sc-topbar__user-info">
+                <span class="sc-topbar__user-name">Juan David</span>
+                <span class="sc-topbar__user-role">Administrador</span>
+            </div>
+            <i class="pi pi-chevron-down sc-topbar__user-chevron"></i>
+        </button>
+
+    </div>
+</header>

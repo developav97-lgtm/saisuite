@@ -1,1 +1,150 @@
-/* You can add global styles to this file, and also import other style files */
+// frontend/src/styles.scss
+
+// PrimeIcons
+@import "primeicons/primeicons.css";
+
+// ── Reset base ─────────────────────────────────────────────
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+// ── Clases de página ───────────────────────────────────────
+
+// Contenedor principal de cualquier vista
+.sc-page {
+  padding: 1.5rem;
+
+  @media (max-width: 768px) {
+    padding: 1rem;
+  }
+}
+
+// Card de página (bloque blanco/oscuro)
+.sc-page-card {
+  background: var(--p-surface-card);
+  border: 1px solid var(--p-surface-border);
+  border-radius: 0.625rem;
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .04);
+}
+
+// Encabezado de página
+.sc-page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.sc-page-header__title {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--p-text-color);
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.sc-page-header__subtitle {
+  font-size: 0.875rem;
+  color: var(--p-text-muted-color);
+  margin: 0.2rem 0 0;
+}
+
+// Grid de formulario (2 columnas → 1 en móvil)
+.sc-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.sc-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.sc-field--full {
+  grid-column: 1 / -1;
+}
+
+.sc-field label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--p-text-color);
+}
+
+.sc-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--p-surface-border);
+  margin-top: 1.5rem;
+}
+
+// Estado vacío
+.sc-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  text-align: center;
+  color: var(--p-text-muted-color);
+
+  i {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    opacity: 0.35;
+  }
+
+  h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--p-text-color);
+    margin: 0 0 0.5rem;
+  }
+
+  p {
+    font-size: 0.875rem;
+    margin: 0;
+  }
+}
+
+// Estado de carga
+.sc-loading-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+}
+
+// ── Utilidades ─────────────────────────────────────────────
+.sc-text-muted {
+  color: var(--p-text-muted-color);
+  font-size: 0.875rem;
+}
+
+.sc-divider {
+  border: none;
+  border-top: 1px solid var(--p-surface-border);
+  margin: 1.5rem 0;
+}

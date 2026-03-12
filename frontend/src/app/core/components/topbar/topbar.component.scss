@@ -1,0 +1,219 @@
+// frontend/src/app/core/components/topbar/topbar.component.scss
+
+:host {
+    display: block;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+// ── Barra principal ────────────────────────────────────────
+.sc-topbar {
+    height: 64px;
+    background: var(--p-surface-card);
+    border-bottom: 1px solid var(--p-surface-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 1.25rem 0 0.75rem;
+    gap: 1rem;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, .06);
+}
+
+// ── Lado izquierdo ─────────────────────────────────────────
+.sc-topbar__left {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
+// Botón hamburguesa
+.sc-topbar__toggle {
+    width: 38px;
+    height: 38px;
+    border: none;
+    background: transparent;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--p-text-muted-color);
+    transition: background 0.15s, color 0.15s;
+    flex-shrink: 0;
+
+    i {
+        font-size: 1.1rem;
+    }
+
+    &:hover {
+        background: var(--p-primary-50);
+        color: var(--p-primary-600);
+    }
+}
+
+// Brand / logo
+.sc-topbar__brand {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    text-decoration: none;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.5rem;
+    transition: background 0.15s;
+
+    &:hover {
+        background: var(--p-primary-50);
+    }
+}
+
+.sc-topbar__brand-icon {
+    width: 34px;
+    height: 34px;
+    background: var(--p-primary-500);
+    border-radius: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+
+    i {
+        font-size: 1rem;
+        color: #fff;
+    }
+}
+
+.sc-topbar__brand-name {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--p-primary-500);
+    letter-spacing: -0.01em;
+}
+
+// ── Lado derecho ───────────────────────────────────────────
+.sc-topbar__right {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+// Botones de acción (notificaciones, dark mode)
+.sc-topbar__action {
+    position: relative;
+    width: 38px;
+    height: 38px;
+    border: none;
+    background: transparent;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--p-text-muted-color);
+    transition: background 0.15s, color 0.15s;
+    flex-shrink: 0;
+
+    i {
+        font-size: 1rem;
+    }
+
+    &:hover {
+        background: var(--p-primary-50);
+        color: var(--p-primary-600);
+    }
+}
+
+// Badge de notificaciones
+.sc-topbar__badge {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    min-width: 16px;
+    height: 16px;
+    background: var(--p-red-500, #ef4444);
+    color: #fff;
+    font-size: 0.6rem;
+    font-weight: 700;
+    border-radius: 999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 3px;
+    line-height: 1;
+    pointer-events: none;
+}
+
+// Separador vertical
+.sc-topbar__sep {
+    width: 1px;
+    height: 24px;
+    background: var(--p-surface-border);
+    margin: 0 0.5rem;
+    flex-shrink: 0;
+}
+
+// Área de usuario
+.sc-topbar__user {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.35rem 0.6rem;
+    border: none;
+    background: transparent;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: background 0.15s;
+    max-width: 220px;
+
+    &:hover {
+        background: var(--p-primary-50);
+    }
+}
+
+:host ::ng-deep .sc-topbar__avatar.p-avatar {
+    width: 34px;
+    height: 34px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    background: var(--p-primary-100);
+    color: var(--p-primary-700);
+    flex-shrink: 0;
+}
+
+.sc-topbar__user-info {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    overflow: hidden;
+
+    @media (max-width: 640px) {
+        display: none;
+    }
+}
+
+.sc-topbar__user-name {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--p-text-color);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 110px;
+}
+
+.sc-topbar__user-role {
+    font-size: 0.72rem;
+    color: var(--p-text-muted-color);
+    white-space: nowrap;
+}
+
+.sc-topbar__user-chevron {
+    font-size: 0.65rem;
+    color: var(--p-text-muted-color);
+    flex-shrink: 0;
+
+    @media (max-width: 640px) {
+        display: none;
+    }
+}

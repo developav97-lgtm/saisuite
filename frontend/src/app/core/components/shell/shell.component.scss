@@ -1,0 +1,26 @@
+// frontend/src/app/core/components/shell/shell.component.scss
+
+:host {
+    display: block;
+    height: 100vh;
+}
+
+.sc-shell {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    background: var(--p-surface-ground);
+}
+
+.sc-shell__body {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+.sc-shell__main {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    background: var(--p-surface-ground);
+}

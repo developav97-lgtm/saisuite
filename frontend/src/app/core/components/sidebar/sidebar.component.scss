@@ -1,0 +1,293 @@
+// frontend/src/app/core/components/sidebar/sidebar.component.scss
+
+:host {
+    display: block;
+}
+
+// ── Sidebar desktop ────────────────────────────────────────
+.sc-sidebar {
+    width: 268px;
+    height: calc(100vh - 64px);
+    background: var(--p-surface-card);
+    border-right: 1px solid var(--p-surface-border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    flex-shrink: 0;
+    transition: width 0.25s cubic-bezier(.4, 0, .2, 1),
+        opacity 0.2s ease;
+
+    &--hidden {
+        width: 0;
+        border: none;
+        overflow: hidden;
+        opacity: 0;
+        pointer-events: none;
+    }
+}
+
+// Área scrollable del nav
+.sc-sidebar__scroll {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 0.75rem 0.6rem;
+
+    // Scrollbar delgado
+    &::-webkit-scrollbar {
+        width: 4px;
+    }
+
+    &::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    &::-webkit-scrollbar-thumb {
+        background: var(--p-surface-border);
+        border-radius: 2px;
+    }
+}
+
+// Footer del sidebar (empresa / versión)
+.sc-sidebar__footer {
+    padding: 0.75rem 0.9rem;
+    border-top: 1px solid var(--p-surface-border);
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.sc-sidebar__footer-icon {
+    width: 30px;
+    height: 30px;
+    border-radius: 0.4rem;
+    background: var(--p-primary-500);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+
+    i {
+        font-size: 0.85rem;
+        color: #fff;
+    }
+}
+
+.sc-sidebar__footer-text {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.sc-sidebar__footer-company {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--p-text-color);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sc-sidebar__footer-version {
+    font-size: 0.68rem;
+    color: var(--p-text-muted-color);
+}
+
+// ── Drawer móvil ──────────────────────────────────────────
+.sc-drawer-title {
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--p-primary-500);
+}
+
+:host ::ng-deep .sc-drawer-panel {
+    .p-drawer-content {
+        padding: 0.5rem 0.6rem;
+    }
+}
+
+// ── Navegación ─────────────────────────────────────────────
+.sc-nav {
+    display: flex;
+    flex-direction: column;
+}
+
+// Label de sección
+.sc-nav__section {
+    margin-top: 0.5rem;
+
+    &:first-child {
+        margin-top: 0;
+    }
+}
+
+.sc-nav__section-label {
+    font-size: 0.67rem;
+    font-weight: 700;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--p-text-muted-color);
+    padding: 0.6rem 0.6rem 0.3rem;
+    user-select: none;
+}
+
+// ── Item principal ─────────────────────────────────────────
+.sc-nav__item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.6rem 0.75rem;
+    border-radius: 0.45rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--p-text-color);
+    text-decoration: none;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    user-select: none;
+    margin-bottom: 1px;
+    position: relative;
+
+    &:hover:not(.sc-nav__item--active) {
+        background: var(--p-primary-50);
+        color: var(--p-primary-700);
+
+        .sc-nav__icon {
+            color: var(--p-primary-500);
+        }
+    }
+
+    // *** Item activo — fondo azul sólido ***
+    &--active {
+        background: var(--p-primary-500) !important;
+        color: #fff !important;
+
+        .sc-nav__icon {
+            color: #fff !important;
+        }
+
+        .sc-nav__badge {
+            background: rgba(255, 255, 255, 0.3);
+            color: #fff;
+        }
+    }
+
+    // Padre expandido (sin ser activo)
+    &--expanded:not(.sc-nav__item--active) {
+        background: var(--p-primary-50);
+        color: var(--p-primary-700);
+
+        .sc-nav__icon {
+            color: var(--p-primary-500);
+        }
+    }
+}
+
+// Ícono
+.sc-nav__icon {
+    font-size: 1rem;
+    width: 20px;
+    text-align: center;
+    flex-shrink: 0;
+    color: var(--p-text-muted-color);
+    transition: color 0.15s;
+}
+
+// Texto
+.sc-nav__label {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.3;
+}
+
+// Badge opcional (ej: "3 pendientes")
+.sc-nav__badge {
+    font-size: 0.65rem;
+    font-weight: 700;
+    background: var(--p-primary-100);
+    color: var(--p-primary-700);
+    padding: 1px 6px;
+    border-radius: 999px;
+    flex-shrink: 0;
+}
+
+// Chevron de acordeón
+.sc-nav__chevron {
+    font-size: 0.7rem;
+    color: var(--p-text-muted-color);
+    transition: transform 0.2s, color 0.15s;
+    flex-shrink: 0;
+
+    &--open {
+        transform: rotate(180deg);
+    }
+}
+
+// ── Hijos del acordeón ─────────────────────────────────────
+.sc-nav__children {
+    overflow: hidden;
+    animation: navChildIn 0.18s cubic-bezier(.4, 0, .2, 1);
+    padding-left: 0.4rem;
+    margin-bottom: 3px;
+}
+
+.sc-nav__child {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.5rem 0.7rem 0.5rem 1rem;
+    border-radius: 0.4rem;
+    font-size: 0.84rem;
+    font-weight: 400;
+    color: var(--p-text-muted-color);
+    text-decoration: none;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    margin-bottom: 1px;
+    border-left: 2px solid transparent;
+
+    &:hover {
+        background: var(--p-primary-50);
+        color: var(--p-primary-700);
+        border-left-color: var(--p-primary-300);
+
+        .sc-nav__child-icon {
+            color: var(--p-primary-500);
+        }
+    }
+
+    &--active {
+        background: var(--p-primary-50) !important;
+        color: var(--p-primary-700) !important;
+        font-weight: 600;
+        border-left-color: var(--p-primary-500) !important;
+
+        .sc-nav__child-icon {
+            color: var(--p-primary-500) !important;
+        }
+    }
+}
+
+.sc-nav__child-icon {
+    font-size: 0.85rem;
+    width: 16px;
+    text-align: center;
+    flex-shrink: 0;
+    color: var(--p-text-muted-color);
+    transition: color 0.15s;
+}
+
+// ── Animación entrada ──────────────────────────────────────
+@keyframes navChildIn {
+    from {
+        opacity: 0;
+        transform: translateY(-6px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
