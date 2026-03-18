@@ -1,9 +1,62 @@
-// frontend/src/styles.scss
+// Angular Material
+@use '@angular/material' as mat;
 
-// PrimeIcons
-@import "primeicons/primeicons.css";
+// ── Tema Material 3 ─────────────────────────────────────────
+$sc-theme: mat.define-theme((
+  color: (
+    theme-type: light,
+    primary: mat.$azure-palette,
+    tertiary: mat.$blue-palette,
+  ),
+  typography: (
+    brand-family: 'Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif',
+    plain-family: 'Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif',
+  ),
+));
 
-// ── Reset base ─────────────────────────────────────────────
+$sc-dark-theme: mat.define-theme((
+  color: (
+    theme-type: dark,
+    primary: mat.$azure-palette,
+    tertiary: mat.$blue-palette,
+  ),
+  typography: (
+    brand-family: 'Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif',
+    plain-family: 'Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif',
+  ),
+));
+
+html {
+  @include mat.all-component-themes($sc-theme);
+  @include mat.all-component-typographies($sc-theme);
+}
+
+body.dark-theme {
+  @include mat.all-component-colors($sc-dark-theme);
+}
+
+// ── CSS custom properties (para reemplazar --p-* de PrimeNG) ─
+:root {
+  --sc-surface-ground: #f8f9fa;
+  --sc-surface-card: #ffffff;
+  --sc-surface-border: #e9ecef;
+  --sc-text-color: #212529;
+  --sc-text-muted: #6c757d;
+  --sc-primary: #1565c0;
+  --sc-primary-light: #e3f2fd;
+}
+
+body.dark-theme {
+  --sc-surface-ground: #121212;
+  --sc-surface-card: #1e1e1e;
+  --sc-surface-border: #333333;
+  --sc-text-color: #e0e0e0;
+  --sc-text-muted: #9e9e9e;
+  --sc-primary: #90caf9;
+  --sc-primary-light: #0d2137;
+}
+
+// ── Reset base ──────────────────────────────────────────────
 *,
 *::before,
 *::after {
@@ -18,11 +71,12 @@ body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background-color: var(--sc-surface-ground);
+  color: var(--sc-text-color);
 }
 
-// ── Clases de página ───────────────────────────────────────
+// ── Clases globales de página ───────────────────────────────
 
-// Contenedor principal de cualquier vista
 .sc-page {
   padding: 1.5rem;
 
@@ -31,16 +85,6 @@ body {
   }
 }
 
-// Card de página (bloque blanco/oscuro)
-.sc-page-card {
-  background: var(--p-surface-card);
-  border: 1px solid var(--p-surface-border);
-  border-radius: 0.625rem;
-  padding: 1.5rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, .04);
-}
-
-// Encabezado de página
 .sc-page-header {
   display: flex;
   align-items: flex-start;
@@ -53,18 +97,11 @@ body {
 .sc-page-header__title {
   font-size: 1.4rem;
   font-weight: 700;
-  color: var(--p-text-color);
+  color: var(--sc-text-color);
   margin: 0;
   letter-spacing: -0.01em;
 }
 
-.sc-page-header__subtitle {
-  font-size: 0.875rem;
-  color: var(--p-text-muted-color);
-  margin: 0.2rem 0 0;
-}
-
-// Grid de formulario (2 columnas → 1 en móvil)
 .sc-form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -79,28 +116,23 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
+
+  label {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--sc-text-muted);
+  }
+
+  span {
+    font-size: 0.9375rem;
+    color: var(--sc-text-color);
+  }
 }
 
 .sc-field--full {
   grid-column: 1 / -1;
 }
 
-.sc-field label {
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: var(--p-text-color);
-}
-
-.sc-form-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.75rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--p-surface-border);
-  margin-top: 1.5rem;
-}
-
-// Estado vacío
 .sc-empty-state {
   display: flex;
   flex-direction: column;
@@ -108,19 +140,14 @@ body {
   justify-content: center;
   padding: 4rem 2rem;
   text-align: center;
-  color: var(--p-text-muted-color);
+  color: var(--sc-text-muted);
 
-  i {
+  mat-icon {
     font-size: 3rem;
+    width: 3rem;
+    height: 3rem;
     margin-bottom: 1rem;
     opacity: 0.35;
-  }
-
-  h3 {
-    font-size: 1rem;
-    font-weight: 600;
-    color: var(--p-text-color);
-    margin: 0 0 0.5rem;
   }
 
   p {
@@ -129,7 +156,6 @@ body {
   }
 }
 
-// Estado de carga
 .sc-loading-state {
   display: flex;
   align-items: center;
@@ -137,14 +163,54 @@ body {
   padding: 4rem 2rem;
 }
 
-// ── Utilidades ─────────────────────────────────────────────
-.sc-text-muted {
-  color: var(--p-text-muted-color);
-  font-size: 0.875rem;
+// ── Estado chips/badges ─────────────────────────────────────
+.sc-status-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.65rem;
+  border-radius: 1rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+
+  &--borrador    { background: #e0e0e0; color: #424242; }
+  &--planificado { background: #bbdefb; color: #1565c0; }
+  &--en_ejecucion { background: #c8e6c9; color: #2e7d32; }
+  &--suspendido  { background: #fff3e0; color: #e65100; }
+  &--cerrado     { background: #ede7f6; color: #4527a0; }
+  &--cancelado   { background: #ffebee; color: #c62828; }
 }
 
-.sc-divider {
-  border: none;
-  border-top: 1px solid var(--p-surface-border);
-  margin: 1.5rem 0;
+// ── MatSnackBar colores ─────────────────────────────────────
+.snack-success .mdc-snackbar__surface {
+  background-color: #2e7d32 !important;
+}
+.snack-error .mdc-snackbar__surface {
+  background-color: #c62828 !important;
+}
+
+// ── Tabla Material global ───────────────────────────────────
+.mat-mdc-table {
+  width: 100%;
+  background: var(--sc-surface-card) !important;
+}
+
+.mat-mdc-header-cell {
+  font-weight: 600;
+  font-size: 0.8125rem;
+  color: var(--sc-text-muted);
+}
+
+.mat-mdc-cell {
+  font-size: 0.875rem;
+  color: var(--sc-text-color);
+}
+
+.mat-mdc-row:hover {
+  background-color: var(--sc-primary-light) !important;
+}
+
+// ── Material full-width form fields ─────────────────────────
+.sc-form-field-full {
+  width: 100%;
 }

@@ -1,47 +1,40 @@
-<!-- frontend/src/app/core/components/topbar/topbar.component.html -->
 <header class="sc-topbar">
+  <div class="sc-topbar__left">
+    <button class="sc-topbar__toggle" (click)="toggleSidebar.emit()" mat-icon-button aria-label="Toggle menú">
+      <mat-icon>menu</mat-icon>
+    </button>
+    <a class="sc-topbar__brand" routerLink="/dashboard">
+      <div class="sc-topbar__brand-icon"><mat-icon>cloud</mat-icon></div>
+      <span class="sc-topbar__brand-name">Saicloud</span>
+    </a>
+  </div>
 
-    <!-- Lado izquierdo: toggle + logo -->
-    <div class="sc-topbar__left">
-        <button class="sc-topbar__toggle" (click)="toggleSidebar.emit()" pRipple aria-label="Toggle menú">
-            <i class="pi pi-bars"></i>
-        </button>
+  <div class="sc-topbar__right">
+    <button class="sc-topbar__action" mat-icon-button matTooltip="Notificaciones" aria-label="Notificaciones">
+      <mat-icon>notifications</mat-icon>
+    </button>
 
-        <a class="sc-topbar__brand" routerLink="/dashboard">
-            <div class="sc-topbar__brand-icon">
-                <i class="pi pi-cloud"></i>
-            </div>
-            <span class="sc-topbar__brand-name">Saicloud</span>
-        </a>
-    </div>
+    <button class="sc-topbar__action" mat-icon-button
+      (click)="themeService.toggleDarkMode()"
+      [matTooltip]="themeService.isDark ? 'Modo claro' : 'Modo oscuro'">
+      <mat-icon>{{ themeService.isDark ? 'light_mode' : 'dark_mode' }}</mat-icon>
+    </button>
 
-    <!-- Lado derecho: acciones -->
-    <div class="sc-topbar__right">
+    <div class="sc-topbar__sep"></div>
 
-        <!-- Notificaciones -->
-        <button class="sc-topbar__action" pRipple aria-label="Notificaciones">
-            <i class="pi pi-bell"></i>
-            <span class="sc-topbar__badge">3</span>
-        </button>
+    <button class="sc-topbar__user" mat-button aria-label="Perfil">
+      <div class="sc-topbar__avatar">
+        {{ (currentUser()?.full_name || currentUser()?.email || 'U').charAt(0).toUpperCase() }}
+      </div>
+      <div class="sc-topbar__user-info">
+        <span class="sc-topbar__user-name">{{ currentUser()?.full_name || currentUser()?.email }}</span>
+        <span class="sc-topbar__user-role">{{ currentUser()?.role }}</span>
+      </div>
+      <mat-icon class="sc-topbar__user-chevron">expand_more</mat-icon>
+    </button>
 
-        <!-- Dark mode -->
-        <button class="sc-topbar__action" (click)="themeService.toggleDarkMode()" pRipple
-            [attr.aria-label]="themeService.isDark ? 'Modo claro' : 'Modo oscuro'">
-            <i class="pi" [class.pi-sun]="themeService.isDark" [class.pi-moon]="!themeService.isDark"></i>
-        </button>
-
-        <!-- Separador -->
-        <div class="sc-topbar__sep"></div>
-
-        <!-- Avatar usuario -->
-        <button class="sc-topbar__user" pRipple aria-label="Perfil de usuario">
-            <p-avatar label="JD" shape="circle" styleClass="sc-topbar__avatar" />
-            <div class="sc-topbar__user-info">
-                <span class="sc-topbar__user-name">Juan David</span>
-                <span class="sc-topbar__user-role">Administrador</span>
-            </div>
-            <i class="pi pi-chevron-down sc-topbar__user-chevron"></i>
-        </button>
-
-    </div>
+    <button class="sc-topbar__action" mat-icon-button matTooltip="Cerrar sesión" (click)="authService.logout()">
+      <mat-icon>logout</mat-icon>
+    </button>
+  </div>
 </header>

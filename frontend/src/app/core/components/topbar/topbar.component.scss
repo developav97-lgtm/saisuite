@@ -1,219 +1,121 @@
-// frontend/src/app/core/components/topbar/topbar.component.scss
-
-:host {
-    display: block;
-    position: sticky;
-    top: 0;
-    z-index: 1000;
-}
-
-// ── Barra principal ────────────────────────────────────────
 .sc-topbar {
-    height: 64px;
-    background: var(--p-surface-card);
-    border-bottom: 1px solid var(--p-surface-border);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 1.25rem 0 0.75rem;
-    gap: 1rem;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, .06);
-}
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1rem;
+  background: var(--sc-surface-card);
+  border-bottom: 1px solid var(--sc-surface-border);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .06);
 
-// ── Lado izquierdo ─────────────────────────────────────────
-.sc-topbar__left {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    flex-shrink: 0;
-}
-
-// Botón hamburguesa
-.sc-topbar__toggle {
-    width: 38px;
-    height: 38px;
-    border: none;
-    background: transparent;
-    border-radius: 0.5rem;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--p-text-muted-color);
-    transition: background 0.15s, color 0.15s;
-    flex-shrink: 0;
-
-    i {
-        font-size: 1.1rem;
-    }
-
-    &:hover {
-        background: var(--p-primary-50);
-        color: var(--p-primary-600);
-    }
-}
-
-// Brand / logo
-.sc-topbar__brand {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-    text-decoration: none;
-    padding: 0.25rem 0.5rem;
-    border-radius: 0.5rem;
-    transition: background 0.15s;
-
-    &:hover {
-        background: var(--p-primary-50);
-    }
-}
-
-.sc-topbar__brand-icon {
-    width: 34px;
-    height: 34px;
-    background: var(--p-primary-500);
-    border-radius: 0.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-
-    i {
-        font-size: 1rem;
-        color: #fff;
-    }
-}
-
-.sc-topbar__brand-name {
-    font-size: 1.05rem;
-    font-weight: 700;
-    color: var(--p-primary-500);
-    letter-spacing: -0.01em;
-}
-
-// ── Lado derecho ───────────────────────────────────────────
-.sc-topbar__right {
+  &__left,
+  &__right {
     display: flex;
     align-items: center;
     gap: 0.25rem;
-}
+  }
 
-// Botones de acción (notificaciones, dark mode)
-.sc-topbar__action {
-    position: relative;
-    width: 38px;
-    height: 38px;
-    border: none;
-    background: transparent;
-    border-radius: 0.5rem;
-    cursor: pointer;
+  &__toggle {
+    color: var(--sc-text-muted);
+  }
+
+  &__brand {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-decoration: none;
+    margin-left: 0.25rem;
+  }
+
+  &__brand-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: var(--sc-primary);
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--p-text-muted-color);
-    transition: background 0.15s, color 0.15s;
-    flex-shrink: 0;
 
-    i {
-        font-size: 1rem;
+    mat-icon {
+      color: white;
+      font-size: 1.1rem;
+      width: 1.1rem;
+      height: 1.1rem;
     }
+  }
 
-    &:hover {
-        background: var(--p-primary-50);
-        color: var(--p-primary-600);
-    }
-}
-
-// Badge de notificaciones
-.sc-topbar__badge {
-    position: absolute;
-    top: 5px;
-    right: 5px;
-    min-width: 16px;
-    height: 16px;
-    background: var(--p-red-500, #ef4444);
-    color: #fff;
-    font-size: 0.6rem;
+  &__brand-name {
     font-weight: 700;
-    border-radius: 999px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0 3px;
-    line-height: 1;
-    pointer-events: none;
-}
+    font-size: 1.05rem;
+    color: var(--sc-text-color);
+    letter-spacing: -0.01em;
+  }
 
-// Separador vertical
-.sc-topbar__sep {
+  &__action {
+    color: var(--sc-text-muted) !important;
+  }
+
+  &__sep {
     width: 1px;
-    height: 24px;
-    background: var(--p-surface-border);
-    margin: 0 0.5rem;
-    flex-shrink: 0;
-}
+    height: 28px;
+    background: var(--sc-surface-border);
+    margin: 0 0.25rem;
+  }
 
-// Área de usuario
-.sc-topbar__user {
+  &__user {
     display: flex;
     align-items: center;
-    gap: 0.6rem;
-    padding: 0.35rem 0.6rem;
-    border: none;
-    background: transparent;
-    border-radius: 0.5rem;
-    cursor: pointer;
-    transition: background 0.15s;
-    max-width: 220px;
+    gap: 0.5rem;
+    padding: 0 0.5rem !important;
+    border-radius: 8px !important;
+    height: 40px;
+    min-width: unset !important;
+  }
 
-    &:hover {
-        background: var(--p-primary-50);
-    }
-}
-
-:host ::ng-deep .sc-topbar__avatar.p-avatar {
-    width: 34px;
-    height: 34px;
-    font-size: 0.8rem;
-    font-weight: 700;
-    background: var(--p-primary-100);
-    color: var(--p-primary-700);
+  &__avatar {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: var(--sc-primary);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 0.8125rem;
     flex-shrink: 0;
-}
+  }
 
-.sc-topbar__user-info {
+  &__user-info {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    overflow: hidden;
+    line-height: 1.2;
 
     @media (max-width: 640px) {
-        display: none;
+      display: none;
     }
-}
+  }
 
-.sc-topbar__user-name {
-    font-size: 0.85rem;
+  &__user-name {
+    font-size: 0.8125rem;
     font-weight: 600;
-    color: var(--p-text-color);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 110px;
-}
+    color: var(--sc-text-color);
+  }
 
-.sc-topbar__user-role {
-    font-size: 0.72rem;
-    color: var(--p-text-muted-color);
-    white-space: nowrap;
-}
+  &__user-role {
+    font-size: 0.7rem;
+    color: var(--sc-text-muted);
+    text-transform: capitalize;
+  }
 
-.sc-topbar__user-chevron {
-    font-size: 0.65rem;
-    color: var(--p-text-muted-color);
-    flex-shrink: 0;
-
-    @media (max-width: 640px) {
-        display: none;
-    }
+  &__user-chevron {
+    font-size: 1rem !important;
+    width: 1rem !important;
+    height: 1rem !important;
+    color: var(--sc-text-muted);
+  }
 }

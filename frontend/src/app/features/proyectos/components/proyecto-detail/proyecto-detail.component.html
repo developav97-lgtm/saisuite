@@ -1,0 +1,86 @@
+@if (loading()) {
+  <div class="sc-loading-state"><mat-spinner /></div>
+} @else if (proyecto(); as p) {
+  <div class="sc-page">
+    <div class="sc-page-header">
+      <div class="pd-header">
+        <div class="pd-header__info">
+          <span class="pd-header__codigo">{{ p.codigo }}</span>
+          <h1 class="pd-header__nombre">{{ p.nombre }}</h1>
+          <span [class]="'sc-status-chip sc-status-chip--' + p.estado">{{ ESTADO_LABELS[p.estado] }}</span>
+        </div>
+        <div class="pd-header__acciones">
+          @for (accion of ACCIONES_ESTADO[p.estado] || []; track accion.estado) {
+            <button mat-stroked-button [color]="accion.color" (click)="cambiarEstado(accion.estado)">
+              {{ accion.label }}
+            </button>
+          }
+          <button mat-stroked-button (click)="editarProyecto()">
+            <mat-icon>edit</mat-icon> Editar
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <mat-tab-group>
+      <mat-tab label="General">
+        <div class="sc-form-grid pd-tab-content">
+          <div class="sc-field"><label>Tipo</label><span>{{ TIPO_LABELS[p.tipo] }}</span></div>
+          <div class="sc-field"><label>Cliente</label><span>{{ p.cliente_nombre }} <small class="pd-nit">({{ p.cliente_id }})</small></span></div>
+          <div class="sc-field"><label>Gerente</label><span>{{ p.gerente.full_name || p.gerente.email }}</span></div>
+          <div class="sc-field"><label>Coordinador</label><span>{{ p.coordinador?.full_name || p.coordinador?.email || '—' }}</span></div>
+          <div class="sc-field"><label>Inicio planificado</label><span>{{ formatDate(p.fecha_inicio_planificada) }}</span></div>
+          <div class="sc-field"><label>Fin planificado</label><span>{{ formatDate(p.fecha_fin_planificada) }}</span></div>
+          <div class="sc-field"><label>Inicio real</label><span>{{ formatDate(p.fecha_inicio_real) }}</span></div>
+          <div class="sc-field"><label>Fin real</label><span>{{ formatDate(p.fecha_fin_real) }}</span></div>
+          <div class="sc-field sc-field--full"><label>Presupuesto total</label><span class="pd-presupuesto">{{ formatCurrency(p.presupuesto_total) }}</span></div>
+          <div class="sc-field"><label>Administración (AIU)</label><span>{{ p.porcentaje_administracion }}%</span></div>
+          <div class="sc-field"><label>Imprevistos (AIU)</label><span>{{ p.porcentaje_imprevistos }}%</span></div>
+          <div class="sc-field"><label>Utilidad (AIU)</label><span>{{ p.porcentaje_utilidad }}%</span></div>
+          <div class="sc-field">
+            <label>Sincronizado con Saiopen</label>
+            <span>
+              @if (p.sincronizado_con_saiopen) {
+                <mat-icon style="color: #2e7d32; vertical-align: middle; font-size: 1rem;">check_circle</mat-icon> Sí
+              } @else {
+                <mat-icon style="color: #c62828; vertical-align: middle; font-size: 1rem;">cancel</mat-icon> No
+              }
+            </span>
+          </div>
+        </div>
+      </mat-tab>
+
+      <mat-tab [label]="'Fases (' + p.fases_count + ')'">
+        <div class="pd-tab-content">
+          <app-fase-list [proyectoId]="p.id" [presupuestoProyecto]="p.presupuesto_total" />
+        </div>
+      </mat-tab>
+
+      <mat-tab label="Terceros">
+        <div class="sc-empty-state pd-tab-content">
+          <mat-icon>group</mat-icon>
+          <p>Módulo de terceros disponible próximamente.</p>
+        </div>
+      </mat-tab>
+
+      <mat-tab label="Documentos">
+        <div class="sc-empty-state pd-tab-content">
+          <mat-icon>description</mat-icon>
+          <p>Documentos contables disponibles próximamente.</p>
+        </div>
+      </mat-tab>
+
+      <mat-tab label="Hitos">
+        <div class="sc-empty-state pd-tab-content">
+          <mat-icon>flag</mat-icon>
+          <p>Hitos facturables disponibles próximamente.</p>
+        </div>
+      </mat-tab>
+    </mat-tab-group>
+  </div>
+} @else {
+  <div class="sc-empty-state">
+    <mat-icon>error</mat-icon>
+    <p>Proyecto no encontrado.</p>
+  </div>
+}

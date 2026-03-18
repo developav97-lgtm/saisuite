@@ -1,114 +1,121 @@
-// frontend/src/app/core/components/sidebar/sidebar.component.ts
 import {
-    Component,
-    ChangeDetectionStrategy,
-    Input,
-    Output,
-    EventEmitter,
-    HostListener,
-    OnInit,
-    ChangeDetectorRef,
+  ChangeDetectionStrategy,
+  Component,
+  EventEmitter,
+  HostListener,
+  OnInit,
+  Output,
+  inject,
+  input,
+  ChangeDetectorRef,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
-import { DrawerModule } from 'primeng/drawer';
+import { MatIconModule } from '@angular/material/icon';
 
 export interface NavItem {
-    label: string;
-    icon: string;
-    route?: string;
-    badge?: string | number;
-    children?: NavItem[];
+  label: string;
+  icon: string;
+  route?: string;
+  badge?: string | number;
+  children?: NavItem[];
 }
 
 export interface NavSection {
-    sectionLabel?: string;
-    items: NavItem[];
+  sectionLabel?: string;
+  items: NavItem[];
 }
 
 @Component({
-    selector: 'app-sidebar',
-    standalone: true,
-    imports: [CommonModule, RouterModule, DrawerModule],
-    templateUrl: './sidebar.component.html',
-    styleUrls: ['./sidebar.component.scss'],
-    changeDetection: ChangeDetectionStrategy.OnPush,
+  selector: 'app-sidebar',
+  standalone: true,
+  imports: [CommonModule, RouterModule, MatIconModule],
+  templateUrl: './sidebar.component.html',
+  styleUrls: ['./sidebar.component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SidebarComponent implements OnInit {
-    @Input() visible = true;
-    @Output() visibleChange = new EventEmitter<boolean>();
+  readonly visible = input(true);
+  @Output() visibleChange = new EventEmitter<boolean>();
 
-    isDesktop = true;
-    expandedItems = new Set<string>();
+  private readonly cdr = inject(ChangeDetectorRef);
 
-    // Navegación — ajustar cuando se confirmen módulos con Saiopen
-    navSections: NavSection[] = [
+  isDesktop = true;
+  expandedItems = new Set<string>();
+
+  navSections: NavSection[] = [
+    {
+      items: [
+        { label: 'Dashboard', icon: 'home', route: '/dashboard' },
+      ],
+    },
+    {
+      sectionLabel: 'Módulos',
+      items: [
         {
-            items: [
-                { label: 'Dashboard', icon: 'pi pi-home', route: '/dashboard' },
-            ],
+          label: 'SaiVentas',
+          icon: 'shopping_cart',
+          children: [
+            { label: 'Clientes', icon: 'group', route: '/ventas/clientes' },
+            { label: 'Pedidos', icon: 'list', route: '/ventas/pedidos' },
+            { label: 'Productos', icon: 'inventory_2', route: '/ventas/productos' },
+          ],
         },
         {
-            sectionLabel: 'Módulos',
-            items: [
-                {
-                    label: 'SaiVentas',
-                    icon: 'pi pi-shopping-cart',
-                    children: [
-                        { label: 'Clientes', icon: 'pi pi-users', route: '/ventas/clientes' },
-                        { label: 'Pedidos', icon: 'pi pi-list', route: '/ventas/pedidos' },
-                        { label: 'Productos', icon: 'pi pi-box', route: '/ventas/productos' },
-                    ],
-                },
-                {
-                    label: 'SaiCobros',
-                    icon: 'pi pi-wallet',
-                    children: [
-                        { label: 'Cartera', icon: 'pi pi-dollar', route: '/cobros/cartera' },
-                        { label: 'Gestiones', icon: 'pi pi-phone', route: '/cobros/gestiones' },
-                        { label: 'Pagos', icon: 'pi pi-check-circle', route: '/cobros/pagos' },
-                    ],
-                },
-            ],
+          label: 'SaiCobros',
+          icon: 'account_balance_wallet',
+          children: [
+            { label: 'Cartera', icon: 'attach_money', route: '/cobros/cartera' },
+            { label: 'Gestiones', icon: 'phone', route: '/cobros/gestiones' },
+            { label: 'Pagos', icon: 'check_circle', route: '/cobros/pagos' },
+          ],
         },
         {
-            sectionLabel: 'Sistema',
-            items: [
-                { label: 'Configuración', icon: 'pi pi-cog', route: '/configuracion' },
-            ],
+          label: 'Proyectos',
+          icon: 'work',
+          children: [
+            { label: 'Lista', icon: 'list', route: '/proyectos' },
+            { label: 'Nuevo', icon: 'add', route: '/proyectos/nuevo' },
+          ],
         },
-    ];
+      ],
+    },
+    {
+      sectionLabel: 'Sistema',
+      items: [
+        { label: 'Configuración', icon: 'settings', route: '/configuracion' },
+      ],
+    },
+  ];
 
-    constructor(private cdr: ChangeDetectorRef) { }
+  ngOnInit(): void {
+    this.checkBreakpoint();
+  }
 
-    ngOnInit(): void {
-        this.checkBreakpoint();
+  @HostListener('window:resize')
+  onResize(): void {
+    this.checkBreakpoint();
+    this.cdr.markForCheck();
+  }
+
+  toggleExpand(label: string): void {
+    if (this.expandedItems.has(label)) {
+      this.expandedItems.delete(label);
+    } else {
+      this.expandedItems.add(label);
     }
+    this.cdr.markForCheck();
+  }
 
-    @HostListener('window:resize')
-    onResize(): void {
-        this.checkBreakpoint();
-        this.cdr.markForCheck();
-    }
+  isExpanded(label: string): boolean {
+    return this.expandedItems.has(label);
+  }
 
-    toggleExpand(label: string): void {
-        if (this.expandedItems.has(label)) {
-            this.expandedItems.delete(label);
-        } else {
-            this.expandedItems.add(label);
-        }
-        this.cdr.markForCheck();
-    }
+  closeDrawer(): void {
+    this.visibleChange.emit(false);
+  }
 
-    isExpanded(label: string): boolean {
-        return this.expandedItems.has(label);
-    }
-
-    onDrawerHide(): void {
-        this.visibleChange.emit(false);
-    }
-
-    private checkBreakpoint(): void {
-        this.isDesktop = window.innerWidth >= 992;
-    }
+  private checkBreakpoint(): void {
+    this.isDesktop = window.innerWidth >= 992;
+  }
 }

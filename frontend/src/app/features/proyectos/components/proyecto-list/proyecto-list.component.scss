@@ -1,0 +1,20 @@
+.pl-filters {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+
+  &__search { flex: 1; min-width: 240px; }
+  &__dropdown { width: 180px; }
+}
+
+.pl-table { border-radius: 8px; overflow: hidden; }
+
+.pl-codigo {
+  font-family: monospace;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.pl-col-presupuesto { text-align: right !important; }
+.pl-col-acciones { width: 100px; }
