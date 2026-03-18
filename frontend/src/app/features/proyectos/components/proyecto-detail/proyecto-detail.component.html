@@ -23,6 +23,7 @@
     </div>
 
     <mat-tab-group>
+      <!-- ── Tab 1: General ── -->
       <mat-tab label="General">
         <div class="sc-form-grid pd-tab-content">
           <div class="sc-field"><label>Tipo</label><span>{{ TIPO_LABELS[p.tipo] }}</span></div>
@@ -50,30 +51,31 @@
         </div>
       </mat-tab>
 
+      <!-- ── Tab 2: Fases ── -->
       <mat-tab [label]="'Fases (' + p.fases_count + ')'">
         <div class="pd-tab-content">
           <app-fase-list [proyectoId]="p.id" [presupuestoProyecto]="p.presupuesto_total" />
         </div>
       </mat-tab>
 
+      <!-- ── Tab 3: Terceros ── -->
       <mat-tab label="Terceros">
-        <div class="sc-empty-state pd-tab-content">
-          <mat-icon>group</mat-icon>
-          <p>Módulo de terceros disponible próximamente.</p>
+        <div class="pd-tab-content">
+          <app-tercero-list [proyectoId]="p.id" />
         </div>
       </mat-tab>
 
+      <!-- ── Tab 4: Documentos ── -->
       <mat-tab label="Documentos">
-        <div class="sc-empty-state pd-tab-content">
-          <mat-icon>description</mat-icon>
-          <p>Documentos contables disponibles próximamente.</p>
+        <div class="pd-tab-content">
+          <app-documento-list [proyectoId]="p.id" />
         </div>
       </mat-tab>
 
+      <!-- ── Tab 5: Hitos ── -->
       <mat-tab label="Hitos">
-        <div class="sc-empty-state pd-tab-content">
-          <mat-icon>flag</mat-icon>
-          <p>Hitos facturables disponibles próximamente.</p>
+        <div class="pd-tab-content">
+          <app-hito-list [proyectoId]="p.id" />
         </div>
       </mat-tab>
     </mat-tab-group>

@@ -1,0 +1,57 @@
+.tl-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.tl-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+
+  &__count {
+    font-size: 0.875rem;
+    color: var(--sc-text-muted);
+  }
+}
+
+.tl-nombre {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.tl-nit {
+  font-size: 0.75rem;
+  color: var(--sc-text-muted);
+}
+
+.tl-col-acciones {
+  width: 80px;
+  text-align: center;
+}
+
+.tl-form {
+  min-width: 420px;
+  padding-top: 0.5rem;
+}
+
+/* Chips de rol */
+.tl-rol-chip {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: var(--mat-sys-surface-variant);
+  color: var(--mat-sys-on-surface-variant);
+
+  &--cliente        { background: #e3f2fd; color: #1565c0; }
+  &--proveedor      { background: #f3e5f5; color: #6a1b9a; }
+  &--subcontratista { background: #e8f5e9; color: #2e7d32; }
+  &--interventor    { background: #fff3e0; color: #e65100; }
+  &--consultor      { background: #e0f7fa; color: #006064; }
+  &--otro           { background: #f5f5f5; color: #424242; }
+}
