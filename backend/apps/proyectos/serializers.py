@@ -5,7 +5,10 @@ Los serializers SOLO transforman datos. Sin lógica de negocio.
 import logging
 from decimal import Decimal
 from rest_framework import serializers
-from apps.proyectos.models import Proyecto, Fase, TipoProyecto, EstadoProyecto
+from apps.proyectos.models import (
+    Proyecto, Fase, TerceroProyecto, DocumentoContable, Hito,
+    TipoProyecto, EstadoProyecto, RolTercero, TipoDocumento,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -194,3 +197,144 @@ class CambiarEstadoSerializer(serializers.Serializer):
         required=False,
         help_text='Permite cerrar proyecto con fases incompletas (requiere company_admin)',
     )
+
+
+# ──────────────────────────────────────────────
+# Fase B: TerceroProyecto
+# ──────────────────────────────────────────────
+
+class TerceroProyectoSerializer(serializers.ModelSerializer):
+    """Serializer de lectura y escritura para terceros vinculados al proyecto."""
+    rol_display  = serializers.CharField(source='get_rol_display', read_only=True)
+    fase_nombre  = serializers.CharField(source='fase.nombre', read_only=True, default=None)
+
+    class Meta:
+        model  = TerceroProyecto
+        fields = [
+            'id', 'proyecto', 'tercero_id', 'tercero_nombre',
+            'rol', 'rol_display', 'fase', 'fase_nombre', 'activo',
+            'created_at',
+        ]
+        read_only_fields = ['id', 'proyecto', 'created_at']
+
+
+class TerceroProyectoCreateSerializer(serializers.ModelSerializer):
+    """Serializer de escritura para vincular un tercero al proyecto."""
+
+    class Meta:
+        model  = TerceroProyecto
+        fields = ['tercero_id', 'tercero_nombre', 'rol', 'fase']
+
+    def validate_fase(self, fase):
+        """La fase debe pertenecer al mismo proyecto."""
+        proyecto = self.context.get('proyecto')
+        if fase and proyecto and fase.proyecto_id != proyecto.id:
+            raise serializers.ValidationError(
+                'La fase debe pertenecer al mismo proyecto.'
+            )
+        return fase
+
+
+# ──────────────────────────────────────────────
+# Fase B: DocumentoContable
+# ──────────────────────────────────────────────
+
+class DocumentoContableListSerializer(serializers.ModelSerializer):
+    """Serializer de listado de documentos contables — campos mínimos."""
+    tipo_documento_display = serializers.CharField(
+        source='get_tipo_documento_display', read_only=True
+    )
+
+    class Meta:
+        model  = DocumentoContable
+        fields = [
+            'id', 'tipo_documento', 'tipo_documento_display',
+            'numero_documento', 'fecha_documento',
+            'tercero_nombre', 'valor_neto',
+            'sincronizado_desde_saiopen',
+        ]
+        read_only_fields = fields
+
+
+class DocumentoContableDetailSerializer(serializers.ModelSerializer):
+    """Serializer de detalle de documento contable — todos los campos."""
+    tipo_documento_display = serializers.CharField(
+        source='get_tipo_documento_display', read_only=True
+    )
+
+    class Meta:
+        model  = DocumentoContable
+        fields = [
+            'id', 'proyecto', 'fase',
+            'saiopen_doc_id', 'tipo_documento', 'tipo_documento_display',
+            'numero_documento', 'fecha_documento',
+            'tercero_id', 'tercero_nombre',
+            'valor_bruto', 'valor_descuento', 'valor_neto',
+            'observaciones', 'sincronizado_desde_saiopen',
+        ]
+        read_only_fields = fields
+
+
+# ──────────────────────────────────────────────
+# Fase B: Hito
+# ──────────────────────────────────────────────
+
+class HitoSerializer(serializers.ModelSerializer):
+    """Serializer de lectura para hitos del proyecto."""
+    fase_nombre = serializers.CharField(source='fase.nombre', read_only=True, default=None)
+
+    class Meta:
+        model  = Hito
+        fields = [
+            'id', 'proyecto', 'fase', 'fase_nombre',
+            'nombre', 'descripcion',
+            'porcentaje_proyecto', 'valor_facturar',
+            'facturable', 'facturado',
+            'documento_factura', 'fecha_facturacion',
+            'created_at',
+        ]
+        read_only_fields = ['id', 'proyecto', 'facturado', 'documento_factura', 'fecha_facturacion', 'created_at']
+
+
+class HitoCreateSerializer(serializers.ModelSerializer):
+    """Serializer de escritura para crear un hito."""
+
+    class Meta:
+        model  = Hito
+        fields = ['nombre', 'descripcion', 'fase', 'porcentaje_proyecto', 'valor_facturar', 'facturable']
+
+    def validate_porcentaje_proyecto(self, value):
+        if not (Decimal('0') < value <= Decimal('100')):
+            raise serializers.ValidationError(
+                'El porcentaje debe ser mayor a 0 y máximo 100.'
+            )
+        return value
+
+    def validate_valor_facturar(self, value):
+        if value <= Decimal('0'):
+            raise serializers.ValidationError(
+                'El valor a facturar debe ser mayor a cero.'
+            )
+        return value
+
+    def validate_fase(self, fase):
+        proyecto = self.context.get('proyecto')
+        if fase and proyecto and fase.proyecto_id != proyecto.id:
+            raise serializers.ValidationError(
+                'La fase debe pertenecer al mismo proyecto.'
+            )
+        return fase
+
+
+class GenerarFacturaSerializer(serializers.Serializer):
+    """Serializer para la acción de generar factura desde un hito."""
+    confirmar = serializers.BooleanField(
+        help_text='Debe ser true para confirmar la solicitud de facturación.'
+    )
+
+    def validate_confirmar(self, value):
+        if not value:
+            raise serializers.ValidationError(
+                'Debe confirmar la solicitud de facturación.'
+            )
+        return value

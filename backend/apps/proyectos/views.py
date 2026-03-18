@@ -9,7 +9,7 @@ from rest_framework.response import Response
 from rest_framework.filters import SearchFilter, OrderingFilter
 from django_filters.rest_framework import DjangoFilterBackend
 
-from apps.proyectos.models import Proyecto, Fase
+from apps.proyectos.models import Proyecto, Fase, TerceroProyecto, DocumentoContable, Hito
 from apps.proyectos.serializers import (
     ProyectoListSerializer,
     ProyectoDetailSerializer,
@@ -18,10 +18,20 @@ from apps.proyectos.serializers import (
     FaseListSerializer,
     FaseDetailSerializer,
     FaseCreateUpdateSerializer,
+    TerceroProyectoSerializer,
+    TerceroProyectoCreateSerializer,
+    DocumentoContableListSerializer,
+    DocumentoContableDetailSerializer,
+    HitoSerializer,
+    HitoCreateSerializer,
+    GenerarFacturaSerializer,
 )
 from apps.proyectos.services import (
     ProyectoService,
     FaseService,
+    TerceroProyectoService,
+    DocumentoContableService,
+    HitoService,
     ProyectoException,
 )
 from apps.proyectos.filters import ProyectoFilter
@@ -131,3 +141,118 @@ class FaseViewSet(viewsets.ModelViewSet):
         fase = self.get_object()
         FaseService.soft_delete_fase(fase)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class TerceroProyectoViewSet(viewsets.GenericViewSet):
+    """
+    Terceros vinculados a un proyecto.
+    - GET/POST  /api/v1/proyectos/{proyecto_pk}/terceros/
+    - DELETE    /api/v1/proyectos/{proyecto_pk}/terceros/{pk}/
+    """
+    permission_classes = [CanAccessProyectos, CanEditProyecto]
+
+    def _get_proyecto(self):
+        proyecto_pk = self.kwargs['proyecto_pk']
+        return Proyecto.all_objects.get(id=proyecto_pk)
+
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return TerceroProyectoCreateSerializer
+        return TerceroProyectoSerializer
+
+    def list(self, request, proyecto_pk=None):
+        """GET /api/v1/proyectos/{id}/terceros/"""
+        proyecto = self._get_proyecto()
+        qs       = TerceroProyectoService.list_terceros(proyecto)
+        serializer = TerceroProyectoSerializer(qs, many=True)
+        return Response(serializer.data)
+
+    def create(self, request, proyecto_pk=None):
+        """POST /api/v1/proyectos/{id}/terceros/"""
+        proyecto   = self._get_proyecto()
+        serializer = TerceroProyectoCreateSerializer(
+            data=request.data, context={'proyecto': proyecto}
+        )
+        serializer.is_valid(raise_exception=True)
+        tercero = TerceroProyectoService.vincular_tercero(proyecto, serializer.validated_data)
+        return Response(
+            TerceroProyectoSerializer(tercero).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+    def destroy(self, request, proyecto_pk=None, pk=None):
+        """DELETE /api/v1/proyectos/{id}/terceros/{pk}/"""
+        tercero = TerceroProyecto.all_objects.get(id=pk, proyecto_id=proyecto_pk)
+        TerceroProyectoService.desvincular_tercero(tercero)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class DocumentoContableViewSet(viewsets.GenericViewSet):
+    """
+    Documentos contables del proyecto (solo lectura — los crea el agente Go).
+    - GET  /api/v1/proyectos/{proyecto_pk}/documentos/
+    - GET  /api/v1/proyectos/{proyecto_pk}/documentos/{pk}/
+    """
+    permission_classes = [CanAccessProyectos]
+
+    def _get_proyecto(self):
+        return Proyecto.all_objects.get(id=self.kwargs['proyecto_pk'])
+
+    def list(self, request, proyecto_pk=None):
+        """GET /api/v1/proyectos/{id}/documentos/"""
+        proyecto = self._get_proyecto()
+        fase_id  = request.query_params.get('fase')
+        qs       = DocumentoContableService.list_documentos(proyecto, fase_id=fase_id)
+        serializer = DocumentoContableListSerializer(qs, many=True)
+        return Response(serializer.data)
+
+    def retrieve(self, request, proyecto_pk=None, pk=None):
+        """GET /api/v1/proyectos/{id}/documentos/{pk}/"""
+        documento  = DocumentoContableService.get_documento(pk)
+        serializer = DocumentoContableDetailSerializer(documento)
+        return Response(serializer.data)
+
+
+class HitoViewSet(viewsets.GenericViewSet):
+    """
+    Hitos facturables del proyecto.
+    - GET/POST  /api/v1/proyectos/{proyecto_pk}/hitos/
+    - POST      /api/v1/proyectos/{proyecto_pk}/hitos/{pk}/generar-factura/
+    """
+    permission_classes = [CanAccessProyectos, CanEditProyecto]
+
+    def _get_proyecto(self):
+        return Proyecto.all_objects.get(id=self.kwargs['proyecto_pk'])
+
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return HitoCreateSerializer
+        if self.action == 'generar_factura':
+            return GenerarFacturaSerializer
+        return HitoSerializer
+
+    def list(self, request, proyecto_pk=None):
+        """GET /api/v1/proyectos/{id}/hitos/"""
+        proyecto   = self._get_proyecto()
+        qs         = HitoService.list_hitos(proyecto)
+        serializer = HitoSerializer(qs, many=True)
+        return Response(serializer.data)
+
+    def create(self, request, proyecto_pk=None):
+        """POST /api/v1/proyectos/{id}/hitos/"""
+        proyecto   = self._get_proyecto()
+        serializer = HitoCreateSerializer(
+            data=request.data, context={'proyecto': proyecto}
+        )
+        serializer.is_valid(raise_exception=True)
+        hito = HitoService.create_hito(proyecto, serializer.validated_data)
+        return Response(HitoSerializer(hito).data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['post'], url_path='generar-factura')
+    def generar_factura(self, request, proyecto_pk=None, pk=None):
+        """POST /api/v1/proyectos/{id}/hitos/{pk}/generar-factura/"""
+        hito       = Hito.all_objects.get(id=pk, proyecto_id=proyecto_pk)
+        serializer = GenerarFacturaSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        hito_actualizado = HitoService.generar_factura(hito, request.user)
+        return Response(HitoSerializer(hito_actualizado).data, status=status.HTTP_200_OK)

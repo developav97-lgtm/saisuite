@@ -10,7 +10,7 @@ from django.utils import timezone
 from rest_framework.exceptions import ValidationError, PermissionDenied
 
 from apps.proyectos.models import (
-    Proyecto, Fase,
+    Proyecto, Fase, TerceroProyecto, DocumentoContable, Hito,
     EstadoProyecto,
 )
 
@@ -465,3 +465,186 @@ class FaseService:
         fase.activo = False
         fase.save(update_fields=['activo', 'updated_at'])
         logger.info('Fase eliminada (soft)', extra={'fase_id': str(fase.id)})
+
+
+# ──────────────────────────────────────────────
+# TerceroProyectoService
+# ──────────────────────────────────────────────
+
+class TerceroProyectoService:
+
+    @staticmethod
+    def list_terceros(proyecto: Proyecto) -> QuerySet:
+        """Retorna terceros activos del proyecto con fase cargada."""
+        return (
+            TerceroProyecto.all_objects
+            .filter(proyecto=proyecto, activo=True)
+            .select_related('fase')
+            .order_by('rol', 'tercero_nombre')
+        )
+
+    @staticmethod
+    @transaction.atomic
+    def vincular_tercero(proyecto: Proyecto, data: dict) -> TerceroProyecto:
+        """
+        Vincula un tercero al proyecto.
+        Regla: un tercero puede tener múltiples roles en el mismo proyecto,
+        pero no el mismo rol+fase duplicado (unique_together).
+        """
+        tercero = TerceroProyecto(
+            proyecto=proyecto,
+            company=proyecto.company,
+            **data,
+        )
+        try:
+            tercero.full_clean()
+            tercero.save()
+        except Exception as exc:
+            raise ValidationError(
+                {'non_field_errors': f'Este tercero ya tiene el mismo rol en esta fase: {exc}'}
+            )
+
+        logger.info(
+            'Tercero vinculado al proyecto',
+            extra={
+                'proyecto_id': str(proyecto.id),
+                'tercero_id': data.get('tercero_id'),
+                'rol': data.get('rol'),
+            },
+        )
+        return tercero
+
+    @staticmethod
+    def desvincular_tercero(tercero: TerceroProyecto) -> None:
+        """Soft delete del tercero vinculado."""
+        tercero.activo = False
+        tercero.save(update_fields=['activo', 'updated_at'])
+        logger.info(
+            'Tercero desvinculado del proyecto',
+            extra={'tercero_proyecto_id': str(tercero.id)},
+        )
+
+
+# ──────────────────────────────────────────────
+# DocumentoContableService
+# ──────────────────────────────────────────────
+
+class DocumentoContableService:
+
+    @staticmethod
+    def list_documentos(proyecto: Proyecto, fase_id: str | None = None) -> QuerySet:
+        """
+        Retorna documentos contables del proyecto.
+        Opcionalmente filtra por fase.
+        """
+        qs = (
+            DocumentoContable.all_objects
+            .filter(proyecto=proyecto)
+            .select_related('fase')
+            .order_by('-fecha_documento')
+        )
+        if fase_id:
+            qs = qs.filter(fase_id=fase_id)
+        return qs
+
+    @staticmethod
+    def get_documento(documento_id: str) -> DocumentoContable:
+        return (
+            DocumentoContable.objects
+            .select_related('proyecto', 'fase')
+            .get(id=documento_id)
+        )
+
+
+# ──────────────────────────────────────────────
+# HitoService
+# ──────────────────────────────────────────────
+
+class HitoService:
+
+    @staticmethod
+    def list_hitos(proyecto: Proyecto) -> QuerySet:
+        """Retorna hitos del proyecto ordenados por fecha de creación."""
+        return (
+            Hito.all_objects
+            .filter(proyecto=proyecto)
+            .select_related('fase', 'documento_factura')
+            .order_by('created_at')
+        )
+
+    @staticmethod
+    @transaction.atomic
+    def create_hito(proyecto: Proyecto, data: dict) -> Hito:
+        """
+        Crea un hito facturable validando que el porcentaje total
+        de hitos no supere el 100% del proyecto.
+        """
+        from django.db.models import Sum as DbSum
+
+        porcentaje_nuevo = data.get('porcentaje_proyecto', Decimal('0'))
+
+        # Bloquear proyecto para evitar race conditions
+        proyecto_locked = Proyecto.all_objects.select_for_update().get(id=proyecto.id)
+
+        porcentaje_existente = (
+            Hito.all_objects
+            .filter(proyecto=proyecto_locked)
+            .aggregate(total=DbSum('porcentaje_proyecto'))
+            .get('total') or Decimal('0')
+        )
+
+        if porcentaje_existente + porcentaje_nuevo > Decimal('100'):
+            disponible = Decimal('100') - porcentaje_existente
+            raise ValidationError(
+                f'El porcentaje total de hitos superaría el 100%. '
+                f'Disponible: {disponible}%. Solicitado: {porcentaje_nuevo}%.'
+            )
+
+        hito = Hito(
+            proyecto=proyecto_locked,
+            company=proyecto_locked.company,
+            **data,
+        )
+        hito.full_clean()
+        hito.save()
+
+        logger.info(
+            'Hito creado',
+            extra={
+                'hito_id': str(hito.id),
+                'proyecto_id': str(proyecto.id),
+                'porcentaje': str(porcentaje_nuevo),
+            },
+        )
+        return hito
+
+    @staticmethod
+    @transaction.atomic
+    def generar_factura(hito: Hito, user) -> Hito:
+        """
+        Marca el hito como facturado y registra la solicitud.
+        El agente Go procesará la solicitud y creará la factura en Saiopen.
+        """
+        if not hito.facturable:
+            raise ValidationError('Este hito no está marcado como facturable.')
+        if hito.facturado:
+            raise ValidationError('Este hito ya fue facturado.')
+        if not hito.proyecto.sincronizado_con_saiopen:
+            raise ValidationError(
+                'El proyecto debe estar sincronizado con Saiopen para generar facturas.'
+            )
+
+        hito.facturado         = True
+        hito.fecha_facturacion = timezone.now().date()
+        hito.save(update_fields=['facturado', 'fecha_facturacion', 'updated_at'])
+
+        logger.info(
+            'Solicitud de factura generada para hito',
+            extra={
+                'hito_id': str(hito.id),
+                'proyecto_id': str(hito.proyecto_id),
+                'valor_facturar': str(hito.valor_facturar),
+                'user': user.email,
+            },
+        )
+        return hito
