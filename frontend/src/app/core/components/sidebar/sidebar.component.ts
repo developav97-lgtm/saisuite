@@ -84,6 +84,15 @@ export class SidebarComponent implements OnInit {
       sectionLabel: 'Sistema',
       items: [
         { label: 'Configuración', icon: 'settings', route: '/configuracion' },
+        {
+          label: 'Administración',
+          icon: 'admin_panel_settings',
+          children: [
+            { label: 'Usuarios',  icon: 'group',    route: '/admin/usuarios' },
+            { label: 'Empresa',   icon: 'business', route: '/admin/empresa' },
+            { label: 'Módulos',   icon: 'apps',     route: '/admin/modulos' },
+          ],
+        },
       ],
     },
   ];

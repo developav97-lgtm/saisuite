@@ -1,0 +1,95 @@
+<div class="cs-container">
+
+  <h2 class="cs-title">Configuración de empresa</h2>
+
+  @if (loading()) {
+    <div class="cs-loading"><mat-spinner diameter="40" /></div>
+  }
+
+  @if (company(); as c) {
+    <div class="cs-grid">
+
+      <!-- Info general -->
+      <mat-card class="cs-card">
+        <mat-card-header>
+          <mat-icon mat-card-avatar>business</mat-icon>
+          <mat-card-title>Información general</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <dl class="cs-dl">
+            <dt>Nombre</dt>
+            <dd>{{ c.name }}</dd>
+
+            <dt>NIT</dt>
+            <dd>{{ c.nit }}</dd>
+
+            <dt>Plan</dt>
+            <dd>
+              <span class="cs-plan cs-plan--{{ c.plan }}">
+                {{ planLabels[c.plan] ?? c.plan }}
+              </span>
+            </dd>
+
+            <dt>Estado</dt>
+            <dd>
+              @if (c.is_active) {
+                <span class="cs-badge cs-badge--active">Activa</span>
+              } @else {
+                <span class="cs-badge cs-badge--inactive">Inactiva</span>
+              }
+            </dd>
+
+            <dt>Creada</dt>
+            <dd>{{ c.created_at | date:'mediumDate':'':'es-CO' }}</dd>
+          </dl>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- Módulos activos -->
+      <mat-card class="cs-card">
+        <mat-card-header>
+          <mat-icon mat-card-avatar>apps</mat-icon>
+          <mat-card-title>Módulos contratados</mat-card-title>
+          <mat-card-subtitle>Para cambiar los módulos activos, ve a la sección Módulos.</mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="cs-modules">
+            @for (mod of c.modules; track mod.module) {
+              <div class="cs-module" [class.cs-module--active]="mod.is_active">
+                <mat-icon>{{ mod.module === 'ventas' ? 'shopping_cart' : mod.module === 'cobros' ? 'account_balance_wallet' : mod.module === 'dashboard' ? 'home' : 'work' }}</mat-icon>
+                <span>{{ moduleLabels[mod.module] ?? mod.module }}</span>
+                @if (mod.is_active) {
+                  <mat-icon class="cs-check">check_circle</mat-icon>
+                } @else {
+                  <mat-icon class="cs-off">cancel</mat-icon>
+                }
+              </div>
+            }
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- Saiopen -->
+      <mat-card class="cs-card">
+        <mat-card-header>
+          <mat-icon mat-card-avatar>sync</mat-icon>
+          <mat-card-title>Integración Saiopen</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <dl class="cs-dl">
+            <dt>Estado</dt>
+            <dd>
+              @if (c.saiopen_enabled) {
+                <span class="cs-badge cs-badge--active">Activa</span>
+              } @else {
+                <span class="cs-badge cs-badge--inactive">No configurada</span>
+              }
+            </dd>
+          </dl>
+        </mat-card-content>
+      </mat-card>
+
+    </div>
+  }
+
+</div>

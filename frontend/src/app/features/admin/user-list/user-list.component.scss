@@ -1,0 +1,92 @@
+.ul-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 1.5rem;
+}
+
+.ul-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.ul-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0;
+  color: var(--sc-text-color);
+}
+
+.ul-spacer { flex: 1; }
+
+.ul-loading {
+  display: flex;
+  justify-content: center;
+  padding: 3rem 0;
+}
+
+.ul-table {
+  width: 100%;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.ul-user-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.ul-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--sc-primary);
+  color: white;
+  font-size: 0.875rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ul-chip {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: var(--mat-sys-surface-variant);
+  color: var(--mat-sys-on-surface-variant);
+
+  &--company_admin  { background: #e3f2fd; color: #0d47a1; }
+  &--seller         { background: #e8f5e9; color: #1b5e20; }
+  &--collector      { background: #fff3e0; color: #e65100; }
+  &--viewer         { background: #f5f5f5; color: #424242; }
+  &--valmen_admin   { background: #fce4ec; color: #880e4f; }
+  &--valmen_support { background: #f3e5f5; color: #4a148c; }
+}
+
+.ul-badge {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+
+  &--active   { background: #e8f5e9; color: #1b5e20; }
+  &--inactive { background: #ffebee; color: #b71c1c; }
+}
+
+.ul-col-acciones {
+  width: 96px;
+  text-align: center;
+}
+
+.ul-empty {
+  text-align: center;
+  padding: 2rem;
+  color: var(--sc-text-muted);
+}
