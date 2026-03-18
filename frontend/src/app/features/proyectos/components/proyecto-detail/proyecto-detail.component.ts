@@ -10,6 +10,9 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { ProyectoService } from '../../services/proyecto.service';
 import { ProyectoDetail, EstadoProyecto, ESTADO_LABELS, ESTADO_SEVERITY, TIPO_LABELS } from '../../models/proyecto.model';
 import { FaseListComponent } from '../fase-list/fase-list.component';
+import { TerceroListComponent } from '../tercero-list/tercero-list.component';
+import { DocumentoListComponent } from '../documento-list/documento-list.component';
+import { HitoListComponent } from '../hito-list/hito-list.component';
 import { ConfirmDialogComponent } from '../../../../shared/components/confirm-dialog/confirm-dialog.component';
 
 @Component({
@@ -22,6 +25,9 @@ import { ConfirmDialogComponent } from '../../../../shared/components/confirm-di
     MatTabsModule, MatButtonModule, MatIconModule,
     MatProgressSpinnerModule,
     FaseListComponent,
+    TerceroListComponent,
+    DocumentoListComponent,
+    HitoListComponent,
   ],
 })
 export class ProyectoDetailComponent implements OnInit {

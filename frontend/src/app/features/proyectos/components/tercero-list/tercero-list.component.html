@@ -1,0 +1,119 @@
+<div class="tl-container">
+  <div class="tl-header">
+    <span class="tl-header__count">{{ terceros().length }} tercero(s) vinculado(s)</span>
+    <button mat-raised-button color="primary" (click)="abrirDialogVincular()">
+      <mat-icon>person_add</mat-icon> Vincular tercero
+    </button>
+  </div>
+
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate" />
+  }
+
+  <mat-table [dataSource]="terceros()">
+    <ng-container matColumnDef="tercero_nombre">
+      <mat-header-cell *matHeaderCellDef>Nombre / Razón social</mat-header-cell>
+      <mat-cell *matCellDef="let t">
+        <div class="tl-nombre">
+          <span>{{ t.tercero_nombre }}</span>
+          <small class="tl-nit">{{ t.tercero_id }}</small>
+        </div>
+      </mat-cell>
+    </ng-container>
+
+    <ng-container matColumnDef="tercero_id">
+      <mat-header-cell *matHeaderCellDef>NIT / ID</mat-header-cell>
+      <mat-cell *matCellDef="let t">{{ t.tercero_id }}</mat-cell>
+    </ng-container>
+
+    <ng-container matColumnDef="rol">
+      <mat-header-cell *matHeaderCellDef>Rol</mat-header-cell>
+      <mat-cell *matCellDef="let t">
+        <span class="tl-rol-chip tl-rol-chip--{{ t.rol }}">{{ t.rol_display }}</span>
+      </mat-cell>
+    </ng-container>
+
+    <ng-container matColumnDef="fase">
+      <mat-header-cell *matHeaderCellDef>Fase</mat-header-cell>
+      <mat-cell *matCellDef="let t">{{ t.fase_nombre ?? '—' }}</mat-cell>
+    </ng-container>
+
+    <ng-container matColumnDef="acciones">
+      <mat-header-cell *matHeaderCellDef class="tl-col-acciones">Acciones</mat-header-cell>
+      <mat-cell *matCellDef="let t" class="tl-col-acciones">
+        <button
+          mat-icon-button
+          matTooltip="Desvincular"
+          color="warn"
+          (click)="confirmarDesvincular(t)"
+        >
+          <mat-icon>person_remove</mat-icon>
+        </button>
+      </mat-cell>
+    </ng-container>
+
+    <mat-header-row *matHeaderRowDef="displayedColumns"></mat-header-row>
+    <mat-row *matRowDef="let row; columns: displayedColumns;"></mat-row>
+
+    <tr class="mat-row" *matNoDataRow>
+      <td [attr.colspan]="displayedColumns.length">
+        <div class="sc-empty-state">
+          <mat-icon>group_off</mat-icon>
+          <p>No hay terceros vinculados. Agrega el primero.</p>
+        </div>
+      </td>
+    </tr>
+  </mat-table>
+</div>
+
+<!-- Dialog: vincular tercero -->
+<ng-template #terceroFormTpl>
+  <h2 mat-dialog-title>Vincular tercero al proyecto</h2>
+  <mat-dialog-content>
+    <form [formGroup]="form" class="tl-form sc-form-grid">
+      <mat-form-field appearance="outline">
+        <mat-label>NIT / ID Saiopen *</mat-label>
+        <input matInput formControlName="tercero_id" placeholder="900123456-7" />
+        @if (form.get('tercero_id')?.invalid && form.get('tercero_id')?.touched) {
+          <mat-error>Campo obligatorio.</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Nombre / Razón social *</mat-label>
+        <input matInput formControlName="tercero_nombre" />
+        @if (form.get('tercero_nombre')?.invalid && form.get('tercero_nombre')?.touched) {
+          <mat-error>Campo obligatorio.</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Rol en el proyecto *</mat-label>
+        <mat-select formControlName="rol">
+          @for (op of ROL_OPTIONS; track op.value) {
+            <mat-option [value]="op.value">{{ op.label }}</mat-option>
+          }
+        </mat-select>
+        @if (form.get('rol')?.invalid && form.get('rol')?.touched) {
+          <mat-error>Selecciona un rol.</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Fase (opcional)</mat-label>
+        <mat-select formControlName="fase">
+          <mat-option [value]="null">— Sin fase —</mat-option>
+          @for (f of fases(); track f.id) {
+            <mat-option [value]="f.id">{{ f.nombre }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    </form>
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button mat-button [mat-dialog-close]="null">Cancelar</button>
+    <button mat-raised-button color="primary" (click)="vincular()" [disabled]="form.invalid">
+      Vincular
+    </button>
+  </mat-dialog-actions>
+</ng-template>

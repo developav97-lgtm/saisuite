@@ -1,0 +1,170 @@
+<div class="hl-container">
+  <div class="hl-header">
+    <div class="hl-header__info">
+      <span class="hl-pct">
+        Porcentaje asignado:
+        <strong [class.hl-pct--completo]="porcentajeUsado() >= 100">
+          {{ porcentajeUsado().toFixed(2) }}%
+        </strong>
+        de 100%
+      </span>
+    </div>
+    <button
+      mat-raised-button
+      color="primary"
+      [disabled]="porcentajeUsado() >= 100"
+      (click)="abrirDialogNuevo()"
+    >
+      <mat-icon>flag</mat-icon> Nuevo hito
+    </button>
+  </div>
+
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate" />
+  }
+
+  <mat-table [dataSource]="hitos()">
+    <ng-container matColumnDef="nombre">
+      <mat-header-cell *matHeaderCellDef>Hito</mat-header-cell>
+      <mat-cell *matCellDef="let h">
+        <div class="hl-nombre">
+          <span>{{ h.nombre }}</span>
+          @if (h.descripcion) {
+            <small class="hl-desc">{{ h.descripcion }}</small>
+          }
+        </div>
+      </mat-cell>
+    </ng-container>
+
+    <ng-container matColumnDef="fase_nombre">
+      <mat-header-cell *matHeaderCellDef>Fase</mat-header-cell>
+      <mat-cell *matCellDef="let h">{{ h.fase_nombre ?? '—' }}</mat-cell>
+    </ng-container>
+
+    <ng-container matColumnDef="porcentaje_proyecto">
+      <mat-header-cell *matHeaderCellDef class="hl-col-right">%</mat-header-cell>
+      <mat-cell *matCellDef="let h" class="hl-col-right">
+        <span class="hl-pct-badge">{{ h.porcentaje_proyecto }}%</span>
+      </mat-cell>
+    </ng-container>
+
+    <ng-container matColumnDef="valor_facturar">
+      <mat-header-cell *matHeaderCellDef class="hl-col-right">Valor a facturar</mat-header-cell>
+      <mat-cell *matCellDef="let h" class="hl-col-right hl-valor">
+        {{ formatCurrency(h.valor_facturar) }}
+      </mat-cell>
+    </ng-container>
+
+    <ng-container matColumnDef="facturable">
+      <mat-header-cell *matHeaderCellDef class="hl-col-center">Facturable</mat-header-cell>
+      <mat-cell *matCellDef="let h" class="hl-col-center">
+        <mat-icon [style.color]="h.facturable ? '#2e7d32' : '#9e9e9e'">
+          {{ h.facturable ? 'check_circle' : 'cancel' }}
+        </mat-icon>
+      </mat-cell>
+    </ng-container>
+
+    <ng-container matColumnDef="estado_factura">
+      <mat-header-cell *matHeaderCellDef>Estado factura</mat-header-cell>
+      <mat-cell *matCellDef="let h">
+        @if (h.facturado) {
+          <span class="hl-estado-chip hl-estado-chip--facturado">
+            <mat-icon>receipt_long</mat-icon> Facturado
+          </span>
+          <small class="hl-fecha-factura">{{ formatDate(h.fecha_facturacion) }}</small>
+        } @else {
+          <span class="hl-estado-chip hl-estado-chip--pendiente">Pendiente</span>
+        }
+      </mat-cell>
+    </ng-container>
+
+    <ng-container matColumnDef="acciones">
+      <mat-header-cell *matHeaderCellDef class="hl-col-acciones">Acciones</mat-header-cell>
+      <mat-cell *matCellDef="let h" class="hl-col-acciones">
+        <button
+          mat-icon-button
+          [matTooltip]="h.facturado ? 'Ya facturado' : (h.facturable ? 'Generar factura' : 'No facturable')"
+          [disabled]="h.facturado || !h.facturable"
+          color="primary"
+          (click)="confirmarGenerarFactura(h)"
+        >
+          <mat-icon>receipt</mat-icon>
+        </button>
+      </mat-cell>
+    </ng-container>
+
+    <mat-header-row *matHeaderRowDef="displayedColumns"></mat-header-row>
+    <mat-row *matRowDef="let row; columns: displayedColumns;"></mat-row>
+
+    <tr class="mat-row" *matNoDataRow>
+      <td [attr.colspan]="displayedColumns.length">
+        <div class="sc-empty-state">
+          <mat-icon>flag</mat-icon>
+          <p>No hay hitos definidos. Crea el primer hito facturable.</p>
+        </div>
+      </td>
+    </tr>
+  </mat-table>
+</div>
+
+<!-- Dialog: nuevo hito -->
+<ng-template #hitoFormTpl>
+  <h2 mat-dialog-title>Nuevo hito facturable</h2>
+  <mat-dialog-content>
+    <form [formGroup]="form" class="hl-form sc-form-grid">
+      <mat-form-field appearance="outline" class="sc-field--full">
+        <mat-label>Nombre del hito *</mat-label>
+        <input matInput formControlName="nombre" />
+        @if (form.get('nombre')?.invalid && form.get('nombre')?.touched) {
+          <mat-error>Campo obligatorio.</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="sc-field--full">
+        <mat-label>Descripción</mat-label>
+        <textarea matInput formControlName="descripcion" rows="2"></textarea>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Fase (opcional)</mat-label>
+        <mat-select formControlName="fase">
+          <mat-option [value]="null">— Sin fase —</mat-option>
+          @for (f of fases(); track f.id) {
+            <mat-option [value]="f.id">{{ f.nombre }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>% del proyecto *</mat-label>
+        <input matInput type="number" formControlName="porcentaje_proyecto" min="0.01" max="100" step="0.01" />
+        <span matTextSuffix>%</span>
+        <mat-hint>Disponible: {{ (100 - porcentajeUsado()).toFixed(2) }}%</mat-hint>
+        @if (form.get('porcentaje_proyecto')?.invalid && form.get('porcentaje_proyecto')?.touched) {
+          <mat-error>Debe ser mayor a 0 y máximo 100.</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Valor a facturar *</mat-label>
+        <input matInput type="number" formControlName="valor_facturar" min="0.01" step="1000" />
+        <span matTextPrefix>$&nbsp;</span>
+        @if (form.get('valor_facturar')?.invalid && form.get('valor_facturar')?.touched) {
+          <mat-error>Debe ser mayor a cero.</mat-error>
+        }
+      </mat-form-field>
+
+      <div class="sc-field--full hl-facturable-check">
+        <mat-checkbox formControlName="facturable">
+          Este hito es facturable
+        </mat-checkbox>
+      </div>
+    </form>
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button mat-button [mat-dialog-close]="null">Cancelar</button>
+    <button mat-raised-button color="primary" (click)="crearHito()" [disabled]="form.invalid">
+      Crear hito
+    </button>
+  </mat-dialog-actions>
+</ng-template>
