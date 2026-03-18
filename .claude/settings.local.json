@@ -64,7 +64,10 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "mcp__Claude_Preview__preview_start",
-      "Bash(git merge:*)"
+      "Bash(git merge:*)",
+      "Read(//Users/juanandrade/Desktop/saisuite/**)",
+      "Bash(docker compose:*)",
+      "Bash(python3 -c \":*)"
     ]
   }
 }
