@@ -182,3 +182,315 @@ Al terminar cada sesión o al resolver un problema significativo:
 **Razón:** por qué
 **Consecuencia:** qué implica esta decisión hacia adelante
 ```
+## Sección a agregar: Arquitectura Híbrida Django + Go
+
+### Principio general
+El proyecto Saicloud usa **Django como núcleo principal** y **Go para microservicios estratégicos**. 
+
+**Regla de oro:** Django por defecto, Go solo cuando esté justificado por métricas o requisitos específicos.
+
+### Cuándo recomendar Django (80% de los casos)
+
+✅ Usa Django para:
+- CRUD de entidades (clientes, productos, pedidos, inventario, etc.)
+- APIs REST estándar
+- Autenticación y permisos (JWT, roles, multi-tenancy)
+- Lógica de negocio que cambia frecuentemente
+- Integraciones con n8n vía webhooks
+- Panel de administración
+- Reportes y exports (CSV, PDF)
+- Procesos que pueden ser async con Celery o Django Q
+
+### Cuándo considerar Go (20% de los casos)
+
+⚙️ Solo recomienda Go cuando se cumpla AL MENOS UNO de estos criterios:
+
+#### Criterio 1: Alta concurrencia sostenida
+- >1000 req/s simultáneas
+- WebSockets persistentes con miles de conexiones
+- Streaming de datos en tiempo real
+
+#### Criterio 2: Procesamiento intensivo
+- Workers de procesamiento batch pesado
+- Transformación de grandes volúmenes (50k+ registros)
+- Cálculos matemáticos o estadísticos complejos
+
+#### Criterio 3: Ejecutables standalone
+- Agentes que corren en PC del cliente
+- CLI tools sin dependencias pesadas
+- Servicios que deben ser binarios compilados
+
+#### Criterio 4: Optimización de costos demostrada
+- El proceso corre 24/7 y consume >$300/mes
+- Métricas reales muestran que Go reduce costos >50%
+- ROI del desarrollo se recupera en <6 meses
+
+### ❌ NO uses Go para:
+- "Porque Go es más rápido" (sin métricas)
+- "Por aprender Go" (este es un proyecto productivo)
+- CRUDs simples o APIs REST estándar
+- Lógica que cambia frecuentemente
+- Casos sin métricas que justifiquen la complejidad
+
+### Proceso de recomendación
+
+Cuando en fase de **Planificación** identifiques un proceso que PODRÍA beneficiarse de Go:
+
+1. **Documenta los criterios que cumple:**
+   ```
+   Proceso: [nombre]
+   Criterios cumplidos:
+   - [ ] Alta concurrencia (estimado: X req/s)
+   - [ ] Procesamiento intensivo (volumen: X registros)
+   - [ ] Ejecutable standalone (contexto: X)
+   - [ ] Optimización de costos (ahorro proyectado: $X/mes)
+   
+   Justificación: [explicación con métricas estimadas o reales]
+   ```
+
+2. **Compara con alternativa Django:**
+   ```
+   Alternativa Django + Celery:
+   - Ventajas: [lista]
+   - Desventajas: [lista]
+   
+   Alternativa Go microservice:
+   - Ventajas: [lista]
+   - Desventajas: [lista]
+   
+   Recomendación: [Django/Go] porque [razones]
+   ```
+
+3. **Si recomiendas Go, define el contrato:**
+   ```
+   API del microservicio:
+   - Endpoint: POST /api/v1/[recurso]
+   - Auth: JWT validado
+   - Input: [schema]
+   - Output: [schema]
+   - Comunicación con Django: [REST/SQS/gRPC]
+   ```
+
+### Estructura de microservicios Go
+
+```
+backend/
+├── config/                    # Django principal
+├── apps/                      # Apps Django
+└── microservices/             # Microservicios Go
+    ├── saiopen-agent/         # Agente local Saiopen
+    │   ├── main.go
+    │   ├── go.mod
+    │   ├── Dockerfile
+    │   └── README.md          # Justificación y documentación
+    └── [nombre-servicio]/
+        ├── main.go
+        ├── handlers/
+        ├── models/
+        ├── go.mod
+        ├── Dockerfile
+        └── README.md          # REQUERIDO: justificación técnica
+```
+
+### Stack Go aprobado
+
+**Framework web:** Gin o Echo (similar a Django REST)
+**ORM (si necesario):** GORM
+**Base de datos:** PostgreSQL (compartida con Django)
+**Auth:** JWT validation (compatible con djangorestframework-simplejwt)
+**Logging:** Structured JSON a stdout → CloudWatch
+**Config:** Variables de entorno (misma filosofía que django-environ)
+
+### Comunicación entre servicios
+
+#### Opción 1: REST (síncrono, <100ms latencia)
+```
+Django → HTTP → Go Microservice
+Auth: Bearer JWT (mismo que Django)
+```
+
+#### Opción 2: SQS (asíncrono, procesos batch)
+```
+Django → SQS Queue → Go Worker
+Auth: IAM roles (AWS)
+```
+
+#### Opción 3: gRPC (alto rendimiento, baja latencia)
+```
+Django → gRPC → Go Service
+Auth: Metadata con JWT
+```
+
+**Regla:** Prefiere REST para simplicidad, SQS para desacoplamiento, gRPC solo si latencia <10ms es crítica.
+
+### Deployment
+
+- Cada microservicio Go en su propio contenedor Docker
+- Mismo ECS cluster que Django
+- Variables de entorno compartidas donde aplique
+- Logs centralizados en CloudWatch
+- Métricas en CloudWatch Metrics
+
+**docker-compose.yml incluye todos los servicios:**
+```yaml
+services:
+  django:
+    # ... config Django
+  
+  go-service-name:
+    build: ./backend/microservices/service-name
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      JWT_SECRET: ${JWT_SECRET}
+    ports:
+      - "8001:8001"
+```
+
+### Testing de integración
+
+Cuando haya microservicios Go:
+
+1. **Unit tests Go:** `go test ./...`
+2. **Integration tests:** Django test que llama al microservicio
+3. **Contract tests:** Validar que el contrato API se cumple
+4. **E2E tests:** Flujo completo desde frontend
+
+### Skill aplicable
+
+Cuando se decida usar Go, usar skill:
+- `saicloud-planificacion` → evalúa y documenta decisión
+- `saicloud-infraestructura-aws` → actualizado para soportar Go
+- (Futuro) `saicloud-microservicio-go` → generación de código Go
+
+### Ejemplo: Agente Saiopen (caso validado)
+
+✅ **Justificación:**
+- Criterio 3: Ejecutable standalone que corre en PC del cliente
+- Requiere bajo consumo de recursos (PCs antiguos)
+- Binario sin dependencias externas
+- No cambia frecuentemente
+
+**Implementación:**
+```
+backend/microservices/saiopen-agent/
+├── main.go                 # CLI entrypoint
+├── sync/
+│   ├── firebird.go        # Conexión a Firebird
+│   ├── api.go             # Llamadas a Django
+│   └── sqs.go             # Comunicación SQS
+├── config/
+│   └── config.go          # Variables de entorno
+├── go.mod
+├── Dockerfile             # Build multi-stage
+└── README.md              # Documentación de instalación
+```
+
+**Comunicación:**
+1. Agente lee Firebird local
+2. Envía a SQS mensaje cifrado
+3. Django worker procesa mensaje
+4. Respuesta vía SQS o polling API
+
+### Reglas de código para Go
+
+Cuando generes código Go:
+
+1. **Estructura de handlers similar a Django views:**
+   ```go
+   // Similar a Django view function
+   func CreateOrder(c *gin.Context) {
+       // Validación (como Django serializer)
+       // Lógica (como Django service)
+       // Response (como DRF Response)
+   }
+   ```
+
+2. **Logging estructurado:**
+   ```go
+   log.WithFields(log.Fields{
+       "user_id": userID,
+       "action": "create_order",
+   }).Info("Order created successfully")
+   ```
+
+3. **Error handling explícito:**
+   ```go
+   if err != nil {
+       log.WithError(err).Error("Failed to create order")
+       c.JSON(500, gin.H{"error": "Internal server error"})
+       return
+   }
+   ```
+
+4. **Config desde env (como Django):**
+   ```go
+   type Config struct {
+       DatabaseURL string `env:"DATABASE_URL,required"`
+       JWTSecret   string `env:"JWT_SECRET,required"`
+   }
+   ```
+
+### Documentación requerida
+
+Cada microservicio Go DEBE tener `README.md` con:
+
+```markdown
+# [Nombre del Microservicio]
+
+## Justificación técnica
+[Por qué este servicio está en Go y no en Django]
+
+## Criterios cumplidos
+- [ ] Alta concurrencia: [detalles]
+- [ ] Procesamiento intensivo: [detalles]
+- [ ] Ejecutable standalone: [detalles]
+- [ ] Optimización de costos: [ahorro proyectado]
+
+## Contrato API
+[Endpoints, inputs, outputs]
+
+## Comunicación con Django
+[REST/SQS/gRPC + auth]
+
+## Deploy
+[Instrucciones específicas]
+
+## Métricas
+[Cómo medir éxito]
+```
+
+### Checklist antes de aprobar Go
+
+Antes de generar código Go para un microservicio:
+
+- [ ] ¿Cumple al menos 1 criterio de los 4?
+- [ ] ¿La alternativa Django+Celery fue considerada?
+- [ ] ¿La justificación está documentada?
+- [ ] ¿El contrato API está definido?
+- [ ] ¿El usuario aprobó la complejidad adicional?
+- [ ] ¿Hay plan de métricas para validar el beneficio?
+
+**Si alguna respuesta es NO → Recomienda Django.**
+
+## Documentación Base del Proyecto
+
+Hay 5 documentos Word en `docs/base-reference/` con información técnica general:
+
+1. **AWS_Setup_SaiSuite_v1.docx** → Infraestructura AWS
+2. **Esquema_BD_SaiSuite_v1.docx** → Diseño de base de datos
+3. **Estandares_Codigo_SaiSuite_v1.docx** → Convenciones de código
+4. **Flujo_Feature_SaiSuite_v1.docx** → Metodología de desarrollo
+5. **Infraestructura_SaiSuite_v2.docx** → Arquitectura del sistema
+
+**Cuándo consultarlos:**
+- Al configurar nuevos servicios AWS → AWS_Setup
+- Al diseñar modelos de BD → Esquema_BD
+- Al escribir código → Estandares_Codigo
+- Al seguir metodología → Flujo_Feature
+- Al entender arquitectura → Infraestructura
+
+Estos NO reemplazan la documentación por feature.
+Cada feature genera su propia documentación en `docs/plans/`, `docs/technical/`, etc.
+
+## Documentación Base
+Ver docs/base-reference/ para docs técnicos generales del proyecto.

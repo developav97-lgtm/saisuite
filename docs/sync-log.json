@@ -1,0 +1,12 @@
+{
+  "project": "Saicloud",
+  "last_update": "2026-03-14",
+  "base_reference_docs": {
+    "AWS_Setup": "docs/base-reference/AWS_Setup_SaiSuite_v1.docx",
+    "Esquema_BD": "docs/base-reference/Esquema_BD_SaiSuite_v1.docx",
+    "Estandares": "docs/base-reference/Estandares_Codigo_SaiSuite_v1.docx",
+    "Flujo": "docs/base-reference/Flujo_Feature_SaiSuite_v1.docx",
+    "Infraestructura": "docs/base-reference/Infraestructura_SaiSuite_v2.docx"
+  },
+  "features": {}
+}

@@ -1,0 +1,17 @@
+{
+  "name": "Saicloud",
+  "description": "ERP SaaS multi-tenant - Django + Angular + PostgreSQL + n8n",
+  "context_files": [
+    "CLAUDE.md",
+    "DECISIONS.md",
+    "ERRORS.md",
+    "CONTEXT.md"
+  ],
+  "startup_command": "bash scripts/session-banner.sh 2>/dev/null || echo 'Sesión Claude Code iniciada'",
+  "mcp_servers": {
+    "notion": {
+      "enabled": true,
+      "description": "Sincronización con documentación Notion"
+    }
+  }
+}

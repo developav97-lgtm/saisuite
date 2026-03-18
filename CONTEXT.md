@@ -107,6 +107,17 @@
 
 ---
 
-*Última actualización: 11 Marzo 2026*
+## Últimos cambios (2026-03-14)
+- ✅ DECISIONS.md estandarizado a formato DEC-XXX
+- ✅ 10 decisiones migradas y numeradas
+- ✅ Índice agregado al inicio
+- ✅ Template para nuevas decisiones al final
+- ⏳ Pendiente: Sincronizar con Notion
 
-*Última actualización: 9 Marzo 2026*
+---
+
+## Estadísticas del proyecto
+- Archivos modificados hoy: 6
+- Decisiones documentadas: 10
+- Features planeados: 0
+- Última actualización: 2026-03-14 18:08:48
