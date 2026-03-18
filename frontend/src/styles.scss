@@ -156,14 +156,18 @@ html, body {
 .sc-form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 0.125rem 0.875rem;
+  column-gap: 0.875rem;
+  row-gap: 0.625rem;
+  align-items: start;   // evita que una celda se estire cuando la vecina muestra error
   @media (max-width: 640px) { grid-template-columns: 1fr; }
 }
 
 .sc-form-grid--3 {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
-  gap: 0.125rem 0.625rem;
+  column-gap: 0.625rem;
+  row-gap: 0.625rem;
+  align-items: start;
   @media (max-width: 768px) { grid-template-columns: 1fr 1fr; }
   @media (max-width: 480px) { grid-template-columns: 1fr; }
 }
