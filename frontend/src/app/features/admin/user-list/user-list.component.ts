@@ -36,7 +36,10 @@ export class UserListComponent implements OnInit {
   readonly loading = signal(false);
 
   readonly displayedColumns = ['nombre', 'email', 'rol', 'estado', 'acciones'];
-  readonly roleLabels = ROLE_LABELS;
+
+  getRoleLabel(role: string): string {
+    return ROLE_LABELS[role as keyof typeof ROLE_LABELS] ?? role;
+  }
 
   ngOnInit(): void {
     this.load();

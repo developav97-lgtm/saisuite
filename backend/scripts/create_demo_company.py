@@ -43,9 +43,9 @@ def create_demo() -> None:
         },
     )
     if created:
-        logger.info('company_created', extra={'company_id': str(company.id), 'name': company.name})
+        logger.info('company_created', extra={'company_id': str(company.id), 'company_name': company.name})
     else:
-        logger.info('company_exists', extra={'company_id': str(company.id), 'name': company.name})
+        logger.info('company_exists', extra={'company_id': str(company.id), 'company_name': company.name})
 
     # ------------------------------------------------------------------
     # Módulos
@@ -62,7 +62,7 @@ def create_demo() -> None:
             defaults={'is_active': True},
         )
         if created_mod:
-            logger.info('module_activated', extra={'company_id': str(company.id), 'module': module})
+            logger.info('module_activated', extra={'company_id': str(company.id), 'module_name': module})
 
     # ------------------------------------------------------------------
     # Usuario company_admin
@@ -120,10 +120,10 @@ def create_demo() -> None:
     logger.info(
         'seed_complete',
         extra={
-            'company':    company.name,
-            'nit':        company.nit,
-            'admin':      'admin@demo.com',
-            'superadmin': 'superadmin@valmentech.com',
+            'company_name': company.name,
+            'nit':          company.nit,
+            'admin':        'admin@demo.com',
+            'superadmin':   'superadmin@valmentech.com',
         },
     )
 
