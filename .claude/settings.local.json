@@ -60,7 +60,14 @@
       "Bash(npm install --legacy-peer-deps 2>&1 | tail -5)",
       "Bash(cd /Users/juanandrade/Desktop/saisuite/frontend && npm uninstall primeng @primeng/themes primeicons 2>&1)",
       "Bash(cd /Users/juanandrade/Desktop/saisuite/frontend && npm uninstall primeng @primeng/themes primeicons --legacy-peer-deps 2>&1)",
-      "Bash(cd /Users/juanandrade/Desktop/saisuite/frontend && npm install @angular/material@^20.0.0 @angular/cdk@^20.0.0 --legacy-peer-deps 2>&1)"
+      "Bash(cd /Users/juanandrade/Desktop/saisuite/frontend && npm install @angular/material@^20.0.0 @angular/cdk@^20.0.0 --legacy-peer-deps 2>&1)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(git merge:*)",
+      "Read(//Users/juanandrade/Desktop/saisuite/**)",
+      "Bash(docker compose:*)",
+      "Bash(python3 -c \":*)"
     ]
   }
 }

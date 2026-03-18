@@ -6,15 +6,22 @@ from decimal import Decimal
 from django.test import TestCase
 from django.contrib.auth import get_user_model
 from apps.companies.models import Company, CompanyModule
-from apps.proyectos.models import Proyecto, Fase, EstadoProyecto
+from apps.proyectos.models import (
+    Proyecto, Fase, TerceroProyecto, DocumentoContable, Hito,
+    EstadoProyecto,
+)
 from apps.proyectos.services import (
     ProyectoService,
     FaseService,
+    TerceroProyectoService,
+    DocumentoContableService,
+    HitoService,
     TransicionEstadoInvalidaException,
     PresupuestoExcedidoException,
     ProyectoNoEditableException,
     ProyectoException,
 )
+from rest_framework.exceptions import ValidationError
 
 User = get_user_model()
 
@@ -359,3 +366,273 @@ class MultiTenantTest(TestCase):
         crear_proyecto(self.company_b, self.user_b, codigo='PRY-B')
         count = Proyecto.all_objects.count()
         self.assertGreaterEqual(count, 2)
+
+
+# ══════════════════════════════════════════════
+# Helpers Fase B
+# ══════════════════════════════════════════════
+
+def crear_fase(company, proyecto, orden=1, presupuesto_mano_obra=Decimal('200000'), **kwargs):
+    defaults = dict(
+        nombre=f'Fase {orden}',
+        orden=orden,
+        fecha_inicio_planificada='2026-04-01',
+        fecha_fin_planificada='2026-06-30',
+        presupuesto_mano_obra=presupuesto_mano_obra,
+    )
+    defaults.update(kwargs)
+    return Fase.all_objects.create(company=company, proyecto=proyecto, **defaults)
+
+
+def crear_documento(company, proyecto, fase=None, **kwargs):
+    defaults = dict(
+        saiopen_doc_id=f'DOC-{Decimal(str(id(kwargs)))}',
+        tipo_documento='factura_compra',
+        numero_documento='FC-001',
+        fecha_documento='2026-05-01',
+        tercero_id='900123456',
+        tercero_nombre='Proveedor Test',
+        valor_bruto=Decimal('100000'),
+        valor_neto=Decimal('100000'),
+    )
+    defaults.update(kwargs)
+    return DocumentoContable.all_objects.create(
+        company=company, proyecto=proyecto, fase=fase, **defaults
+    )
+
+
+# ══════════════════════════════════════════════
+# TerceroProyectoService Tests
+# ══════════════════════════════════════════════
+
+class TerceroProyectoServiceTest(TestCase):
+
+    def setUp(self):
+        self.company  = crear_empresa()
+        self.user     = crear_usuario(self.company)
+        self.proyecto = crear_proyecto(
+            self.company, self.user, presupuesto_total=Decimal('1000000')
+        )
+
+    def test_vincular_tercero_exitoso(self):
+        tercero = TerceroProyectoService.vincular_tercero(self.proyecto, {
+            'tercero_id': '900111',
+            'tercero_nombre': 'Subcontratista SA',
+            'rol': 'subcontratista',
+            'fase': None,
+        })
+        self.assertIsNotNone(tercero.id)
+        self.assertEqual(tercero.proyecto, self.proyecto)
+        self.assertEqual(tercero.company, self.company)
+
+    def test_vincular_mismo_tercero_dos_roles_distintos(self):
+        """Un tercero puede tener múltiples roles en el mismo proyecto."""
+        TerceroProyectoService.vincular_tercero(self.proyecto, {
+            'tercero_id': '900111',
+            'tercero_nombre': 'Empresa XYZ',
+            'rol': 'subcontratista',
+            'fase': None,
+        })
+        # Mismo tercero, rol distinto — debe funcionar
+        tercero2 = TerceroProyectoService.vincular_tercero(self.proyecto, {
+            'tercero_id': '900111',
+            'tercero_nombre': 'Empresa XYZ',
+            'rol': 'proveedor',
+            'fase': None,
+        })
+        self.assertIsNotNone(tercero2.id)
+
+    def test_vincular_tercero_duplicado_falla(self):
+        """Mismo tercero + mismo rol + misma fase = error unique_together."""
+        data = {
+            'tercero_id': '900111',
+            'tercero_nombre': 'Empresa XYZ',
+            'rol': 'subcontratista',
+            'fase': None,
+        }
+        TerceroProyectoService.vincular_tercero(self.proyecto, data.copy())
+        with self.assertRaises(ValidationError):
+            TerceroProyectoService.vincular_tercero(self.proyecto, data.copy())
+
+    def test_desvincular_tercero_soft_delete(self):
+        tercero = TerceroProyectoService.vincular_tercero(self.proyecto, {
+            'tercero_id': '900222',
+            'tercero_nombre': 'Consultor Test',
+            'rol': 'consultor',
+            'fase': None,
+        })
+        TerceroProyectoService.desvincular_tercero(tercero)
+        tercero.refresh_from_db()
+        self.assertFalse(tercero.activo)
+
+    def test_list_terceros_solo_activos(self):
+        """list_terceros no retorna terceros desvinculados."""
+        t1 = TerceroProyectoService.vincular_tercero(self.proyecto, {
+            'tercero_id': '111', 'tercero_nombre': 'A', 'rol': 'cliente', 'fase': None,
+        })
+        t2 = TerceroProyectoService.vincular_tercero(self.proyecto, {
+            'tercero_id': '222', 'tercero_nombre': 'B', 'rol': 'proveedor', 'fase': None,
+        })
+        TerceroProyectoService.desvincular_tercero(t2)
+        qs = TerceroProyectoService.list_terceros(self.proyecto)
+        self.assertEqual(qs.count(), 1)
+        self.assertEqual(qs.first().id, t1.id)
+
+    def test_vincular_tercero_con_fase(self):
+        """Un tercero puede vincularse a una fase específica."""
+        fase = crear_fase(self.company, self.proyecto)
+        tercero = TerceroProyectoService.vincular_tercero(self.proyecto, {
+            'tercero_id': '900333',
+            'tercero_nombre': 'Interventor',
+            'rol': 'interventor',
+            'fase': fase,
+        })
+        self.assertEqual(tercero.fase, fase)
+
+
+# ══════════════════════════════════════════════
+# DocumentoContableService Tests
+# ══════════════════════════════════════════════
+
+class DocumentoContableServiceTest(TestCase):
+
+    def setUp(self):
+        self.company  = crear_empresa()
+        self.user     = crear_usuario(self.company)
+        self.proyecto = crear_proyecto(
+            self.company, self.user, presupuesto_total=Decimal('1000000')
+        )
+        self.fase1 = crear_fase(self.company, self.proyecto, orden=1)
+        self.fase2 = crear_fase(self.company, self.proyecto, orden=2, nombre='Fase 2')
+
+    def test_list_documentos_del_proyecto(self):
+        crear_documento(self.company, self.proyecto, saiopen_doc_id='DOC-001')
+        crear_documento(self.company, self.proyecto, saiopen_doc_id='DOC-002')
+        qs = DocumentoContableService.list_documentos(self.proyecto)
+        self.assertEqual(qs.count(), 2)
+
+    def test_list_documentos_filtrado_por_fase(self):
+        crear_documento(self.company, self.proyecto, fase=self.fase1, saiopen_doc_id='DOC-F1')
+        crear_documento(self.company, self.proyecto, fase=self.fase2, saiopen_doc_id='DOC-F2')
+        qs = DocumentoContableService.list_documentos(self.proyecto, fase_id=self.fase1.id)
+        self.assertEqual(qs.count(), 1)
+        self.assertEqual(qs.first().saiopen_doc_id, 'DOC-F1')
+
+    def test_list_documentos_no_incluye_otro_proyecto(self):
+        """Documentos de otro proyecto no aparecen en el listado."""
+        otro_user     = crear_usuario(self.company, email='otro@test.com')
+        otro_proyecto = crear_proyecto(
+            self.company, otro_user, codigo='PRY-002', presupuesto_total=Decimal('500000')
+        )
+        crear_documento(self.company, self.proyecto,    saiopen_doc_id='DOC-MIO')
+        crear_documento(self.company, otro_proyecto, saiopen_doc_id='DOC-OTRO')
+        qs = DocumentoContableService.list_documentos(self.proyecto)
+        self.assertEqual(qs.count(), 1)
+        self.assertEqual(qs.first().saiopen_doc_id, 'DOC-MIO')
+
+    def test_get_documento(self):
+        doc = crear_documento(self.company, self.proyecto, saiopen_doc_id='DOC-GET')
+        resultado = DocumentoContableService.get_documento(str(doc.id))
+        self.assertEqual(resultado.id, doc.id)
+
+
+# ══════════════════════════════════════════════
+# HitoService Tests
+# ══════════════════════════════════════════════
+
+class HitoServiceTest(TestCase):
+
+    def setUp(self):
+        self.company  = crear_empresa()
+        self.user     = crear_usuario(self.company)
+        self.proyecto = crear_proyecto(
+            self.company, self.user, presupuesto_total=Decimal('1000000')
+        )
+
+    def _data_hito(self, **kwargs):
+        defaults = dict(
+            nombre='Hito Test',
+            descripcion='',
+            porcentaje_proyecto=Decimal('25.00'),
+            valor_facturar=Decimal('250000.00'),
+            facturable=True,
+            fase=None,
+        )
+        defaults.update(kwargs)
+        return defaults
+
+    def test_crear_hito_exitoso(self):
+        hito = HitoService.create_hito(self.proyecto, self._data_hito())
+        self.assertIsNotNone(hito.id)
+        self.assertEqual(hito.proyecto, self.proyecto)
+        self.assertFalse(hito.facturado)
+
+    def test_crear_hito_porcentaje_total_100(self):
+        """Cuatro hitos de 25% — el quinto debe fallar."""
+        for i in range(4):
+            HitoService.create_hito(
+                self.proyecto,
+                self._data_hito(nombre=f'Hito {i}', porcentaje_proyecto=Decimal('25.00')),
+            )
+        with self.assertRaises(ValidationError):
+            HitoService.create_hito(
+                self.proyecto,
+                self._data_hito(nombre='Hito 5', porcentaje_proyecto=Decimal('1.00')),
+            )
+
+    def test_crear_hito_porcentaje_exactamente_100(self):
+        """Un hito de 100% es válido."""
+        hito = HitoService.create_hito(
+            self.proyecto,
+            self._data_hito(porcentaje_proyecto=Decimal('100.00')),
+        )
+        self.assertIsNotNone(hito.id)
+
+    def test_crear_hito_supera_100_falla(self):
+        HitoService.create_hito(
+            self.proyecto,
+            self._data_hito(porcentaje_proyecto=Decimal('80.00')),
+        )
+        with self.assertRaises(ValidationError):
+            HitoService.create_hito(
+                self.proyecto,
+                self._data_hito(nombre='Hito 2', porcentaje_proyecto=Decimal('30.00')),
+            )
+
+    def test_generar_factura_exitosa(self):
+        self.proyecto.sincronizado_con_saiopen = True
+        self.proyecto.save()
+        hito = HitoService.create_hito(self.proyecto, self._data_hito())
+        hito_actualizado = HitoService.generar_factura(hito, self.user)
+        self.assertTrue(hito_actualizado.facturado)
+        self.assertIsNotNone(hito_actualizado.fecha_facturacion)
+
+    def test_generar_factura_sin_sync_saiopen_falla(self):
+        """No se puede facturar si el proyecto no está sincronizado."""
+        hito = HitoService.create_hito(self.proyecto, self._data_hito())
+        with self.assertRaises(ValidationError):
+            HitoService.generar_factura(hito, self.user)
+
+    def test_generar_factura_hito_ya_facturado_falla(self):
+        self.proyecto.sincronizado_con_saiopen = True
+        self.proyecto.save()
+        hito = HitoService.create_hito(self.proyecto, self._data_hito())
+        HitoService.generar_factura(hito, self.user)
+        hito.refresh_from_db()
+        with self.assertRaises(ValidationError):
+            HitoService.generar_factura(hito, self.user)
+
+    def test_generar_factura_hito_no_facturable_falla(self):
+        self.proyecto.sincronizado_con_saiopen = True
+        self.proyecto.save()
+        hito = HitoService.create_hito(
+            self.proyecto, self._data_hito(facturable=False)
+        )
+        with self.assertRaises(ValidationError):
+            HitoService.generar_factura(hito, self.user)
+
+    def test_list_hitos_del_proyecto(self):
+        HitoService.create_hito(self.proyecto, self._data_hito(nombre='H1', porcentaje_proyecto=Decimal('30')))
+        HitoService.create_hito(self.proyecto, self._data_hito(nombre='H2', porcentaje_proyecto=Decimal('20')))
+        qs = HitoService.list_hitos(self.proyecto)
+        self.assertEqual(qs.count(), 2)
