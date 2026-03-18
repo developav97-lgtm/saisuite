@@ -1,13 +1,65 @@
-.pf-aiu-header {
-  padding-top: 0.5rem;
-  border-top: 1px solid var(--sc-surface-border);
+// ── Layout de dos columnas ────────────────────────────────────
+.pf-layout {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 1.25rem;
+  align-items: start;
+
+  @media (max-width: 960px) {
+    grid-template-columns: 1fr;
+  }
 }
 
-.pf-acciones {
+.pf-main,
+.pf-side {
   display: flex;
-  justify-content: flex-end;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+// ── Header mejorado ───────────────────────────────────────────
+.pf-header-left {
+  display: flex;
+  align-items: center;
   gap: 0.75rem;
-  padding-top: 1.5rem;
-  margin-top: 1rem;
-  border-top: 1px solid var(--sc-surface-border);
+}
+
+.pf-back-btn {
+  color: var(--sc-text-muted);
+  flex-shrink: 0;
+}
+
+.pf-header-eyebrow {
+  font-size: 0.75rem;
+  color: var(--sc-text-muted);
+  margin: 0 0 0.1rem;
+  font-weight: 500;
+}
+
+.pf-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.pf-spinner-btn {
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 0.4rem;
+}
+
+// ── AIU row ───────────────────────────────────────────────────
+.pf-aiu-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.pf-aiu-label {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: var(--sc-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  margin: 0;
 }

@@ -1,111 +1,193 @@
 <div class="sc-page">
+
+  <!-- Header -->
   <div class="sc-page-header">
-    <h1 class="sc-page-header__title">
-      @if (editMode()) { Editar proyecto } @else { Nuevo proyecto }
-    </h1>
+    <div class="pf-header-left">
+      <button mat-icon-button (click)="cancelar()" class="pf-back-btn" matTooltip="Volver">
+        <mat-icon>arrow_back</mat-icon>
+      </button>
+      <div>
+        <p class="pf-header-eyebrow">Proyectos</p>
+        <h1 class="sc-page-header__title">
+          @if (editMode()) { Editar proyecto } @else { Nuevo proyecto }
+        </h1>
+      </div>
+    </div>
+
+    <div class="pf-header-actions">
+      <button mat-stroked-button type="button" (click)="cancelar()">
+        Cancelar
+      </button>
+      <button mat-raised-button color="primary" type="button"
+        (click)="guardar()" [disabled]="form.invalid || saving()">
+        @if (saving()) {
+          <mat-spinner diameter="14" class="pf-spinner-btn" />
+          Guardando…
+        } @else {
+          <mat-icon>save</mat-icon>
+          {{ editMode() ? 'Actualizar' : 'Crear proyecto' }}
+        }
+      </button>
+    </div>
   </div>
 
-  <mat-card>
-    <mat-card-content>
-      <form [formGroup]="form" (ngSubmit)="guardar()">
-        <div class="sc-form-grid">
+  <form [formGroup]="form" (ngSubmit)="guardar()" class="pf-layout">
 
-          <mat-form-field appearance="outline">
-            <mat-label>Código</mat-label>
-            <input matInput formControlName="codigo" placeholder="Auto-generado si se deja vacío" />
-          </mat-form-field>
+    <!-- Columna principal -->
+    <div class="pf-main">
 
-          <mat-form-field appearance="outline">
-            <mat-label>Tipo *</mat-label>
-            <mat-select formControlName="tipo">
-              @for (opt of tipoOptions; track opt.value) {
-                <mat-option [value]="opt.value">{{ opt.label }}</mat-option>
+      <!-- Sección: Identificación -->
+      <div class="sc-card">
+        <div class="sc-card__header">
+          <mat-icon>fingerprint</mat-icon>
+          <span class="sc-card__title">Identificación</span>
+        </div>
+        <div class="sc-card__body">
+          <div class="sc-form-grid">
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
+              <mat-label>Código</mat-label>
+              <input matInput formControlName="codigo" placeholder="Auto-generado" />
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
+              <mat-label>Tipo</mat-label>
+              <mat-select formControlName="tipo">
+                @for (opt of tipoOptions; track opt.value) {
+                  <mat-option [value]="opt.value">{{ opt.label }}</mat-option>
+                }
+              </mat-select>
+              @if (form.get('tipo')?.invalid && form.get('tipo')?.touched) {
+                <mat-error>Requerido.</mat-error>
               }
-            </mat-select>
-            @if (form.get('tipo')?.invalid && form.get('tipo')?.touched) {
-              <mat-error>El tipo es obligatorio.</mat-error>
-            }
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always" class="sc-field--full">
+              <mat-label>Nombre del proyecto</mat-label>
+              <input matInput formControlName="nombre" placeholder="Ej: Construcción sede principal" />
+              @if (form.get('nombre')?.invalid && form.get('nombre')?.touched) {
+                <mat-error>El nombre es obligatorio.</mat-error>
+              }
+            </mat-form-field>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sección: Cliente -->
+      <div class="sc-card">
+        <div class="sc-card__header">
+          <mat-icon>business</mat-icon>
+          <span class="sc-card__title">Cliente</span>
+        </div>
+        <div class="sc-card__body">
+          <div class="sc-form-grid">
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
+              <mat-label>NIT / ID Cliente</mat-label>
+              <input matInput formControlName="cliente_id" placeholder="900111222-0" />
+              @if (form.get('cliente_id')?.invalid && form.get('cliente_id')?.touched) {
+                <mat-error>Requerido.</mat-error>
+              }
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
+              <mat-label>Nombre del cliente</mat-label>
+              <input matInput formControlName="cliente_nombre" placeholder="Razón social o nombre" />
+              @if (form.get('cliente_nombre')?.invalid && form.get('cliente_nombre')?.touched) {
+                <mat-error>Requerido.</mat-error>
+              }
+            </mat-form-field>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sección: Fechas -->
+      <div class="sc-card">
+        <div class="sc-card__header">
+          <mat-icon>calendar_month</mat-icon>
+          <span class="sc-card__title">Fechas</span>
+        </div>
+        <div class="sc-card__body">
+          <div class="sc-form-grid">
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
+              <mat-label>Inicio planificado</mat-label>
+              <input matInput [matDatepicker]="pickerInicio" formControlName="fecha_inicio_planificada" placeholder="dd/mm/aaaa" />
+              <mat-datepicker-toggle matSuffix [for]="pickerInicio" />
+              <mat-datepicker #pickerInicio />
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
+              <mat-label>Fin planificado</mat-label>
+              <input matInput [matDatepicker]="pickerFin" formControlName="fecha_fin_planificada" placeholder="dd/mm/aaaa" />
+              <mat-datepicker-toggle matSuffix [for]="pickerFin" />
+              <mat-datepicker #pickerFin />
+            </mat-form-field>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Columna lateral -->
+    <div class="pf-side">
+
+      <!-- Sección: Equipo -->
+      <div class="sc-card">
+        <div class="sc-card__header">
+          <mat-icon>group</mat-icon>
+          <span class="sc-card__title">Equipo</span>
+        </div>
+        <div class="sc-card__body sc-card__body--gap">
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
+            <mat-label>Gerente (UUID)</mat-label>
+            <input matInput formControlName="gerente" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" />
+            <mat-hint>ID del usuario responsable</mat-hint>
           </mat-form-field>
 
-          <mat-form-field appearance="outline" class="sc-field--full">
-            <mat-label>Nombre *</mat-label>
-            <input matInput formControlName="nombre" />
-            @if (form.get('nombre')?.invalid && form.get('nombre')?.touched) {
-              <mat-error>El nombre es obligatorio.</mat-error>
-            }
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>NIT / ID Cliente *</mat-label>
-            <input matInput formControlName="cliente_id" placeholder="Ej: 900111222" />
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>Nombre del cliente *</mat-label>
-            <input matInput formControlName="cliente_nombre" />
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>UUID Gerente *</mat-label>
-            <input matInput formControlName="gerente" placeholder="UUID del gerente" />
-            <mat-hint>Ingresa el UUID del usuario gerente</mat-hint>
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>UUID Coordinador</mat-label>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
+            <mat-label>Coordinador (UUID)</mat-label>
             <input matInput formControlName="coordinador" placeholder="Opcional" />
           </mat-form-field>
+        </div>
+      </div>
 
-          <mat-form-field appearance="outline">
-            <mat-label>Inicio planificado *</mat-label>
-            <input matInput [matDatepicker]="pickerInicio" formControlName="fecha_inicio_planificada" />
-            <mat-datepicker-toggle matSuffix [for]="pickerInicio"></mat-datepicker-toggle>
-            <mat-datepicker #pickerInicio></mat-datepicker>
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>Fin planificado *</mat-label>
-            <input matInput [matDatepicker]="pickerFin" formControlName="fecha_fin_planificada" />
-            <mat-datepicker-toggle matSuffix [for]="pickerFin"></mat-datepicker-toggle>
-            <mat-datepicker #pickerFin></mat-datepicker>
-          </mat-form-field>
-
-          <mat-form-field appearance="outline" class="sc-field--full">
-            <mat-label>Presupuesto total (COP) *</mat-label>
-            <input matInput type="number" formControlName="presupuesto_total" min="0" />
+      <!-- Sección: Presupuesto & AIU -->
+      <div class="sc-card">
+        <div class="sc-card__header">
+          <mat-icon>attach_money</mat-icon>
+          <span class="sc-card__title">Presupuesto y AIU</span>
+        </div>
+        <div class="sc-card__body sc-card__body--gap">
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
+            <mat-label>Presupuesto total (COP)</mat-label>
             <span matTextPrefix>$&nbsp;</span>
+            <input matInput type="number" formControlName="presupuesto_total" min="0" placeholder="0" />
           </mat-form-field>
 
-          <div class="sc-field--full pf-aiu-header">
-            <strong>AIU — Administración, Imprevistos, Utilidad</strong>
+          <div class="pf-aiu-row">
+            <span class="pf-aiu-label">AIU</span>
+            <div class="sc-form-grid--3">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
+                <mat-label>Adm.</mat-label>
+                <input matInput type="number" formControlName="porcentaje_administracion" min="0" max="100" />
+                <span matTextSuffix>%</span>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
+                <mat-label>Imprev.</mat-label>
+                <input matInput type="number" formControlName="porcentaje_imprevistos" min="0" max="100" />
+                <span matTextSuffix>%</span>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
+                <mat-label>Utilidad</mat-label>
+                <input matInput type="number" formControlName="porcentaje_utilidad" min="0" max="100" />
+                <span matTextSuffix>%</span>
+              </mat-form-field>
+            </div>
           </div>
-
-          <mat-form-field appearance="outline">
-            <mat-label>Administración (%)</mat-label>
-            <input matInput type="number" formControlName="porcentaje_administracion" min="0" max="100" />
-            <span matTextSuffix>%</span>
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>Imprevistos (%)</mat-label>
-            <input matInput type="number" formControlName="porcentaje_imprevistos" min="0" max="100" />
-            <span matTextSuffix>%</span>
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>Utilidad (%)</mat-label>
-            <input matInput type="number" formControlName="porcentaje_utilidad" min="0" max="100" />
-            <span matTextSuffix>%</span>
-          </mat-form-field>
         </div>
+      </div>
 
-        <div class="pf-acciones">
-          <button mat-stroked-button type="button" (click)="cancelar()">Cancelar</button>
-          <button mat-raised-button color="primary" type="submit" [disabled]="form.invalid || saving()">
-            @if (saving()) { Guardando... } @else { @if (editMode()) { Actualizar } @else { Crear proyecto } }
-          </button>
-        </div>
-      </form>
-    </mat-card-content>
-  </mat-card>
+    </div>
+
+  </form>
 </div>
