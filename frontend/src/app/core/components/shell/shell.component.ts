@@ -1,40 +1,28 @@
-// frontend/src/app/core/components/shell/shell.component.ts
-import {
-    Component,
-    OnInit,
-    ChangeDetectionStrategy,
-    ChangeDetectorRef,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/core';
+import { RouterOutlet } from '@angular/router';
 import { TopbarComponent } from '../topbar/topbar.component';
 import { SidebarComponent } from '../sidebar/sidebar.component';
-import { RouterOutlet } from '@angular/router';
 import { ThemeService } from '../../services/theme.service';
 
 @Component({
-    selector: 'app-shell',
-    standalone: true,
-    imports: [RouterOutlet, TopbarComponent, SidebarComponent],
-    templateUrl: './shell.component.html',
-    styleUrls: ['./shell.component.scss'],
-    changeDetection: ChangeDetectionStrategy.OnPush,
+  selector: 'app-shell',
+  standalone: true,
+  imports: [RouterOutlet, TopbarComponent, SidebarComponent],
+  templateUrl: './shell.component.html',
+  styleUrls: ['./shell.component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ShellComponent implements OnInit {
-    sidebarVisible = true;
+  private readonly themeService = inject(ThemeService);
 
-    constructor(
-        private themeService: ThemeService,
-        private cdr: ChangeDetectorRef,
-    ) { }
+  sidebarVisible = true;
 
-    ngOnInit(): void {
-        this.themeService.initTheme();
-        // En móvil el sidebar arranca cerrado
-        this.sidebarVisible = window.innerWidth >= 992;
-        this.cdr.markForCheck();
-    }
+  ngOnInit(): void {
+    this.themeService.initTheme();
+    this.sidebarVisible = window.innerWidth >= 992;
+  }
 
-    toggleSidebar(): void {
-        this.sidebarVisible = !this.sidebarVisible;
-        this.cdr.markForCheck();
-    }
+  toggleSidebar(): void {
+    this.sidebarVisible = !this.sidebarVisible;
+  }
 }

@@ -1,0 +1,71 @@
+.sc-login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--sc-surface-ground);
+}
+
+.sc-login-card {
+  width: 100%;
+  max-width: 420px;
+  padding: 2.5rem;
+  background: var(--sc-surface-card);
+  border-radius: 12px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.sc-login-logo {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--sc-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.5rem;
+
+  mat-icon {
+    font-size: 1.5rem;
+    width: 1.5rem;
+    height: 1.5rem;
+    color: white;
+  }
+}
+
+.sc-login-brand {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--sc-text-color);
+  margin: 0;
+}
+
+.sc-login-title {
+  font-size: 1rem;
+  font-weight: 400;
+  color: var(--sc-text-muted);
+  margin: 0 0 1rem;
+}
+
+.sc-login-form {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.sc-login-btn {
+  width: 100%;
+  height: 44px;
+  margin-top: 0.5rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}

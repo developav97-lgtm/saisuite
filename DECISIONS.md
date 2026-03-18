@@ -14,6 +14,15 @@ Cada decisión tiene un ID único (DEC-XXX) para referencia cruzada en código y
 
 ---
 
+## 2026-03-18 DEC-011: Angular Material como UI Framework (Supersede DEC-007)
+**Contexto:** PrimeNG 18 tiene incompatibilidades fundamentales con Angular 20 (ɵɵInputTransformsFeature eliminado, afecta 80+ componentes). PrimeNG 20 LTS muestra warning de licencia comercial.
+**Opciones consideradas:** Parche postinstall (frágil en Docker CI), mantener PrimeNG, migrar a Angular Material
+**Decisión:** Migrar a Angular Material 20
+**Razón:** Mismo vendor que Angular (Google), garantía de compatibilidad perpetua, MIT license, sin parches ni hacks
+**Consecuencia:** Reemplazar todos los componentes PrimeNG. DEC-007 queda obsoleta.
+
+---
+
 ## Índice de Decisiones
 
 - [DEC-001](#dec-001-estrategia-multi-tenant) - Estrategia Multi-tenant (2026-03)
@@ -25,6 +34,7 @@ Cada decisión tiene un ID único (DEC-XXX) para referencia cruzada en código y
 - [DEC-007](#dec-007-primeng-ui-framework) - PrimeNG como UI Framework (2026-03-11)
 - [DEC-008](#dec-008-arquitectura-hibrida-django-go) - Arquitectura Híbrida Django+Go (2026-03-12)
 - [DEC-009](#dec-009-estructura-documentacion) - Estructura de Documentación (2026-03-14)
+- [DEC-010](#dec-010-snake_case-en-api-y-typescript) - snake_case en API y TypeScript (2026-03-17)
 
 ---
 
@@ -569,6 +579,55 @@ Cada feature genera su propia documentación específica para:
 Revisar estructura si:
 - Se acumulan >50 features (subdirectorios por módulo)
 - Notion deja de ser la plataforma colaborativa principal
+
+---
+
+## DEC-010: snake_case en API y TypeScript
+**Fecha:** 2026-03-17
+**Estado:** Activa
+
+### Contexto
+Al diseñar el Módulo de Proyectos, se necesitaba decidir la convención de nombres para
+campos de la API Django y las interfaces TypeScript del frontend Angular.
+
+### Opciones Evaluadas
+1. **camelCase en frontend, snake_case en backend**
+   - Convención "correcta" por lenguaje
+   - Requiere capa de transformación (interceptor HTTP) o configuración DRF
+   - Complejidad adicional
+
+2. **snake_case en todo (ELEGIDA)**
+   - Consistencia total API ↔ TypeScript
+   - Sin transformación necesaria
+   - Menos código, menos errores
+
+### Decisión
+snake_case en todos los campos de la API DRF y en todas las interfaces TypeScript.
+No hay capa de transformación camelCase↔snake_case.
+
+### Razón
+La transformación camelCase↔snake_case agrega complejidad (interceptor, mapeos) sin
+beneficio real. Los campos del backend Django son snake_case por convención Python.
+Mantenerlos en TypeScript simplifica el desarrollo y elimina bugs de transformación.
+
+### Consecuencias
+- ✅ **Positivas:**
+  - Sin interceptor de transformación
+  - Interfaces TS espejan exactamente los serializers DRF
+  - Menos código, menos bugs
+
+- ⚠️ **Negativas:**
+  - snake_case en TypeScript no es la convención JS/TS estándar
+  - Linters JS podrían advertir sobre nombres de campos
+
+- 🔧 **Implementación:**
+  - Interfaces TS: `fecha_inicio_planificada`, `cliente_id`, `presupuesto_total`, etc.
+  - DRF serializers: sin `to_representation` ni `to_camel_case`
+  - Aplicar a TODOS los módulos futuros del proyecto
+
+### Criterios de Revisión
+No revisar — decisión permanente. Cambiar requeriría actualizar todas las interfaces
+y serializers del proyecto.
 
 ---
 

@@ -54,15 +54,15 @@ Antes de generar código, leer el documento relevante según la tarea:
 - Servicios globales en `core/`. Servicios de feature en `features/[x]/services/`.
 - JWT se añade automáticamente via interceptor. Nunca añadir headers manualmente.
 
-#### UI Framework: PrimeNG (DEC-007)
-- Framework de componentes: **PrimeNG** con preset `Aura` customizado — `npm install primeng @primeuix/themes primeicons` ← ya instalado
-- **NUNCA** usar Angular Material, Bootstrap ni Tailwind
-- Importar módulos PrimeNG solo en el feature module (no AppModule)
-- Notificaciones: `MessageService` + `p-toast` — nunca `alert()`
-- Confirmaciones: `ConfirmationService` + `p-confirmdialog` — nunca `confirm()`
-- Tablas: `p-table` con paginación server-side
-- Dark mode: clase `.app-dark` en `<html>`, gestionada por `ThemeService`
-- Tema: azules corporativos ValMen Tech — ⚠️ HEX pendientes de recibir
+#### UI Framework: Angular Material (DEC-011)
+- Framework de componentes: **Angular Material** — `npm install @angular/material @angular/cdk`
+- **NUNCA** usar PrimeNG, Bootstrap ni Tailwind
+- Iconos: Material Icons (Google Font) — `mat-icon` en templates
+- Notificaciones: `MatSnackBar` — nunca `alert()`
+- Confirmaciones: `MatDialog` con `ConfirmDialogComponent` — nunca `confirm()`
+- Tablas: `mat-table` con `MatPaginatorModule` server-side
+- Dark mode: clase `.dark-theme` en `<body>`, gestionada por `ThemeService`
+- Tema: M3 con paleta azul corporativo ValMen Tech
 
 ### Base de datos
 - Multi-tenant: company_id en TODAS las tablas de negocio.

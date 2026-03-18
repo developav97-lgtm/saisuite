@@ -1,82 +1,70 @@
-<!-- frontend/src/app/core/components/sidebar/sidebar.component.html -->
-
 @if (isDesktop) {
-<aside class="sc-sidebar" [class.sc-sidebar--hidden]="!visible">
-    <div class="sc-sidebar__scroll">
-        <ng-container *ngTemplateOutlet="navTpl" />
+<aside class="sc-sidebar" [class.sc-sidebar--hidden]="!visible()">
+  <div class="sc-sidebar__scroll">
+    <ng-container *ngTemplateOutlet="navTpl" />
+  </div>
+  <div class="sc-sidebar__footer">
+    <div class="sc-sidebar__footer-icon"><mat-icon>business</mat-icon></div>
+    <div class="sc-sidebar__footer-text">
+      <span class="sc-sidebar__footer-company">ValMen Tech</span>
+      <span class="sc-sidebar__footer-version">Saicloud v1.0.0</span>
     </div>
-    <div class="sc-sidebar__footer">
-        <div class="sc-sidebar__footer-icon"><i class="pi pi-building"></i></div>
-        <div class="sc-sidebar__footer-text">
-            <span class="sc-sidebar__footer-company">ValMen Tech</span>
-            <span class="sc-sidebar__footer-version">Saicloud v1.0.0</span>
-        </div>
-    </div>
+  </div>
 </aside>
 }
 
 @if (!isDesktop) {
-<p-drawer [visible]="visible" (visibleChange)="visibleChange.emit($event)" (onHide)="onDrawerHide()" [modal]="true"
-    position="left" styleClass="sc-drawer-panel" [showCloseIcon]="true">
-    <ng-template pTemplate="header">
-        <span class="sc-drawer-title">Saicloud</span>
-    </ng-template>
-    <ng-container *ngTemplateOutlet="navTpl" />
-</p-drawer>
+<div class="sc-drawer-overlay" [class.sc-drawer-overlay--open]="visible()" (click)="closeDrawer()">
+  <aside class="sc-drawer" [class.sc-drawer--open]="visible()" (click)="$event.stopPropagation()">
+    <div class="sc-drawer__header">
+      <span class="sc-drawer__title">Saicloud</span>
+      <button class="sc-drawer__close" (click)="closeDrawer()" aria-label="Cerrar">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+    <div class="sc-drawer__scroll">
+      <ng-container *ngTemplateOutlet="navTpl" />
+    </div>
+  </aside>
+</div>
 }
 
-<!-- ═══ TEMPLATE DE NAVEGACIÓN ═══ -->
 <ng-template #navTpl>
-    <nav class="sc-nav" role="navigation" aria-label="Menú principal">
-
-        @for (section of navSections; track $index) {
-        <div class="sc-nav__section">
-
-            @if (section.sectionLabel) {
-            <div class="sc-nav__section-label">{{ section.sectionLabel }}</div>
-            }
-
-            @for (item of section.items; track item.label) {
-
-            @if (!item.children) {
-            <!-- ── Link directo ── -->
-            <a class="sc-nav__item" [routerLink]="item.route" routerLinkActive="sc-nav__item--active"
-                [routerLinkActiveOptions]="{ exact: item.route === '/dashboard' }">
-                <i class="sc-nav__icon {{ item.icon }}"></i>
-                <span class="sc-nav__label">{{ item.label }}</span>
-                @if (item.badge) {
-                <span class="sc-nav__badge">{{ item.badge }}</span>
-                }
-            </a>
-
-            } @else {
-            <!-- ── Acordeón ── -->
-            <div class="sc-nav__item sc-nav__item--parent" [class.sc-nav__item--expanded]="isExpanded(item.label)"
-                (click)="toggleExpand(item.label)" role="button" [attr.aria-expanded]="isExpanded(item.label)">
-                <i class="sc-nav__icon {{ item.icon }}"></i>
-                <span class="sc-nav__label">{{ item.label }}</span>
-                @if (item.badge) {
-                <span class="sc-nav__badge">{{ item.badge }}</span>
-                }
-                <i class="sc-nav__chevron pi pi-chevron-down" [class.sc-nav__chevron--open]="isExpanded(item.label)">
-                </i>
-            </div>
-
-            @if (isExpanded(item.label)) {
-            <div class="sc-nav__children">
-                @for (child of item.children; track child.label) {
-                <a class="sc-nav__child" [routerLink]="child.route" routerLinkActive="sc-nav__child--active">
-                    <i class="sc-nav__child-icon {{ child.icon }}"></i>
-                    <span>{{ child.label }}</span>
-                </a>
-                }
-            </div>
-            }
-            }
-
-            }
-        </div>
+  <nav class="sc-nav" role="navigation" aria-label="Menú principal">
+    @for (section of navSections; track $index) {
+    <div class="sc-nav__section">
+      @if (section.sectionLabel) {
+      <div class="sc-nav__section-label">{{ section.sectionLabel }}</div>
+      }
+      @for (item of section.items; track item.label) {
+      @if (!item.children) {
+      <a class="sc-nav__item" [routerLink]="item.route" routerLinkActive="sc-nav__item--active"
+        [routerLinkActiveOptions]="{ exact: item.route === '/dashboard' }">
+        <mat-icon class="sc-nav__icon">{{ item.icon }}</mat-icon>
+        <span class="sc-nav__label">{{ item.label }}</span>
+        @if (item.badge) { <span class="sc-nav__badge">{{ item.badge }}</span> }
+      </a>
+      } @else {
+      <div class="sc-nav__item sc-nav__item--parent" [class.sc-nav__item--expanded]="isExpanded(item.label)"
+        (click)="toggleExpand(item.label)" role="button" [attr.aria-expanded]="isExpanded(item.label)">
+        <mat-icon class="sc-nav__icon">{{ item.icon }}</mat-icon>
+        <span class="sc-nav__label">{{ item.label }}</span>
+        @if (item.badge) { <span class="sc-nav__badge">{{ item.badge }}</span> }
+        <mat-icon class="sc-nav__chevron" [class.sc-nav__chevron--open]="isExpanded(item.label)">expand_more</mat-icon>
+      </div>
+      @if (isExpanded(item.label)) {
+      <div class="sc-nav__children">
+        @for (child of item.children; track child.label) {
+        <a class="sc-nav__child" [routerLink]="child.route" routerLinkActive="sc-nav__child--active">
+          <mat-icon class="sc-nav__child-icon">{{ child.icon }}</mat-icon>
+          <span>{{ child.label }}</span>
+        </a>
         }
-
-    </nav>
+      </div>
+      }
+      }
+      }
+    </div>
+    }
+  </nav>
 </ng-template>

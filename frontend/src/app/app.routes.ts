@@ -1,6 +1,7 @@
 // frontend/src/app/app.routes.ts
 import { Routes } from '@angular/router';
 import { ShellComponent } from './core/components/shell/shell.component';
+import { authGuard } from './core/guards/auth.guard';
 
 export const routes: Routes = [
     // ── Rutas PÚBLICAS (sin shell — login, recuperar contraseña) ────
@@ -14,7 +15,7 @@ export const routes: Routes = [
     {
         path: '',
         component: ShellComponent,
-        // canActivate: [authGuard],  ← descomentar cuando exista el guard
+        canActivate: [authGuard],
         children: [
             {
                 path: 'dashboard',
@@ -39,11 +40,17 @@ export const routes: Routes = [
                 loadChildren: () =>
                     import('./features/configuracion/configuracion.routes').then(m => m.CONFIGURACION_ROUTES),
             },
+            // Proyectos
+            {
+                path: 'proyectos',
+                loadChildren: () =>
+                    import('./features/proyectos/proyectos.routes').then(m => m.PROYECTOS_ROUTES),
+            },
             // Redirect por defecto al dashboard
             { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
         ],
     },
 
     // Fallback
-    { path: '**', redirectTo: 'dashboard' },
+    { path: '**', redirectTo: '/auth/login' },
 ];

@@ -1,0 +1,121 @@
+<div class="sc-page">
+  <div class="sc-page-header">
+    <h1 class="sc-page-header__title">Proyectos</h1>
+    <button mat-raised-button color="primary" (click)="nuevoProyecto()">
+      <mat-icon>add</mat-icon> Nuevo proyecto
+    </button>
+  </div>
+
+  <!-- Filtros -->
+  <div class="pl-filters">
+    <mat-form-field appearance="outline" class="pl-filters__search">
+      <mat-label>Buscar por código, nombre o cliente...</mat-label>
+      <input matInput [ngModel]="searchText()" (ngModelChange)="searchText.set($event)" (keyup.enter)="onSearch()" />
+      <mat-icon matSuffix>search</mat-icon>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="pl-filters__dropdown">
+      <mat-label>Estado</mat-label>
+      <mat-select [ngModel]="estadoFilter()" (ngModelChange)="estadoFilter.set($event); onFilterChange()">
+        @for (opt of estadoOptions; track opt.value) {
+          <mat-option [value]="opt.value">{{ opt.label }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="pl-filters__dropdown">
+      <mat-label>Tipo</mat-label>
+      <mat-select [ngModel]="tipoFilter()" (ngModelChange)="tipoFilter.set($event); onFilterChange()">
+        @for (opt of tipoOptions; track opt.value) {
+          <mat-option [value]="opt.value">{{ opt.label }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+  </div>
+
+  <!-- Loading bar -->
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate" />
+  }
+
+  <!-- Tabla -->
+  <mat-table [dataSource]="proyectos()" class="pl-table">
+
+    <ng-container matColumnDef="codigo">
+      <mat-header-cell *matHeaderCellDef>Código</mat-header-cell>
+      <mat-cell *matCellDef="let p"><span class="pl-codigo">{{ p.codigo }}</span></mat-cell>
+    </ng-container>
+
+    <ng-container matColumnDef="nombre">
+      <mat-header-cell *matHeaderCellDef>Nombre</mat-header-cell>
+      <mat-cell *matCellDef="let p">{{ p.nombre }}</mat-cell>
+    </ng-container>
+
+    <ng-container matColumnDef="tipo">
+      <mat-header-cell *matHeaderCellDef>Tipo</mat-header-cell>
+      <mat-cell *matCellDef="let p">{{ p.tipo }}</mat-cell>
+    </ng-container>
+
+    <ng-container matColumnDef="estado">
+      <mat-header-cell *matHeaderCellDef>Estado</mat-header-cell>
+      <mat-cell *matCellDef="let p">
+        <span [class]="estadoClass(p.estado)">{{ estadoLabel(p.estado) }}</span>
+      </mat-cell>
+    </ng-container>
+
+    <ng-container matColumnDef="cliente">
+      <mat-header-cell *matHeaderCellDef>Cliente</mat-header-cell>
+      <mat-cell *matCellDef="let p">{{ p.cliente_nombre }}</mat-cell>
+    </ng-container>
+
+    <ng-container matColumnDef="gerente">
+      <mat-header-cell *matHeaderCellDef>Gerente</mat-header-cell>
+      <mat-cell *matCellDef="let p">{{ p.gerente.full_name || p.gerente.email }}</mat-cell>
+    </ng-container>
+
+    <ng-container matColumnDef="fecha_fin">
+      <mat-header-cell *matHeaderCellDef>Fecha fin</mat-header-cell>
+      <mat-cell *matCellDef="let p">{{ p.fecha_fin_planificada | date: 'dd/MM/yyyy' }}</mat-cell>
+    </ng-container>
+
+    <ng-container matColumnDef="presupuesto">
+      <mat-header-cell *matHeaderCellDef class="pl-col-presupuesto">Presupuesto</mat-header-cell>
+      <mat-cell *matCellDef="let p" class="pl-col-presupuesto">{{ formatCurrency(p.presupuesto_total) }}</mat-cell>
+    </ng-container>
+
+    <ng-container matColumnDef="acciones">
+      <mat-header-cell *matHeaderCellDef class="pl-col-acciones">Acciones</mat-header-cell>
+      <mat-cell *matCellDef="let p" class="pl-col-acciones">
+        <button mat-icon-button matTooltip="Ver detalle" (click)="verDetalle(p.id)">
+          <mat-icon>visibility</mat-icon>
+        </button>
+        <button mat-icon-button matTooltip="Eliminar" color="warn" (click)="confirmarEliminar(p)">
+          <mat-icon>delete</mat-icon>
+        </button>
+      </mat-cell>
+    </ng-container>
+
+    <mat-header-row *matHeaderRowDef="displayedColumns"></mat-header-row>
+    <mat-row *matRowDef="let row; columns: displayedColumns;"></mat-row>
+
+    <tr class="mat-row" *matNoDataRow>
+      <td [attr.colspan]="displayedColumns.length">
+        <div class="sc-empty-state">
+          <mat-icon>work</mat-icon>
+          <p>No hay proyectos que coincidan con los filtros.</p>
+          <button mat-raised-button color="primary" (click)="nuevoProyecto()">
+            <mat-icon>add</mat-icon> Nuevo proyecto
+          </button>
+        </div>
+      </td>
+    </tr>
+  </mat-table>
+
+  <mat-paginator
+    [length]="totalCount()"
+    [pageSize]="pageSize"
+    [pageSizeOptions]="[25, 50, 100]"
+    (page)="onPage($event)"
+    showFirstLastButtons
+  />
+</div>

@@ -34,9 +34,10 @@ class CompanyModule(models.Model):
     """Módulos activos por empresa. Controla acceso a SaiVentas, SaiCobros, etc."""
 
     class Module(models.TextChoices):
-        VENTAS    = 'ventas',    'SaiVentas'
-        COBROS    = 'cobros',    'SaiCobros'
-        DASHBOARD = 'dashboard', 'SaiDashboard'
+        VENTAS     = 'ventas',     'SaiVentas'
+        COBROS     = 'cobros',     'SaiCobros'
+        DASHBOARD  = 'dashboard',  'SaiDashboard'
+        PROYECTOS  = 'proyectos',  'SaiProyectos'
 
     id         = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     company    = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='modules')

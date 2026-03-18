@@ -1,0 +1,51 @@
+.pd-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  width: 100%;
+
+  &__info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+  }
+
+  &__codigo {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--sc-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  &__nombre {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 0;
+    color: var(--sc-text-color);
+  }
+
+  &__acciones {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+}
+
+.pd-nit {
+  color: var(--sc-text-muted);
+  font-size: 0.8rem;
+}
+
+.pd-presupuesto {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--sc-primary);
+}
+
+.pd-tab-content {
+  padding: 1.25rem 0;
+}

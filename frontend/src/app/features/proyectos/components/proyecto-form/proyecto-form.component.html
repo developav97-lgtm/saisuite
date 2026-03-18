@@ -1,0 +1,111 @@
+<div class="sc-page">
+  <div class="sc-page-header">
+    <h1 class="sc-page-header__title">
+      @if (editMode()) { Editar proyecto } @else { Nuevo proyecto }
+    </h1>
+  </div>
+
+  <mat-card>
+    <mat-card-content>
+      <form [formGroup]="form" (ngSubmit)="guardar()">
+        <div class="sc-form-grid">
+
+          <mat-form-field appearance="outline">
+            <mat-label>Código</mat-label>
+            <input matInput formControlName="codigo" placeholder="Auto-generado si se deja vacío" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Tipo *</mat-label>
+            <mat-select formControlName="tipo">
+              @for (opt of tipoOptions; track opt.value) {
+                <mat-option [value]="opt.value">{{ opt.label }}</mat-option>
+              }
+            </mat-select>
+            @if (form.get('tipo')?.invalid && form.get('tipo')?.touched) {
+              <mat-error>El tipo es obligatorio.</mat-error>
+            }
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="sc-field--full">
+            <mat-label>Nombre *</mat-label>
+            <input matInput formControlName="nombre" />
+            @if (form.get('nombre')?.invalid && form.get('nombre')?.touched) {
+              <mat-error>El nombre es obligatorio.</mat-error>
+            }
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>NIT / ID Cliente *</mat-label>
+            <input matInput formControlName="cliente_id" placeholder="Ej: 900111222" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Nombre del cliente *</mat-label>
+            <input matInput formControlName="cliente_nombre" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>UUID Gerente *</mat-label>
+            <input matInput formControlName="gerente" placeholder="UUID del gerente" />
+            <mat-hint>Ingresa el UUID del usuario gerente</mat-hint>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>UUID Coordinador</mat-label>
+            <input matInput formControlName="coordinador" placeholder="Opcional" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Inicio planificado *</mat-label>
+            <input matInput [matDatepicker]="pickerInicio" formControlName="fecha_inicio_planificada" />
+            <mat-datepicker-toggle matSuffix [for]="pickerInicio"></mat-datepicker-toggle>
+            <mat-datepicker #pickerInicio></mat-datepicker>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Fin planificado *</mat-label>
+            <input matInput [matDatepicker]="pickerFin" formControlName="fecha_fin_planificada" />
+            <mat-datepicker-toggle matSuffix [for]="pickerFin"></mat-datepicker-toggle>
+            <mat-datepicker #pickerFin></mat-datepicker>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="sc-field--full">
+            <mat-label>Presupuesto total (COP) *</mat-label>
+            <input matInput type="number" formControlName="presupuesto_total" min="0" />
+            <span matTextPrefix>$&nbsp;</span>
+          </mat-form-field>
+
+          <div class="sc-field--full pf-aiu-header">
+            <strong>AIU — Administración, Imprevistos, Utilidad</strong>
+          </div>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Administración (%)</mat-label>
+            <input matInput type="number" formControlName="porcentaje_administracion" min="0" max="100" />
+            <span matTextSuffix>%</span>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Imprevistos (%)</mat-label>
+            <input matInput type="number" formControlName="porcentaje_imprevistos" min="0" max="100" />
+            <span matTextSuffix>%</span>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Utilidad (%)</mat-label>
+            <input matInput type="number" formControlName="porcentaje_utilidad" min="0" max="100" />
+            <span matTextSuffix>%</span>
+          </mat-form-field>
+        </div>
+
+        <div class="pf-acciones">
+          <button mat-stroked-button type="button" (click)="cancelar()">Cancelar</button>
+          <button mat-raised-button color="primary" type="submit" [disabled]="form.invalid || saving()">
+            @if (saving()) { Guardando... } @else { @if (editMode()) { Actualizar } @else { Crear proyecto } }
+          </button>
+        </div>
+      </form>
+    </mat-card-content>
+  </mat-card>
+</div>

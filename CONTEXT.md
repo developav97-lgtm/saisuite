@@ -11,10 +11,10 @@
 
 | Campo | Valor |
 |---|---|
-| Fase actual | Fase 0 — Pre-desarrollo completada |
-| Estado | ⏳ En espera de aprobación del partnership con Saiopen |
-| Última sesión | 9 Marzo 2026 |
-| Próximo paso | Confirmar módulos con Saiopen → arrancar Semana 1 |
+| Fase actual | Auth completada — Login/Logout/JWT + Shell integrado |
+| Estado | 🟢 Activo — Desarrollo en curso |
+| Última sesión | 18 Marzo 2026 |
+| Próximo paso | Fase B: Terceros + Documentos + Hitos (o crear usuario de prueba y testear auth manualmente) |
 
 ---
 
@@ -54,6 +54,7 @@
 
 | Módulo | Estado |
 |---|---|
+| **SaiProyectos** | 🟢 Fase A completada — CRUD + Fases + Máquina de estados |
 | SaiVentas | ⏳ Por confirmar con Saiopen |
 | SaiCobros | ⏳ Por confirmar con Saiopen |
 | SaiDashboard | ⏳ Por confirmar con Saiopen |
@@ -64,7 +65,8 @@
 
 - [ ] Dominio definitivo (placeholder: `saisuite.co`)
 - [ ] Módulos exactos confirmados con Saiopen
-- [ ] Convención snake_case → camelCase entre Django y Angular (definir antes del primer endpoint)
+- [x] ~~Convención snake_case → camelCase~~ → snake_case en todo (DEC-010)
+- [ ] HEX corporativos ValMen Tech pendientes (para actualizar SaicloudPreset)
 
 ---
 
@@ -116,8 +118,119 @@
 
 ---
 
+## Últimos cambios (2026-03-17) — Fase A Módulo Proyectos
+
+### Backend `apps/proyectos/` (nuevo — completo)
+- ✅ `models.py` — 5 modelos: Proyecto, Fase, TerceroProyecto, DocumentoContable, Hito
+- ✅ `services.py` — ProyectoService + FaseService con máquina de estados y validación de presupuesto
+- ✅ `serializers.py` — 8 serializers (list, detail, write, estado)
+- ✅ `views.py` — ProyectoViewSet + FaseViewSet con endpoints nested
+- ✅ `urls.py` — rutas manuales (sin drf-nested-routers)
+- ✅ `filters.py` — ProyectoFilter con 7 campos filtrables
+- ✅ `permissions.py` — CanAccessProyectos, CanEditProyecto
+- ✅ `admin.py` — 5 admins registrados con FaseInline
+- ✅ `tests/` — 54 tests pasando (services + views + serializers)
+- ✅ Migraciones aplicadas
+
+### Modificaciones backend
+- ✅ `config/settings/base.py` — agregado `apps.proyectos` a LOCAL_APPS
+- ✅ `config/urls.py` — agregado path `api/v1/proyectos/`
+- ✅ `apps/companies/models.py` — agregado `PROYECTOS = 'proyectos', 'SaiProyectos'`
+
+### Frontend `features/proyectos/` (nuevo — completo)
+- ✅ `models/proyecto.model.ts` — tipos, interfaces, constantes ESTADO_LABELS/SEVERITY
+- ✅ `models/fase.model.ts` — FaseList, FaseDetail, FaseCreate
+- ✅ `models/paginated-response.model.ts` — PaginatedResponse<T>
+- ✅ `services/proyecto.service.ts` — 7 métodos HTTP
+- ✅ `services/fase.service.ts` — 4 métodos HTTP
+- ✅ `components/proyecto-list/` — tabla lazy con filtros
+- ✅ `components/proyecto-detail/` — tabs PrimeNG 20 + cambio de estado
+- ✅ `components/proyecto-form/` — formulario reactivo crear/editar
+- ✅ `components/fase-list/` — tabla fases con dialog add/edit
+- ✅ `proyectos.routes.ts` — 4 rutas lazy
+- ✅ `app.routes.ts` — proyectos lazy bajo ShellComponent
+- ✅ `sidebar.component.ts` — enlace "Proyectos" con ícono briefcase
+
+### Decisiones tomadas
+- DEC-010: snake_case en toda la API y TypeScript (sin capa de transformación)
+
+### Errores resueltos (ver ERRORS.md)
+7 errores nuevos documentados: urls.py inexistente, User.all_objects, float/Decimal,
+codigo requerido, multi-tenant DRF/JWT, PrimeNG 21 imports, TS7053 strict mode
+
+### Build Angular
+- ✅ `ng build --configuration=development` pasa sin errores (solo warnings opcionales)
+- PrimeNG downgradeado de 21.1.3 → 20.5.0-lts (compatibilidad Angular 20.3.x)
+
+---
+
+## Últimos cambios (2026-03-18) — Auth Layer
+
+### Backend `apps/users/` (implementado)
+- ✅ `serializers.py` — CompanySummarySerializer, UserMeSerializer, LoginSerializer, LogoutSerializer
+- ✅ `services.py` — AuthService: login / logout / refresh con blacklist
+- ✅ `views.py` — LoginView, LogoutView, RefreshView, MeView
+- ✅ `urls.py` — 4 endpoints en `/api/v1/auth/`
+- ✅ `admin.py` — UserAdmin registrado
+- ✅ `tests/test_auth.py` — 10/10 tests pasando
+
+### Frontend `core/auth/` (nuevo)
+- ✅ `auth.models.ts` — CompanySummary, UserProfile, LoginRequest, LoginResponse, TokenRefreshResponse
+- ✅ `auth.service.ts` — signals currentUser + isAuthenticated, login/logout/refresh, localStorage
+- ✅ `auth.interceptor.ts` — 401 handling con token refresh y BehaviorSubject para serializar concurrent requests
+- ✅ `guards/auth.guard.ts` — CanActivateFn, redirige a /auth/login si no autenticado
+
+### Frontend modificados
+- ✅ `login.component.ts/html/scss` — form reactivo completo con Angular Material, MatSnackBar de error
+- ✅ `topbar.component.ts` — inject() pattern, expone currentUser + logout
+- ✅ `topbar.component.html` — nombre real del usuario, botón logout
+- ✅ `app.routes.ts` — canActivate: [authGuard] activo, fallback → /auth/login
+
+### Tests
+- Backend: 10/10 pasando (todos los escenarios auth cubiertos)
+- Build Angular: ✅ 0 errores, 0 warnings TS (solo budget 614kB pre-existente)
+
+---
+
+## Últimos cambios (2026-03-18 tarde) — Migración PrimeNG → Angular Material
+
+### Razón
+PrimeNG 18 usa `ɵɵInputTransformsFeature` (eliminado en Angular 20). 80+ archivos afectados.
+El script postinstall de parche fallaba en Docker build. Decisión: migrar a Angular Material (DEC-011).
+
+### Cambios
+- ✅ `package.json` — `primeng/primeicons/@primeuix` eliminados, `@angular/material + @angular/cdk` instalados
+- ✅ `styles.scss` — tema Material M3, `--sc-*` CSS vars, status chips, snackbar colors
+- ✅ `app.config.ts` — removidos providers PrimeNG (MessageService, ConfirmationService)
+- ✅ `theme.service.ts` — clase `dark-theme` en `<body>` (antes era `app-dark` en `<html>`)
+- ✅ `sidebar.component` — CSS-based mobile drawer (reemplaza `p-drawer`)
+- ✅ `topbar.component` — mat-button, mat-icon
+- ✅ `login.component` — MatFormField, MatInput, MatSnackBar, password toggle con mat-icon-button
+- ✅ `proyecto-list.component` — mat-table, MatPaginator (PageEvent), MatDialog para confirms
+- ✅ `proyecto-detail.component` — MatTabsModule, MatSpinner, status chips CSS
+- ✅ `proyecto-form.component` — MatDatepicker + MatNativeDateModule, MatSelect, MatCard
+- ✅ `fase-list.component` — MatDialog con @ViewChild TemplateRef, MatProgressBar
+- ✅ `shared/confirm-dialog/` — nuevo componente reutilizable con MatDialog
+- ✅ `CLAUDE.md` — DEC-007 PrimeNG reemplazado por DEC-011 Angular Material
+- ✅ `DECISIONS.md` — DEC-011 agregado
+
+---
+
+## Próxima sesión — Fase B
+
+Serializers + Services + Views para: TerceroProyecto, DocumentoContable, Hito
+Frontend: tercero-list, documento-list, hito-list como tabs en proyecto-detail
+
+Endpoints a implementar:
+- GET/POST/DELETE `/api/v1/proyectos/{id}/terceros/`
+- GET/GET `/api/v1/proyectos/{id}/documentos/`, `/api/v1/documentos/{id}/`
+- GET/POST `/api/v1/proyectos/{id}/hitos/`, POST `.../generar-factura/`
+
+---
+
 ## Estadísticas del proyecto
-- Archivos modificados hoy: 6
-- Decisiones documentadas: 10
-- Features planeados: 0
-- Última actualización: 2026-03-14 18:08:48
+- Tests backend: 64 pasando (54 proyectos + 10 auth)
+- Endpoints: 11 proyectos + 4 auth = 15 implementados
+- Componentes Angular: 4 proyectos + 1 login + 1 confirm-dialog = 6
+- Decisiones documentadas: 11
+- Última actualización: 2026-03-18
