@@ -5,7 +5,8 @@
       "name": "Frontend (Angular)",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["start"],
-      "port": 4200
+      "port": 4200,
+      "autoPort": false
     },
     {
       "name": "Backend (Django)",
@@ -17,7 +18,8 @@
       "name": "Full Stack (docker-compose)",
       "runtimeExecutable": "docker-compose",
       "runtimeArgs": ["up"],
-      "port": 5678
+      "port": 5678,
+      "autoPort": false
     }
   ]
 }
