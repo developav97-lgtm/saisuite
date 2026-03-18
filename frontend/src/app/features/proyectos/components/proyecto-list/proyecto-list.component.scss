@@ -1,20 +1,81 @@
-.pl-filters {
+// ── Filtros ───────────────────────────────────────────────────
+.pl-filters-card {
   display: flex;
   gap: 0.75rem;
   flex-wrap: wrap;
+  align-items: center;
+  padding: 0.875rem 1rem;
   margin-bottom: 1rem;
-
-  &__search { flex: 1; min-width: 240px; }
-  &__dropdown { width: 180px; }
 }
 
-.pl-table { border-radius: 8px; overflow: hidden; }
+.pl-search {
+  flex: 1;
+  min-width: 220px;
+}
+
+.pl-filter {
+  width: 170px;
+  flex-shrink: 0;
+}
+
+// ── Progress bar ──────────────────────────────────────────────
+.pl-progress {
+  margin-bottom: -4px;
+  border-radius: var(--sc-radius) var(--sc-radius) 0 0;
+}
+
+// ── Tabla ─────────────────────────────────────────────────────
+.pl-table {
+  border-radius: var(--sc-radius);
+}
 
 .pl-codigo {
-  font-family: monospace;
-  font-size: 0.875rem;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 0.8rem;
   font-weight: 600;
+  color: var(--sc-primary);
+  background: var(--sc-primary-light);
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  white-space: nowrap;
 }
 
-.pl-col-presupuesto { text-align: right !important; }
-.pl-col-acciones { width: 100px; }
+.pl-cell-nombre {
+  font-weight: 500;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pl-tipo-chip {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--sc-text-muted);
+  background: var(--sc-surface-ground);
+  border: 1px solid var(--sc-surface-border);
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.pl-presupuesto {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.pl-col-right {
+  text-align: right !important;
+  justify-content: flex-end !important;
+}
+
+.pl-col-acciones {
+  width: 96px;
+  justify-content: flex-end !important;
+}
+
+.pl-row {
+  cursor: pointer;
+}

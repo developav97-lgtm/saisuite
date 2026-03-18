@@ -12,6 +12,7 @@ $sc-theme: mat.define-theme((
     brand-family: 'Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif',
     plain-family: 'Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif',
   ),
+  density: (scale: -1),
 ));
 
 $sc-dark-theme: mat.define-theme((
@@ -24,6 +25,7 @@ $sc-dark-theme: mat.define-theme((
     brand-family: 'Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif',
     plain-family: 'Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif',
   ),
+  density: (scale: -1),
 ));
 
 html {
@@ -35,104 +37,226 @@ body.dark-theme {
   @include mat.all-component-colors($sc-dark-theme);
 }
 
-// ── CSS custom properties (para reemplazar --p-* de PrimeNG) ─
+// ── CSS tokens ────────────────────────────────────────────────
 :root {
-  --sc-surface-ground: #f8f9fa;
-  --sc-surface-card: #ffffff;
-  --sc-surface-border: #e9ecef;
-  --sc-text-color: #212529;
-  --sc-text-muted: #6c757d;
-  --sc-primary: #1565c0;
-  --sc-primary-light: #e3f2fd;
+  --sc-surface-ground:  #f0f2f5;
+  --sc-surface-card:    #ffffff;
+  --sc-surface-border:  #e2e8f0;
+  --sc-text-color:      #1a202c;
+  --sc-text-muted:      #718096;
+  --sc-text-light:      #a0aec0;
+  --sc-primary:         #1565c0;
+  --sc-primary-light:   #e8f0fe;
+  --sc-primary-dark:    #0d47a1;
+  --sc-shadow-sm:       0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+  --sc-shadow-md:       0 4px 12px rgba(0,0,0,.08), 0 2px 4px rgba(0,0,0,.04);
+  --sc-radius:          10px;
+  --sc-radius-sm:       6px;
 }
 
 body.dark-theme {
-  --sc-surface-ground: #121212;
-  --sc-surface-card: #1e1e1e;
-  --sc-surface-border: #333333;
-  --sc-text-color: #e0e0e0;
-  --sc-text-muted: #9e9e9e;
-  --sc-primary: #90caf9;
-  --sc-primary-light: #0d2137;
+  --sc-surface-ground:  #0f1117;
+  --sc-surface-card:    #1a1d27;
+  --sc-surface-border:  #2d3748;
+  --sc-text-color:      #e2e8f0;
+  --sc-text-muted:      #718096;
+  --sc-text-light:      #4a5568;
+  --sc-primary:         #90caf9;
+  --sc-primary-light:   #0d2137;
+  --sc-primary-dark:    #bbdefb;
+  --sc-shadow-sm:       0 1px 3px rgba(0,0,0,.3);
+  --sc-shadow-md:       0 4px 12px rgba(0,0,0,.4);
 }
 
-// ── Reset base ──────────────────────────────────────────────
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-}
+// ── Reset ─────────────────────────────────────────────────────
+*,*::before,*::after { box-sizing: border-box; }
 
-html,
-body {
+html, body {
   margin: 0;
   padding: 0;
   height: 100%;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  background-color: var(--sc-surface-ground);
+  background: var(--sc-surface-ground);
   color: var(--sc-text-color);
 }
 
-// ── Clases globales de página ───────────────────────────────
-
+// ── Layout de página ──────────────────────────────────────────
 .sc-page {
-  padding: 1.5rem;
-
-  @media (max-width: 768px) {
-    padding: 1rem;
-  }
+  padding: 1.75rem 2rem;
+  max-width: 1400px;
+  @media (max-width: 768px) { padding: 1rem; }
 }
 
 .sc-page-header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 1rem;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1.75rem;
 }
 
 .sc-page-header__title {
-  font-size: 1.4rem;
+  font-size: 1.3rem;
   font-weight: 700;
   color: var(--sc-text-color);
   margin: 0;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
 }
 
+// ── sc-card (secciones de formulario) ─────────────────────────
+.sc-card {
+  background: var(--sc-surface-card);
+  border: 1px solid var(--sc-surface-border);
+  border-radius: var(--sc-radius);
+  box-shadow: var(--sc-shadow-sm);
+  overflow: hidden;
+}
+
+.sc-card__header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.875rem 1.25rem;
+  border-bottom: 1px solid var(--sc-surface-border);
+  background: var(--sc-surface-ground);
+
+  mat-icon {
+    font-size: 1rem;
+    width: 1rem;
+    height: 1rem;
+    color: var(--sc-primary);
+    flex-shrink: 0;
+  }
+}
+
+.sc-card__title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--sc-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  margin: 0;
+}
+
+.sc-card__body {
+  padding: 1.25rem 1.25rem 0.5rem;
+}
+
+// ── Grids de formulario ───────────────────────────────────────
 .sc-form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 1.25rem;
-
-  @media (max-width: 768px) {
-    grid-template-columns: 1fr;
-  }
+  gap: 0 1rem;
+  @media (max-width: 640px) { grid-template-columns: 1fr; }
 }
 
-.sc-field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-
-  label {
-    font-size: 0.82rem;
-    font-weight: 600;
-    color: var(--sc-text-muted);
-  }
-
-  span {
-    font-size: 0.9375rem;
-    color: var(--sc-text-color);
-  }
+.sc-form-grid--3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 0 1rem;
+  @media (max-width: 768px) { grid-template-columns: 1fr 1fr; }
+  @media (max-width: 480px) { grid-template-columns: 1fr; }
 }
 
-.sc-field--full {
-  grid-column: 1 / -1;
+.sc-field--full { grid-column: 1 / -1; }
+
+// ── Form fields — compactos ───────────────────────────────────
+.mat-mdc-input-element {
+  font-size: 0.875rem !important;
 }
 
+.mat-mdc-form-field .mat-mdc-floating-label {
+  font-size: 0.875rem;
+}
+
+// subscript dinámico (no reserva espacio si no hay error/hint)
+.mat-mdc-form-field.sc-no-hint .mat-mdc-form-field-subscript-wrapper {
+  display: none;
+}
+
+// ── Material Card ─────────────────────────────────────────────
+mat-card.mat-mdc-card {
+  box-shadow: var(--sc-shadow-sm) !important;
+  border: 1px solid var(--sc-surface-border) !important;
+  border-radius: var(--sc-radius) !important;
+  background: var(--sc-surface-card) !important;
+}
+
+// ── Tabla Material ────────────────────────────────────────────
+.mat-mdc-table {
+  width: 100%;
+  background: var(--sc-surface-card) !important;
+  border-radius: var(--sc-radius);
+  overflow: hidden;
+  border: 1px solid var(--sc-surface-border);
+  box-shadow: var(--sc-shadow-sm);
+}
+
+.mat-mdc-header-row {
+  background: var(--sc-surface-ground) !important;
+  border-bottom: 2px solid var(--sc-surface-border) !important;
+  height: 40px !important;
+}
+
+.mat-mdc-header-cell {
+  font-weight: 700 !important;
+  font-size: 0.6875rem !important;
+  color: var(--sc-text-muted) !important;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0 1rem !important;
+}
+
+.mat-mdc-cell {
+  font-size: 0.8125rem !important;
+  color: var(--sc-text-color);
+  padding: 0 1rem !important;
+}
+
+.mat-mdc-row {
+  height: 46px !important;
+  border-bottom: 1px solid var(--sc-surface-border) !important;
+  transition: background 0.12s ease;
+
+  &:last-child { border-bottom: none !important; }
+  &:hover { background: var(--sc-primary-light) !important; }
+}
+
+// ── Buttons ───────────────────────────────────────────────────
+.mat-mdc-raised-button.mat-primary {
+  box-shadow: 0 2px 6px rgba(21, 101, 192, 0.3) !important;
+}
+
+.mat-mdc-button, .mat-mdc-raised-button, .mat-mdc-stroked-button, .mat-mdc-icon-button {
+  border-radius: var(--sc-radius-sm) !important;
+  font-size: 0.8125rem !important;
+  font-weight: 600 !important;
+  letter-spacing: 0 !important;
+}
+
+// ── Chips de estado ───────────────────────────────────────────
+.sc-status-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.175rem 0.6rem;
+  border-radius: 1rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+
+  &--borrador      { background: #f1f3f5; color: #495057; }
+  &--planificado   { background: #dbeafe; color: #1d4ed8; }
+  &--en_ejecucion  { background: #dcfce7; color: #15803d; }
+  &--suspendido    { background: #fff7ed; color: #c2410c; }
+  &--cerrado       { background: #ede9fe; color: #6d28d9; }
+  &--cancelado     { background: #fef2f2; color: #b91c1c; }
+}
+
+// ── Empty state ───────────────────────────────────────────────
 .sc-empty-state {
   display: flex;
   flex-direction: column;
@@ -143,74 +267,36 @@ body {
   color: var(--sc-text-muted);
 
   mat-icon {
-    font-size: 3rem;
-    width: 3rem;
-    height: 3rem;
-    margin-bottom: 1rem;
-    opacity: 0.35;
+    font-size: 2.5rem;
+    width: 2.5rem;
+    height: 2.5rem;
+    margin-bottom: 0.75rem;
+    opacity: 0.2;
   }
 
-  p {
-    font-size: 0.875rem;
-    margin: 0;
-  }
+  p { font-size: 0.875rem; margin: 0 0 1.25rem; }
 }
 
-.sc-loading-state {
+// ── SnackBar ──────────────────────────────────────────────────
+.snack-success .mdc-snackbar__surface { background-color: #166534 !important; }
+.snack-error   .mdc-snackbar__surface { background-color: #991b1b !important; }
+
+// ── Helpers ───────────────────────────────────────────────────
+.sc-form-field-full { width: 100%; }
+
+.sc-form-actions {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 4rem 2rem;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding-top: 1.25rem;
+  margin-top: 0.25rem;
+  border-top: 1px solid var(--sc-surface-border);
 }
 
-// ── Estado chips/badges ─────────────────────────────────────
-.sc-status-chip {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.2rem 0.65rem;
-  border-radius: 1rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  white-space: nowrap;
-
-  &--borrador    { background: #e0e0e0; color: #424242; }
-  &--planificado { background: #bbdefb; color: #1565c0; }
-  &--en_ejecucion { background: #c8e6c9; color: #2e7d32; }
-  &--suspendido  { background: #fff3e0; color: #e65100; }
-  &--cerrado     { background: #ede7f6; color: #4527a0; }
-  &--cancelado   { background: #ffebee; color: #c62828; }
-}
-
-// ── MatSnackBar colores ─────────────────────────────────────
-.snack-success .mdc-snackbar__surface {
-  background-color: #2e7d32 !important;
-}
-.snack-error .mdc-snackbar__surface {
-  background-color: #c62828 !important;
-}
-
-// ── Tabla Material global ───────────────────────────────────
-.mat-mdc-table {
-  width: 100%;
-  background: var(--sc-surface-card) !important;
-}
-
-.mat-mdc-header-cell {
-  font-weight: 600;
-  font-size: 0.8125rem;
-  color: var(--sc-text-muted);
-}
-
-.mat-mdc-cell {
-  font-size: 0.875rem;
-  color: var(--sc-text-color);
-}
-
-.mat-mdc-row:hover {
-  background-color: var(--sc-primary-light) !important;
-}
-
-// ── Material full-width form fields ─────────────────────────
-.sc-form-field-full {
-  width: 100%;
+// ── Paginator ─────────────────────────────────────────────────
+.mat-mdc-paginator {
+  background: transparent !important;
+  font-size: 0.8125rem !important;
+  border-top: 1px solid var(--sc-surface-border);
+  padding: 0 0.5rem;
 }
