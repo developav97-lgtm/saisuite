@@ -1,0 +1,129 @@
+<div class="sc-register-page">
+  <div class="sc-register-card">
+
+    <div class="sc-register-logo">
+      <mat-icon>cloud</mat-icon>
+    </div>
+    <h1 class="sc-register-brand">Saicloud</h1>
+    <h2 class="sc-register-title">Crear empresa</h2>
+
+    <mat-stepper linear #stepper class="sc-register-stepper">
+
+      <!-- ────────────────────────────────────── PASO 1: Empresa -->
+      <mat-step [stepControl]="empresaForm" label="Empresa">
+        <form [formGroup]="empresaForm" class="sc-register-form">
+
+          <mat-form-field appearance="outline" class="sc-form-field-full">
+            <mat-label>Nombre de la empresa</mat-label>
+            <input matInput formControlName="company_name" autocomplete="organization" />
+            <mat-icon matPrefix>business</mat-icon>
+            @if (empresaForm.controls.company_name.invalid && empresaForm.controls.company_name.touched) {
+              <mat-error>Mínimo 3 caracteres.</mat-error>
+            }
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="sc-form-field-full">
+            <mat-label>NIT (sin dígito de verificación)</mat-label>
+            <input matInput formControlName="company_nit" autocomplete="off" />
+            <mat-icon matPrefix>badge</mat-icon>
+            @if (empresaForm.controls.company_nit.invalid && empresaForm.controls.company_nit.touched) {
+              <mat-error>Ingresa un NIT válido (6–15 dígitos).</mat-error>
+            }
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="sc-form-field-full">
+            <mat-label>Plan</mat-label>
+            <mat-select formControlName="company_plan">
+              @for (p of planOptions; track p.value) {
+                <mat-option [value]="p.value">{{ p.label }}</mat-option>
+              }
+            </mat-select>
+            <mat-icon matPrefix>workspace_premium</mat-icon>
+          </mat-form-field>
+
+          <div class="sc-register-actions">
+            <button mat-raised-button color="primary" matStepperNext
+              [disabled]="empresaForm.invalid" class="sc-register-btn">
+              Siguiente
+              <mat-icon>arrow_forward</mat-icon>
+            </button>
+          </div>
+
+        </form>
+      </mat-step>
+
+      <!-- ────────────────────────────────────── PASO 2: Administrador -->
+      <mat-step [stepControl]="usuarioForm" label="Administrador">
+        <form [formGroup]="usuarioForm" (ngSubmit)="registrar()" class="sc-register-form">
+
+          <div class="sc-register-row">
+            <mat-form-field appearance="outline" class="sc-form-field-full">
+              <mat-label>Nombre</mat-label>
+              <input matInput formControlName="first_name" autocomplete="given-name" />
+              @if (usuarioForm.controls.first_name.invalid && usuarioForm.controls.first_name.touched) {
+                <mat-error>Requerido.</mat-error>
+              }
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="sc-form-field-full">
+              <mat-label>Apellido</mat-label>
+              <input matInput formControlName="last_name" autocomplete="family-name" />
+              @if (usuarioForm.controls.last_name.invalid && usuarioForm.controls.last_name.touched) {
+                <mat-error>Requerido.</mat-error>
+              }
+            </mat-form-field>
+          </div>
+
+          <mat-form-field appearance="outline" class="sc-form-field-full">
+            <mat-label>Correo electrónico</mat-label>
+            <input matInput type="email" formControlName="email" autocomplete="email" />
+            <mat-icon matPrefix>mail</mat-icon>
+            @if (usuarioForm.controls.email.invalid && usuarioForm.controls.email.touched) {
+              <mat-error>Ingresa un correo válido.</mat-error>
+            }
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="sc-form-field-full">
+            <mat-label>Contraseña</mat-label>
+            <input matInput [type]="hidePassword() ? 'password' : 'text'"
+              formControlName="password" autocomplete="new-password" />
+            <mat-icon matPrefix>lock</mat-icon>
+            <button type="button" mat-icon-button matSuffix
+              (click)="hidePassword.set(!hidePassword())"
+              [attr.aria-label]="'Mostrar contraseña'">
+              <mat-icon>{{ hidePassword() ? 'visibility' : 'visibility_off' }}</mat-icon>
+            </button>
+            @if (usuarioForm.controls.password.invalid && usuarioForm.controls.password.touched) {
+              <mat-error>Mínimo 8 caracteres.</mat-error>
+            }
+          </mat-form-field>
+
+          <div class="sc-register-actions sc-register-actions--two">
+            <button type="button" mat-stroked-button matStepperPrevious
+              [disabled]="loading()" class="sc-register-btn-back">
+              <mat-icon>arrow_back</mat-icon>
+              Atrás
+            </button>
+
+            <button mat-raised-button color="primary" type="submit"
+              [disabled]="loading() || usuarioForm.invalid" class="sc-register-btn">
+              @if (loading()) {
+                <mat-spinner diameter="20" />
+              } @else {
+                Crear empresa
+              }
+            </button>
+          </div>
+
+        </form>
+      </mat-step>
+
+    </mat-stepper>
+
+    <p class="sc-register-login">
+      ¿Ya tienes cuenta?
+      <a routerLink="/auth/login">Inicia sesión</a>
+    </p>
+
+  </div>
+</div>

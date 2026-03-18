@@ -1,0 +1,40 @@
+<div class="mo-container">
+
+  <h2 class="mo-title">Módulos activos</h2>
+  <p class="mo-subtitle">Activa o desactiva los módulos disponibles para los usuarios de tu empresa.</p>
+
+  @if (loading()) {
+    <div class="mo-loading"><mat-spinner diameter="40" /></div>
+  }
+
+  @if (company(); as c) {
+    <div class="mo-grid">
+      @for (mod of c.modules; track mod.module) {
+        <mat-card class="mo-card" [class.mo-card--active]="mod.is_active">
+          <mat-card-content>
+            <div class="mo-card__inner">
+              <div class="mo-icon" [class.mo-icon--active]="mod.is_active">
+                <mat-icon>{{ moduleIcons[mod.module] ?? 'extension' }}</mat-icon>
+              </div>
+              <div class="mo-info">
+                <span class="mo-name">{{ moduleLabels[mod.module] ?? mod.module }}</span>
+                <span class="mo-status">{{ mod.is_active ? 'Activo' : 'Inactivo' }}</span>
+              </div>
+              @if (toggling() === mod.module) {
+                <mat-spinner diameter="20" />
+              } @else {
+                <mat-slide-toggle
+                  [checked]="mod.is_active"
+                  (change)="toggle(mod)"
+                  color="primary"
+                  [attr.aria-label]="'Toggle ' + mod.module"
+                />
+              }
+            </div>
+          </mat-card-content>
+        </mat-card>
+      }
+    </div>
+  }
+
+</div>

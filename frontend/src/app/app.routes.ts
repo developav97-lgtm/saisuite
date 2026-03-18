@@ -46,6 +46,12 @@ export const routes: Routes = [
                 loadChildren: () =>
                     import('./features/proyectos/proyectos.routes').then(m => m.PROYECTOS_ROUTES),
             },
+            // Admin — gestión de empresa, usuarios y módulos
+            {
+                path: 'admin',
+                loadChildren: () =>
+                    import('./features/admin/admin.routes').then(m => m.ADMIN_ROUTES),
+            },
             // Redirect por defecto al dashboard
             { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
         ],

@@ -14,12 +14,20 @@ logger = logging.getLogger(__name__)
 class Company(models.Model):
     """Empresa cliente registrada en SaiSuite."""
 
-    id         = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    name       = models.CharField(max_length=255)
-    nit        = models.CharField(max_length=20, unique=True, help_text='NIT sin dígito de verificación')
-    is_active  = models.BooleanField(default=True)
-    created_at = models.DateTimeField(default=timezone.now)
-    updated_at = models.DateTimeField(auto_now=True)
+    class Plan(models.TextChoices):
+        STARTER      = 'starter',      'Starter'
+        PROFESSIONAL = 'professional', 'Professional'
+        ENTERPRISE   = 'enterprise',   'Enterprise'
+
+    id               = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name             = models.CharField(max_length=255)
+    nit              = models.CharField(max_length=20, unique=True, help_text='NIT sin dígito de verificación')
+    plan             = models.CharField(max_length=20, choices=Plan.choices, default=Plan.STARTER)
+    saiopen_enabled  = models.BooleanField(default=False)
+    saiopen_db_path  = models.CharField(max_length=500, blank=True, default='')
+    is_active        = models.BooleanField(default=True)
+    created_at       = models.DateTimeField(default=timezone.now)
+    updated_at       = models.DateTimeField(auto_now=True)
 
     class Meta:
         verbose_name = 'Empresa'

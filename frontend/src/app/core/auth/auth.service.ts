@@ -2,7 +2,10 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { Observable, tap } from 'rxjs';
-import { LoginRequest, LoginResponse, TokenRefreshResponse, UserProfile } from './auth.models';
+import {
+  LoginRequest, LoginResponse, TokenRefreshResponse,
+  UserProfile, RegisterRequest, RegisterResponse, UserCompanyInfo,
+} from './auth.models';
 
 const ACCESS_KEY  = 'access_token';
 const REFRESH_KEY = 'refresh_token';
@@ -26,6 +29,12 @@ export class AuthService {
       .pipe(tap(res => this.saveTokens(res)));
   }
 
+  register(data: RegisterRequest): Observable<RegisterResponse> {
+    return this.http
+      .post<RegisterResponse>('/api/v1/auth/register/', data)
+      .pipe(tap(res => this.saveTokens(res)));
+  }
+
   logout(): void {
     const refresh = this.getRefreshToken();
     if (refresh) {
@@ -43,6 +52,19 @@ export class AuthService {
       .pipe(tap(tokens => localStorage.setItem(ACCESS_KEY, tokens.access)));
   }
 
+  switchCompany(companyId: string): Observable<UserProfile> {
+    return this.http
+      .post<UserProfile>('/api/v1/auth/switch-company/', { company_id: companyId })
+      .pipe(tap(user => {
+        this.currentUser.set(user);
+        localStorage.setItem(USER_KEY, JSON.stringify(user));
+      }));
+  }
+
+  getMyCompanies(): Observable<UserCompanyInfo[]> {
+    return this.http.get<UserCompanyInfo[]>('/api/v1/auth/me/companies/');
+  }
+
   getAccessToken(): string | null {
     return localStorage.getItem(ACCESS_KEY);
   }
@@ -51,7 +73,7 @@ export class AuthService {
     return localStorage.getItem(REFRESH_KEY);
   }
 
-  private saveTokens(res: LoginResponse): void {
+  private saveTokens(res: LoginResponse | RegisterResponse): void {
     localStorage.setItem(ACCESS_KEY, res.access);
     localStorage.setItem(REFRESH_KEY, res.refresh);
     localStorage.setItem(USER_KEY, JSON.stringify(res.user));
