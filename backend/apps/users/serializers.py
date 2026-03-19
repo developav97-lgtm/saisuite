@@ -123,14 +123,18 @@ class UserCreateSerializer(serializers.ModelSerializer):
 
 class UserListSerializer(serializers.ModelSerializer):
     company_name = serializers.SerializerMethodField()
+    full_name    = serializers.SerializerMethodField()
 
     class Meta:
         model  = User
-        fields = ['id', 'email', 'first_name', 'last_name', 'role', 'is_active', 'company_name', 'created_at']
+        fields = ['id', 'email', 'first_name', 'last_name', 'full_name', 'role', 'is_active', 'company_name', 'created_at']
         read_only_fields = fields
 
     def get_company_name(self, obj: User) -> str:
         return obj.company.name if obj.company else ''
+
+    def get_full_name(self, obj: User) -> str:
+        return obj.full_name
 
 
 # ---------------------------------------------------------------------------

@@ -21,8 +21,8 @@
         <th mat-header-cell *matHeaderCellDef>Nombre</th>
         <td mat-cell *matCellDef="let u">
           <div class="ul-user-cell">
-            <div class="ul-avatar">{{ u.full_name.charAt(0).toUpperCase() }}</div>
-            <span>{{ u.full_name }}</span>
+            <div class="ul-avatar">{{ (u.full_name || u.email).charAt(0).toUpperCase() }}</div>
+            <span>{{ u.full_name || u.email }}</span>
           </div>
         </td>
       </ng-container>
@@ -38,7 +38,7 @@
         <th mat-header-cell *matHeaderCellDef>Rol</th>
         <td mat-cell *matCellDef="let u">
           <span class="ul-chip ul-chip--{{ u.role }}">
-            {{ roleLabels[u.role] ?? u.role }}
+            {{ getRoleLabel(u.role) }}
           </span>
         </td>
       </ng-container>
