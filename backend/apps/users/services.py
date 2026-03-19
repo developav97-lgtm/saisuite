@@ -168,6 +168,45 @@ class UserService:
         return User.objects.filter(company=company).order_by('email')
 
     @staticmethod
+    def get_user(company, user_id: str) -> User:
+        """Obtiene un usuario de la empresa. Lanza ValidationError si no pertenece a ella."""
+        try:
+            return User.objects.get(id=user_id, company=company)
+        except User.DoesNotExist:
+            raise ValidationError('Usuario no encontrado en esta empresa.')
+
+    @staticmethod
+    @transaction.atomic
+    def update_user(company, user_id: str, data: dict) -> User:
+        """
+        Actualiza campos permitidos de un usuario de la empresa.
+        No se puede cambiar el email ni la contraseña desde aquí.
+        """
+        user = UserService.get_user(company, user_id)
+
+        allowed_fields = {'first_name', 'last_name', 'role', 'is_active'}
+        update_fields  = []
+
+        for field in allowed_fields:
+            if field in data:
+                setattr(user, field, data[field])
+                update_fields.append(field)
+
+        if update_fields:
+            update_fields.append('updated_at')
+            user.save(update_fields=update_fields)
+
+        logger.info(
+            'user_updated',
+            extra={
+                'user_id':    str(user.id),
+                'company_id': str(company.id),
+                'fields':     update_fields,
+            },
+        )
+        return user
+
+    @staticmethod
     @transaction.atomic
     def switch_company(user: User, company_id: str) -> User:
         """

@@ -21,6 +21,7 @@ from .serializers import (
     RegisterSerializer,
     UserCreateSerializer,
     UserListSerializer,
+    UserUpdateSerializer,
     UserCompanySummarySerializer,
     SwitchCompanySerializer,
 )
@@ -125,6 +126,29 @@ class UserListCreateView(generics.ListCreateAPIView):
         user = UserService.create_user(request.user.company, serializer.validated_data)
         out = UserListSerializer(user)
         return Response(out.data, status=status.HTTP_201_CREATED)
+
+
+# ---------------------------------------------------------------------------
+# Detalle y actualización de un usuario de la empresa
+# ---------------------------------------------------------------------------
+
+class UserDetailView(APIView):
+    """
+    GET   /api/v1/auth/users/<pk>/ — obtiene un usuario de la empresa.
+    PATCH /api/v1/auth/users/<pk>/ — actualiza campos permitidos.
+    """
+
+    permission_classes = [IsAuthenticated, IsCompanyAdmin]
+
+    def get(self, request, pk):
+        user = UserService.get_user(request.user.company, str(pk))
+        return Response(UserListSerializer(user).data, status=status.HTTP_200_OK)
+
+    def patch(self, request, pk):
+        serializer = UserUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = UserService.update_user(request.user.company, str(pk), serializer.validated_data)
+        return Response(UserListSerializer(user).data, status=status.HTTP_200_OK)
 
 
 # ---------------------------------------------------------------------------

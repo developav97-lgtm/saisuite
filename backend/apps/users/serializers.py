@@ -138,6 +138,22 @@ class UserListSerializer(serializers.ModelSerializer):
 
 
 # ---------------------------------------------------------------------------
+# Actualización de usuario (PATCH)
+# ---------------------------------------------------------------------------
+
+class UserUpdateSerializer(serializers.Serializer):
+    """Campos que company_admin puede modificar en un usuario de su empresa."""
+
+    first_name = serializers.CharField(max_length=150, required=False)
+    last_name  = serializers.CharField(max_length=150, required=False)
+    role       = serializers.ChoiceField(
+        choices=['seller', 'collector', 'viewer', 'company_admin'],
+        required=False,
+    )
+    is_active  = serializers.BooleanField(required=False)
+
+
+# ---------------------------------------------------------------------------
 # Cambio de empresa activa
 # ---------------------------------------------------------------------------
 
