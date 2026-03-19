@@ -33,6 +33,10 @@ export class AdminService {
     return this.http.patch<AdminUser>(`/api/v1/auth/users/${id}/`, { is_active: false });
   }
 
+  activateUser(id: string): Observable<AdminUser> {
+    return this.http.patch<AdminUser>(`/api/v1/auth/users/${id}/`, { is_active: true });
+  }
+
   // ── Company ─────────────────────────────────────────────────────────────
 
   getCompanySettings(): Observable<CompanySettings> {

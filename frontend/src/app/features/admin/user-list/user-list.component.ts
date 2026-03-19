@@ -36,7 +36,10 @@ export class UserListComponent implements OnInit {
   readonly loading = signal(false);
 
   readonly displayedColumns = ['nombre', 'email', 'rol', 'estado', 'acciones'];
-  readonly roleLabels = ROLE_LABELS;
+
+  getRoleLabel(role: string): string {
+    return ROLE_LABELS[role as keyof typeof ROLE_LABELS] ?? role;
+  }
 
   ngOnInit(): void {
     this.load();
@@ -66,13 +69,32 @@ export class UserListComponent implements OnInit {
       this.adminService.deactivateUser(user.id).subscribe({
         next: (updated) => {
           this.users.update(list => list.map(u => u.id === updated.id ? updated : u));
-          this.snackBar.open('Usuario desactivado.', 'Cerrar', {
-            duration: 3000, panelClass: ['snack-success'],
-          });
+          this.snackBar.open('Usuario desactivado.', 'Cerrar', { duration: 3000 });
         },
-        error: () => this.snackBar.open('No se pudo desactivar.', 'Cerrar', {
-          duration: 5000, panelClass: ['snack-error'],
-        }),
+        error: () => this.snackBar.open('No se pudo desactivar.', 'Cerrar', { duration: 5000 }),
+      });
+    });
+  }
+
+  confirmarActivar(user: AdminUser): void {
+    if (user.is_active) return;
+    const ref = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        header: 'Activar usuario',
+        message: `¿Reactivar al usuario "${user.full_name}"? Podrá ingresar al sistema nuevamente.`,
+        acceptLabel: 'Activar',
+        acceptColor: 'primary',
+      },
+      width: '400px',
+    });
+    ref.afterClosed().subscribe((ok: boolean) => {
+      if (!ok) return;
+      this.adminService.activateUser(user.id).subscribe({
+        next: (updated) => {
+          this.users.update(list => list.map(u => u.id === updated.id ? updated : u));
+          this.snackBar.open('Usuario activado.', 'Cerrar', { duration: 3000 });
+        },
+        error: () => this.snackBar.open('No se pudo activar.', 'Cerrar', { duration: 5000 }),
       });
     });
   }

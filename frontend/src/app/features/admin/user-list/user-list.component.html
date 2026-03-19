@@ -70,6 +70,12 @@
               matTooltip="Desactivar">
               <mat-icon>person_off</mat-icon>
             </button>
+          } @else {
+            <button mat-icon-button color="primary"
+              (click)="confirmarActivar(u)"
+              matTooltip="Activar">
+              <mat-icon>person_check</mat-icon>
+            </button>
           }
         </td>
       </ng-container>
