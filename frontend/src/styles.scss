@@ -337,8 +337,6 @@ mat-card.mat-mdc-card {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  width: 100%;          // necesario: el <td> es block pero el div flex no hereda el ancho
-  box-sizing: border-box;
   padding: 4rem 2rem;
   text-align: center;
   color: var(--sc-text-muted);

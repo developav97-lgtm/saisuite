@@ -80,18 +80,10 @@
   cursor: pointer;
 }
 
-// ── Fila sin datos ─────────────────────────────────────────────
-// Angular Material mat-table usa flex/grid, el <tr *matNoDataRow>
-// es HTML nativo: el <td> no hereda el ancho completo automáticamente.
-.mat-mdc-no-data-row {
-  // Sin hover: no tiene sentido en estado vacío
-  &:hover { background: transparent !important; cursor: default; }
-
-  td {
-    // Convertir la celda en bloque que ocupe todo el ancho de la tabla
-    display: block !important;
-    width: 100% !important;
-    box-sizing: border-box;
-    padding: 0 !important; // sc-empty-state tiene su propio padding
-  }
+// ── Empty state ────────────────────────────────────────────────
+// Fuera del mat-table para evitar restricciones de colspan/flex-column
+.pl-empty {
+  border: 1px solid var(--sc-surface-border);
+  border-top: none;
+  border-radius: 0 0 var(--sc-radius) var(--sc-radius);
 }

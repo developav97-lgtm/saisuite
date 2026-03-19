@@ -1,31 +1,40 @@
 <div class="sc-page">
+
+  <!-- Header -->
   <div class="sc-page-header">
     <h1 class="sc-page-header__title">Proyectos</h1>
     <button mat-raised-button color="primary" (click)="nuevoProyecto()">
-      <mat-icon>add</mat-icon> Nuevo proyecto
+      <mat-icon>add</mat-icon>
+      Nuevo proyecto
     </button>
   </div>
 
-  <!-- Filtros -->
-  <div class="pl-filters">
-    <mat-form-field appearance="outline" class="pl-filters__search">
-      <mat-label>Buscar por código, nombre o cliente...</mat-label>
-      <input matInput [ngModel]="searchText()" (ngModelChange)="searchText.set($event)" (keyup.enter)="onSearch()" />
-      <mat-icon matSuffix>search</mat-icon>
+  <!-- Filtros en card -->
+  <div class="pl-filters-card sc-card">
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="pl-search">
+      <mat-label>Buscar por código, nombre o cliente…</mat-label>
+      <input matInput [ngModel]="searchText()"
+        (ngModelChange)="searchText.set($event)"
+        (keyup.enter)="onSearch()" />
+      <button mat-icon-button matSuffix (click)="onSearch()" aria-label="Buscar">
+        <mat-icon>search</mat-icon>
+      </button>
     </mat-form-field>
 
-    <mat-form-field appearance="outline" class="pl-filters__dropdown">
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="pl-filter">
       <mat-label>Estado</mat-label>
-      <mat-select [ngModel]="estadoFilter()" (ngModelChange)="estadoFilter.set($event); onFilterChange()">
+      <mat-select [ngModel]="estadoFilter()"
+        (ngModelChange)="estadoFilter.set($event); onFilterChange()">
         @for (opt of estadoOptions; track opt.value) {
           <mat-option [value]="opt.value">{{ opt.label }}</mat-option>
         }
       </mat-select>
     </mat-form-field>
 
-    <mat-form-field appearance="outline" class="pl-filters__dropdown">
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="pl-filter">
       <mat-label>Tipo</mat-label>
-      <mat-select [ngModel]="tipoFilter()" (ngModelChange)="tipoFilter.set($event); onFilterChange()">
+      <mat-select [ngModel]="tipoFilter()"
+        (ngModelChange)="tipoFilter.set($event); onFilterChange()">
         @for (opt of tipoOptions; track opt.value) {
           <mat-option [value]="opt.value">{{ opt.label }}</mat-option>
         }
@@ -33,9 +42,9 @@
     </mat-form-field>
   </div>
 
-  <!-- Loading bar -->
+  <!-- Progress bar -->
   @if (loading()) {
-    <mat-progress-bar mode="indeterminate" />
+    <mat-progress-bar mode="indeterminate" class="pl-progress" />
   }
 
   <!-- Tabla -->
@@ -43,17 +52,21 @@
 
     <ng-container matColumnDef="codigo">
       <mat-header-cell *matHeaderCellDef>Código</mat-header-cell>
-      <mat-cell *matCellDef="let p"><span class="pl-codigo">{{ p.codigo }}</span></mat-cell>
+      <mat-cell *matCellDef="let p">
+        <span class="pl-codigo">{{ p.codigo }}</span>
+      </mat-cell>
     </ng-container>
 
     <ng-container matColumnDef="nombre">
       <mat-header-cell *matHeaderCellDef>Nombre</mat-header-cell>
-      <mat-cell *matCellDef="let p">{{ p.nombre }}</mat-cell>
+      <mat-cell *matCellDef="let p" class="pl-cell-nombre">{{ p.nombre }}</mat-cell>
     </ng-container>
 
     <ng-container matColumnDef="tipo">
       <mat-header-cell *matHeaderCellDef>Tipo</mat-header-cell>
-      <mat-cell *matCellDef="let p">{{ p.tipo }}</mat-cell>
+      <mat-cell *matCellDef="let p">
+        <span class="pl-tipo-chip">{{ p.tipo }}</span>
+      </mat-cell>
     </ng-container>
 
     <ng-container matColumnDef="estado">
@@ -79,37 +92,38 @@
     </ng-container>
 
     <ng-container matColumnDef="presupuesto">
-      <mat-header-cell *matHeaderCellDef class="pl-col-presupuesto">Presupuesto</mat-header-cell>
-      <mat-cell *matCellDef="let p" class="pl-col-presupuesto">{{ formatCurrency(p.presupuesto_total) }}</mat-cell>
+      <mat-header-cell *matHeaderCellDef class="pl-col-right">Presupuesto</mat-header-cell>
+      <mat-cell *matCellDef="let p" class="pl-col-right pl-presupuesto">
+        {{ formatCurrency(p.presupuesto_total) }}
+      </mat-cell>
     </ng-container>
 
     <ng-container matColumnDef="acciones">
-      <mat-header-cell *matHeaderCellDef class="pl-col-acciones">Acciones</mat-header-cell>
+      <mat-header-cell *matHeaderCellDef class="pl-col-acciones"></mat-header-cell>
       <mat-cell *matCellDef="let p" class="pl-col-acciones">
         <button mat-icon-button matTooltip="Ver detalle" (click)="verDetalle(p.id)">
-          <mat-icon>visibility</mat-icon>
+          <mat-icon>chevron_right</mat-icon>
         </button>
         <button mat-icon-button matTooltip="Eliminar" color="warn" (click)="confirmarEliminar(p)">
-          <mat-icon>delete</mat-icon>
+          <mat-icon>delete_outline</mat-icon>
         </button>
       </mat-cell>
     </ng-container>
 
-    <mat-header-row *matHeaderRowDef="displayedColumns"></mat-header-row>
-    <mat-row *matRowDef="let row; columns: displayedColumns;"></mat-row>
-
-    <tr class="mat-row" *matNoDataRow>
-      <td [attr.colspan]="displayedColumns.length">
-        <div class="sc-empty-state">
-          <mat-icon>work</mat-icon>
-          <p>No hay proyectos que coincidan con los filtros.</p>
-          <button mat-raised-button color="primary" (click)="nuevoProyecto()">
-            <mat-icon>add</mat-icon> Nuevo proyecto
-          </button>
-        </div>
-      </td>
-    </tr>
+    <mat-header-row *matHeaderRowDef="displayedColumns" />
+    <mat-row *matRowDef="let row; columns: displayedColumns;" class="pl-row" />
   </mat-table>
+
+  <!-- Empty state fuera del mat-table para garantizar centrado correcto -->
+  @if (!loading() && proyectos().length === 0) {
+    <div class="sc-empty-state pl-empty">
+      <mat-icon>work_outline</mat-icon>
+      <p>No hay proyectos que coincidan con los filtros.</p>
+      <button mat-raised-button color="primary" (click)="nuevoProyecto()">
+        <mat-icon>add</mat-icon> Nuevo proyecto
+      </button>
+    </div>
+  }
 
   <mat-paginator
     [length]="totalCount()"
@@ -118,4 +132,5 @@
     (page)="onPage($event)"
     showFirstLastButtons
   />
+
 </div>
