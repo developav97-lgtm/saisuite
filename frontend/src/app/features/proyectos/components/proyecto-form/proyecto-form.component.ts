@@ -1,17 +1,20 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, inject, signal, computed } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
+import { ReactiveFormsModule, FormBuilder, FormControl, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
+import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { startWith, map } from 'rxjs/operators';
 import { ProyectoService } from '../../services/proyecto.service';
 import { ProyectoDetail, TipoProyecto, TIPO_LABELS } from '../../models/proyecto.model';
 import { AdminService } from '../../../admin/services/admin.service';
@@ -27,7 +30,8 @@ interface SelectOption { label: string; value: string; }
   imports: [
     CommonModule, ReactiveFormsModule,
     MatButtonModule, MatFormFieldModule, MatInputModule,
-    MatSelectModule, MatDatepickerModule, MatNativeDateModule,
+    MatSelectModule, MatAutocompleteModule,
+    MatDatepickerModule, MatNativeDateModule,
     MatCardModule, MatIconModule, MatProgressSpinnerModule,
   ],
 })
@@ -44,6 +48,37 @@ export class ProyectoFormComponent implements OnInit {
   readonly proyectoId = signal<string | null>(null);
   readonly saving     = signal(false);
   readonly usuarios   = signal<AdminUser[]>([]);
+
+  // Controles de texto para el autocomplete (muestran el nombre, el form guarda el UUID)
+  readonly gerenteSearch     = new FormControl('');
+  readonly coordinadorSearch = new FormControl('');
+
+  // Listas filtradas según lo que escribe el usuario
+  private readonly gerenteInput$     = this.gerenteSearch.valueChanges.pipe(startWith(''));
+  private readonly coordinadorInput$ = this.coordinadorSearch.valueChanges.pipe(startWith(''));
+
+  readonly filteredGerentes     = toSignal(
+    this.gerenteInput$.pipe(map(q => this._filter(q ?? ''))),
+    { initialValue: [] as AdminUser[] },
+  );
+  readonly filteredCoordinadores = toSignal(
+    this.coordinadorInput$.pipe(map(q => this._filter(q ?? ''))),
+    { initialValue: [] as AdminUser[] },
+  );
+
+  private _filter(query: string): AdminUser[] {
+    const q = query.toLowerCase();
+    return this.usuarios().filter(u =>
+      (u.full_name || u.email).toLowerCase().includes(q) || u.email.toLowerCase().includes(q),
+    );
+  }
+
+  /** Muestra el nombre en el input tras seleccionar */
+  displayUser = (userId: string | null): string => {
+    if (!userId) return '';
+    const u = this.usuarios().find(x => x.id === userId);
+    return u ? (u.full_name || u.email) : userId;
+  };
 
   readonly tipoOptions: SelectOption[] = Object.entries(TIPO_LABELS).map(([value, label]) => ({ label, value }));
 
@@ -64,10 +99,17 @@ export class ProyectoFormComponent implements OnInit {
   });
 
   ngOnInit(): void {
-    // Cargar usuarios para los selects de equipo
+    // Cargar usuarios para los autocompletes de equipo
     this.adminService.listUsers().subscribe({
-      next: (users) => this.usuarios.set(users.filter(u => u.is_active)),
-      error: () => { /* silencioso: si falla queda vacío */ },
+      next: (users) => {
+        this.usuarios.set(users.filter(u => u.is_active));
+        // Si ya hay valores en el form (modo edición que cargó antes), sincronizar el texto
+        const gId = this.form.controls.gerente.value;
+        const cId = this.form.controls.coordinador.value;
+        if (gId) this.gerenteSearch.setValue(this.displayUser(gId), { emitEvent: false });
+        if (cId) this.coordinadorSearch.setValue(this.displayUser(cId), { emitEvent: false });
+      },
+      error: () => { /* silencioso */ },
     });
 
     const id = this.route.snapshot.paramMap.get('id');
@@ -91,6 +133,14 @@ export class ProyectoFormComponent implements OnInit {
       },
       error: () => this.snackBar.open('No se pudo cargar el proyecto.', 'Cerrar', { duration: 4000, panelClass: ['snack-error'] }),
     });
+  }
+
+  onGerenteSelected(userId: string): void {
+    this.form.controls.gerente.setValue(userId);
+  }
+
+  onCoordinadorSelected(userId: string | null): void {
+    this.form.controls.coordinador.setValue(userId);
   }
 
   guardar(): void {

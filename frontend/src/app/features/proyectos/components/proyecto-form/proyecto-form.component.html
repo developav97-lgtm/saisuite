@@ -137,10 +137,16 @@
         </div>
         <div class="sc-card__body sc-card__body--gap">
 
+          <!-- Gerente: autocomplete con búsqueda -->
           <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
             <mat-label>Gerente *</mat-label>
-            <mat-select formControlName="gerente">
-              @for (u of usuarios(); track u.id) {
+            <mat-icon matPrefix class="pf-field-icon">manage_accounts</mat-icon>
+            <input matInput [formControl]="gerenteSearch"
+              [matAutocomplete]="acGerente"
+              placeholder="Buscar usuario…" />
+            <mat-autocomplete #acGerente="matAutocomplete"
+              (optionSelected)="onGerenteSelected($event.option.value)">
+              @for (u of filteredGerentes(); track u.id) {
                 <mat-option [value]="u.id">
                   <span class="pf-user-option">
                     <span class="pf-user-option__avatar">{{ (u.full_name || u.email).charAt(0).toUpperCase() }}</span>
@@ -148,17 +154,27 @@
                   </span>
                 </mat-option>
               }
-            </mat-select>
+            </mat-autocomplete>
             @if (form.get('gerente')?.invalid && form.get('gerente')?.touched) {
               <mat-error>Selecciona el gerente del proyecto.</mat-error>
             }
           </mat-form-field>
 
+          <!-- Coordinador: autocomplete con búsqueda + opción vacía -->
           <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
             <mat-label>Coordinador</mat-label>
-            <mat-select formControlName="coordinador">
-              <mat-option [value]="null">— Sin coordinador —</mat-option>
-              @for (u of usuarios(); track u.id) {
+            <mat-icon matPrefix class="pf-field-icon">person</mat-icon>
+            <input matInput [formControl]="coordinadorSearch"
+              [matAutocomplete]="acCoordinador"
+              placeholder="Opcional — buscar usuario…" />
+            <mat-autocomplete #acCoordinador="matAutocomplete"
+              (optionSelected)="onCoordinadorSelected($event.option.value)">
+              <mat-option [value]="null">
+                <span class="pf-user-option pf-user-option--empty">
+                  <mat-icon>person_off</mat-icon> Sin coordinador
+                </span>
+              </mat-option>
+              @for (u of filteredCoordinadores(); track u.id) {
                 <mat-option [value]="u.id">
                   <span class="pf-user-option">
                     <span class="pf-user-option__avatar">{{ (u.full_name || u.email).charAt(0).toUpperCase() }}</span>
@@ -166,7 +182,7 @@
                   </span>
                 </mat-option>
               }
-            </mat-select>
+            </mat-autocomplete>
           </mat-form-field>
 
         </div>
