@@ -14,6 +14,8 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ProyectoService } from '../../services/proyecto.service';
 import { ProyectoDetail, TipoProyecto, TIPO_LABELS } from '../../models/proyecto.model';
+import { AdminService } from '../../../admin/services/admin.service';
+import { AdminUser } from '../../../admin/models/admin.models';
 
 interface SelectOption { label: string; value: string; }
 
@@ -36,9 +38,12 @@ export class ProyectoFormComponent implements OnInit {
   private readonly fb              = inject(FormBuilder);
   private readonly snackBar        = inject(MatSnackBar);
 
+  private readonly adminService    = inject(AdminService);
+
   readonly editMode   = signal(false);
   readonly proyectoId = signal<string | null>(null);
   readonly saving     = signal(false);
+  readonly usuarios   = signal<AdminUser[]>([]);
 
   readonly tipoOptions: SelectOption[] = Object.entries(TIPO_LABELS).map(([value, label]) => ({ label, value }));
 
@@ -59,6 +64,12 @@ export class ProyectoFormComponent implements OnInit {
   });
 
   ngOnInit(): void {
+    // Cargar usuarios para los selects de equipo
+    this.adminService.listUsers().subscribe({
+      next: (users) => this.usuarios.set(users.filter(u => u.is_active)),
+      error: () => { /* silencioso: si falla queda vacío */ },
+    });
+
     const id = this.route.snapshot.paramMap.get('id');
     if (id) { this.editMode.set(true); this.proyectoId.set(id); this.loadProyecto(id); }
   }

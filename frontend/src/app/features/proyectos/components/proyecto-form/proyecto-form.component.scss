@@ -48,6 +48,27 @@
   margin-right: 0.4rem;
 }
 
+// ── User option (dentro de mat-select) ────────────────────────
+.pf-user-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+
+  &__avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.375rem;
+    height: 1.375rem;
+    border-radius: 50%;
+    background: var(--sc-primary-light);
+    color: var(--sc-primary);
+    font-size: 0.625rem;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+}
+
 // ── AIU row ───────────────────────────────────────────────────
 .pf-aiu-row {
   display: flex;

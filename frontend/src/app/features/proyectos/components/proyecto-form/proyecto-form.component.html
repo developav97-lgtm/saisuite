@@ -136,16 +136,39 @@
           <span class="sc-card__title">Equipo</span>
         </div>
         <div class="sc-card__body sc-card__body--gap">
+
           <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
-            <mat-label>Gerente (UUID)</mat-label>
-            <input matInput formControlName="gerente" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" />
-            <mat-hint>ID del usuario responsable</mat-hint>
+            <mat-label>Gerente *</mat-label>
+            <mat-select formControlName="gerente">
+              @for (u of usuarios(); track u.id) {
+                <mat-option [value]="u.id">
+                  <span class="pf-user-option">
+                    <span class="pf-user-option__avatar">{{ (u.full_name || u.email).charAt(0).toUpperCase() }}</span>
+                    {{ u.full_name || u.email }}
+                  </span>
+                </mat-option>
+              }
+            </mat-select>
+            @if (form.get('gerente')?.invalid && form.get('gerente')?.touched) {
+              <mat-error>Selecciona el gerente del proyecto.</mat-error>
+            }
           </mat-form-field>
 
           <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
-            <mat-label>Coordinador (UUID)</mat-label>
-            <input matInput formControlName="coordinador" placeholder="Opcional" />
+            <mat-label>Coordinador</mat-label>
+            <mat-select formControlName="coordinador">
+              <mat-option [value]="null">— Sin coordinador —</mat-option>
+              @for (u of usuarios(); track u.id) {
+                <mat-option [value]="u.id">
+                  <span class="pf-user-option">
+                    <span class="pf-user-option__avatar">{{ (u.full_name || u.email).charAt(0).toUpperCase() }}</span>
+                    {{ u.full_name || u.email }}
+                  </span>
+                </mat-option>
+              }
+            </mat-select>
           </mat-form-field>
+
         </div>
       </div>
 
