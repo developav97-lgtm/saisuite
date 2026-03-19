@@ -1,7 +1,10 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { AdminUser, CompanySettings, CreateUserDto } from '../models/admin.models';
+
+interface Paginated<T> { count: number; next: string | null; previous: string | null; results: T[]; }
 
 @Injectable({ providedIn: 'root' })
 export class AdminService {
@@ -10,7 +13,8 @@ export class AdminService {
   // ── Users ───────────────────────────────────────────────────────────────
 
   listUsers(): Observable<AdminUser[]> {
-    return this.http.get<AdminUser[]>('/api/v1/auth/users/');
+    return this.http.get<Paginated<AdminUser>>('/api/v1/auth/users/')
+      .pipe(map(r => r.results ?? (r as unknown as AdminUser[])));
   }
 
   getUser(id: string): Observable<AdminUser> {
