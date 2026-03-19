@@ -8,6 +8,7 @@ from rest_framework import serializers
 from apps.proyectos.models import (
     Proyecto, Fase, TerceroProyecto, DocumentoContable, Hito,
     TipoProyecto, EstadoProyecto, RolTercero, TipoDocumento,
+    Actividad, ActividadProyecto, TipoActividad,
 )
 
 logger = logging.getLogger(__name__)
@@ -158,9 +159,11 @@ class ProyectoDetailSerializer(serializers.ModelSerializer):
 class ProyectoCreateUpdateSerializer(serializers.ModelSerializer):
     """Serializer de escritura para proyectos."""
     # codigo es opcional — el service lo genera automáticamente si no se provee
-    codigo      = serializers.CharField(max_length=50, required=False, allow_blank=True)
-    gerente     = serializers.UUIDField()
-    coordinador = serializers.UUIDField(required=False, allow_null=True)
+    codigo          = serializers.CharField(max_length=50, required=False, allow_blank=True)
+    gerente         = serializers.UUIDField()
+    coordinador     = serializers.UUIDField(required=False, allow_null=True)
+    # consecutivo_id: UUID del ConfiguracionConsecutivo a usar para generar el código
+    consecutivo_id  = serializers.UUIDField(required=False, allow_null=True, write_only=True)
 
     class Meta:
         model  = Proyecto
@@ -172,6 +175,7 @@ class ProyectoCreateUpdateSerializer(serializers.ModelSerializer):
             'fecha_inicio_real', 'fecha_fin_real',
             'presupuesto_total',
             'porcentaje_administracion', 'porcentaje_imprevistos', 'porcentaje_utilidad',
+            'consecutivo_id',
         ]
 
     def validate(self, attrs):
@@ -337,4 +341,122 @@ class GenerarFacturaSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 'Debe confirmar la solicitud de facturación.'
             )
+        return value
+
+
+# ──────────────────────────────────────────────
+# Actividades — catálogo global
+# ──────────────────────────────────────────────
+
+class ActividadListSerializer(serializers.ModelSerializer):
+    """Serializer de listado de actividades — campos mínimos para tabla."""
+    tipo_display = serializers.CharField(source='get_tipo_display', read_only=True)
+
+    class Meta:
+        model  = Actividad
+        fields = [
+            'id', 'codigo', 'nombre', 'tipo', 'tipo_display',
+            'unidad_medida', 'costo_unitario_base', 'activo', 'created_at',
+        ]
+        read_only_fields = ['id', 'created_at']
+
+
+class ActividadDetailSerializer(serializers.ModelSerializer):
+    """Serializer de detalle de actividad — todos los campos."""
+    tipo_display = serializers.CharField(source='get_tipo_display', read_only=True)
+
+    class Meta:
+        model  = Actividad
+        fields = [
+            'id', 'codigo', 'nombre', 'descripcion',
+            'tipo', 'tipo_display', 'unidad_medida', 'costo_unitario_base',
+            'saiopen_actividad_id', 'sincronizado_con_saiopen',
+            'activo', 'created_at', 'updated_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+
+class ActividadCreateUpdateSerializer(serializers.ModelSerializer):
+    """Serializer de escritura para el catálogo de actividades."""
+    codigo         = serializers.CharField(max_length=50, required=False, allow_blank=True)
+    # consecutivo_id: UUID del ConfiguracionConsecutivo a usar para generar el código
+    consecutivo_id = serializers.UUIDField(required=False, allow_null=True, write_only=True)
+
+    class Meta:
+        model  = Actividad
+        fields = [
+            'codigo', 'nombre', 'descripcion',
+            'tipo', 'unidad_medida', 'costo_unitario_base',
+            'consecutivo_id',
+        ]
+
+    def validate_costo_unitario_base(self, value):
+        from decimal import Decimal
+        if value < Decimal('0'):
+            raise serializers.ValidationError('El costo unitario no puede ser negativo.')
+        return value
+
+
+# ──────────────────────────────────────────────
+# Actividades — asignación a proyecto
+# ──────────────────────────────────────────────
+
+class ActividadProyectoSerializer(serializers.ModelSerializer):
+    """Serializer de lectura para actividades asignadas a un proyecto."""
+    actividad_codigo       = serializers.CharField(source='actividad.codigo', read_only=True)
+    actividad_nombre       = serializers.CharField(source='actividad.nombre', read_only=True)
+    actividad_unidad_medida = serializers.CharField(source='actividad.unidad_medida', read_only=True)
+    actividad_tipo         = serializers.CharField(source='actividad.tipo', read_only=True)
+    fase_nombre            = serializers.CharField(source='fase.nombre', read_only=True, default=None)
+    presupuesto_total      = serializers.SerializerMethodField()
+
+    class Meta:
+        model  = ActividadProyecto
+        fields = [
+            'id', 'proyecto', 'actividad',
+            'actividad_codigo', 'actividad_nombre',
+            'actividad_unidad_medida', 'actividad_tipo',
+            'fase', 'fase_nombre',
+            'cantidad_planificada', 'cantidad_ejecutada',
+            'costo_unitario', 'presupuesto_total',
+            'porcentaje_avance', 'created_at',
+        ]
+        read_only_fields = ['id', 'proyecto', 'created_at']
+
+    def get_presupuesto_total(self, obj: ActividadProyecto) -> str:
+        return str(obj.presupuesto_total)
+
+
+class ActividadProyectoCreateUpdateSerializer(serializers.ModelSerializer):
+    """Serializer de escritura para asignar/actualizar actividades en un proyecto."""
+
+    class Meta:
+        model  = ActividadProyecto
+        fields = [
+            'actividad', 'fase',
+            'cantidad_planificada', 'cantidad_ejecutada',
+            'costo_unitario', 'porcentaje_avance',
+        ]
+
+    def validate_fase(self, fase):
+        """La fase debe pertenecer al mismo proyecto."""
+        proyecto = self.context.get('proyecto')
+        if fase and proyecto and fase.proyecto_id != proyecto.id:
+            raise serializers.ValidationError(
+                'La fase debe pertenecer al mismo proyecto.'
+            )
+        return fase
+
+    def validate_porcentaje_avance(self, value):
+        from decimal import Decimal
+        if not (Decimal('0') <= value <= Decimal('100')):
+            raise serializers.ValidationError(
+                'El porcentaje de avance debe estar entre 0 y 100.'
+            )
+        return value
+
+    def validate_cantidad_planificada(self, value):
+        from decimal import Decimal
+        if value < Decimal('0'):
+            raise serializers.ValidationError('La cantidad no puede ser negativa.')
         return value

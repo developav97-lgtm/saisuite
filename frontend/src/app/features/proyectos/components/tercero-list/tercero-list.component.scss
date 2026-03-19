@@ -33,6 +33,13 @@
   text-align: center;
 }
 
+.tl-empty {
+  border: 1px solid var(--sc-surface-border);
+  border-radius: var(--sc-radius);
+  background: var(--sc-surface-card);
+  box-shadow: var(--sc-shadow-sm);
+}
+
 .tl-form {
   min-width: 420px;
   padding-top: 0.5rem;

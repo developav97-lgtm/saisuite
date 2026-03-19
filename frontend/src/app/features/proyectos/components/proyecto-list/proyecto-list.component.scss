@@ -10,7 +10,7 @@
 
 .pl-search {
   flex: 1;
-  min-width: 220px;
+  min-width: 200px;
 }
 
 .pl-filter {
@@ -80,10 +80,85 @@
   cursor: pointer;
 }
 
+// ── Estado badge ──────────────────────────────────────────────
+.pl-estado-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 20px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+
+  &::before {
+    content: '';
+    display: block;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: currentColor;
+    flex-shrink: 0;
+  }
+
+  &--borrador      { background: rgba(158, 158, 158, 0.15); color: #9e9e9e; }
+  &--planificado   { background: rgba(33,  150, 243, 0.15); color: #42a5f5; }
+  &--en_ejecucion  { background: rgba(76,  175,  80, 0.15); color: #66bb6a; }
+  &--suspendido    { background: rgba(255, 152,   0, 0.15); color: #ffa726; }
+  &--cerrado       { background: rgba(239,  83,  80, 0.15); color: #ef5350; }
+  &--cancelado     { background: rgba(158, 158, 158, 0.12); color: #757575; }
+}
+
 // ── Empty state ────────────────────────────────────────────────
 // Fuera del mat-table para evitar restricciones de colspan/flex-column
 .pl-empty {
   border: 1px solid var(--sc-surface-border);
   border-top: none;
   border-radius: 0 0 var(--sc-radius) var(--sc-radius);
+}
+
+// ── Responsive mobile ──────────────────────────────────────────
+// En tablet (≤ 960px): ocultar columnas secundarias de baja prioridad
+@media (max-width: 960px) {
+  .mat-column-presupuesto {
+    display: none !important;
+  }
+}
+
+// En móvil (≤ 680px): tabla minimalista — solo código, nombre, estado, acciones
+@media (max-width: 680px) {
+  // Ocultar columnas que no caben
+  .mat-column-tipo,
+  .mat-column-cliente,
+  .mat-column-gerente,
+  .mat-column-fecha_fin,
+  .mat-column-presupuesto {
+    display: none !important;
+  }
+
+  // El nombre puede expandirse al máximo disponible
+  .pl-cell-nombre {
+    max-width: none;
+  }
+
+  // Filtros: que cada uno ocupe el ancho disponible para no apretarse
+  .pl-filter {
+    flex: 1;
+    min-width: 130px;
+    width: auto;
+  }
+
+  // Reducir padding de la tabla en móvil
+  .mat-mdc-cell,
+  .mat-mdc-header-cell {
+    padding: 0 0.5rem !important;
+  }
+
+  // El código no necesita tanto espacio
+  .pl-codigo {
+    font-size: 0.7rem;
+    padding: 0.1rem 0.3rem;
+  }
 }

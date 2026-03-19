@@ -112,6 +112,6 @@ export class ProyectoListComponent implements OnInit {
   }
 
   estadoClass(estado: string): string {
-    return `sc-status-chip sc-status-chip--${estado}`;
+    return `pl-estado-badge pl-estado-badge--${estado}`;
   }
 }

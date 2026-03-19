@@ -1,0 +1,92 @@
+.apl-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+
+  &__count  { font-weight: 500; }
+  &__total  { color: rgba(0,0,0,.6); font-size: 14px; }
+}
+
+.apl-loading {
+  display: flex;
+  justify-content: center;
+  padding: 48px 0;
+}
+
+.apl-table {
+  width: 100%;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.apl-mono  { font-family: monospace; font-size: 12px; font-weight: 600; margin-right: 6px; }
+.apl-nombre { font-size: 14px; }
+.apl-fase  {
+  display: block;
+  font-size: 11px;
+  color: rgba(0,0,0,.5);
+  margin-top: 2px;
+}
+
+.apl-col-right { text-align: right !important; }
+
+.apl-presupuesto { font-weight: 500; }
+
+.apl-slash       { color: rgba(0,0,0,.3); margin: 0 2px; }
+.apl-ejecutada--ok { color: #2e7d32; font-weight: 500; }
+
+.apl-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+
+  &--mano_obra   { background: #e3f2fd; color: #1565c0; }
+  &--material    { background: #e8f5e9; color: #2e7d32; }
+  &--equipo      { background: #fff3e0; color: #e65100; }
+  &--subcontrato { background: #f3e5f5; color: #6a1b9a; }
+}
+
+.apl-avance {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 100px;
+
+  mat-progress-bar { flex: 1; }
+  &__pct { font-size: 12px; min-width: 36px; text-align: right; }
+}
+
+.apl-empty {
+  margin-top: 8px;
+
+  mat-card-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 48px 24px;
+    gap: 8px;
+    color: rgba(0,0,0,.4);
+
+    mat-icon { font-size: 48px; width: 48px; height: 48px; }
+    p        { margin: 0; font-size: 16px; }
+    span     { font-size: 13px; }
+  }
+}
+
+// ── Formulario ──────────────────────────────
+.apl-form { display: flex; flex-direction: column; gap: 8px; padding-top: 8px; }
+
+.apl-form-row {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.apl-field-full { width: 100%; }
+.apl-field-half { flex: 1; }
+
+.apl-option-unit { color: rgba(0,0,0,.45); font-size: 12px; margin-left: 4px; }

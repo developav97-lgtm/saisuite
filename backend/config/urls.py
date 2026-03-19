@@ -21,5 +21,6 @@ urlpatterns = [
     path('api/v1/companies/', include('apps.companies.urls')),
     path('api/v1/sync/', include('apps.sync_agent.urls')),
     path('api/v1/integrations/', include('apps.integrations.urls')),
+    path('api/v1/core/', include('apps.core.urls')),
     path('api/v1/proyectos/', include('apps.proyectos.urls')),
 ]

@@ -11,7 +11,7 @@ from rest_framework.exceptions import ValidationError, PermissionDenied
 
 from apps.proyectos.models import (
     Proyecto, Fase, TerceroProyecto, DocumentoContable, Hito,
-    EstadoProyecto,
+    EstadoProyecto, Actividad, ActividadProyecto,
 )
 
 logger = logging.getLogger(__name__)
@@ -146,9 +146,14 @@ class ProyectoService:
             str(coordinador_id) if coordinador_id else None, company
         )
 
-        # Auto-generar código si no viene
+        # Auto-generar código: usar consecutivo seleccionado por el usuario, fallback a secuencial
+        consecutivo_id = data.pop('consecutivo_id', None)
         if not data.get('codigo'):
-            data['codigo'] = ProyectoService._generar_codigo(company)
+            from apps.core.services import generar_consecutivo
+            codigo = generar_consecutivo(str(consecutivo_id)) if consecutivo_id else None
+            if not codigo:
+                codigo = ProyectoService._generar_codigo(company)
+            data['codigo'] = codigo
 
         proyecto = Proyecto(
             company=company,
@@ -648,3 +653,129 @@ class HitoService:
             },
         )
         return hito
+
+
+# ──────────────────────────────────────────────
+# ActividadService — catálogo global
+# ──────────────────────────────────────────────
+
+class ActividadService:
+
+    @staticmethod
+    def list_actividades(company=None) -> QuerySet:
+        qs = Actividad.all_objects.filter(activo=True)
+        if company is not None:
+            qs = qs.filter(company=company)
+        return qs
+
+    @staticmethod
+    def get_actividad(pk) -> Actividad:
+        return Actividad.all_objects.get(id=pk)
+
+    @staticmethod
+    @transaction.atomic
+    def create_actividad(data: dict, user) -> Actividad:
+        company = user.company
+
+        # Auto-generar código: usar consecutivo seleccionado por el usuario, fallback a secuencial
+        consecutivo_id = data.pop('consecutivo_id', None)
+        if not data.get('codigo'):
+            from apps.core.services import generar_consecutivo
+            codigo = generar_consecutivo(str(consecutivo_id)) if consecutivo_id else None
+            if not codigo:
+                count = Actividad.all_objects.filter(company=company).count()
+                codigo = f'ACT-{str(count + 1).zfill(3)}'
+            data = {**data, 'codigo': codigo}
+
+        actividad = Actividad(company=company, **data)
+        actividad.full_clean()
+        actividad.save()
+
+        logger.info(
+            'Actividad creada',
+            extra={'actividad_id': str(actividad.id), 'codigo': actividad.codigo},
+        )
+        return actividad
+
+    @staticmethod
+    def update_actividad(actividad: Actividad, data: dict) -> Actividad:
+        for key, value in data.items():
+            setattr(actividad, key, value)
+        actividad.full_clean()
+        actividad.save()
+        logger.info('Actividad actualizada', extra={'actividad_id': str(actividad.id)})
+        return actividad
+
+    @staticmethod
+    def soft_delete_actividad(actividad: Actividad) -> None:
+        # Verificar que no tenga asignaciones activas antes de eliminar
+        asignaciones = ActividadProyecto.all_objects.filter(actividad=actividad).count()
+        if asignaciones > 0:
+            raise ValidationError(
+                f'No se puede eliminar la actividad "{actividad.codigo}" porque está '
+                f'asignada a {asignaciones} proyecto(s).'
+            )
+        actividad.activo = False
+        actividad.save(update_fields=['activo', 'updated_at'])
+        logger.info('Actividad eliminada (soft)', extra={'actividad_id': str(actividad.id)})
+
+
+# ──────────────────────────────────────────────
+# ActividadProyectoService — asignación al proyecto
+# ──────────────────────────────────────────────
+
+class ActividadProyectoService:
+
+    @staticmethod
+    def list_actividades_proyecto(proyecto: Proyecto, fase_id: str | None = None) -> QuerySet:
+        qs = (
+            ActividadProyecto.all_objects
+            .filter(proyecto=proyecto)
+            .select_related('actividad', 'fase')
+        )
+        if fase_id:
+            qs = qs.filter(fase_id=fase_id)
+        return qs
+
+    @staticmethod
+    @transaction.atomic
+    def asignar_actividad(proyecto: Proyecto, data: dict) -> ActividadProyecto:
+        # Si no se especifica costo_unitario, usar el base del catálogo
+        actividad: Actividad = data['actividad']
+        if not data.get('costo_unitario'):
+            data = {**data, 'costo_unitario': actividad.costo_unitario_base}
+
+        ap = ActividadProyecto(
+            company=proyecto.company,
+            proyecto=proyecto,
+            **data,
+        )
+        ap.full_clean()
+        ap.save()
+
+        logger.info(
+            'Actividad asignada al proyecto',
+            extra={
+                'proyecto_id': str(proyecto.id),
+                'actividad_id': str(actividad.id),
+                'actividad_codigo': actividad.codigo,
+            },
+        )
+        return ap
+
+    @staticmethod
+    def update_actividad_proyecto(ap: ActividadProyecto, data: dict) -> ActividadProyecto:
+        for key, value in data.items():
+            setattr(ap, key, value)
+        ap.full_clean()
+        ap.save()
+        logger.info('ActividadProyecto actualizada', extra={'id': str(ap.id)})
+        return ap
+
+    @staticmethod
+    def desasignar_actividad(ap: ActividadProyecto) -> None:
+        logger.info(
+            'Actividad desasignada del proyecto',
+            extra={'id': str(ap.id), 'proyecto_id': str(ap.proyecto_id)},
+        )
+        ap.delete()

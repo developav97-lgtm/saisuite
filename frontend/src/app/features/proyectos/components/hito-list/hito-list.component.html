@@ -23,88 +23,86 @@
     <mat-progress-bar mode="indeterminate" />
   }
 
-  <mat-table [dataSource]="hitos()">
-    <ng-container matColumnDef="nombre">
-      <mat-header-cell *matHeaderCellDef>Hito</mat-header-cell>
-      <mat-cell *matCellDef="let h">
-        <div class="hl-nombre">
-          <span>{{ h.nombre }}</span>
-          @if (h.descripcion) {
-            <small class="hl-desc">{{ h.descripcion }}</small>
+  @if (!loading() && hitos().length === 0) {
+    <div class="sc-empty-state hl-empty">
+      <mat-icon>flag</mat-icon>
+      <p>No hay hitos definidos. Crea el primer hito facturable desde el botón de arriba.</p>
+    </div>
+  } @else if (hitos().length > 0) {
+    <mat-table [dataSource]="hitos()">
+      <ng-container matColumnDef="nombre">
+        <mat-header-cell *matHeaderCellDef>Hito</mat-header-cell>
+        <mat-cell *matCellDef="let h">
+          <div class="hl-nombre">
+            <span>{{ h.nombre }}</span>
+            @if (h.descripcion) {
+              <small class="hl-desc">{{ h.descripcion }}</small>
+            }
+          </div>
+        </mat-cell>
+      </ng-container>
+
+      <ng-container matColumnDef="fase_nombre">
+        <mat-header-cell *matHeaderCellDef>Fase</mat-header-cell>
+        <mat-cell *matCellDef="let h">{{ h.fase_nombre ?? '—' }}</mat-cell>
+      </ng-container>
+
+      <ng-container matColumnDef="porcentaje_proyecto">
+        <mat-header-cell *matHeaderCellDef class="hl-col-right">%</mat-header-cell>
+        <mat-cell *matCellDef="let h" class="hl-col-right">
+          <span class="hl-pct-badge">{{ h.porcentaje_proyecto }}%</span>
+        </mat-cell>
+      </ng-container>
+
+      <ng-container matColumnDef="valor_facturar">
+        <mat-header-cell *matHeaderCellDef class="hl-col-right">Valor a facturar</mat-header-cell>
+        <mat-cell *matCellDef="let h" class="hl-col-right hl-valor">
+          {{ formatCurrency(h.valor_facturar) }}
+        </mat-cell>
+      </ng-container>
+
+      <ng-container matColumnDef="facturable">
+        <mat-header-cell *matHeaderCellDef class="hl-col-center">Facturable</mat-header-cell>
+        <mat-cell *matCellDef="let h" class="hl-col-center">
+          <mat-icon [style.color]="h.facturable ? '#2e7d32' : '#9e9e9e'">
+            {{ h.facturable ? 'check_circle' : 'cancel' }}
+          </mat-icon>
+        </mat-cell>
+      </ng-container>
+
+      <ng-container matColumnDef="estado_factura">
+        <mat-header-cell *matHeaderCellDef>Estado factura</mat-header-cell>
+        <mat-cell *matCellDef="let h">
+          @if (h.facturado) {
+            <span class="hl-estado-chip hl-estado-chip--facturado">
+              <mat-icon>receipt_long</mat-icon> Facturado
+            </span>
+            <small class="hl-fecha-factura">{{ formatDate(h.fecha_facturacion) }}</small>
+          } @else {
+            <span class="hl-estado-chip hl-estado-chip--pendiente">Pendiente</span>
           }
-        </div>
-      </mat-cell>
-    </ng-container>
+        </mat-cell>
+      </ng-container>
 
-    <ng-container matColumnDef="fase_nombre">
-      <mat-header-cell *matHeaderCellDef>Fase</mat-header-cell>
-      <mat-cell *matCellDef="let h">{{ h.fase_nombre ?? '—' }}</mat-cell>
-    </ng-container>
+      <ng-container matColumnDef="acciones">
+        <mat-header-cell *matHeaderCellDef class="hl-col-acciones">Acciones</mat-header-cell>
+        <mat-cell *matCellDef="let h" class="hl-col-acciones">
+          <button
+            mat-icon-button
+            [matTooltip]="h.facturado ? 'Ya facturado' : (h.facturable ? 'Generar factura' : 'No facturable')"
+            [disabled]="h.facturado || !h.facturable"
+            color="primary"
+            (click)="confirmarGenerarFactura(h)"
+          >
+            <mat-icon>receipt</mat-icon>
+          </button>
+        </mat-cell>
+      </ng-container>
 
-    <ng-container matColumnDef="porcentaje_proyecto">
-      <mat-header-cell *matHeaderCellDef class="hl-col-right">%</mat-header-cell>
-      <mat-cell *matCellDef="let h" class="hl-col-right">
-        <span class="hl-pct-badge">{{ h.porcentaje_proyecto }}%</span>
-      </mat-cell>
-    </ng-container>
-
-    <ng-container matColumnDef="valor_facturar">
-      <mat-header-cell *matHeaderCellDef class="hl-col-right">Valor a facturar</mat-header-cell>
-      <mat-cell *matCellDef="let h" class="hl-col-right hl-valor">
-        {{ formatCurrency(h.valor_facturar) }}
-      </mat-cell>
-    </ng-container>
-
-    <ng-container matColumnDef="facturable">
-      <mat-header-cell *matHeaderCellDef class="hl-col-center">Facturable</mat-header-cell>
-      <mat-cell *matCellDef="let h" class="hl-col-center">
-        <mat-icon [style.color]="h.facturable ? '#2e7d32' : '#9e9e9e'">
-          {{ h.facturable ? 'check_circle' : 'cancel' }}
-        </mat-icon>
-      </mat-cell>
-    </ng-container>
-
-    <ng-container matColumnDef="estado_factura">
-      <mat-header-cell *matHeaderCellDef>Estado factura</mat-header-cell>
-      <mat-cell *matCellDef="let h">
-        @if (h.facturado) {
-          <span class="hl-estado-chip hl-estado-chip--facturado">
-            <mat-icon>receipt_long</mat-icon> Facturado
-          </span>
-          <small class="hl-fecha-factura">{{ formatDate(h.fecha_facturacion) }}</small>
-        } @else {
-          <span class="hl-estado-chip hl-estado-chip--pendiente">Pendiente</span>
-        }
-      </mat-cell>
-    </ng-container>
-
-    <ng-container matColumnDef="acciones">
-      <mat-header-cell *matHeaderCellDef class="hl-col-acciones">Acciones</mat-header-cell>
-      <mat-cell *matCellDef="let h" class="hl-col-acciones">
-        <button
-          mat-icon-button
-          [matTooltip]="h.facturado ? 'Ya facturado' : (h.facturable ? 'Generar factura' : 'No facturable')"
-          [disabled]="h.facturado || !h.facturable"
-          color="primary"
-          (click)="confirmarGenerarFactura(h)"
-        >
-          <mat-icon>receipt</mat-icon>
-        </button>
-      </mat-cell>
-    </ng-container>
-
-    <mat-header-row *matHeaderRowDef="displayedColumns"></mat-header-row>
-    <mat-row *matRowDef="let row; columns: displayedColumns;"></mat-row>
-
-    <tr class="mat-row" *matNoDataRow>
-      <td [attr.colspan]="displayedColumns.length">
-        <div class="sc-empty-state">
-          <mat-icon>flag</mat-icon>
-          <p>No hay hitos definidos. Crea el primer hito facturable.</p>
-        </div>
-      </td>
-    </tr>
-  </mat-table>
+      <mat-header-row *matHeaderRowDef="displayedColumns"></mat-header-row>
+      <mat-row *matRowDef="let row; columns: displayedColumns;"></mat-row>
+    </mat-table>
+  }
 </div>
 
 <!-- Dialog: nuevo hito -->

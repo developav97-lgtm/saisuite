@@ -631,6 +631,60 @@ y serializers del proyecto.
 
 ---
 
+## 2026-03-19 DEC-012: Sistema de Consecutivos Configurables
+**Fecha:** 2026-03-19
+**Estado:** Activa
+
+### Contexto
+Proyectos y Actividades necesitaban códigos auto-generados con prefijos distintos por tipo
+(PRY-0001 para proyectos tipo 'otro', OBR-0001 para 'obra_civil', MAT-0001 para materiales, etc.)
+El sistema anterior usaba un simple contador secuencial con prefijo fijo ('PRY-' para todo).
+
+### Opciones Evaluadas
+1. **Prefijos hardcodeados en services.py por tipo**
+   - Rápido de implementar
+   - No configurable sin código
+   - No extensible a otras entidades (facturas, etc.)
+
+2. **Modelo ConfiguracionConsecutivo en apps/core (ELEGIDA)**
+   - Configurable desde UI sin deployar
+   - Extensible a cualquier entidad/subtipo
+   - SELECT FOR UPDATE garantiza unicidad en concurrencia
+   - Fallback al generador anterior si no hay config
+
+### Decisión
+Modelo `ConfiguracionConsecutivo` en `apps/core` con campos: `entidad`, `subtipo`, `prefijo`,
+`ultimo_numero`, `formato` (template Python). Función `generar_consecutivo()` en `apps/core/services.py`
+con `select_for_update()`. CRUD en `/api/v1/core/consecutivos/`. Panel admin en `/admin/consecutivos`.
+
+### Razón
+La configurabilidad sin deploy es clave para un SaaS multi-tenant donde cada empresa puede
+necesitar formatos distintos. El `select_for_update()` es obligatorio para garantizar que
+dos usuarios simultáneos no generen el mismo código.
+
+### Consecuencias
+- ✅ **Positivas:**
+  - Consecutivos configurables por empresa sin deploy
+  - Un solo mecanismo para todas las entidades (proyectos, actividades, facturas futuras)
+  - Concurrencia segura con `select_for_update()`
+  - Fallback automático si no hay configuración activa
+
+- ⚠️ **Negativas:**
+  - Una query extra por creación de proyecto/actividad
+  - Requiere seed de datos por empresa nueva
+
+- 🔧 **Implementación:**
+  - `unique_together = [('company', 'entidad', 'subtipo')]`
+  - `subtipo = ''` captura entidades sin subtipo específico
+  - Seed: `scripts/create_consecutivos_demo.py`
+  - El campo `codigo` en los formularios es **readonly** — siempre auto-generado
+  - Hint muestra preview del próximo código al seleccionar tipo
+
+### Criterios de Revisión
+Revisar si se necesita reset de consecutivos por periodo (año, mes).
+
+---
+
 ## 📝 Template para Nuevas Decisiones
 
 ```markdown

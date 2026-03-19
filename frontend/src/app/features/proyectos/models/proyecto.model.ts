@@ -76,6 +76,7 @@ export interface ProyectoCreate {
   porcentaje_administracion?: string;
   porcentaje_imprevistos?: string;
   porcentaje_utilidad?: string;
+  consecutivo_id?: string | null;
 }
 
 /** Respuesta del endpoint estado-financiero */

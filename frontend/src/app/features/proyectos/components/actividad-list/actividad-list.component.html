@@ -1,0 +1,219 @@
+<div class="sc-page">
+
+  <!-- Header -->
+  <div class="sc-page-header">
+    <h1 class="sc-page-header__title">Catálogo de actividades</h1>
+    <button mat-raised-button color="primary" (click)="abrirDialogNueva()">
+      <mat-icon>add</mat-icon>
+      Nueva actividad
+    </button>
+  </div>
+
+  <!-- Filtros -->
+  <div class="al-filters-card sc-card">
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="al-search">
+      <mat-label>Buscar por código o nombre…</mat-label>
+      <input matInput [ngModel]="searchText()"
+        (ngModelChange)="searchText.set($event)"
+        (keyup.enter)="onSearch()" />
+      <button mat-icon-button matSuffix (click)="onSearch()" aria-label="Buscar">
+        <mat-icon>search</mat-icon>
+      </button>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="al-filter">
+      <mat-label>Tipo</mat-label>
+      <mat-select [ngModel]="tipoFilter()"
+        (ngModelChange)="tipoFilter.set($event); onFilterChange()">
+        @for (opt of tipoOptions; track opt.value) {
+          <mat-option [value]="opt.value">{{ opt.label }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+  </div>
+
+  <!-- Progress bar de carga -->
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate" class="al-progress" />
+  }
+
+  <!-- Tabla -->
+  <mat-table [dataSource]="actividades()" class="al-table">
+
+    <ng-container matColumnDef="codigo">
+      <mat-header-cell *matHeaderCellDef>Código</mat-header-cell>
+      <mat-cell *matCellDef="let row">
+        <span class="al-codigo">{{ row.codigo }}</span>
+      </mat-cell>
+    </ng-container>
+
+    <ng-container matColumnDef="nombre">
+      <mat-header-cell *matHeaderCellDef>Nombre</mat-header-cell>
+      <mat-cell *matCellDef="let row" class="al-cell-nombre">{{ row.nombre }}</mat-cell>
+    </ng-container>
+
+    <ng-container matColumnDef="tipo">
+      <mat-header-cell *matHeaderCellDef>Tipo</mat-header-cell>
+      <mat-cell *matCellDef="let row">
+        <span class="al-tipo-chip">{{ getTipoLabel(row.tipo) }}</span>
+      </mat-cell>
+    </ng-container>
+
+    <ng-container matColumnDef="unidad_medida">
+      <mat-header-cell *matHeaderCellDef>Unidad</mat-header-cell>
+      <mat-cell *matCellDef="let row">{{ row.unidad_medida }}</mat-cell>
+    </ng-container>
+
+    <ng-container matColumnDef="costo_unitario_base">
+      <mat-header-cell *matHeaderCellDef class="al-col-right">Costo base</mat-header-cell>
+      <mat-cell *matCellDef="let row" class="al-col-right al-presupuesto">
+        {{ formatCurrency(row.costo_unitario_base) }}
+      </mat-cell>
+    </ng-container>
+
+    <ng-container matColumnDef="acciones">
+      <mat-header-cell *matHeaderCellDef class="al-col-acciones"></mat-header-cell>
+      <mat-cell *matCellDef="let row" class="al-col-acciones">
+        <button mat-icon-button matTooltip="Editar" (click)="abrirDialogEditar(row)">
+          <mat-icon>edit</mat-icon>
+        </button>
+        <button mat-icon-button matTooltip="Eliminar" color="warn" (click)="confirmarEliminar(row)">
+          <mat-icon>delete_outline</mat-icon>
+        </button>
+      </mat-cell>
+    </ng-container>
+
+    <mat-header-row *matHeaderRowDef="displayedColumns" />
+    <mat-row *matRowDef="let row; columns: displayedColumns;" />
+  </mat-table>
+
+  <!-- Empty state fuera del mat-table -->
+  @if (!loading() && actividades().length === 0) {
+    <div class="sc-empty-state al-empty">
+      <mat-icon>construction</mat-icon>
+      <p>No hay actividades en el catálogo.</p>
+      <button mat-raised-button color="primary" (click)="abrirDialogNueva()">
+        <mat-icon>add</mat-icon> Nueva actividad
+      </button>
+    </div>
+  }
+
+  <mat-paginator
+    [length]="totalCount()"
+    [pageSize]="pageSize"
+    [pageSizeOptions]="[25, 50, 100]"
+    (page)="onPage($event)"
+    showFirstLastButtons
+  />
+
+</div>
+
+<!-- ── Dialog: formulario de actividad ── -->
+<ng-template #actividadFormTpl>
+  <h2 mat-dialog-title>{{ editingActividad() ? 'Editar actividad' : 'Nueva actividad' }}</h2>
+  <mat-dialog-content>
+    <form [formGroup]="form" class="al-form">
+
+      <!-- Fila 1: Código + Tipo -->
+      <div class="al-form-row">
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="al-field-sm">
+          <mat-label>Código</mat-label>
+          <input matInput formControlName="codigo" [placeholder]="editingActividad() ? '' : 'Auto-generado'" readonly />
+          @if (!editingActividad()) { <mat-icon matSuffix style="font-size:16px;opacity:.6">auto_awesome</mat-icon> }
+          @if (!editingActividad()) { <mat-hint>Se generará automáticamente al guardar</mat-hint> }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="al-field-grow">
+          <mat-label>Tipo</mat-label>
+          <mat-select formControlName="tipo">
+            @for (op of tipoOpciones; track op.value) {
+              <mat-option [value]="op.value">{{ op.label }}</mat-option>
+            }
+          </mat-select>
+          @if (form.get('tipo')?.hasError('required')) {
+            <mat-error>El tipo es obligatorio</mat-error>
+          }
+        </mat-form-field>
+      </div>
+
+      <!-- Consecutivo: info (1 resultado) o select (varios) — solo al crear -->
+      @if (!editingActividad() && selectedTipoForm()) {
+        @if (consecutivoUnico()) {
+          <div class="al-consecutivo-info">
+            <mat-icon class="al-consecutivo-icon">tag</mat-icon>
+            <span>Consecutivo: <strong>{{ consecutivoUnico()!.nombre }}</strong> — próx. <code>{{ consecutivoUnico()!.proximo_codigo }}</code></span>
+          </div>
+        } @else if (mostrarSelectorConsecutivo()) {
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="al-field-full">
+            <mat-label>Consecutivo</mat-label>
+            <mat-select formControlName="consecutivo_id">
+              <mat-option [value]="null">Sin consecutivo (auto)</mat-option>
+              @for (c of filteredConsecutivos(); track c.id) {
+                <mat-option [value]="c.id">{{ c.nombre }} — próx. {{ c.proximo_codigo }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+        }
+      }
+
+      <!-- Nombre -->
+      <mat-form-field appearance="outline" class="al-field-full">
+        <mat-label>Nombre</mat-label>
+        <input matInput formControlName="nombre" placeholder="Ej: Excavación manual" />
+        @if (form.get('nombre')?.hasError('required')) {
+          <mat-error>El nombre es obligatorio</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="al-field-full">
+        <mat-label>Descripción (opcional)</mat-label>
+        <textarea matInput formControlName="descripcion" rows="2"></textarea>
+      </mat-form-field>
+
+      <div class="al-form-row">
+        <mat-form-field appearance="outline" class="al-field-half">
+          <mat-label>Unidad de medida</mat-label>
+          <input matInput
+                 formControlName="unidad_medida"
+                 placeholder="hora, m², kg…"
+                 (input)="onUnidadInput($event)"
+                 [matAutocomplete]="unidadAuto" />
+          <mat-autocomplete #unidadAuto="matAutocomplete">
+            @for (u of unidadesFiltradas(); track u) {
+              <mat-option [value]="u">{{ u }}</mat-option>
+            }
+          </mat-autocomplete>
+          @if (form.get('unidad_medida')?.hasError('required')) {
+            <mat-error>La unidad es obligatoria</mat-error>
+          }
+        </mat-form-field>
+      </div>
+
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="al-field-half">
+        <mat-label>Costo unitario base</mat-label>
+        <span matTextPrefix>$&nbsp;</span>
+        <input matInput
+               [value]="costoDisplay()"
+               (input)="onCostoInput($event)"
+               (focus)="onCostoFocus()"
+               (blur)="onCostoBlur()"
+               placeholder="0"
+               inputmode="numeric" />
+        <mat-hint>Referencia de precio. Puede diferir por proyecto.</mat-hint>
+        @if (form.get('costo_unitario_base')?.hasError('min')) {
+          <mat-error>El costo no puede ser negativo</mat-error>
+        }
+      </mat-form-field>
+
+    </form>
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button mat-stroked-button mat-dialog-close>Cancelar</button>
+    <button mat-raised-button color="primary" (click)="guardar()" [disabled]="saving()">
+      @if (saving()) {
+        <mat-progress-spinner diameter="18" mode="indeterminate"></mat-progress-spinner>
+      }
+      Guardar
+    </button>
+  </mat-dialog-actions>
+</ng-template>

@@ -2,7 +2,7 @@
 SaiSuite — Proyectos: Admin
 """
 from django.contrib import admin
-from apps.proyectos.models import Proyecto, Fase, TerceroProyecto, DocumentoContable, Hito
+from apps.proyectos.models import Proyecto, Fase, TerceroProyecto, DocumentoContable, Hito, Actividad, ActividadProyecto
 
 
 class FaseInline(admin.TabularInline):
@@ -82,3 +82,20 @@ class HitoAdmin(admin.ModelAdmin):
     list_display  = ['nombre', 'proyecto', 'porcentaje_proyecto', 'valor_facturar', 'facturado']
     list_filter   = ['facturable', 'facturado']
     search_fields = ['nombre', 'proyecto__codigo']
+
+
+@admin.register(Actividad)
+class ActividadAdmin(admin.ModelAdmin):
+    list_display  = ['codigo', 'nombre', 'company', 'tipo', 'unidad_medida', 'costo_unitario_base', 'activo']
+    list_filter   = ['tipo', 'activo', 'sincronizado_con_saiopen']
+    search_fields = ['codigo', 'nombre']
+    readonly_fields = ['id', 'created_at', 'updated_at']
+
+
+@admin.register(ActividadProyecto)
+class ActividadProyectoAdmin(admin.ModelAdmin):
+    list_display  = ['actividad', 'proyecto', 'fase', 'cantidad_planificada', 'cantidad_ejecutada', 'costo_unitario', 'porcentaje_avance']
+    list_filter   = ['actividad__tipo']
+    search_fields = ['actividad__codigo', 'actividad__nombre', 'proyecto__codigo']
+    raw_id_fields = ['proyecto', 'actividad', 'fase']
+    readonly_fields = ['id', 'created_at', 'updated_at']

@@ -17,58 +17,56 @@
     <mat-progress-bar mode="indeterminate" />
   }
 
-  <mat-table [dataSource]="documentos()">
-    <ng-container matColumnDef="tipo_documento_display">
-      <mat-header-cell *matHeaderCellDef>Tipo</mat-header-cell>
-      <mat-cell *matCellDef="let d">
-        <span class="dl-tipo-chip dl-tipo-chip--{{ d.tipo_documento }}">
-          {{ d.tipo_documento_display }}
-        </span>
-      </mat-cell>
-    </ng-container>
+  @if (!loading() && documentos().length === 0) {
+    <div class="sc-empty-state dl-empty">
+      <mat-icon>description</mat-icon>
+      <p>No hay documentos contables sincronizados para este proyecto.</p>
+      <small>Los documentos se importan automáticamente desde Saiopen.</small>
+    </div>
+  } @else if (documentos().length > 0) {
+    <mat-table [dataSource]="documentos()">
+      <ng-container matColumnDef="tipo_documento_display">
+        <mat-header-cell *matHeaderCellDef>Tipo</mat-header-cell>
+        <mat-cell *matCellDef="let d">
+          <span class="dl-tipo-chip dl-tipo-chip--{{ d.tipo_documento }}">
+            {{ d.tipo_documento_display }}
+          </span>
+        </mat-cell>
+      </ng-container>
 
-    <ng-container matColumnDef="numero_documento">
-      <mat-header-cell *matHeaderCellDef>Número</mat-header-cell>
-      <mat-cell *matCellDef="let d">{{ d.numero_documento }}</mat-cell>
-    </ng-container>
+      <ng-container matColumnDef="numero_documento">
+        <mat-header-cell *matHeaderCellDef>Número</mat-header-cell>
+        <mat-cell *matCellDef="let d">{{ d.numero_documento }}</mat-cell>
+      </ng-container>
 
-    <ng-container matColumnDef="fecha_documento">
-      <mat-header-cell *matHeaderCellDef>Fecha</mat-header-cell>
-      <mat-cell *matCellDef="let d">{{ formatDate(d.fecha_documento) }}</mat-cell>
-    </ng-container>
+      <ng-container matColumnDef="fecha_documento">
+        <mat-header-cell *matHeaderCellDef>Fecha</mat-header-cell>
+        <mat-cell *matCellDef="let d">{{ formatDate(d.fecha_documento) }}</mat-cell>
+      </ng-container>
 
-    <ng-container matColumnDef="tercero_nombre">
-      <mat-header-cell *matHeaderCellDef>Tercero</mat-header-cell>
-      <mat-cell *matCellDef="let d">{{ d.tercero_nombre }}</mat-cell>
-    </ng-container>
+      <ng-container matColumnDef="tercero_nombre">
+        <mat-header-cell *matHeaderCellDef>Tercero</mat-header-cell>
+        <mat-cell *matCellDef="let d">{{ d.tercero_nombre }}</mat-cell>
+      </ng-container>
 
-    <ng-container matColumnDef="valor_neto">
-      <mat-header-cell *matHeaderCellDef class="dl-col-right">Valor neto</mat-header-cell>
-      <mat-cell *matCellDef="let d" class="dl-col-right dl-valor">
-        {{ formatCurrency(d.valor_neto) }}
-      </mat-cell>
-    </ng-container>
+      <ng-container matColumnDef="valor_neto">
+        <mat-header-cell *matHeaderCellDef class="dl-col-right">Valor neto</mat-header-cell>
+        <mat-cell *matCellDef="let d" class="dl-col-right dl-valor">
+          {{ formatCurrency(d.valor_neto) }}
+        </mat-cell>
+      </ng-container>
 
-    <ng-container matColumnDef="acciones">
-      <mat-header-cell *matHeaderCellDef class="dl-col-acciones">Ver</mat-header-cell>
-      <mat-cell *matCellDef="let d" class="dl-col-acciones">
-        <button mat-icon-button matTooltip="Ver detalle" (click)="verDetalle(d)">
-          <mat-icon>open_in_new</mat-icon>
-        </button>
-      </mat-cell>
-    </ng-container>
+      <ng-container matColumnDef="acciones">
+        <mat-header-cell *matHeaderCellDef class="dl-col-acciones">Ver</mat-header-cell>
+        <mat-cell *matCellDef="let d" class="dl-col-acciones">
+          <button mat-icon-button matTooltip="Ver detalle" (click)="verDetalle(d)">
+            <mat-icon>open_in_new</mat-icon>
+          </button>
+        </mat-cell>
+      </ng-container>
 
-    <mat-header-row *matHeaderRowDef="displayedColumns"></mat-header-row>
-    <mat-row *matRowDef="let row; columns: displayedColumns;"></mat-row>
-
-    <tr class="mat-row" *matNoDataRow>
-      <td [attr.colspan]="displayedColumns.length">
-        <div class="sc-empty-state">
-          <mat-icon>description</mat-icon>
-          <p>No hay documentos contables sincronizados para este proyecto.</p>
-          <small>Los documentos se importan automáticamente desde Saiopen.</small>
-        </div>
-      </td>
-    </tr>
-  </mat-table>
+      <mat-header-row *matHeaderRowDef="displayedColumns"></mat-header-row>
+      <mat-row *matRowDef="let row; columns: displayedColumns;"></mat-row>
+    </mat-table>
+  }
 </div>

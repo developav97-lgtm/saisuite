@@ -36,18 +36,39 @@
     <!-- Columna principal -->
     <div class="pf-main">
 
-      <!-- Sección: Identificación -->
+      <!-- Sección: Información general -->
       <div class="sc-card">
         <div class="sc-card__header">
-          <mat-icon>fingerprint</mat-icon>
-          <span class="sc-card__title">Identificación</span>
+          <mat-icon>info</mat-icon>
+          <span class="sc-card__title">Información general</span>
         </div>
         <div class="sc-card__body">
           <div class="sc-form-grid">
             <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
               <mat-label>Código</mat-label>
-              <input matInput formControlName="codigo" placeholder="Auto-generado" />
+              <input matInput formControlName="codigo" [placeholder]="editMode() ? '' : 'Auto-generado'" />
+              @if (!editMode()) { <mat-icon matSuffix class="pf-codigo-icon">auto_awesome</mat-icon> }
+              @if (!editMode()) { <mat-hint>Se generará automáticamente al guardar</mat-hint> }
             </mat-form-field>
+
+            @if (!editMode() && selectedTipo()) {
+              @if (consecutivoUnico()) {
+                <div class="pf-consecutivo-info">
+                  <mat-icon>tag</mat-icon>
+                  <span>Consecutivo: <strong>{{ consecutivoUnico()!.nombre }}</strong> — próx. <code>{{ consecutivoUnico()!.proximo_codigo }}</code></span>
+                </div>
+              } @else if (mostrarSelectorConsecutivo()) {
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
+                  <mat-label>Consecutivo</mat-label>
+                  <mat-select formControlName="consecutivo_id">
+                    <mat-option [value]="null">Sin consecutivo (auto)</mat-option>
+                    @for (c of filteredConsecutivos(); track c.id) {
+                      <mat-option [value]="c.id">{{ c.nombre }} — próx. {{ c.proximo_codigo }}</mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+              }
+            }
 
             <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
               <mat-label>Tipo</mat-label>
@@ -145,6 +166,7 @@
               [matAutocomplete]="acGerente"
               placeholder="Buscar usuario…" />
             <mat-autocomplete #acGerente="matAutocomplete"
+              [displayWith]="displayUser"
               (optionSelected)="onGerenteSelected($event.option.value)">
               @for (u of filteredGerentes(); track u.id) {
                 <mat-option [value]="u.id">
@@ -168,6 +190,7 @@
               [matAutocomplete]="acCoordinador"
               placeholder="Opcional — buscar usuario…" />
             <mat-autocomplete #acCoordinador="matAutocomplete"
+              [displayWith]="displayUser"
               (optionSelected)="onCoordinadorSelected($event.option.value)">
               <mat-option [value]="null">
                 <span class="pf-user-option pf-user-option--empty">
@@ -198,7 +221,10 @@
           <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
             <mat-label>Presupuesto total (COP)</mat-label>
             <span matTextPrefix>$&nbsp;</span>
-            <input matInput type="number" formControlName="presupuesto_total" min="0" placeholder="0" />
+            <input matInput type="text" inputmode="numeric"
+              [value]="presupuestoDisplay()"
+              (input)="onPresupuestoInput($event)"
+              placeholder="0" />
           </mat-form-field>
 
           <div class="pf-aiu-row">

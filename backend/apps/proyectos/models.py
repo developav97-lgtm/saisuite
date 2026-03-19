@@ -230,6 +230,80 @@ class DocumentoContable(BaseModel):
         return f'{self.get_tipo_documento_display()} {self.numero_documento} ({self.fecha_documento})'
 
 
+class TipoActividad(models.TextChoices):
+    MANO_OBRA   = 'mano_obra',   'Mano de obra'
+    MATERIAL    = 'material',    'Material'
+    EQUIPO      = 'equipo',      'Equipo'
+    SUBCONTRATO = 'subcontrato', 'Subcontrato'
+
+
+class Actividad(BaseModel):
+    """
+    Actividad reutilizable — catálogo global por empresa.
+    Una misma actividad puede asignarse a múltiples proyectos.
+    Ejemplo: "Excavación", "Instalación eléctrica", "Pintura".
+    """
+    codigo              = models.CharField(max_length=50, db_index=True)
+    nombre              = models.CharField(max_length=255)
+    descripcion         = models.TextField(blank=True)
+    unidad_medida       = models.CharField(max_length=50, help_text='m2, m3, unidad, hora, etc.')
+    costo_unitario_base = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text='Costo de referencia. Puede diferir por proyecto.',
+    )
+    tipo   = models.CharField(max_length=20, choices=TipoActividad.choices)
+    activo = models.BooleanField(default=True, db_index=True)
+
+    # Sincronización con Saiopen (opcional)
+    saiopen_actividad_id     = models.CharField(max_length=50, null=True, blank=True)
+    sincronizado_con_saiopen = models.BooleanField(default=False)
+
+    class Meta:
+        verbose_name        = 'Actividad'
+        verbose_name_plural = 'Actividades'
+        ordering            = ['codigo']
+        unique_together     = [('company', 'codigo')]
+
+    def __str__(self):
+        return f'{self.codigo} — {self.nombre}'
+
+
+class ActividadProyecto(BaseModel):
+    """
+    Asignación de una Actividad a un Proyecto.
+    El costo_unitario puede diferir del costo_unitario_base del catálogo.
+    presupuesto_total se calcula como cantidad_planificada × costo_unitario.
+    """
+    proyecto  = models.ForeignKey(Proyecto, on_delete=models.CASCADE, related_name='actividades')
+    actividad = models.ForeignKey(Actividad, on_delete=models.PROTECT, related_name='asignaciones')
+    fase      = models.ForeignKey(
+        Fase, on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='actividades',
+    )
+
+    cantidad_planificada = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    cantidad_ejecutada   = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    costo_unitario       = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    porcentaje_avance    = models.DecimalField(
+        max_digits=5, decimal_places=2, default=0,
+        help_text='Porcentaje de avance de esta actividad (0-100)',
+    )
+
+    @property
+    def presupuesto_total(self) -> Decimal:
+        return self.cantidad_planificada * self.costo_unitario
+
+    class Meta:
+        verbose_name        = 'Actividad del proyecto'
+        verbose_name_plural = 'Actividades del proyecto'
+        ordering            = ['actividad__codigo']
+        unique_together     = [('proyecto', 'actividad', 'fase')]
+
+    def __str__(self):
+        return f'{self.proyecto.codigo} / {self.actividad.codigo}'
+
+
 class Hito(BaseModel):
     """
     Hito facturable del proyecto.

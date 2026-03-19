@@ -29,6 +29,11 @@ export const ADMIN_ROUTES: Routes = [
         loadComponent: () =>
           import('./modules/modules.component').then(m => m.ModulesComponent),
       },
+      {
+        path: 'consecutivos',
+        loadComponent: () =>
+          import('./consecutivos/consecutivo-list.component').then(m => m.ConsecutivoListComponent),
+      },
       { path: '', redirectTo: 'usuarios', pathMatch: 'full' },
     ],
   },

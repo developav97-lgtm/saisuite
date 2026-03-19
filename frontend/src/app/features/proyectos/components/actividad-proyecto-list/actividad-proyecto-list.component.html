@@ -1,0 +1,183 @@
+<!-- ── Header ── -->
+<div class="apl-header">
+  <div class="apl-header__info">
+    <span class="apl-header__count">{{ asignaciones().length }} actividades</span>
+    @if (asignaciones().length > 0) {
+      <span class="apl-header__total">· Presupuesto total: {{ formatCurrency(presupuestoTotal()) }}</span>
+    }
+  </div>
+  <button mat-raised-button color="primary" (click)="abrirDialogAsignar()">
+    <mat-icon>add</mat-icon>
+    Asignar actividad
+  </button>
+</div>
+
+<!-- ── Spinner ── -->
+@if (loading()) {
+  <div class="apl-loading">
+    <mat-progress-spinner mode="indeterminate" diameter="40"></mat-progress-spinner>
+  </div>
+} @else {
+
+  <!-- ── Tabla ── -->
+  <table mat-table [dataSource]="asignaciones()" class="apl-table mat-elevation-z1">
+
+    <ng-container matColumnDef="actividad">
+      <th mat-header-cell *matHeaderCellDef>Actividad</th>
+      <td mat-cell *matCellDef="let row">
+        <span class="apl-mono">{{ row.actividad_codigo }}</span>
+        <span class="apl-nombre">{{ row.actividad_nombre }}</span>
+        @if (row.fase_nombre) {
+          <span class="apl-fase">{{ row.fase_nombre }}</span>
+        }
+      </td>
+    </ng-container>
+
+    <ng-container matColumnDef="tipo">
+      <th mat-header-cell *matHeaderCellDef>Tipo</th>
+      <td mat-cell *matCellDef="let row">
+        <span [class]="'apl-badge apl-badge--' + row.actividad_tipo">
+          {{ getTipoLabel(row.actividad_tipo) }}
+        </span>
+      </td>
+    </ng-container>
+
+    <ng-container matColumnDef="unidad">
+      <th mat-header-cell *matHeaderCellDef>Unidad</th>
+      <td mat-cell *matCellDef="let row">{{ row.actividad_unidad_medida }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="cantidad">
+      <th mat-header-cell *matHeaderCellDef class="apl-col-right">Cant. plan / ejec.</th>
+      <td mat-cell *matCellDef="let row" class="apl-col-right">
+        <span>{{ row.cantidad_planificada }}</span>
+        <span class="apl-slash"> / </span>
+        <span [class.apl-ejecutada--ok]="row.cantidad_ejecutada >= row.cantidad_planificada">
+          {{ row.cantidad_ejecutada }}
+        </span>
+      </td>
+    </ng-container>
+
+    <ng-container matColumnDef="costo">
+      <th mat-header-cell *matHeaderCellDef class="apl-col-right">Costo unit.</th>
+      <td mat-cell *matCellDef="let row" class="apl-col-right">{{ formatCurrency(row.costo_unitario) }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="presupuesto">
+      <th mat-header-cell *matHeaderCellDef class="apl-col-right">Presupuesto</th>
+      <td mat-cell *matCellDef="let row" class="apl-col-right apl-presupuesto">
+        {{ formatCurrency(row.presupuesto_total) }}
+      </td>
+    </ng-container>
+
+    <ng-container matColumnDef="avance">
+      <th mat-header-cell *matHeaderCellDef>Avance</th>
+      <td mat-cell *matCellDef="let row">
+        <div class="apl-avance">
+          <mat-progress-bar
+            mode="determinate"
+            [value]="+row.porcentaje_avance"
+            [color]="+row.porcentaje_avance >= 100 ? 'primary' : 'accent'"
+          ></mat-progress-bar>
+          <span class="apl-avance__pct">{{ row.porcentaje_avance }}%</span>
+        </div>
+      </td>
+    </ng-container>
+
+    <ng-container matColumnDef="acciones">
+      <th mat-header-cell *matHeaderCellDef></th>
+      <td mat-cell *matCellDef="let row">
+        <button mat-icon-button (click)="abrirDialogEditar(row)" matTooltip="Editar">
+          <mat-icon>edit</mat-icon>
+        </button>
+        <button mat-icon-button color="warn" (click)="confirmarDesasignar(row)" matTooltip="Quitar del proyecto">
+          <mat-icon>remove_circle_outline</mat-icon>
+        </button>
+      </td>
+    </ng-container>
+
+    <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+    <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+  </table>
+
+  <!-- ── Estado vacío ── -->
+  @if (asignaciones().length === 0) {
+    <mat-card class="apl-empty">
+      <mat-card-content>
+        <mat-icon>playlist_add</mat-icon>
+        <p>No hay actividades asignadas a este proyecto</p>
+        <span>Usa el botón "Asignar actividad" para agregar actividades del catálogo</span>
+      </mat-card-content>
+    </mat-card>
+  }
+}
+
+<!-- ── Dialog: asignar / editar actividad en proyecto ── -->
+<ng-template #apFormTpl>
+  <h2 mat-dialog-title>{{ editingAp() ? 'Editar actividad' : 'Asignar actividad al proyecto' }}</h2>
+  <mat-dialog-content>
+    <form [formGroup]="form" class="apl-form">
+
+      <mat-form-field appearance="outline" class="apl-field-full">
+        <mat-label>Actividad del catálogo</mat-label>
+        <mat-select formControlName="actividad">
+          @for (act of catalogo(); track act.id) {
+            <mat-option [value]="act.id">
+              {{ act.codigo }} — {{ act.nombre }}
+              <span class="apl-option-unit">({{ act.unidad_medida }})</span>
+            </mat-option>
+          }
+        </mat-select>
+        @if (form.get('actividad')?.hasError('required')) {
+          <mat-error>Selecciona una actividad</mat-error>
+        }
+      </mat-form-field>
+
+      <div class="apl-form-row">
+        <mat-form-field appearance="outline" class="apl-field-half">
+          <mat-label>Cantidad planificada</mat-label>
+          <input matInput type="number" formControlName="cantidad_planificada" min="0" />
+          @if (form.get('cantidad_planificada')?.hasError('required')) {
+            <mat-error>Obligatorio</mat-error>
+          }
+          @if (form.get('cantidad_planificada')?.hasError('min')) {
+            <mat-error>Debe ser ≥ 0</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="apl-field-half">
+          <mat-label>Cantidad ejecutada</mat-label>
+          <input matInput type="number" formControlName="cantidad_ejecutada" min="0" />
+        </mat-form-field>
+      </div>
+
+      <div class="apl-form-row">
+        <mat-form-field appearance="outline" class="apl-field-half">
+          <mat-label>Costo unitario</mat-label>
+          <span matTextPrefix>$&nbsp;</span>
+          <input matInput type="number" formControlName="costo_unitario" min="0" />
+          <mat-hint>Deja vacío para usar el costo base del catálogo</mat-hint>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="apl-field-half">
+          <mat-label>% Avance</mat-label>
+          <input matInput type="number" formControlName="porcentaje_avance" min="0" max="100" />
+          <span matTextSuffix>%</span>
+          @if (form.get('porcentaje_avance')?.hasError('min') || form.get('porcentaje_avance')?.hasError('max')) {
+            <mat-error>Debe estar entre 0 y 100</mat-error>
+          }
+        </mat-form-field>
+      </div>
+
+    </form>
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button mat-stroked-button (click)="onCancelar()">Cancelar</button>
+    <button mat-raised-button color="primary" (click)="guardar()" [disabled]="saving()">
+      @if (saving()) {
+        <mat-progress-spinner diameter="18" mode="indeterminate"></mat-progress-spinner>
+      }
+      Guardar
+    </button>
+  </mat-dialog-actions>
+</ng-template>

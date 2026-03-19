@@ -1,10 +1,9 @@
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ProyectoService } from '../../services/proyecto.service';
@@ -13,6 +12,7 @@ import { FaseListComponent } from '../fase-list/fase-list.component';
 import { TerceroListComponent } from '../tercero-list/tercero-list.component';
 import { DocumentoListComponent } from '../documento-list/documento-list.component';
 import { HitoListComponent } from '../hito-list/hito-list.component';
+import { ActividadProyectoListComponent } from '../actividad-proyecto-list/actividad-proyecto-list.component';
 import { ConfirmDialogComponent } from '../../../../shared/components/confirm-dialog/confirm-dialog.component';
 
 @Component({
@@ -22,12 +22,13 @@ import { ConfirmDialogComponent } from '../../../../shared/components/confirm-di
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CommonModule,
+    RouterLink,
     MatTabsModule, MatButtonModule, MatIconModule,
-    MatProgressSpinnerModule,
     FaseListComponent,
     TerceroListComponent,
     DocumentoListComponent,
     HitoListComponent,
+    ActividadProyectoListComponent,
   ],
 })
 export class ProyectoDetailComponent implements OnInit {

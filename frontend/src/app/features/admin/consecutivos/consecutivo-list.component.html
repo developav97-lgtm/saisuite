@@ -1,0 +1,212 @@
+<div class="sc-page">
+
+  <!-- Header -->
+  <div class="sc-page-header">
+    <h1 class="sc-page-header__title">Consecutivos configurables</h1>
+    <button mat-raised-button color="primary" (click)="abrirDialogNuevo()">
+      <mat-icon>add</mat-icon> Nuevo consecutivo
+    </button>
+  </div>
+
+  <!-- Buscador -->
+  <div class="cl-search-bar sc-card">
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="cl-search-field">
+      <mat-label>Buscar por nombre, prefijo o tipo…</mat-label>
+      <input matInput [ngModel]="searchText()" (ngModelChange)="searchText.set($event)" />
+      <mat-icon matSuffix>search</mat-icon>
+    </mat-form-field>
+  </div>
+
+  <!-- Progress bar -->
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate" class="cl-progress" />
+  }
+
+  <!-- Tabla -->
+  <mat-table [dataSource]="consecutivos()" class="cl-table">
+
+    <!-- Tipo -->
+    <ng-container matColumnDef="tipo">
+      <mat-header-cell *matHeaderCellDef>Tipo</mat-header-cell>
+      <mat-cell *matCellDef="let row">
+        <span class="cl-chip">{{ getEntidadLabel(row.tipo) }}{{ row.subtipo ? ' / ' + row.subtipo : '' }}</span>
+      </mat-cell>
+    </ng-container>
+
+    <!-- Nombre -->
+    <ng-container matColumnDef="nombre">
+      <mat-header-cell *matHeaderCellDef>Nombre</mat-header-cell>
+      <mat-cell *matCellDef="let row">{{ row.nombre }}</mat-cell>
+    </ng-container>
+
+    <!-- Prefijo -->
+    <ng-container matColumnDef="prefijo">
+      <mat-header-cell *matHeaderCellDef>Prefijo</mat-header-cell>
+      <mat-cell *matCellDef="let row">
+        <code class="cl-codigo">{{ row.prefijo }}</code>
+      </mat-cell>
+    </ng-container>
+
+    <!-- Próximo código -->
+    <ng-container matColumnDef="proximo_codigo">
+      <mat-header-cell *matHeaderCellDef>Próximo</mat-header-cell>
+      <mat-cell *matCellDef="let row">
+        <code class="cl-next">{{ row.proximo_codigo }}</code>
+      </mat-cell>
+    </ng-container>
+
+    <!-- Formato -->
+    <ng-container matColumnDef="formato">
+      <mat-header-cell *matHeaderCellDef>Formato</mat-header-cell>
+      <mat-cell *matCellDef="let row">
+        <span class="cl-formato">{{ getFormatoLabel(row.formato) }}</span>
+      </mat-cell>
+    </ng-container>
+
+    <!-- Activo -->
+    <ng-container matColumnDef="activo">
+      <mat-header-cell *matHeaderCellDef>Estado</mat-header-cell>
+      <mat-cell *matCellDef="let row">
+        @if (row.activo) {
+          <span class="cl-badge cl-badge--active">Activo</span>
+        } @else {
+          <span class="cl-badge cl-badge--inactive">Inactivo</span>
+        }
+      </mat-cell>
+    </ng-container>
+
+    <!-- Acciones -->
+    <ng-container matColumnDef="acciones">
+      <mat-header-cell *matHeaderCellDef class="cl-col-acciones"></mat-header-cell>
+      <mat-cell *matCellDef="let row" class="cl-col-acciones">
+        <button mat-icon-button (click)="abrirDialogEditar(row)" matTooltip="Editar">
+          <mat-icon>edit</mat-icon>
+        </button>
+        <button mat-icon-button color="warn" (click)="confirmarEliminar(row)" matTooltip="Eliminar">
+          <mat-icon>delete_outline</mat-icon>
+        </button>
+      </mat-cell>
+    </ng-container>
+
+    <mat-header-row *matHeaderRowDef="displayedColumns" />
+    <mat-row *matRowDef="let row; columns: displayedColumns;" />
+  </mat-table>
+
+  <!-- Empty state -->
+  @if (!loading() && consecutivos().length === 0) {
+    <div class="sc-empty-state cl-empty">
+      <mat-icon>tag</mat-icon>
+      @if (searchText()) {
+        <p>Sin resultados para "{{ searchText() }}".</p>
+      } @else {
+        <p>No hay consecutivos configurados.</p>
+        <button mat-raised-button color="primary" (click)="abrirDialogNuevo()">
+          <mat-icon>add</mat-icon> Nuevo consecutivo
+        </button>
+      }
+    </div>
+  }
+
+</div>
+
+<!-- ── Dialog: formulario ── -->
+<ng-template #formTpl>
+  <h2 mat-dialog-title>{{ editing() ? 'Editar consecutivo' : 'Nuevo consecutivo' }}</h2>
+  <mat-dialog-content>
+    <form [formGroup]="form" class="cl-form">
+
+      <!-- Tipo + Subtipo -->
+      <div class="cl-form-row">
+        <mat-form-field appearance="outline" floatLabel="always" class="cl-field-half">
+          <mat-label>Tipo</mat-label>
+          <mat-select formControlName="tipo">
+            @for (op of entidadOpciones; track op.value) {
+              <mat-option [value]="op.value">{{ op.label }}</mat-option>
+            }
+          </mat-select>
+          @if (form.get('tipo')?.hasError('required')) {
+            <mat-error>Obligatorio</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" floatLabel="always" class="cl-field-half">
+          <mat-label>Subtipo</mat-label>
+          @if (subtipOpciones().length > 0) {
+            <mat-select formControlName="subtipo">
+              <mat-option value="">Todos los subtipos</mat-option>
+              @for (op of subtipOpciones(); track op.value) {
+                <mat-option [value]="op.value">{{ op.label }}</mat-option>
+              }
+            </mat-select>
+          } @else {
+            <input matInput formControlName="subtipo" placeholder="Opcional" [disabled]="!form.get('tipo')?.value" />
+          }
+        </mat-form-field>
+      </div>
+
+      <!-- Nombre -->
+      <mat-form-field appearance="outline" floatLabel="always" class="cl-field-full">
+        <mat-label>Nombre</mat-label>
+        <input matInput formControlName="nombre" placeholder="Ej: Proyectos obra civil" />
+        @if (form.get('nombre')?.hasError('required')) {
+          <mat-error>Obligatorio</mat-error>
+        }
+      </mat-form-field>
+
+      <!-- Prefijo + Formato -->
+      <div class="cl-form-row">
+        <mat-form-field appearance="outline" floatLabel="always" class="cl-field-sm">
+          <mat-label>Prefijo</mat-label>
+          <input matInput formControlName="prefijo" placeholder="Ej: PRY" />
+          @if (form.get('prefijo')?.hasError('required')) {
+            <mat-error>Obligatorio</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" floatLabel="always" class="cl-field-grow">
+          <mat-label>Formato</mat-label>
+          <mat-select formControlName="formato">
+            @for (op of formatoOpciones; track op.value) {
+              <mat-option [value]="op.value">
+                <span class="cl-formato-option">
+                  <span>{{ op.label }}</span>
+                  <code class="cl-formato-ejemplo">{{ op.ejemplo }}</code>
+                </span>
+              </mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      </div>
+
+      <!-- Número inicial -->
+      <mat-form-field appearance="outline" floatLabel="always" subscriptSizing="dynamic" class="cl-field-sm">
+        <mat-label>Número inicial</mat-label>
+        <input matInput type="number" formControlName="ultimo_numero" min="0" />
+        <mat-hint>El próximo código será {{ formatPreview() || '…' }}</mat-hint>
+      </mat-form-field>
+
+      @if (formatPreview()) {
+        <div class="cl-preview">
+          <span class="cl-preview__label">Vista previa</span>
+          <code class="cl-preview__code">{{ formatPreview() }}</code>
+        </div>
+      }
+
+      <div class="cl-toggle-row">
+        <mat-slide-toggle formControlName="activo" color="primary">
+          Consecutivo activo
+        </mat-slide-toggle>
+      </div>
+
+    </form>
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button mat-stroked-button mat-dialog-close>Cancelar</button>
+    <button mat-raised-button color="primary" (click)="guardar()" [disabled]="saving()">
+      @if (saving()) {
+        <mat-progress-spinner diameter="18" mode="indeterminate" />
+      }
+      Guardar
+    </button>
+  </mat-dialog-actions>
+</ng-template>

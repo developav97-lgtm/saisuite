@@ -1,0 +1,151 @@
+// ── Buscador ───────────────────────────────────────────────────
+.cl-search-bar {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.cl-search-field { width: 100%; max-width: 360px; }
+
+// ── Progress bar ──────────────────────────────────────────────
+.cl-progress {
+  margin-bottom: -4px;
+  border-radius: var(--sc-radius) var(--sc-radius) 0 0;
+}
+
+// ── Tabla ─────────────────────────────────────────────────────
+.cl-table { width: 100%; border-radius: var(--sc-radius); }
+
+// ── Código / prefijo (monoespaciado) ──────────────────────────
+.cl-codigo {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--sc-primary);
+  background: var(--sc-primary-light);
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+}
+
+.cl-next {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--sc-primary);
+}
+
+// ── Chip de entidad ────────────────────────────────────────────
+.cl-chip {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--sc-text-muted);
+  background: var(--sc-surface-ground);
+  border: 1px solid var(--sc-surface-border);
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+// ── Formato ────────────────────────────────────────────────────
+.cl-formato {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 0.75rem;
+  color: var(--sc-text-muted);
+}
+
+// ── Badge de estado ────────────────────────────────────────────
+.cl-badge {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+
+  &--active {
+    background: #e8f5e9;
+    color: #2e7d32;
+  }
+  &--inactive {
+    background: var(--sc-surface-ground);
+    color: var(--sc-text-muted);
+  }
+}
+
+// ── Acciones ───────────────────────────────────────────────────
+.cl-col-acciones {
+  width: 96px;
+  justify-content: flex-end !important;
+}
+
+// ── Empty state ────────────────────────────────────────────────
+.cl-empty {
+  border: 1px solid var(--sc-surface-border);
+  border-top: none;
+  border-radius: 0 0 var(--sc-radius) var(--sc-radius);
+}
+
+// ── Formulario (dialog) ────────────────────────────────────────
+.cl-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 8px;
+}
+
+.cl-form-row {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.cl-field-sm   { width: 120px; flex-shrink: 0; }
+.cl-field-grow { flex: 1; }
+.cl-field-half { flex: 1; }
+.cl-field-full { width: 100%; }
+
+// ── Formato option layout ──────────────────────────────────────
+.cl-formato-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+}
+
+.cl-formato-ejemplo {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 0.8rem;
+  color: var(--sc-primary);
+  opacity: 0.8;
+}
+
+.cl-toggle-row {
+  padding-top: 4px;
+}
+
+// ── Vista previa del formato ───────────────────────────────────
+.cl-preview {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--sc-primary-light);
+  border: 1px solid var(--sc-surface-border);
+  border-radius: var(--sc-radius);
+  padding: 0.5rem 0.75rem;
+
+  &__label {
+    font-size: 0.75rem;
+    color: var(--sc-text-muted);
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  &__code {
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--sc-primary);
+  }
+}

@@ -14,107 +14,120 @@
     <mat-progress-bar mode="indeterminate" />
   }
 
-  <mat-table [dataSource]="fases()">
-    <ng-container matColumnDef="orden">
-      <mat-header-cell *matHeaderCellDef>#</mat-header-cell>
-      <mat-cell *matCellDef="let f">{{ f.orden }}</mat-cell>
-    </ng-container>
+  @if (!loading() && fases().length === 0) {
+    <div class="sc-empty-state fl-empty">
+      <mat-icon>list_alt</mat-icon>
+      <p>No hay fases definidas. Agrega la primera desde el botón de arriba.</p>
+    </div>
+  } @else if (fases().length > 0) {
+    <mat-table [dataSource]="fases()">
+      <ng-container matColumnDef="orden">
+        <mat-header-cell *matHeaderCellDef>#</mat-header-cell>
+        <mat-cell *matCellDef="let f">{{ f.orden }}</mat-cell>
+      </ng-container>
 
-    <ng-container matColumnDef="nombre">
-      <mat-header-cell *matHeaderCellDef>Nombre</mat-header-cell>
-      <mat-cell *matCellDef="let f">{{ f.nombre }}</mat-cell>
-    </ng-container>
+      <ng-container matColumnDef="nombre">
+        <mat-header-cell *matHeaderCellDef>Nombre</mat-header-cell>
+        <mat-cell *matCellDef="let f">{{ f.nombre }}</mat-cell>
+      </ng-container>
 
-    <ng-container matColumnDef="presupuesto">
-      <mat-header-cell *matHeaderCellDef>Presupuesto</mat-header-cell>
-      <mat-cell *matCellDef="let f">{{ formatCurrency(presupuestoTotal(f)) }}</mat-cell>
-    </ng-container>
+      <ng-container matColumnDef="presupuesto">
+        <mat-header-cell *matHeaderCellDef>Presupuesto</mat-header-cell>
+        <mat-cell *matCellDef="let f">{{ formatCurrency(presupuestoTotal(f)) }}</mat-cell>
+      </ng-container>
 
-    <ng-container matColumnDef="avance">
-      <mat-header-cell *matHeaderCellDef>Avance</mat-header-cell>
-      <mat-cell *matCellDef="let f" class="fl-avance">
-        <mat-progress-bar mode="determinate" [value]="+f.porcentaje_avance" />
-        <span class="fl-avance__pct">{{ f.porcentaje_avance }}%</span>
-      </mat-cell>
-    </ng-container>
+      <ng-container matColumnDef="avance">
+        <mat-header-cell *matHeaderCellDef>Avance</mat-header-cell>
+        <mat-cell *matCellDef="let f" class="fl-avance">
+          <mat-progress-bar mode="determinate" [value]="+f.porcentaje_avance" />
+          <span class="fl-avance__pct">{{ (+f.porcentaje_avance).toFixed(0) }}%</span>
+        </mat-cell>
+      </ng-container>
 
-    <ng-container matColumnDef="acciones">
-      <mat-header-cell *matHeaderCellDef class="fl-col-acciones">Acciones</mat-header-cell>
-      <mat-cell *matCellDef="let f" class="fl-col-acciones">
-        <button mat-icon-button matTooltip="Editar" (click)="abrirDialogEditar(f)">
-          <mat-icon>edit</mat-icon>
-        </button>
-        <button mat-icon-button matTooltip="Eliminar" color="warn" (click)="confirmarEliminar(f)">
-          <mat-icon>delete</mat-icon>
-        </button>
-      </mat-cell>
-    </ng-container>
+      <ng-container matColumnDef="acciones">
+        <mat-header-cell *matHeaderCellDef class="fl-col-acciones">Acciones</mat-header-cell>
+        <mat-cell *matCellDef="let f" class="fl-col-acciones">
+          <button mat-icon-button matTooltip="Editar" (click)="abrirDialogEditar(f)">
+            <mat-icon>edit</mat-icon>
+          </button>
+          <button mat-icon-button matTooltip="Eliminar" color="warn" (click)="confirmarEliminar(f)">
+            <mat-icon>delete</mat-icon>
+          </button>
+        </mat-cell>
+      </ng-container>
 
-    <mat-header-row *matHeaderRowDef="displayedColumns"></mat-header-row>
-    <mat-row *matRowDef="let row; columns: displayedColumns;"></mat-row>
-
-    <tr class="mat-row" *matNoDataRow>
-      <td [attr.colspan]="displayedColumns.length">
-        <div class="sc-empty-state">
-          <mat-icon>list</mat-icon>
-          <p>No hay fases definidas. Agrega la primera fase.</p>
-        </div>
-      </td>
-    </tr>
-  </mat-table>
+      <mat-header-row *matHeaderRowDef="displayedColumns"></mat-header-row>
+      <mat-row *matRowDef="let row; columns: displayedColumns;"></mat-row>
+    </mat-table>
+  }
 </div>
 
 <!-- Template dialog nueva/editar fase -->
 <ng-template #faseFormTpl>
   <h2 mat-dialog-title>{{ editingFase() ? 'Editar fase' : 'Nueva fase' }}</h2>
   <mat-dialog-content>
-    <form [formGroup]="form" class="fl-form sc-form-grid">
-      <mat-form-field appearance="outline" class="sc-field--full">
+    <form [formGroup]="form" class="fl-form">
+
+      <!-- Nombre | Descripción -->
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
         <mat-label>Nombre *</mat-label>
-        <input matInput formControlName="nombre" />
+        <input matInput formControlName="nombre" placeholder="Ej: Fase de cimentación" />
         @if (form.get('nombre')?.invalid && form.get('nombre')?.touched) {
           <mat-error>El nombre es obligatorio.</mat-error>
         }
       </mat-form-field>
 
-      <mat-form-field appearance="outline" class="sc-field--full">
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
         <mat-label>Descripción</mat-label>
-        <textarea matInput formControlName="descripcion" rows="2"></textarea>
+        <textarea matInput formControlName="descripcion" rows="3" placeholder="Descripción opcional…"></textarea>
       </mat-form-field>
 
-      <mat-form-field appearance="outline">
+      <!-- Inicio | Fin planificado -->
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
         <mat-label>Inicio planificado *</mat-label>
-        <input matInput type="date" formControlName="fecha_inicio_planificada" />
+        <input matInput [matDatepicker]="pickerInicio"
+          formControlName="fecha_inicio_planificada" placeholder="dd/mm/aaaa" />
+        <mat-datepicker-toggle matSuffix [for]="pickerInicio" />
+        <mat-datepicker #pickerInicio />
+        @if (form.get('fecha_inicio_planificada')?.invalid && form.get('fecha_inicio_planificada')?.touched) {
+          <mat-error>Requerido.</mat-error>
+        }
       </mat-form-field>
 
-      <mat-form-field appearance="outline">
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
         <mat-label>Fin planificado *</mat-label>
-        <input matInput type="date" formControlName="fecha_fin_planificada" />
+        <input matInput [matDatepicker]="pickerFin"
+          formControlName="fecha_fin_planificada" placeholder="dd/mm/aaaa" />
+        <mat-datepicker-toggle matSuffix [for]="pickerFin" />
+        <mat-datepicker #pickerFin />
+        @if (form.get('fecha_fin_planificada')?.invalid && form.get('fecha_fin_planificada')?.touched) {
+          <mat-error>Requerido.</mat-error>
+        }
       </mat-form-field>
 
-      <div class="sc-field--full fl-presupuesto-header">
+      <!-- Separador presupuesto -->
+      <div class="fl-presupuesto-header fl-field-full">
         <strong>Presupuesto por categoría</strong>
       </div>
 
-      @for (cat of [
-        { key: 'presupuesto_mano_obra', label: 'Mano de obra' },
-        { key: 'presupuesto_materiales', label: 'Materiales' },
-        { key: 'presupuesto_subcontratos', label: 'Subcontratos' },
-        { key: 'presupuesto_equipos', label: 'Equipos' },
-        { key: 'presupuesto_otros', label: 'Otros' }
-      ]; track cat.key) {
-        <mat-form-field appearance="outline">
+      <!-- 5 campos de presupuesto + % Avance → 3 filas de 2 cols -->
+      @for (cat of budgetCats; track cat.key) {
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
           <mat-label>{{ cat.label }}</mat-label>
-          <input matInput type="number" [formControlName]="cat.key" min="0" />
           <span matTextPrefix>$&nbsp;</span>
+          <input matInput type="text" inputmode="numeric"
+            [value]="budgetDisplays()[cat.key]"
+            (input)="onMonedaInput(cat.key, $event)"
+            placeholder="0" />
         </mat-form-field>
       }
 
-      <mat-form-field appearance="outline">
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
         <mat-label>% Avance</mat-label>
         <input matInput type="number" formControlName="porcentaje_avance" min="0" max="100" />
         <span matTextSuffix>%</span>
       </mat-form-field>
+
     </form>
   </mat-dialog-content>
   <mat-dialog-actions align="end">

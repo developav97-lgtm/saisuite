@@ -1,83 +1,242 @@
 @if (loading()) {
-  <div class="sc-loading-state"><mat-spinner /></div>
+  <div class="sc-loading-state">
+    <div class="sc-loader">
+      <div class="sc-loader__icon">
+        <mat-icon>cloud</mat-icon>
+      </div>
+    </div>
+    <div class="sc-loader__dots">
+      <span></span><span></span><span></span>
+    </div>
+    <p class="sc-loader__text">Cargando proyecto…</p>
+  </div>
 } @else if (proyecto(); as p) {
   <div class="sc-page">
-    <div class="sc-page-header">
-      <div class="pd-header">
-        <div class="pd-header__info">
-          <span class="pd-header__codigo">{{ p.codigo }}</span>
-          <h1 class="pd-header__nombre">{{ p.nombre }}</h1>
-          <span [class]="'sc-status-chip sc-status-chip--' + p.estado">{{ ESTADO_LABELS[p.estado] }}</span>
+
+    <!-- ── Breadcrumb ── -->
+    <nav class="pd-breadcrumb" aria-label="Navegación">
+      <a class="pd-breadcrumb__link" routerLink="/">
+        <mat-icon class="pd-breadcrumb__home">home</mat-icon>
+      </a>
+      <mat-icon class="pd-breadcrumb__sep">chevron_right</mat-icon>
+      <a class="pd-breadcrumb__link" routerLink="/proyectos">Proyectos</a>
+      <mat-icon class="pd-breadcrumb__sep">chevron_right</mat-icon>
+      <span class="pd-breadcrumb__current">{{ p.nombre }}</span>
+    </nav>
+
+    <!-- ── Hero header ── -->
+    <div class="pd-hero">
+      <div class="pd-hero__left">
+        <div class="pd-hero__meta">
+          <span class="pd-hero__codigo">{{ p.codigo }}</span>
+          <span [class]="'pd-estado-badge pd-estado-badge--' + p.estado">{{ ESTADO_LABELS[p.estado] }}</span>
         </div>
-        <div class="pd-header__acciones">
-          @for (accion of ACCIONES_ESTADO[p.estado] || []; track accion.estado) {
-            <button mat-stroked-button [color]="accion.color" (click)="cambiarEstado(accion.estado)">
-              {{ accion.label }}
-            </button>
-          }
-          <button mat-stroked-button (click)="editarProyecto()">
-            <mat-icon>edit</mat-icon> Editar
+        <h1 class="pd-hero__nombre">{{ p.nombre }}</h1>
+      </div>
+      <div class="pd-hero__actions">
+        @for (accion of ACCIONES_ESTADO[p.estado] || []; track accion.estado) {
+          <button mat-stroked-button [color]="accion.color" (click)="cambiarEstado(accion.estado)">
+            {{ accion.label }}
           </button>
-        </div>
+        }
+        <button mat-raised-button color="primary" (click)="editarProyecto()">
+          <mat-icon>edit</mat-icon> Editar
+        </button>
       </div>
     </div>
 
-    <mat-tab-group>
-      <!-- ── Tab 1: General ── -->
+    <!-- ── Tabs ── -->
+    <mat-tab-group class="pd-tabs">
+
+      <!-- Tab 1: General -->
       <mat-tab label="General">
-        <div class="sc-form-grid pd-tab-content">
-          <div class="sc-field"><label>Tipo</label><span>{{ TIPO_LABELS[p.tipo] }}</span></div>
-          <div class="sc-field"><label>Cliente</label><span>{{ p.cliente_nombre }} <small class="pd-nit">({{ p.cliente_id }})</small></span></div>
-          <div class="sc-field"><label>Gerente</label><span>{{ p.gerente.full_name || p.gerente.email }}</span></div>
-          <div class="sc-field"><label>Coordinador</label><span>{{ p.coordinador?.full_name || p.coordinador?.email || '—' }}</span></div>
-          <div class="sc-field"><label>Inicio planificado</label><span>{{ formatDate(p.fecha_inicio_planificada) }}</span></div>
-          <div class="sc-field"><label>Fin planificado</label><span>{{ formatDate(p.fecha_fin_planificada) }}</span></div>
-          <div class="sc-field"><label>Inicio real</label><span>{{ formatDate(p.fecha_inicio_real) }}</span></div>
-          <div class="sc-field"><label>Fin real</label><span>{{ formatDate(p.fecha_fin_real) }}</span></div>
-          <div class="sc-field sc-field--full"><label>Presupuesto total</label><span class="pd-presupuesto">{{ formatCurrency(p.presupuesto_total) }}</span></div>
-          <div class="sc-field"><label>Administración (AIU)</label><span>{{ p.porcentaje_administracion }}%</span></div>
-          <div class="sc-field"><label>Imprevistos (AIU)</label><span>{{ p.porcentaje_imprevistos }}%</span></div>
-          <div class="sc-field"><label>Utilidad (AIU)</label><span>{{ p.porcentaje_utilidad }}%</span></div>
-          <div class="sc-field">
-            <label>Sincronizado con Saiopen</label>
-            <span>
-              @if (p.sincronizado_con_saiopen) {
-                <mat-icon style="color: #2e7d32; vertical-align: middle; font-size: 1rem;">check_circle</mat-icon> Sí
-              } @else {
-                <mat-icon style="color: #c62828; vertical-align: middle; font-size: 1rem;">cancel</mat-icon> No
-              }
-            </span>
+        <div class="pd-tab-content pd-general-layout">
+
+          <!-- Columna principal -->
+          <div class="pd-general-main">
+
+            <!-- Información general -->
+            <div class="sc-card">
+              <div class="sc-card__header">
+                <mat-icon>info</mat-icon>
+                <span class="sc-card__title">Información general</span>
+              </div>
+              <div class="sc-card__body">
+                <div class="sc-form-grid">
+                  <div class="pd-field">
+                    <span class="pd-field__label">Código</span>
+                    <span class="pd-field__value pd-field__value--mono">{{ p.codigo }}</span>
+                  </div>
+                  <div class="pd-field">
+                    <span class="pd-field__label">Tipo</span>
+                    <span class="pd-field__value">{{ TIPO_LABELS[p.tipo] }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Cliente -->
+            <div class="sc-card">
+              <div class="sc-card__header">
+                <mat-icon>business</mat-icon>
+                <span class="sc-card__title">Cliente</span>
+              </div>
+              <div class="sc-card__body">
+                <div class="sc-form-grid">
+                  <div class="pd-field">
+                    <span class="pd-field__label">Nombre</span>
+                    <span class="pd-field__value">{{ p.cliente_nombre }}</span>
+                  </div>
+                  <div class="pd-field">
+                    <span class="pd-field__label">NIT / ID</span>
+                    <span class="pd-field__value">{{ p.cliente_id }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Fechas -->
+            <div class="sc-card">
+              <div class="sc-card__header">
+                <mat-icon>calendar_month</mat-icon>
+                <span class="sc-card__title">Fechas</span>
+              </div>
+              <div class="sc-card__body">
+                <div class="sc-form-grid">
+                  <div class="pd-field">
+                    <span class="pd-field__label">Inicio planificado</span>
+                    <span class="pd-field__value">{{ formatDate(p.fecha_inicio_planificada) }}</span>
+                  </div>
+                  <div class="pd-field">
+                    <span class="pd-field__label">Fin planificado</span>
+                    <span class="pd-field__value">{{ formatDate(p.fecha_fin_planificada) }}</span>
+                  </div>
+                  <div class="pd-field">
+                    <span class="pd-field__label">Inicio real</span>
+                    <span class="pd-field__value">{{ formatDate(p.fecha_inicio_real) }}</span>
+                  </div>
+                  <div class="pd-field">
+                    <span class="pd-field__label">Fin real</span>
+                    <span class="pd-field__value">{{ formatDate(p.fecha_fin_real) }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Columna lateral -->
+          <div class="pd-general-side">
+
+            <!-- Equipo -->
+            <div class="sc-card">
+              <div class="sc-card__header">
+                <mat-icon>group</mat-icon>
+                <span class="sc-card__title">Equipo</span>
+              </div>
+              <div class="sc-card__body sc-card__body--gap">
+                <div class="pd-user-card">
+                  <div class="pd-user-card__avatar">{{ (p.gerente.full_name || p.gerente.email).charAt(0).toUpperCase() }}</div>
+                  <div class="pd-user-card__info">
+                    <span class="pd-user-card__role">Gerente</span>
+                    <span class="pd-user-card__name">{{ p.gerente.full_name || p.gerente.email }}</span>
+                  </div>
+                </div>
+                @if (p.coordinador) {
+                  <div class="pd-user-card">
+                    <div class="pd-user-card__avatar pd-user-card__avatar--secondary">{{ (p.coordinador.full_name || p.coordinador.email).charAt(0).toUpperCase() }}</div>
+                    <div class="pd-user-card__info">
+                      <span class="pd-user-card__role">Coordinador</span>
+                      <span class="pd-user-card__name">{{ p.coordinador.full_name || p.coordinador.email }}</span>
+                    </div>
+                  </div>
+                } @else {
+                  <div class="pd-user-empty">
+                    <mat-icon>person_off</mat-icon>
+                    <span>Sin coordinador asignado</span>
+                  </div>
+                }
+              </div>
+            </div>
+
+            <!-- Presupuesto & AIU -->
+            <div class="sc-card">
+              <div class="sc-card__header">
+                <mat-icon>attach_money</mat-icon>
+                <span class="sc-card__title">Presupuesto y AIU</span>
+              </div>
+              <div class="sc-card__body sc-card__body--gap">
+                <div class="pd-presupuesto-highlight">
+                  <span class="pd-presupuesto-highlight__label">Presupuesto total</span>
+                  <span class="pd-presupuesto-highlight__value">{{ formatCurrency(p.presupuesto_total) }}</span>
+                </div>
+                <div class="pd-aiu-row">
+                  <div class="pd-aiu-item">
+                    <span class="pd-aiu-item__pct">{{ p.porcentaje_administracion }}%</span>
+                    <span class="pd-aiu-item__label">Adm.</span>
+                  </div>
+                  <div class="pd-aiu-divider"></div>
+                  <div class="pd-aiu-item">
+                    <span class="pd-aiu-item__pct">{{ p.porcentaje_imprevistos }}%</span>
+                    <span class="pd-aiu-item__label">Imprev.</span>
+                  </div>
+                  <div class="pd-aiu-divider"></div>
+                  <div class="pd-aiu-item">
+                    <span class="pd-aiu-item__pct">{{ p.porcentaje_utilidad }}%</span>
+                    <span class="pd-aiu-item__label">Utilidad</span>
+                  </div>
+                </div>
+                <div class="pd-sync-row">
+                  @if (p.sincronizado_con_saiopen) {
+                    <mat-icon class="pd-sync-row__icon pd-sync-row__icon--ok">check_circle</mat-icon>
+                    <span>Sincronizado con Saiopen</span>
+                  } @else {
+                    <mat-icon class="pd-sync-row__icon pd-sync-row__icon--no">sync_disabled</mat-icon>
+                    <span class="pd-sync-row__muted">No sincronizado con Saiopen</span>
+                  }
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
       </mat-tab>
 
-      <!-- ── Tab 2: Fases ── -->
+      <!-- Tab 2: Fases -->
       <mat-tab [label]="'Fases (' + p.fases_count + ')'">
         <div class="pd-tab-content">
           <app-fase-list [proyectoId]="p.id" [presupuestoProyecto]="p.presupuesto_total" />
         </div>
       </mat-tab>
 
-      <!-- ── Tab 3: Terceros ── -->
+      <!-- Tab 3: Terceros -->
       <mat-tab label="Terceros">
         <div class="pd-tab-content">
           <app-tercero-list [proyectoId]="p.id" />
         </div>
       </mat-tab>
 
-      <!-- ── Tab 4: Documentos ── -->
+      <!-- Tab 4: Documentos -->
       <mat-tab label="Documentos">
         <div class="pd-tab-content">
           <app-documento-list [proyectoId]="p.id" />
         </div>
       </mat-tab>
 
-      <!-- ── Tab 5: Hitos ── -->
+      <!-- Tab 5: Hitos -->
       <mat-tab label="Hitos">
         <div class="pd-tab-content">
           <app-hito-list [proyectoId]="p.id" />
         </div>
       </mat-tab>
+
+      <!-- Tab 6: Actividades -->
+      <mat-tab label="Actividades">
+        <div class="pd-tab-content">
+          <app-actividad-proyecto-list [proyectoId]="p.id" />
+        </div>
+      </mat-tab>
+
     </mat-tab-group>
   </div>
 } @else {

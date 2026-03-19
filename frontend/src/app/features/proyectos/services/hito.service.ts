@@ -1,7 +1,10 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { Hito, HitoCreate } from '../models/hito.model';
+
+interface Paginated<T> { count: number; next: string | null; previous: string | null; results: T[]; }
 
 @Injectable({ providedIn: 'root' })
 export class HitoService {
@@ -12,7 +15,9 @@ export class HitoService {
   }
 
   list(proyectoId: string): Observable<Hito[]> {
-    return this.http.get<Hito[]>(`${this.url(proyectoId)}/`);
+    return this.http
+      .get<Paginated<Hito> | Hito[]>(`${this.url(proyectoId)}/`)
+      .pipe(map(r => (r as Paginated<Hito>).results ?? (r as Hito[])));
   }
 
   create(proyectoId: string, data: HitoCreate): Observable<Hito> {

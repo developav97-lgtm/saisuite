@@ -67,7 +67,11 @@
       "Bash(git merge:*)",
       "Read(//Users/juanandrade/Desktop/saisuite/**)",
       "Bash(docker compose:*)",
-      "Bash(python3 -c \":*)"
+      "Bash(python3 -c \":*)",
+      "Bash(python manage.py makemigrations proyectos --name=\"add_actividad_actividadproyecto\")",
+      "Bash(docker-compose exec:*)",
+      "Bash(docker-compose ps:*)",
+      "Bash(docker-compose logs:*)"
     ]
   }
 }

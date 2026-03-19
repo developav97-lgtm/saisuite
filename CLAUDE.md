@@ -24,6 +24,7 @@ Antes de generar código, leer el documento relevante según la tarea:
 |---|---|
 | Crear o modificar cualquier modelo | Esquema_BD_SaiSuite_v1.docx |
 | Crear cualquier archivo de código | Estandares_Codigo_SaiSuite_v1.docx |
+| **Crear cualquier componente Angular** | **docs/standards/UI-UX-STANDARDS.md** |
 | Construir una feature nueva de cero | Flujo_Feature_SaiSuite_v1.docx |
 | Configurar o modificar AWS | AWS_Setup_SaiSuite_v1.docx |
 | Diseñar infraestructura | Infraestructura_SaiSuite_v2.docx |

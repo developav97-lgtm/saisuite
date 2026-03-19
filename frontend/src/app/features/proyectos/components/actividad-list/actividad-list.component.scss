@@ -1,0 +1,142 @@
+// ── Filtros ───────────────────────────────────────────────────
+.al-filters-card {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  align-items: center;
+  padding: 0.875rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.al-search {
+  flex: 1;
+  min-width: 200px;
+}
+
+.al-filter {
+  width: 170px;
+  flex-shrink: 0;
+}
+
+// ── Progress bar ──────────────────────────────────────────────
+.al-progress {
+  margin-bottom: -4px;
+  border-radius: var(--sc-radius) var(--sc-radius) 0 0;
+}
+
+// ── Tabla ─────────────────────────────────────────────────────
+.al-table {
+  width: 100%;
+  border-radius: var(--sc-radius);
+}
+
+.al-codigo {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--sc-primary);
+  background: var(--sc-primary-light);
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.al-cell-nombre {
+  font-weight: 500;
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.al-tipo-chip {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--sc-text-muted);
+  background: var(--sc-surface-ground);
+  border: 1px solid var(--sc-surface-border);
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.al-presupuesto {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.al-col-right {
+  text-align: right !important;
+  justify-content: flex-end !important;
+}
+
+.al-col-acciones {
+  width: 96px;
+  justify-content: flex-end !important;
+}
+
+// ── Empty state ────────────────────────────────────────────────
+.al-empty {
+  border: 1px solid var(--sc-surface-border);
+  border-top: none;
+  border-radius: 0 0 var(--sc-radius) var(--sc-radius);
+}
+
+// ── Formulario (dialog) ────────────────────────────────────────
+.al-form { display: flex; flex-direction: column; gap: 8px; padding-top: 8px; }
+
+.al-form-row {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.al-field-sm   { width: 140px; flex-shrink: 0; }
+.al-field-grow { flex: 1; }
+.al-field-half { flex: 1; }
+.al-field-full { width: 100%; }
+
+// ── Info consecutivo auto-seleccionado ────────────────────────
+.al-consecutivo-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: var(--sc-text-muted);
+  background: var(--sc-surface-ground);
+  border: 1px solid var(--sc-surface-border);
+  border-radius: var(--sc-radius);
+  padding: 0.5rem 0.75rem;
+
+  code {
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-weight: 700;
+    color: var(--sc-primary);
+  }
+}
+
+.al-consecutivo-icon {
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
+  color: var(--sc-primary);
+  opacity: 0.7;
+}
+
+// ── Responsive ────────────────────────────────────────────────
+@media (max-width: 680px) {
+  .mat-column-unidad_medida,
+  .mat-column-costo_unitario_base {
+    display: none !important;
+  }
+
+  .al-cell-nombre { max-width: none; }
+
+  .al-filter {
+    flex: 1;
+    min-width: 130px;
+    width: auto;
+  }
+}

@@ -32,6 +32,13 @@
   justify-content: center;
 }
 
+.dl-empty {
+  border: 1px solid var(--sc-surface-border);
+  border-radius: var(--sc-radius);
+  background: var(--sc-surface-card);
+  box-shadow: var(--sc-shadow-sm);
+}
+
 .dl-valor {
   font-weight: 600;
 }

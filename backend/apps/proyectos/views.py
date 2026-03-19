@@ -9,7 +9,7 @@ from rest_framework.response import Response
 from rest_framework.filters import SearchFilter, OrderingFilter
 from django_filters.rest_framework import DjangoFilterBackend
 
-from apps.proyectos.models import Proyecto, Fase, TerceroProyecto, DocumentoContable, Hito
+from apps.proyectos.models import Proyecto, Fase, TerceroProyecto, DocumentoContable, Hito, Actividad, ActividadProyecto
 from apps.proyectos.serializers import (
     ProyectoListSerializer,
     ProyectoDetailSerializer,
@@ -25,6 +25,11 @@ from apps.proyectos.serializers import (
     HitoSerializer,
     HitoCreateSerializer,
     GenerarFacturaSerializer,
+    ActividadListSerializer,
+    ActividadDetailSerializer,
+    ActividadCreateUpdateSerializer,
+    ActividadProyectoSerializer,
+    ActividadProyectoCreateUpdateSerializer,
 )
 from apps.proyectos.services import (
     ProyectoService,
@@ -32,6 +37,8 @@ from apps.proyectos.services import (
     TerceroProyectoService,
     DocumentoContableService,
     HitoService,
+    ActividadService,
+    ActividadProyectoService,
     ProyectoException,
 )
 from apps.proyectos.filters import ProyectoFilter
@@ -256,3 +263,95 @@ class HitoViewSet(viewsets.GenericViewSet):
         serializer.is_valid(raise_exception=True)
         hito_actualizado = HitoService.generar_factura(hito, request.user)
         return Response(HitoSerializer(hito_actualizado).data, status=status.HTTP_200_OK)
+
+
+class ActividadViewSet(viewsets.ModelViewSet):
+    """
+    CRUD del catálogo global de actividades (por empresa).
+    - GET/POST       /api/v1/proyectos/actividades/
+    - GET/PATCH/DEL  /api/v1/proyectos/actividades/{id}/
+    """
+    filter_backends    = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields   = ['tipo']
+    search_fields      = ['codigo', 'nombre', 'unidad_medida']
+    ordering_fields    = ['codigo', 'nombre', 'tipo', 'created_at']
+    ordering           = ['codigo']
+    permission_classes = [CanAccessProyectos]
+
+    def get_queryset(self):
+        company = getattr(self.request.user, 'company', None)
+        return ActividadService.list_actividades(company=company)
+
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return ActividadListSerializer
+        if self.action in ('create', 'update', 'partial_update'):
+            return ActividadCreateUpdateSerializer
+        return ActividadDetailSerializer
+
+    def perform_create(self, serializer):
+        actividad = ActividadService.create_actividad(serializer.validated_data, self.request.user)
+        serializer.instance = actividad
+
+    def perform_update(self, serializer):
+        actividad = ActividadService.update_actividad(self.get_object(), serializer.validated_data)
+        serializer.instance = actividad
+
+    def destroy(self, request, *args, **kwargs):
+        try:
+            ActividadService.soft_delete_actividad(self.get_object())
+        except Exception as exc:
+            raise ProyectoException(str(exc)) from exc
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class ActividadProyectoViewSet(viewsets.GenericViewSet):
+    """
+    Actividades asignadas a un proyecto.
+    - GET/POST    /api/v1/proyectos/{proyecto_pk}/actividades/
+    - PATCH/DEL   /api/v1/proyectos/{proyecto_pk}/actividades/{pk}/
+    """
+    permission_classes = [CanAccessProyectos, CanEditProyecto]
+
+    def _get_proyecto(self):
+        return Proyecto.all_objects.get(id=self.kwargs['proyecto_pk'])
+
+    def get_serializer_class(self):
+        if self.action in ('create', 'partial_update'):
+            return ActividadProyectoCreateUpdateSerializer
+        return ActividadProyectoSerializer
+
+    def list(self, request, proyecto_pk=None):
+        """GET /api/v1/proyectos/{id}/actividades/"""
+        proyecto = self._get_proyecto()
+        fase_id  = request.query_params.get('fase')
+        qs       = ActividadProyectoService.list_actividades_proyecto(proyecto, fase_id=fase_id)
+        serializer = ActividadProyectoSerializer(qs, many=True)
+        return Response(serializer.data)
+
+    def create(self, request, proyecto_pk=None):
+        """POST /api/v1/proyectos/{id}/actividades/"""
+        proyecto   = self._get_proyecto()
+        serializer = ActividadProyectoCreateUpdateSerializer(
+            data=request.data, context={'proyecto': proyecto}
+        )
+        serializer.is_valid(raise_exception=True)
+        ap = ActividadProyectoService.asignar_actividad(proyecto, serializer.validated_data)
+        return Response(ActividadProyectoSerializer(ap).data, status=status.HTTP_201_CREATED)
+
+    def partial_update(self, request, proyecto_pk=None, pk=None):
+        """PATCH /api/v1/proyectos/{id}/actividades/{pk}/"""
+        ap = ActividadProyecto.all_objects.get(id=pk, proyecto_id=proyecto_pk)
+        serializer = ActividadProyectoCreateUpdateSerializer(
+            ap, data=request.data, partial=True,
+            context={'proyecto': ap.proyecto},
+        )
+        serializer.is_valid(raise_exception=True)
+        ap = ActividadProyectoService.update_actividad_proyecto(ap, serializer.validated_data)
+        return Response(ActividadProyectoSerializer(ap).data)
+
+    def destroy(self, request, proyecto_pk=None, pk=None):
+        """DELETE /api/v1/proyectos/{id}/actividades/{pk}/"""
+        ap = ActividadProyecto.all_objects.get(id=pk, proyecto_id=proyecto_pk)
+        ActividadProyectoService.desasignar_actividad(ap)
+        return Response(status=status.HTTP_204_NO_CONTENT)

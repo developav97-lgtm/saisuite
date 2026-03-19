@@ -32,17 +32,44 @@
   &__pct {
     font-size: 0.75rem;
     color: var(--sc-text-muted);
-    width: 36px;
+    width: 40px;
     text-align: right;
+    white-space: nowrap;
+    flex-shrink: 0;
   }
 }
 
 .fl-col-acciones { width: 100px; }
 
-.fl-form { padding-top: 1rem; }
+.fl-empty {
+  border: 1px solid var(--sc-surface-border);
+  border-radius: var(--sc-radius);
+  background: var(--sc-surface-card);
+  box-shadow: var(--sc-shadow-sm);
+}
+
+// ── Dialog form: 2 columnas desktop, 1 columna mobile ─────────
+.fl-form {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  column-gap: 1.25rem;
+  row-gap: 0.75rem;
+  padding-top: 0.5rem;
+  align-items: start; // evita que campos de 1 línea se estiren a la altura del textarea
+
+  @media (max-width: 600px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+// Elementos que ocupan las 2 columnas
+.fl-field-full {
+  grid-column: 1 / -1;
+}
 
 .fl-presupuesto-header {
   padding-top: 0.75rem;
+  padding-bottom: 0.1rem;
   border-top: 1px solid var(--sc-surface-border);
   font-size: 0.875rem;
 }

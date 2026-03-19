@@ -1,1 +1,5 @@
 docker-compose exec frontend npm install primeng @primeuix/themes primeicons --force
+
+
+admin@demo.com      / demo123
+superadmin@valmentech.com / valmen2026!

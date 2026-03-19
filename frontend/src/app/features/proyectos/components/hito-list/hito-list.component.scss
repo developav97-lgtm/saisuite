@@ -96,3 +96,10 @@
 .hl-facturable-check {
   padding-top: 0.25rem;
 }
+
+.hl-empty {
+  border: 1px solid var(--sc-surface-border);
+  border-radius: var(--sc-radius);
+  background: var(--sc-surface-card);
+  box-shadow: var(--sc-shadow-sm);
+}
