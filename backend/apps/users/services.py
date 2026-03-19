@@ -180,14 +180,16 @@ class UserService:
     def update_user(company, user_id: str, data: dict) -> User:
         """
         Actualiza campos permitidos de un usuario de la empresa.
-        No se puede cambiar el email ni la contraseña desde aquí.
+        - Campos en User: first_name, last_name, role, is_active
+        - modules_access: se actualiza en UserCompany
         """
         user = UserService.get_user(company, user_id)
 
-        allowed_fields = {'first_name', 'last_name', 'role', 'is_active'}
-        update_fields  = []
+        # Campos directos en User
+        user_fields = {'first_name', 'last_name', 'role', 'is_active'}
+        update_fields = []
 
-        for field in allowed_fields:
+        for field in user_fields:
             if field in data:
                 setattr(user, field, data[field])
                 update_fields.append(field)
@@ -196,12 +198,18 @@ class UserService:
             update_fields.append('updated_at')
             user.save(update_fields=update_fields)
 
+        # modules_access vive en UserCompany
+        if 'modules_access' in data:
+            UserCompany.objects.filter(user=user, company=company).update(
+                modules_access=data['modules_access']
+            )
+
         logger.info(
             'user_updated',
             extra={
                 'user_id':    str(user.id),
                 'company_id': str(company.id),
-                'fields':     update_fields,
+                'fields':     update_fields + (['modules_access'] if 'modules_access' in data else []),
             },
         )
         return user

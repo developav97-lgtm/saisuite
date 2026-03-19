@@ -122,12 +122,16 @@ class UserCreateSerializer(serializers.ModelSerializer):
 # ---------------------------------------------------------------------------
 
 class UserListSerializer(serializers.ModelSerializer):
-    company_name = serializers.SerializerMethodField()
-    full_name    = serializers.SerializerMethodField()
+    company_name   = serializers.SerializerMethodField()
+    full_name      = serializers.SerializerMethodField()
+    modules_access = serializers.SerializerMethodField()
 
     class Meta:
         model  = User
-        fields = ['id', 'email', 'first_name', 'last_name', 'full_name', 'role', 'is_active', 'company_name', 'created_at']
+        fields = [
+            'id', 'email', 'first_name', 'last_name', 'full_name',
+            'role', 'is_active', 'company_name', 'modules_access', 'created_at',
+        ]
         read_only_fields = fields
 
     def get_company_name(self, obj: User) -> str:
@@ -135,6 +139,15 @@ class UserListSerializer(serializers.ModelSerializer):
 
     def get_full_name(self, obj: User) -> str:
         return obj.full_name
+
+    def get_modules_access(self, obj: User) -> list:
+        """Lee modules_access del UserCompany activo para esta empresa."""
+        from .models import UserCompany
+        try:
+            uc = UserCompany.objects.get(user=obj, company=obj.company)
+            return uc.modules_access or []
+        except UserCompany.DoesNotExist:
+            return []
 
 
 # ---------------------------------------------------------------------------
@@ -144,13 +157,16 @@ class UserListSerializer(serializers.ModelSerializer):
 class UserUpdateSerializer(serializers.Serializer):
     """Campos que company_admin puede modificar en un usuario de su empresa."""
 
-    first_name = serializers.CharField(max_length=150, required=False)
-    last_name  = serializers.CharField(max_length=150, required=False)
-    role       = serializers.ChoiceField(
+    first_name     = serializers.CharField(max_length=150, required=False)
+    last_name      = serializers.CharField(max_length=150, required=False)
+    role           = serializers.ChoiceField(
         choices=['seller', 'collector', 'viewer', 'company_admin'],
         required=False,
     )
-    is_active  = serializers.BooleanField(required=False)
+    is_active      = serializers.BooleanField(required=False)
+    modules_access = serializers.ListField(
+        child=serializers.CharField(), required=False, allow_empty=True,
+    )
 
 
 # ---------------------------------------------------------------------------
