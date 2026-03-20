@@ -145,7 +145,9 @@
           }
         </mat-form-field>
 
-        <mat-form-field appearance="outline" class="apl-field-half">
+        <mat-form-field appearance="outline" class="apl-field-half"
+          [matTooltip]="!puedeEjecutar() ? 'Solo editable cuando el proyecto está en ejecución' : ''"
+        >
           <mat-label>Cantidad ejecutada</mat-label>
           <input matInput type="number" formControlName="cantidad_ejecutada" min="0" />
         </mat-form-field>
@@ -157,15 +159,6 @@
           <span matTextPrefix>$&nbsp;</span>
           <input matInput type="number" formControlName="costo_unitario" min="0" />
           <mat-hint>Deja vacío para usar el costo base del catálogo</mat-hint>
-        </mat-form-field>
-
-        <mat-form-field appearance="outline" class="apl-field-half">
-          <mat-label>% Avance</mat-label>
-          <input matInput type="number" formControlName="porcentaje_avance" min="0" max="100" />
-          <span matTextSuffix>%</span>
-          @if (form.get('porcentaje_avance')?.hasError('min') || form.get('porcentaje_avance')?.hasError('max')) {
-            <mat-error>Debe estar entre 0 y 100</mat-error>
-          }
         </mat-form-field>
       </div>
 

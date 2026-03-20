@@ -2,12 +2,10 @@ import {
   ChangeDetectionStrategy, Component, OnInit, inject, signal,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatChipsModule } from '@angular/material/chips';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { AdminService } from '../services/admin.service';
-import { CompanySettings, MODULE_LABELS } from '../models/admin.models';
+import { CompanyLicense, CompanySettings, LICENSE_STATUS_LABELS, MODULE_LABELS } from '../models/admin.models';
 
 const PLAN_LABELS: Record<string, string> = {
   starter:      'Starter',
@@ -22,24 +20,30 @@ const PLAN_LABELS: Record<string, string> = {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CommonModule,
-    MatCardModule, MatIconModule,
-    MatProgressSpinnerModule, MatChipsModule,
+    MatIconModule,
+    MatProgressBarModule,
   ],
 })
 export class CompanySettingsComponent implements OnInit {
   private readonly adminService = inject(AdminService);
 
-  readonly company = signal<CompanySettings | null>(null);
-  readonly loading = signal(false);
+  readonly company      = signal<CompanySettings | null>(null);
+  readonly license      = signal<CompanyLicense | null>(null);
+  readonly loading      = signal(false);
 
-  readonly planLabels   = PLAN_LABELS;
-  readonly moduleLabels = MODULE_LABELS;
+  readonly planLabels          = PLAN_LABELS;
+  readonly moduleLabels        = MODULE_LABELS;
+  readonly licenseStatusLabels = LICENSE_STATUS_LABELS;
 
   ngOnInit(): void {
     this.loading.set(true);
     this.adminService.getCompanySettings().subscribe({
       next: (data) => { this.company.set(data); this.loading.set(false); },
       error: ()     => { this.loading.set(false); },
+    });
+    this.adminService.getMyLicense().subscribe({
+      next: (lic) => this.license.set(lic),
+      error: () => { /* silencioso si no tiene licencia configurada */ },
     });
   }
 }

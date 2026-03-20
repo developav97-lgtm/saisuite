@@ -111,6 +111,13 @@ class Proyecto(BaseModel):
     sincronizado_con_saiopen = models.BooleanField(default=False)
     ultima_sincronizacion    = models.DateTimeField(null=True, blank=True)
 
+    # Avance físico promedio calculado automáticamente desde las fases
+    porcentaje_avance = models.DecimalField(
+        max_digits=5, decimal_places=2, default=0,
+        help_text='Porcentaje de avance físico (0-100). Calculado automáticamente desde fases.',
+        editable=False,
+    )
+
     activo = models.BooleanField(default=True, db_index=True)
 
     class Meta:
@@ -121,6 +128,33 @@ class Proyecto(BaseModel):
 
     def __str__(self):
         return f'{self.codigo} — {self.nombre}'
+
+
+class ConfiguracionModulo(models.Model):
+    """
+    Configuración del módulo de proyectos por empresa.
+    Se crea automáticamente con valores por defecto al primer acceso.
+    """
+    company = models.OneToOneField(
+        'companies.Company',
+        on_delete=models.CASCADE,
+        related_name='configuracion_proyectos',
+    )
+    requiere_sync_saiopen_para_ejecucion = models.BooleanField(
+        default=False,
+        help_text='Si True, el proyecto debe estar sincronizado con Saiopen antes de iniciar ejecución.',
+    )
+    dias_alerta_vencimiento = models.PositiveIntegerField(
+        default=15,
+        help_text='Días antes del vencimiento de fase para mostrar alerta.',
+    )
+
+    class Meta:
+        verbose_name        = 'Configuración de proyectos'
+        verbose_name_plural = 'Configuraciones de proyectos'
+
+    def __str__(self):
+        return f'Config proyectos — {self.company}'
 
 
 class Fase(BaseModel):
@@ -169,6 +203,10 @@ class TerceroProyecto(BaseModel):
     """
     Tercero vinculado a un proyecto con un rol específico.
     Un tercero puede tener múltiples roles en el mismo proyecto.
+
+    tercero_fk es la referencia normalizada (apps.terceros.Tercero).
+    Los campos tercero_id/tercero_nombre se mantienen para loose coupling con Saiopen
+    y compatibilidad con registros previos.
     """
     proyecto      = models.ForeignKey(Proyecto, on_delete=models.CASCADE, related_name='terceros')
     tercero_id    = models.CharField(max_length=50, help_text='NIT/ID del tercero en Saiopen')
@@ -178,6 +216,13 @@ class TerceroProyecto(BaseModel):
         Fase, on_delete=models.SET_NULL,
         null=True, blank=True,
         related_name='terceros',
+    )
+    # FK normalizada al catálogo de terceros (opcional — se llena cuando el tercero existe en Saisuite)
+    tercero_fk = models.ForeignKey(
+        'terceros.Tercero',
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='proyectos_vinculados',
     )
     activo = models.BooleanField(default=True)
 

@@ -38,6 +38,8 @@ export interface ProyectoList {
   fecha_fin_planificada: string;
   /** Decimal serializado como string desde DRF */
   presupuesto_total: string;
+  /** Porcentaje de avance físico (0-100). Auto-calculado desde fases. */
+  porcentaje_avance: string;
   activo: boolean;
   created_at: string;
 }

@@ -1,0 +1,108 @@
+<div class="sc-page">
+
+  <!-- ── Header ── -->
+  <div class="sc-page-header">
+    <div class="sc-page-header__left">
+      <h1 class="sc-page-title">
+        <mat-icon>people</mat-icon>
+        Terceros
+      </h1>
+      <span class="sc-page-subtitle">Catálogo transversal de personas naturales y jurídicas</span>
+    </div>
+    <button mat-raised-button color="primary" (click)="nuevo()">
+      <mat-icon>person_add</mat-icon> Nuevo tercero
+    </button>
+  </div>
+
+  <!-- ── Filtros ── -->
+  <div class="sc-filters">
+    <mat-form-field appearance="outline" class="sc-filters__search">
+      <mat-label>Buscar por nombre o NIT</mat-label>
+      <mat-icon matPrefix>search</mat-icon>
+      <input matInput [value]="searchText()" (input)="searchText.set($any($event.target).value)" (keyup.enter)="onSearch()" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Tipo</mat-label>
+      <mat-select [value]="tipoFilter()" (selectionChange)="tipoFilter.set($event.value); onFilter()">
+        @for (op of tipoTerceroOptions; track op.value) {
+          <mat-option [value]="op.value">{{ op.label }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <button mat-stroked-button (click)="onSearch()">
+      <mat-icon>filter_list</mat-icon> Buscar
+    </button>
+  </div>
+
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate" />
+  }
+
+  @if (!loading() && terceros().length === 0) {
+    <div class="sc-empty-state">
+      <mat-icon>people_outline</mat-icon>
+      <p>No hay terceros registrados. Crea el primero con el botón de arriba.</p>
+    </div>
+  } @else if (terceros().length > 0) {
+    <mat-table [dataSource]="terceros()" class="sc-table">
+
+      <ng-container matColumnDef="nombre_completo">
+        <mat-header-cell *matHeaderCellDef>Nombre / Razón social</mat-header-cell>
+        <mat-cell *matCellDef="let t">
+          <div class="tc-nombre">
+            <span class="tc-nombre__text">{{ t.nombre_completo }}</span>
+            <small class="tc-nombre__codigo">{{ t.codigo }}</small>
+          </div>
+        </mat-cell>
+      </ng-container>
+
+      <ng-container matColumnDef="numero_identificacion">
+        <mat-header-cell *matHeaderCellDef>Identificación</mat-header-cell>
+        <mat-cell *matCellDef="let t">
+          <span class="tc-id-tipo">{{ getTipoIdentificacionLabel(t.tipo_identificacion) }}</span>
+          <span class="tc-id-numero">{{ t.numero_identificacion }}</span>
+        </mat-cell>
+      </ng-container>
+
+      <ng-container matColumnDef="tipo_tercero">
+        <mat-header-cell *matHeaderCellDef>Tipo</mat-header-cell>
+        <mat-cell *matCellDef="let t">
+          @if (t.tipo_tercero) {
+            <span [class]="'tc-tipo-chip tc-tipo-chip--' + t.tipo_tercero">
+              {{ getTipoTerceroLabel(t.tipo_tercero) }}
+            </span>
+          } @else {
+            <span class="tc-tipo-chip tc-tipo-chip--vacio">—</span>
+          }
+        </mat-cell>
+      </ng-container>
+
+      <ng-container matColumnDef="contacto">
+        <mat-header-cell *matHeaderCellDef>Contacto</mat-header-cell>
+        <mat-cell *matCellDef="let t">
+          <div class="tc-contacto">
+            @if (t.email) { <span>{{ t.email }}</span> }
+            @if (t.telefono) { <small>{{ t.telefono }}</small> }
+          </div>
+        </mat-cell>
+      </ng-container>
+
+      <ng-container matColumnDef="acciones">
+        <mat-header-cell *matHeaderCellDef class="tc-col-acciones">Acciones</mat-header-cell>
+        <mat-cell *matCellDef="let t" class="tc-col-acciones">
+          <button mat-icon-button matTooltip="Editar" (click)="editar(t)">
+            <mat-icon>edit</mat-icon>
+          </button>
+          <button mat-icon-button matTooltip="Eliminar" color="warn" (click)="confirmarEliminar(t)">
+            <mat-icon>delete</mat-icon>
+          </button>
+        </mat-cell>
+      </ng-container>
+
+      <mat-header-row *matHeaderRowDef="displayedColumns"></mat-header-row>
+      <mat-row *matRowDef="let row; columns: displayedColumns;"></mat-row>
+    </mat-table>
+  }
+</div>

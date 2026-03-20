@@ -5,13 +5,14 @@ TODA la lógica de negocio va aquí. Las views solo orquestan.
 import logging
 from decimal import Decimal
 from django.db import transaction
-from django.db.models import Sum, Count, Q, QuerySet
+from django.db.models import Avg, ExpressionWrapper, F, Sum, Count, Q, QuerySet
+from django.db.models import DecimalField as DbDecimalField
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError, PermissionDenied
 
 from apps.proyectos.models import (
     Proyecto, Fase, TerceroProyecto, DocumentoContable, Hito,
-    EstadoProyecto, Actividad, ActividadProyecto,
+    EstadoProyecto, Actividad, ActividadProyecto, ConfiguracionModulo,
 )
 
 logger = logging.getLogger(__name__)
@@ -35,6 +36,79 @@ class PresupuestoExcedidoException(ProyectoException):
 
 class ProyectoNoEditableException(ProyectoException):
     pass
+
+
+# ──────────────────────────────────────────────
+# Avance automático
+# ──────────────────────────────────────────────
+
+def calcular_avance_fase(fase_id) -> Decimal:
+    """
+    Recalcula y persiste porcentaje_avance de la fase basándose en sus actividades.
+    Fórmula: Σ(ejecutado × costo) / Σ(planificado × costo) × 100.
+    Devuelve el porcentaje calculado.
+    """
+    agg = ActividadProyecto.all_objects.filter(fase_id=fase_id).aggregate(
+        planificado=Sum(ExpressionWrapper(
+            F('cantidad_planificada') * F('costo_unitario'),
+            output_field=DbDecimalField(),
+        )),
+        ejecutado=Sum(ExpressionWrapper(
+            F('cantidad_ejecutada') * F('costo_unitario'),
+            output_field=DbDecimalField(),
+        )),
+    )
+    planificado = agg['planificado'] or Decimal('0')
+    ejecutado   = agg['ejecutado']   or Decimal('0')
+
+    if planificado > Decimal('0'):
+        pct = min(
+            (ejecutado / planificado * Decimal('100')).quantize(Decimal('0.01')),
+            Decimal('100'),
+        )
+    else:
+        pct = Decimal('0')
+
+    Fase.objects.filter(id=fase_id).update(porcentaje_avance=pct)
+    logger.info('Avance fase recalculado', extra={'fase_id': str(fase_id), 'porcentaje': str(pct)})
+    return pct
+
+
+def calcular_avance_proyecto(proyecto_id) -> Decimal:
+    """
+    Recalcula y persiste porcentaje_avance del proyecto como promedio de sus fases activas.
+    Devuelve el porcentaje calculado.
+    """
+    result = Fase.objects.filter(proyecto_id=proyecto_id, activo=True).aggregate(
+        avg=Avg('porcentaje_avance')
+    )
+    avg = result['avg']
+    pct = (avg.quantize(Decimal('0.01')) if avg is not None else Decimal('0'))
+
+    Proyecto.objects.filter(id=proyecto_id).update(porcentaje_avance=pct)
+    logger.info('Avance proyecto recalculado', extra={'proyecto_id': str(proyecto_id), 'porcentaje': str(pct)})
+    return pct
+
+
+# ──────────────────────────────────────────────
+# ConfiguracionModuloService
+# ──────────────────────────────────────────────
+
+class ConfiguracionModuloService:
+
+    @staticmethod
+    def get_or_create(company) -> ConfiguracionModulo:
+        obj, _ = ConfiguracionModulo.objects.get_or_create(company=company)
+        return obj
+
+    @staticmethod
+    def update(company, data: dict) -> ConfiguracionModulo:
+        obj, _ = ConfiguracionModulo.objects.get_or_create(company=company)
+        for key, val in data.items():
+            setattr(obj, key, val)
+        obj.save()
+        logger.info('ConfiguracionModulo actualizada', extra={'company_id': str(company.id)})
+        return obj
 
 
 # ──────────────────────────────────────────────
@@ -232,7 +306,12 @@ class ProyectoService:
                 )
 
         if estado_actual == EstadoProyecto.PLANIFICADO and nuevo_estado == EstadoProyecto.EN_EJECUCION:
-            if not proyecto.sincronizado_con_saiopen:
+            try:
+                config = ConfiguracionModulo.objects.get(company=proyecto.company)
+                requiere_sync = config.requiere_sync_saiopen_para_ejecucion
+            except ConfiguracionModulo.DoesNotExist:
+                requiere_sync = False
+            if requiere_sync and not proyecto.sincronizado_con_saiopen:
                 raise TransicionEstadoInvalidaException(
                     'El proyecto debe estar sincronizado con Saiopen antes de iniciar ejecución.'
                 )
@@ -479,14 +558,17 @@ class FaseService:
 class TerceroProyectoService:
 
     @staticmethod
-    def list_terceros(proyecto: Proyecto) -> QuerySet:
-        """Retorna terceros activos del proyecto con fase cargada."""
-        return (
+    def list_terceros(proyecto: Proyecto, fase_id: str | None = None) -> QuerySet:
+        """Retorna terceros activos del proyecto. Filtra por fase si se provee fase_id."""
+        qs = (
             TerceroProyecto.all_objects
             .filter(proyecto=proyecto, activo=True)
-            .select_related('fase')
+            .select_related('fase', 'tercero_fk')
             .order_by('rol', 'tercero_nombre')
         )
+        if fase_id:
+            qs = qs.filter(fase_id=fase_id)
+        return qs
 
     @staticmethod
     @transaction.atomic

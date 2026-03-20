@@ -4,7 +4,7 @@ Los serializers SOLO transforman datos. Sin lógica de negocio.
 """
 from rest_framework import serializers
 
-from .models import Company, CompanyModule
+from .models import Company, CompanyModule, CompanyLicense, LicensePayment
 
 
 class CompanyModuleSerializer(serializers.ModelSerializer):
@@ -44,11 +44,9 @@ class CompanyDetailSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = fields
 
-    def get_modules(self, obj: Company) -> list[str]:
-        return list(
-            CompanyModule.objects.filter(company=obj, is_active=True)
-            .values_list('module', flat=True)
-        )
+    def get_modules(self, obj: Company) -> list[dict]:
+        qs = CompanyModule.objects.filter(company=obj)
+        return CompanyModuleSerializer(qs, many=True).data
 
 
 class CompanyCreateSerializer(serializers.Serializer):
@@ -89,3 +87,39 @@ class CompanyUpdateSerializer(serializers.ModelSerializer):
         if not value:
             raise serializers.ValidationError('El nombre no puede estar vacío.')
         return value
+
+
+# ── Licencias ────────────────────────────────────────────────────────────────
+
+class LicensePaymentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = LicensePayment
+        fields = ['id', 'amount', 'payment_date', 'method', 'reference', 'notes', 'created_at']
+        read_only_fields = ['id', 'created_at']
+
+
+class CompanyLicenseSerializer(serializers.ModelSerializer):
+    """Serializer de solo lectura para mostrar licencia de empresa."""
+
+    payments        = LicensePaymentSerializer(many=True, read_only=True)
+    days_until_expiry = serializers.IntegerField(read_only=True)
+    is_expired      = serializers.BooleanField(read_only=True)
+    company_name    = serializers.CharField(source='company.name', read_only=True)
+
+    class Meta:
+        model = CompanyLicense
+        fields = [
+            'id', 'company', 'company_name', 'plan', 'status',
+            'starts_at', 'expires_at', 'max_users', 'notes',
+            'days_until_expiry', 'is_expired',
+            'payments', 'created_at', 'updated_at',
+        ]
+        read_only_fields = ['id', 'days_until_expiry', 'is_expired', 'created_at', 'updated_at']
+
+
+class CompanyLicenseWriteSerializer(serializers.ModelSerializer):
+    """Serializer de escritura para crear/actualizar licencia."""
+
+    class Meta:
+        model = CompanyLicense
+        fields = ['company', 'plan', 'status', 'starts_at', 'expires_at', 'max_users', 'notes']

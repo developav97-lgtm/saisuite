@@ -4,9 +4,10 @@ Toda la lógica de negocio de empresas aquí.
 Las views y serializers no contienen lógica de negocio.
 """
 import logging
-from rest_framework.exceptions import ValidationError
+from datetime import date, timedelta
+from rest_framework.exceptions import ValidationError, NotFound
 
-from .models import Company, CompanyModule
+from .models import Company, CompanyModule, CompanyLicense, LicensePayment
 
 logger = logging.getLogger(__name__)
 
@@ -114,4 +115,60 @@ class CompanyService:
         return list(
             CompanyModule.objects.filter(company=company, is_active=True)
             .values_list('module', flat=True)
+        )
+
+
+class LicenseService:
+
+    @staticmethod
+    def get_license(company: Company) -> CompanyLicense:
+        try:
+            return CompanyLicense.objects.get(company=company)
+        except CompanyLicense.DoesNotExist:
+            raise NotFound('Esta empresa no tiene una licencia configurada.')
+
+    @staticmethod
+    def get_license_by_id(license_id: str) -> CompanyLicense:
+        try:
+            return CompanyLicense.objects.select_related('company').get(id=license_id)
+        except CompanyLicense.DoesNotExist:
+            raise NotFound('Licencia no encontrada.')
+
+    @staticmethod
+    def list_licenses():
+        return CompanyLicense.objects.select_related('company').all().order_by('expires_at')
+
+    @staticmethod
+    def create_license(data: dict) -> CompanyLicense:
+        company = data['company']
+        if CompanyLicense.objects.filter(company=company).exists():
+            raise ValidationError({'company': 'Esta empresa ya tiene una licencia. Use la edición.'})
+        license_obj = CompanyLicense.objects.create(**data)
+        logger.info('license_created', extra={'license_id': str(license_obj.id), 'company_id': str(company.id)})
+        return license_obj
+
+    @staticmethod
+    def update_license(license_obj: CompanyLicense, data: dict) -> CompanyLicense:
+        allowed = ['plan', 'status', 'starts_at', 'expires_at', 'max_users', 'notes']
+        for field in allowed:
+            if field in data:
+                setattr(license_obj, field, data[field])
+        license_obj.save()
+        logger.info('license_updated', extra={'license_id': str(license_obj.id)})
+        return license_obj
+
+    @staticmethod
+    def add_payment(license_obj: CompanyLicense, data: dict) -> LicensePayment:
+        payment = LicensePayment.objects.create(license=license_obj, **data)
+        logger.info('license_payment_added', extra={'license_id': str(license_obj.id), 'amount': str(payment.amount)})
+        return payment
+
+    @staticmethod
+    def get_expiring_soon(days: int = 5) -> list[CompanyLicense]:
+        """Retorna licencias que expiran dentro de `days` días."""
+        target = date.today() + timedelta(days=days)
+        return list(
+            CompanyLicense.objects
+            .filter(expires_at=target, status=CompanyLicense.Status.ACTIVE)
+            .select_related('company')
         )

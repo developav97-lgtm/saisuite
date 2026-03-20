@@ -24,6 +24,8 @@ from .serializers import (
     UserUpdateSerializer,
     UserCompanySummarySerializer,
     SwitchCompanySerializer,
+    PasswordResetRequestSerializer,
+    PasswordResetConfirmSerializer,
 )
 from .services import AuthService, UserService
 
@@ -76,9 +78,13 @@ class MeView(RetrieveAPIView):
 # ---------------------------------------------------------------------------
 
 class RegisterView(APIView):
-    """POST /api/v1/auth/register/ — crea empresa y primer usuario admin."""
+    """POST /api/v1/auth/register/ — crea empresa y primer usuario admin. Solo superadmins."""
 
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        from apps.companies.permissions import IsSuperAdmin
+        return [IsSuperAdmin()]
 
     def post(self, request):
         serializer = RegisterSerializer(data=request.data)
@@ -205,3 +211,39 @@ class SwitchCompanyView(APIView):
             str(serializer.validated_data['company_id']),
         )
         return Response(UserMeSerializer(user).data, status=status.HTTP_200_OK)
+
+
+# ---------------------------------------------------------------------------
+# Recuperación de contraseña
+# ---------------------------------------------------------------------------
+
+class PasswordResetRequestView(APIView):
+    """POST /api/v1/auth/password-reset/ — solicita recuperación de contraseña."""
+
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = PasswordResetRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        UserService.request_password_reset(serializer.validated_data['email'])
+        # Siempre responde igual para no revelar si el email existe
+        return Response(
+            {'detail': 'Si el email existe, recibirás un enlace para restablecer tu contraseña.'},
+            status=status.HTTP_200_OK,
+        )
+
+
+class PasswordResetConfirmView(APIView):
+    """POST /api/v1/auth/password-reset/confirm/ — confirma el reset con uid + token."""
+
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = PasswordResetConfirmSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        UserService.confirm_password_reset(
+            uid_b64=serializer.validated_data['uid'],
+            token=serializer.validated_data['token'],
+            new_password=serializer.validated_data['password'],
+        )
+        return Response({'detail': 'Contraseña restablecida correctamente.'}, status=status.HTTP_200_OK)

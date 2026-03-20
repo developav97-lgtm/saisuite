@@ -58,6 +58,7 @@ class EntidadConsecutivo(models.TextChoices):
     PROYECTO  = 'proyecto',  'Proyecto'
     ACTIVIDAD = 'actividad', 'Actividad'
     FACTURA   = 'factura',   'Factura'
+    TERCERO   = 'tercero',   'Tercero'
 
 
 class ConfiguracionConsecutivo(BaseModel):

@@ -46,6 +46,12 @@ export const routes: Routes = [
                 loadChildren: () =>
                     import('./features/proyectos/proyectos.routes').then(m => m.PROYECTOS_ROUTES),
             },
+            // Terceros — catálogo transversal
+            {
+                path: 'terceros',
+                loadChildren: () =>
+                    import('./features/terceros/terceros.routes').then(m => m.TERCEROS_ROUTES),
+            },
             // Admin — gestión de empresa, usuarios y módulos
             {
                 path: 'admin',
@@ -55,6 +61,13 @@ export const routes: Routes = [
             // Redirect por defecto al dashboard
             { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
         ],
+    },
+
+    // Licencia vencida / bloqueada
+    {
+        path: 'license-expired',
+        loadComponent: () =>
+            import('./features/license-expired/license-expired.component').then(m => m.LicenseExpiredComponent),
     },
 
     // Fallback

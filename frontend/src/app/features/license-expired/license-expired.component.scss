@@ -1,0 +1,60 @@
+.le-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--sc-surface-ground);
+}
+
+.le-card {
+  max-width: 440px;
+  width: 100%;
+  padding: 3rem 2.5rem;
+  background: var(--sc-surface-card);
+  border-radius: 16px;
+  box-shadow: 0 4px 32px rgba(0, 0, 0, 0.12);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  text-align: center;
+}
+
+.le-icon {
+  font-size: 4rem;
+  width: 4rem;
+  height: 4rem;
+  color: var(--mat-sys-error);
+  opacity: 0.85;
+}
+
+.le-title {
+  font-size: 1.6rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--mat-sys-on-surface);
+}
+
+.le-subtitle {
+  font-size: 1rem;
+  color: var(--mat-sys-on-surface-variant);
+  margin: 0;
+}
+
+.le-contact {
+  font-size: 0.95rem;
+  color: var(--mat-sys-on-surface-variant);
+  margin: 0;
+  padding: 0.75rem 1rem;
+  background: var(--sc-surface-ground);
+  border-radius: 8px;
+  width: 100%;
+}
+
+.le-actions {
+  margin-top: 0.5rem;
+
+  button {
+    min-width: 180px;
+  }
+}

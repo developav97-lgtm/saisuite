@@ -1,5 +1,6 @@
 import { HttpInterceptorFn, HttpErrorResponse } from '@angular/common/http';
 import { inject } from '@angular/core';
+import { Router } from '@angular/router';
 import { BehaviorSubject, throwError } from 'rxjs';
 import { catchError, filter, switchMap, take } from 'rxjs/operators';
 import { AuthService } from '../auth/auth.service';
@@ -18,6 +19,7 @@ const refreshToken$ = new BehaviorSubject<string | null>(null);
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const authService = inject(AuthService);
+  const router      = inject(Router);
   const token = authService.getAccessToken();
 
   const isPublic = PUBLIC_ROUTES.some(route => req.url.includes(route));
@@ -31,6 +33,12 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   return next(cloned).pipe(
     catchError((error: HttpErrorResponse) => {
       const isAuthRoute = PUBLIC_ROUTES.some(route => req.url.includes(route));
+
+      // Licencia inactiva o vencida → pantalla de bloqueo
+      if (error.status === 402) {
+        router.navigate(['/license-expired']);
+        return throwError(() => error);
+      }
 
       if (error.status !== 401 || isAuthRoute) {
         return throwError(() => error);

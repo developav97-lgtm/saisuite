@@ -76,7 +76,6 @@ export class FaseListComponent implements OnInit {
     presupuesto_subcontratos: [0],
     presupuesto_equipos:      [0],
     presupuesto_otros:        [0],
-    porcentaje_avance:        [0],
   });
 
   ngOnInit(): void { this.loadFases(); }
@@ -94,7 +93,7 @@ export class FaseListComponent implements OnInit {
     this.form.reset({
       presupuesto_mano_obra: 0, presupuesto_materiales: 0,
       presupuesto_subcontratos: 0, presupuesto_equipos: 0,
-      presupuesto_otros: 0, porcentaje_avance: 0,
+      presupuesto_otros: 0,
       fecha_inicio_planificada: null, fecha_fin_planificada: null,
     });
     this.syncBudgetDisplays();
@@ -118,7 +117,6 @@ export class FaseListComponent implements OnInit {
           presupuesto_subcontratos: parseFloat(detail.presupuesto_subcontratos || '0'),
           presupuesto_equipos:      parseFloat(detail.presupuesto_equipos      || '0'),
           presupuesto_otros:        parseFloat(detail.presupuesto_otros        || '0'),
-          porcentaje_avance:        parseFloat(detail.porcentaje_avance        || '0'),
         });
         this.syncBudgetDisplays();
         this.dialogRef = this.dialog.open(this.faseFormTemplate, {
@@ -154,7 +152,6 @@ export class FaseListComponent implements OnInit {
       presupuesto_subcontratos: (val.presupuesto_subcontratos ?? 0).toString(),
       presupuesto_equipos:      (val.presupuesto_equipos      ?? 0).toString(),
       presupuesto_otros:        (val.presupuesto_otros        ?? 0).toString(),
-      porcentaje_avance:        (val.porcentaje_avance        ?? 0).toString(),
     };
 
     const editing = this.editingFase();

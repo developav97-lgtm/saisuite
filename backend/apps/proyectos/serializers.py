@@ -8,7 +8,7 @@ from rest_framework import serializers
 from apps.proyectos.models import (
     Proyecto, Fase, TerceroProyecto, DocumentoContable, Hito,
     TipoProyecto, EstadoProyecto, RolTercero, TipoDocumento,
-    Actividad, ActividadProyecto, TipoActividad,
+    Actividad, ActividadProyecto, TipoActividad, ConfiguracionModulo,
 )
 
 logger = logging.getLogger(__name__)
@@ -74,7 +74,7 @@ class FaseDetailSerializer(serializers.ModelSerializer):
 
 
 class FaseCreateUpdateSerializer(serializers.ModelSerializer):
-    """Serializer de escritura para fases."""
+    """Serializer de escritura para fases. porcentaje_avance es auto-calculado."""
 
     class Meta:
         model  = Fase
@@ -84,7 +84,7 @@ class FaseCreateUpdateSerializer(serializers.ModelSerializer):
             'fecha_inicio_real', 'fecha_fin_real',
             'presupuesto_mano_obra', 'presupuesto_materiales',
             'presupuesto_subcontratos', 'presupuesto_equipos',
-            'presupuesto_otros', 'porcentaje_avance',
+            'presupuesto_otros',
         ]
 
     def validate(self, attrs):
@@ -93,11 +93,6 @@ class FaseCreateUpdateSerializer(serializers.ModelSerializer):
         if inicio and fin and fin < inicio:
             raise serializers.ValidationError(
                 {'fecha_fin_planificada': 'La fecha de fin no puede ser anterior a la fecha de inicio.'}
-            )
-        avance = attrs.get('porcentaje_avance')
-        if avance is not None and not (Decimal('0') <= avance <= Decimal('100')):
-            raise serializers.ValidationError(
-                {'porcentaje_avance': 'El porcentaje de avance debe estar entre 0 y 100.'}
             )
         return attrs
 
@@ -112,7 +107,7 @@ class ProyectoListSerializer(serializers.ModelSerializer):
             'id', 'codigo', 'nombre', 'tipo', 'estado',
             'cliente_nombre', 'gerente',
             'fecha_inicio_planificada', 'fecha_fin_planificada',
-            'presupuesto_total', 'activo', 'created_at',
+            'presupuesto_total', 'porcentaje_avance', 'activo', 'created_at',
         ]
         read_only_fields = ['id', 'created_at']
 
@@ -132,7 +127,7 @@ class ProyectoDetailSerializer(serializers.ModelSerializer):
             'gerente', 'coordinador',
             'fecha_inicio_planificada', 'fecha_fin_planificada',
             'fecha_inicio_real', 'fecha_fin_real',
-            'presupuesto_total',
+            'presupuesto_total', 'porcentaje_avance',
             'porcentaje_administracion', 'porcentaje_imprevistos', 'porcentaje_utilidad',
             'saiopen_proyecto_id', 'sincronizado_con_saiopen', 'ultima_sincronizacion',
             'activo', 'fases_count', 'presupuesto_fases_total',
@@ -208,18 +203,22 @@ class CambiarEstadoSerializer(serializers.Serializer):
 # ──────────────────────────────────────────────
 
 class TerceroProyectoSerializer(serializers.ModelSerializer):
-    """Serializer de lectura y escritura para terceros vinculados al proyecto."""
+    """Serializer de lectura para terceros vinculados al proyecto."""
     rol_display  = serializers.CharField(source='get_rol_display', read_only=True)
     fase_nombre  = serializers.CharField(source='fase.nombre', read_only=True, default=None)
+    tercero_fk_nombre = serializers.CharField(
+        source='tercero_fk.nombre_completo', read_only=True, default=None,
+    )
 
     class Meta:
         model  = TerceroProyecto
         fields = [
             'id', 'proyecto', 'tercero_id', 'tercero_nombre',
-            'rol', 'rol_display', 'fase', 'fase_nombre', 'activo',
-            'created_at',
+            'rol', 'rol_display', 'fase', 'fase_nombre',
+            'tercero_fk', 'tercero_fk_nombre',
+            'activo', 'created_at',
         ]
-        read_only_fields = ['id', 'proyecto', 'created_at']
+        read_only_fields = ['id', 'proyecto', 'created_at', 'tercero_fk_nombre']
 
 
 class TerceroProyectoCreateSerializer(serializers.ModelSerializer):
@@ -227,7 +226,7 @@ class TerceroProyectoCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model  = TerceroProyecto
-        fields = ['tercero_id', 'tercero_nombre', 'rol', 'fase']
+        fields = ['tercero_id', 'tercero_nombre', 'rol', 'fase', 'tercero_fk']
 
     def validate_fase(self, fase):
         """La fase debe pertenecer al mismo proyecto."""
@@ -428,14 +427,16 @@ class ActividadProyectoSerializer(serializers.ModelSerializer):
 
 
 class ActividadProyectoCreateUpdateSerializer(serializers.ModelSerializer):
-    """Serializer de escritura para asignar/actualizar actividades en un proyecto."""
+    """Serializer de escritura para asignar/actualizar actividades en un proyecto.
+    porcentaje_avance es auto-calculado por señales — no se acepta en escritura.
+    """
 
     class Meta:
         model  = ActividadProyecto
         fields = [
             'actividad', 'fase',
             'cantidad_planificada', 'cantidad_ejecutada',
-            'costo_unitario', 'porcentaje_avance',
+            'costo_unitario',
         ]
 
     def validate_fase(self, fase):
@@ -447,16 +448,40 @@ class ActividadProyectoCreateUpdateSerializer(serializers.ModelSerializer):
             )
         return fase
 
-    def validate_porcentaje_avance(self, value):
-        from decimal import Decimal
-        if not (Decimal('0') <= value <= Decimal('100')):
-            raise serializers.ValidationError(
-                'El porcentaje de avance debe estar entre 0 y 100.'
-            )
-        return value
-
     def validate_cantidad_planificada(self, value):
         from decimal import Decimal
         if value < Decimal('0'):
             raise serializers.ValidationError('La cantidad no puede ser negativa.')
         return value
+
+    def validate(self, attrs):
+        cantidad_ejecutada = attrs.get('cantidad_ejecutada')
+        proyecto = self.context.get('proyecto')
+        if (
+            cantidad_ejecutada is not None
+            and Decimal(str(cantidad_ejecutada)) > Decimal('0')
+            and proyecto
+            and proyecto.estado not in ('en_ejecucion', 'suspendido')
+        ):
+            raise serializers.ValidationError({
+                'cantidad_ejecutada': (
+                    'Solo se puede registrar cantidad ejecutada cuando el proyecto '
+                    'está en ejecución o suspendido.'
+                )
+            })
+        return attrs
+
+
+# ──────────────────────────────────────────────
+# Configuración del módulo
+# ──────────────────────────────────────────────
+
+class ConfiguracionModuloSerializer(serializers.ModelSerializer):
+    """Serializer para la configuración del módulo de proyectos."""
+
+    class Meta:
+        model  = ConfiguracionModulo
+        fields = [
+            'requiere_sync_saiopen_para_ejecucion',
+            'dias_alerta_vencimiento',
+        ]

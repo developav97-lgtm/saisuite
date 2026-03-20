@@ -32,6 +32,7 @@ LOCAL_APPS = [
     'apps.sync_agent',
     'apps.integrations',
     'apps.proyectos',
+    'apps.terceros',
 ]
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 
@@ -82,7 +83,10 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': ['rest_framework_simplejwt.authentication.JWTAuthentication'],
-    'DEFAULT_PERMISSION_CLASSES': ['rest_framework.permissions.IsAuthenticated'],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+        'apps.companies.middleware.LicensePermission',
+    ],
     'DEFAULT_FILTER_BACKENDS': [
         'django_filters.rest_framework.DjangoFilterBackend',
         'rest_framework.filters.SearchFilter',
@@ -93,8 +97,8 @@ REST_FRAMEWORK = {
 }
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=env.int('JWT_ACCESS_TOKEN_LIFETIME_MINUTES', default=15)),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=env.int('JWT_REFRESH_TOKEN_LIFETIME_DAYS', default=7)),
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=env.int('JWT_ACCESS_TOKEN_LIFETIME_MINUTES', default=1440)),  # 1 día
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=env.int('JWT_REFRESH_TOKEN_LIFETIME_DAYS', default=30)),
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
     'AUTH_HEADER_TYPES': ('Bearer',),
@@ -108,6 +112,15 @@ SQS_TO_SAI_URL = env('SQS_TO_SAI_URL', default='')
 OPENAI_API_KEY = env('OPENAI_API_KEY', default='')
 N8N_API_KEY = env('N8N_API_KEY', default='')
 N8N_WEBHOOK_BASE = env('N8N_WEBHOOK_BASE', default='http://n8n:5678')
+
+EMAIL_BACKEND    = env('EMAIL_BACKEND', default='django.core.mail.backends.console.EmailBackend')
+EMAIL_HOST       = env('EMAIL_HOST', default='')
+EMAIL_PORT       = env.int('EMAIL_PORT', default=587)
+EMAIL_HOST_USER  = env('EMAIL_HOST_USER', default='')
+EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD', default='')
+EMAIL_USE_TLS    = env.bool('EMAIL_USE_TLS', default=True)
+DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='SaiSuite <noreply@saisuite.com>')
+FRONTEND_URL     = env('FRONTEND_URL', default='http://localhost:4200')
 
 LOGGING = {
     'version': 1,

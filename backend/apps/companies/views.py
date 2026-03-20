@@ -17,8 +17,11 @@ from .serializers import (
     CompanyCreateSerializer,
     CompanyUpdateSerializer,
     CompanyModuleSerializer,
+    CompanyLicenseSerializer,
+    CompanyLicenseWriteSerializer,
+    LicensePaymentSerializer,
 )
-from .services import CompanyService
+from .services import CompanyService, LicenseService
 
 logger = logging.getLogger(__name__)
 
@@ -120,3 +123,70 @@ class ModuleDeactivateView(APIView):
             )
         CompanyService.deactivate_module(company, module)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+# ── Licencias ────────────────────────────────────────────────────────────────
+
+class LicenseListCreateView(APIView):
+    """
+    GET  /api/v1/companies/licenses/        — lista todas las licencias (superadmin).
+    POST /api/v1/companies/licenses/        — crea licencia para una empresa.
+    """
+
+    permission_classes = [IsSuperAdmin]
+
+    def get(self, request):
+        licenses = LicenseService.list_licenses()
+        return Response(CompanyLicenseSerializer(licenses, many=True).data)
+
+    def post(self, request):
+        serializer = CompanyLicenseWriteSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        license_obj = LicenseService.create_license(serializer.validated_data)
+        return Response(CompanyLicenseSerializer(license_obj).data, status=status.HTTP_201_CREATED)
+
+
+class LicenseDetailView(APIView):
+    """
+    GET   /api/v1/companies/licenses/{pk}/  — detalle de licencia.
+    PATCH /api/v1/companies/licenses/{pk}/  — actualiza licencia.
+    """
+
+    permission_classes = [IsSuperAdmin]
+
+    def get(self, request, pk):
+        license_obj = LicenseService.get_license_by_id(str(pk))
+        return Response(CompanyLicenseSerializer(license_obj).data)
+
+    def patch(self, request, pk):
+        license_obj = LicenseService.get_license_by_id(str(pk))
+        serializer = CompanyLicenseWriteSerializer(license_obj, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        updated = LicenseService.update_license(license_obj, serializer.validated_data)
+        return Response(CompanyLicenseSerializer(updated).data)
+
+
+class LicenseMeView(APIView):
+    """GET /api/v1/companies/licenses/me/ — licencia de la empresa del usuario autenticado."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        company = getattr(request.user, 'company', None)
+        if not company:
+            return Response({'detail': 'Sin empresa asignada.'}, status=status.HTTP_404_NOT_FOUND)
+        license_obj = LicenseService.get_license(company)
+        return Response(CompanyLicenseSerializer(license_obj).data)
+
+
+class LicensePaymentCreateView(APIView):
+    """POST /api/v1/companies/licenses/{pk}/payments/ — registra un pago."""
+
+    permission_classes = [IsSuperAdmin]
+
+    def post(self, request, pk):
+        license_obj = LicenseService.get_license_by_id(str(pk))
+        serializer = LicensePaymentSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        payment = LicenseService.add_payment(license_obj, serializer.validated_data)
+        return Response(LicensePaymentSerializer(payment).data, status=status.HTTP_201_CREATED)

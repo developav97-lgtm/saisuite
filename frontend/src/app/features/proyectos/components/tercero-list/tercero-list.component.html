@@ -21,15 +21,10 @@
         <mat-header-cell *matHeaderCellDef>Nombre / Razón social</mat-header-cell>
         <mat-cell *matCellDef="let t">
           <div class="tl-nombre">
-            <span>{{ t.tercero_nombre }}</span>
+            <span>{{ t.tercero_fk_nombre ?? t.tercero_nombre }}</span>
             <small class="tl-nit">{{ t.tercero_id }}</small>
           </div>
         </mat-cell>
-      </ng-container>
-
-      <ng-container matColumnDef="tercero_id">
-        <mat-header-cell *matHeaderCellDef>NIT / ID</mat-header-cell>
-        <mat-cell *matCellDef="let t">{{ t.tercero_id }}</mat-cell>
       </ng-container>
 
       <ng-container matColumnDef="rol">
@@ -63,45 +58,33 @@
 <ng-template #terceroFormTpl>
   <h2 mat-dialog-title>Vincular tercero al proyecto</h2>
   <mat-dialog-content>
-    <form [formGroup]="form" class="tl-form sc-form-grid">
-      <mat-form-field appearance="outline">
-        <mat-label>NIT / ID Saiopen *</mat-label>
-        <input matInput formControlName="tercero_id" placeholder="900123456-7" />
-        @if (form.get('tercero_id')?.invalid && form.get('tercero_id')?.touched) {
-          <mat-error>Campo obligatorio.</mat-error>
-        }
-      </mat-form-field>
+    <div class="tl-form">
+      <app-tercero-selector (terceroSeleccionado)="onTerceroSeleccionado($event)" />
 
-      <mat-form-field appearance="outline">
-        <mat-label>Nombre / Razón social *</mat-label>
-        <input matInput formControlName="tercero_nombre" />
-        @if (form.get('tercero_nombre')?.invalid && form.get('tercero_nombre')?.touched) {
-          <mat-error>Campo obligatorio.</mat-error>
-        }
-      </mat-form-field>
-
-      <mat-form-field appearance="outline">
-        <mat-label>Rol en el proyecto *</mat-label>
-        <mat-select formControlName="rol">
-          @for (op of ROL_OPTIONS; track op.value) {
-            <mat-option [value]="op.value">{{ op.label }}</mat-option>
+      <form [formGroup]="form" class="tl-form-fields">
+        <mat-form-field appearance="outline">
+          <mat-label>Rol en el proyecto *</mat-label>
+          <mat-select formControlName="rol">
+            @for (op of ROL_OPTIONS; track op.value) {
+              <mat-option [value]="op.value">{{ op.label }}</mat-option>
+            }
+          </mat-select>
+          @if (form.get('rol')?.invalid && form.get('rol')?.touched) {
+            <mat-error>Selecciona un rol.</mat-error>
           }
-        </mat-select>
-        @if (form.get('rol')?.invalid && form.get('rol')?.touched) {
-          <mat-error>Selecciona un rol.</mat-error>
-        }
-      </mat-form-field>
+        </mat-form-field>
 
-      <mat-form-field appearance="outline">
-        <mat-label>Fase (opcional)</mat-label>
-        <mat-select formControlName="fase">
-          <mat-option [value]="null">— Sin fase —</mat-option>
-          @for (f of fases(); track f.id) {
-            <mat-option [value]="f.id">{{ f.nombre }}</mat-option>
-          }
-        </mat-select>
-      </mat-form-field>
-    </form>
+        <mat-form-field appearance="outline">
+          <mat-label>Fase (opcional)</mat-label>
+          <mat-select formControlName="fase">
+            <mat-option [value]="null">— Sin fase —</mat-option>
+            @for (f of fases(); track f.id) {
+              <mat-option [value]="f.id">{{ f.nombre }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      </form>
+    </div>
   </mat-dialog-content>
   <mat-dialog-actions align="end">
     <button mat-button [mat-dialog-close]="null">Cancelar</button>

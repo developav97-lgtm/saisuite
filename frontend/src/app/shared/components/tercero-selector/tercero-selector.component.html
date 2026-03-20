@@ -1,0 +1,34 @@
+<mat-form-field appearance="outline" class="ts-field">
+  <mat-label>Buscar tercero (nombre o NIT)</mat-label>
+  <input
+    matInput
+    [formControl]="searchControl"
+    [matAutocomplete]="autoTercero"
+    placeholder="Escribe al menos 2 caracteres..."
+  />
+  @if (buscando()) {
+    <mat-progress-spinner matSuffix diameter="18" mode="indeterminate" />
+  } @else if (seleccionado()) {
+    <button matSuffix mat-icon-button (click)="limpiar()" type="button">
+      <mat-icon>close</mat-icon>
+    </button>
+  } @else {
+    <mat-icon matSuffix>search</mat-icon>
+  }
+
+  <mat-autocomplete
+    #autoTercero="matAutocomplete"
+    [displayWith]="displayFn"
+    (optionSelected)="onOpcionSeleccionada($event.option.value)"
+  >
+    @for (op of opciones(); track op.id) {
+      <mat-option [value]="op">
+        <span class="ts-option-nombre">{{ op.nombre_completo }}</span>
+        <span class="ts-option-nit">{{ op.numero_identificacion }}</span>
+      </mat-option>
+    }
+    @if (sinResultados() && searchControl.value && (searchControl.value?.length ?? 0) >= 2) {
+      <mat-option disabled>Sin resultados para "{{ searchControl.value }}"</mat-option>
+    }
+  </mat-autocomplete>
+</mat-form-field>

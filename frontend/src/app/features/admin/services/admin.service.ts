@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
-import { AdminUser, CompanySettings, CreateUserDto } from '../models/admin.models';
+import { AdminUser, CompanyLicense, CompanySettings, CreateUserDto } from '../models/admin.models';
 
 interface Paginated<T> { count: number; next: string | null; previous: string | null; results: T[]; }
 
@@ -49,5 +49,9 @@ export class AdminService {
 
   deactivateModule(companyId: string, module: string): Observable<void> {
     return this.http.post<void>(`/api/v1/companies/${companyId}/modules/deactivate/`, { module });
+  }
+
+  getMyLicense(): Observable<CompanyLicense> {
+    return this.http.get<CompanyLicense>('/api/v1/companies/licenses/me/');
   }
 }

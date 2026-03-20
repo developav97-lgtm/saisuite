@@ -1,93 +1,172 @@
-<div class="cs-container">
+<div class="sc-page">
 
-  <h2 class="cs-title">Configuración de empresa</h2>
+  <!-- Header -->
+  <div class="sc-page-header">
+    <h1 class="sc-page-header__title">Configuración de empresa</h1>
+  </div>
 
   @if (loading()) {
-    <div class="cs-loading"><mat-spinner diameter="40" /></div>
+    <mat-progress-bar mode="indeterminate" />
   }
 
   @if (company(); as c) {
-    <div class="cs-grid">
+    <div class="cs-layout">
 
-      <!-- Info general -->
-      <mat-card class="cs-card">
-        <mat-card-header>
-          <mat-icon mat-card-avatar>business</mat-icon>
-          <mat-card-title>Información general</mat-card-title>
-        </mat-card-header>
-        <mat-card-content>
-          <dl class="cs-dl">
-            <dt>Nombre</dt>
-            <dd>{{ c.name }}</dd>
+      <!-- ── Columna principal ──────────────────────────────── -->
+      <div class="cs-main">
 
-            <dt>NIT</dt>
-            <dd>{{ c.nit }}</dd>
+        <!-- Información general -->
+        <div class="sc-card">
+          <div class="sc-card__header">
+            <mat-icon>business</mat-icon>
+            <span class="sc-card__title">Información general</span>
+          </div>
+          <div class="sc-card__body">
+            <div class="cs-fields-grid">
 
-            <dt>Plan</dt>
-            <dd>
-              <span class="cs-plan cs-plan--{{ c.plan }}">
-                {{ planLabels[c.plan] ?? c.plan }}
-              </span>
-            </dd>
+              <div class="cs-field">
+                <span class="cs-field__label">Nombre</span>
+                <span class="cs-field__value cs-field__value--lg">{{ c.name }}</span>
+              </div>
 
-            <dt>Estado</dt>
-            <dd>
-              @if (c.is_active) {
-                <span class="cs-badge cs-badge--active">Activa</span>
-              } @else {
-                <span class="cs-badge cs-badge--inactive">Inactiva</span>
-              }
-            </dd>
+              <div class="cs-field">
+                <span class="cs-field__label">NIT</span>
+                <span class="cs-field__value cs-field__value--mono">{{ c.nit }}</span>
+              </div>
 
-            <dt>Creada</dt>
-            <dd>{{ c.created_at | date:'mediumDate':'':'es-CO' }}</dd>
-          </dl>
-        </mat-card-content>
-      </mat-card>
+              <div class="cs-field">
+                <span class="cs-field__label">Plan</span>
+                <span class="cs-plan cs-plan--{{ c.plan }}">{{ planLabels[c.plan] ?? c.plan }}</span>
+              </div>
 
-      <!-- Módulos activos -->
-      <mat-card class="cs-card">
-        <mat-card-header>
-          <mat-icon mat-card-avatar>apps</mat-icon>
-          <mat-card-title>Módulos contratados</mat-card-title>
-          <mat-card-subtitle>Para cambiar los módulos activos, ve a la sección Módulos.</mat-card-subtitle>
-        </mat-card-header>
-        <mat-card-content>
-          <div class="cs-modules">
-            @for (mod of c.modules; track mod.module) {
-              <div class="cs-module" [class.cs-module--active]="mod.is_active">
-                <mat-icon>{{ mod.module === 'ventas' ? 'shopping_cart' : mod.module === 'cobros' ? 'account_balance_wallet' : mod.module === 'dashboard' ? 'home' : 'work' }}</mat-icon>
-                <span>{{ moduleLabels[mod.module] ?? mod.module }}</span>
-                @if (mod.is_active) {
-                  <mat-icon class="cs-check">check_circle</mat-icon>
+              <div class="cs-field">
+                <span class="cs-field__label">Estado</span>
+                @if (c.is_active) {
+                  <span class="cs-status cs-status--active">
+                    <span class="cs-status__dot"></span>Activa
+                  </span>
                 } @else {
-                  <mat-icon class="cs-off">cancel</mat-icon>
+                  <span class="cs-status cs-status--inactive">
+                    <span class="cs-status__dot"></span>Inactiva
+                  </span>
                 }
               </div>
-            }
-          </div>
-        </mat-card-content>
-      </mat-card>
 
-      <!-- Saiopen -->
-      <mat-card class="cs-card">
-        <mat-card-header>
-          <mat-icon mat-card-avatar>sync</mat-icon>
-          <mat-card-title>Integración Saiopen</mat-card-title>
-        </mat-card-header>
-        <mat-card-content>
-          <dl class="cs-dl">
-            <dt>Estado</dt>
-            <dd>
-              @if (c.saiopen_enabled) {
-                <span class="cs-badge cs-badge--active">Activa</span>
-              } @else {
-                <span class="cs-badge cs-badge--inactive">No configurada</span>
+              <div class="cs-field">
+                <span class="cs-field__label">Creada</span>
+                <span class="cs-field__value">{{ c.created_at | date:'mediumDate':'':'es-CO' }}</span>
+              </div>
+
+              <div class="cs-field">
+                <span class="cs-field__label">Integración Saiopen</span>
+                @if (c.saiopen_enabled) {
+                  <span class="cs-status cs-status--active">
+                    <span class="cs-status__dot"></span>Activa
+                  </span>
+                } @else {
+                  <span class="cs-status cs-status--muted">
+                    <span class="cs-status__dot"></span>No configurada
+                  </span>
+                }
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        <!-- Módulos contratados -->
+        <div class="sc-card">
+          <div class="sc-card__header">
+            <mat-icon>apps</mat-icon>
+            <span class="sc-card__title">Módulos contratados</span>
+          </div>
+          <div class="sc-card__body">
+            <div class="cs-modules">
+              @for (mod of c.modules; track mod.module) {
+                <div class="cs-module" [class.cs-module--active]="mod.is_active" [class.cs-module--inactive]="!mod.is_active">
+                  <div class="cs-module__icon-wrap">
+                    <mat-icon>
+                      {{ mod.module === 'ventas' ? 'shopping_cart' :
+                         mod.module === 'cobros' ? 'account_balance_wallet' :
+                         mod.module === 'dashboard' ? 'home' : 'work' }}
+                    </mat-icon>
+                  </div>
+                  <span class="cs-module__name">{{ moduleLabels[mod.module] ?? mod.module }}</span>
+                  <mat-icon class="cs-module__status-icon">
+                    {{ mod.is_active ? 'check_circle' : 'cancel' }}
+                  </mat-icon>
+                </div>
               }
-            </dd>
-          </dl>
-        </mat-card-content>
-      </mat-card>
+              @if (c.modules.length === 0) {
+                <p class="cs-empty">Sin módulos configurados.</p>
+              }
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ── Columna lateral ────────────────────────────────── -->
+      <div class="cs-side">
+
+        <!-- Licencia -->
+        @if (license(); as lic) {
+          <div class="sc-card">
+            <div class="sc-card__header">
+              <mat-icon>verified</mat-icon>
+              <span class="sc-card__title">Licencia</span>
+            </div>
+            <div class="sc-card__body">
+
+              <!-- Estado destacado -->
+              <div class="cs-license-status cs-license-status--{{ lic.status }}">
+                <mat-icon class="cs-license-status__icon">
+                  {{ lic.is_expired || lic.status === 'expired' || lic.status === 'suspended' ? 'lock' : lic.status === 'trial' ? 'hourglass_empty' : 'verified' }}
+                </mat-icon>
+                <div>
+                  <span class="cs-license-status__label">{{ licenseStatusLabels[lic.status] }}</span>
+                  @if (lic.is_expired) {
+                    <span class="cs-license-status__sub">Expirada</span>
+                  } @else if (lic.days_until_expiry <= 5) {
+                    <span class="cs-license-status__sub cs-license-status__sub--warn">Vence en {{ lic.days_until_expiry }} día(s)</span>
+                  } @else {
+                    <span class="cs-license-status__sub">{{ lic.days_until_expiry }} días restantes</span>
+                  }
+                </div>
+              </div>
+
+              <!-- Detalles -->
+              <div class="cs-license-fields">
+                <div class="cs-field">
+                  <span class="cs-field__label">Vigencia</span>
+                  <span class="cs-field__value">
+                    {{ lic.starts_at | date:'dd/MM/yyyy' }} — {{ lic.expires_at | date:'dd/MM/yyyy' }}
+                  </span>
+                </div>
+                <div class="cs-field">
+                  <span class="cs-field__label">Usuarios máximos</span>
+                  <span class="cs-field__value">{{ lic.max_users }}</span>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        } @else if (!loading()) {
+          <div class="sc-card">
+            <div class="sc-card__header">
+              <mat-icon>verified</mat-icon>
+              <span class="sc-card__title">Licencia</span>
+            </div>
+            <div class="sc-card__body">
+              <div class="cs-no-license">
+                <mat-icon>lock_open</mat-icon>
+                <p>Sin licencia configurada. Contacta a ValMen Tech.</p>
+              </div>
+            </div>
+          </div>
+        }
+
+      </div>
 
     </div>
   }

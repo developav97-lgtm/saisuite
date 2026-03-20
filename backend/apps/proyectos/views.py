@@ -7,6 +7,7 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.filters import SearchFilter, OrderingFilter
+from rest_framework.views import APIView
 from django_filters.rest_framework import DjangoFilterBackend
 
 from apps.proyectos.models import Proyecto, Fase, TerceroProyecto, DocumentoContable, Hito, Actividad, ActividadProyecto
@@ -30,6 +31,7 @@ from apps.proyectos.serializers import (
     ActividadCreateUpdateSerializer,
     ActividadProyectoSerializer,
     ActividadProyectoCreateUpdateSerializer,
+    ConfiguracionModuloSerializer,
 )
 from apps.proyectos.services import (
     ProyectoService,
@@ -39,6 +41,7 @@ from apps.proyectos.services import (
     HitoService,
     ActividadService,
     ActividadProyectoService,
+    ConfiguracionModuloService,
     ProyectoException,
 )
 from apps.proyectos.filters import ProyectoFilter
@@ -98,6 +101,22 @@ class ProyectoViewSet(viewsets.ModelViewSet):
             proyecto,
             nuevo_estado=serializer.validated_data['nuevo_estado'],
             forzar=serializer.validated_data.get('forzar', False),
+        )
+        return Response(
+            ProyectoDetailSerializer(proyecto_actualizado).data,
+            status=status.HTTP_200_OK,
+        )
+
+    @action(detail=True, methods=['post'], url_path='iniciar-ejecucion')
+    def iniciar_ejecucion(self, request, pk=None):
+        """
+        POST /api/v1/proyectos/{id}/iniciar-ejecucion/
+        Inicia la ejecución del proyecto validando configuración del módulo.
+        """
+        from apps.proyectos.models import EstadoProyecto
+        proyecto = self.get_object()
+        proyecto_actualizado = ProyectoService.cambiar_estado(
+            proyecto, nuevo_estado=EstadoProyecto.EN_EJECUCION
         )
         return Response(
             ProyectoDetailSerializer(proyecto_actualizado).data,
@@ -168,9 +187,10 @@ class TerceroProyectoViewSet(viewsets.GenericViewSet):
         return TerceroProyectoSerializer
 
     def list(self, request, proyecto_pk=None):
-        """GET /api/v1/proyectos/{id}/terceros/"""
+        """GET /api/v1/proyectos/{id}/terceros/?fase=UUID"""
         proyecto = self._get_proyecto()
-        qs       = TerceroProyectoService.list_terceros(proyecto)
+        fase_id  = request.query_params.get('fase') or None
+        qs       = TerceroProyectoService.list_terceros(proyecto, fase_id=fase_id)
         serializer = TerceroProyectoSerializer(qs, many=True)
         return Response(serializer.data)
 
@@ -355,3 +375,23 @@ class ActividadProyectoViewSet(viewsets.GenericViewSet):
         ap = ActividadProyecto.all_objects.get(id=pk, proyecto_id=proyecto_pk)
         ActividadProyectoService.desasignar_actividad(ap)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class ConfiguracionModuloView(APIView):
+    """
+    GET/PATCH de la configuración del módulo de proyectos para la empresa del usuario.
+    GET   /api/v1/proyectos/config/
+    PATCH /api/v1/proyectos/config/
+    """
+    permission_classes = [CanAccessProyectos]
+
+    def get(self, request):
+        config = ConfiguracionModuloService.get_or_create(request.user.company)
+        return Response(ConfiguracionModuloSerializer(config).data)
+
+    def patch(self, request):
+        config     = ConfiguracionModuloService.get_or_create(request.user.company)
+        serializer = ConfiguracionModuloSerializer(config, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        updated = ConfiguracionModuloService.update(request.user.company, serializer.validated_data)
+        return Response(ConfiguracionModuloSerializer(updated).data)

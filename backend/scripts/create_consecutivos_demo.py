@@ -32,6 +32,8 @@ CONSECUTIVOS = [
     {'entidad': 'actividad', 'subtipo': 'material',    'prefijo': 'MAT', 'formato': '{prefijo}-{numero:04d}'},
     {'entidad': 'actividad', 'subtipo': 'equipo',      'prefijo': 'EQP', 'formato': '{prefijo}-{numero:04d}'},
     {'entidad': 'actividad', 'subtipo': 'subcontrato', 'prefijo': 'SUB', 'formato': '{prefijo}-{numero:04d}'},
+    # ── Terceros ───────────────────────────────────────────────────
+    {'entidad': 'tercero',   'subtipo': '',             'prefijo': 'TER', 'formato': '{prefijo}-{numero:04d}'},
 ]
 
 created = 0

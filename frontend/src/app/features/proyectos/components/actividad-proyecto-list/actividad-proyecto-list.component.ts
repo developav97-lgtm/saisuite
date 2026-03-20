@@ -1,6 +1,6 @@
 import {
   ChangeDetectionStrategy, Component, OnInit, TemplateRef, ViewChild,
-  inject, input, signal,
+  computed, inject, input, signal,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
@@ -41,13 +41,19 @@ export class ActividadProyectoListComponent implements OnInit {
   private readonly dialog          = inject(MatDialog);
   private readonly snackBar        = inject(MatSnackBar);
 
-  readonly proyectoId = input.required<string>();
+  readonly proyectoId     = input.required<string>();
+  readonly proyectoEstado = input<string>('');
 
   readonly asignaciones     = signal<ActividadProyecto[]>([]);
   readonly catalogo         = signal<ActividadList[]>([]);
   readonly loading          = signal(false);
   readonly saving           = signal(false);
   readonly editingAp        = signal<ActividadProyecto | null>(null);
+
+  /** Cantidad ejecutada solo es editable si el proyecto está en ejecución o suspendido. */
+  readonly puedeEjecutar = computed(() =>
+    ['en_ejecucion', 'suspendido'].includes(this.proyectoEstado())
+  );
 
   readonly displayedColumns = ['actividad', 'tipo', 'unidad', 'cantidad', 'costo', 'presupuesto', 'avance', 'acciones'];
   readonly TIPO_LABELS = TIPO_ACTIVIDAD_LABELS;
@@ -61,7 +67,6 @@ export class ActividadProyectoListComponent implements OnInit {
     cantidad_planificada: [null as number | null, [Validators.required, Validators.min(0)]],
     cantidad_ejecutada:   [0],
     costo_unitario:       [null as number | null],
-    porcentaje_avance:    [0, [Validators.min(0), Validators.max(100)]],
   });
 
   ngOnInit(): void {
@@ -85,7 +90,12 @@ export class ActividadProyectoListComponent implements OnInit {
 
   abrirDialogAsignar(): void {
     this.editingAp.set(null);
-    this.form.reset({ cantidad_ejecutada: 0, porcentaje_avance: 0 });
+    this.form.reset({ cantidad_ejecutada: 0 });
+    if (!this.puedeEjecutar()) {
+      this.form.get('cantidad_ejecutada')?.disable();
+    } else {
+      this.form.get('cantidad_ejecutada')?.enable();
+    }
     this.dialogRef = this.dialog.open(this.apFormTemplate, {
       width: 'min(580px, 95vw)', maxHeight: '90vh',
     });
@@ -98,10 +108,14 @@ export class ActividadProyectoListComponent implements OnInit {
       cantidad_planificada: parseFloat(ap.cantidad_planificada || '0'),
       cantidad_ejecutada:   parseFloat(ap.cantidad_ejecutada || '0'),
       costo_unitario:       parseFloat(ap.costo_unitario || '0'),
-      porcentaje_avance:    parseFloat(ap.porcentaje_avance || '0'),
     });
     // actividad no editable en modo edición
     this.form.get('actividad')?.disable();
+    if (!this.puedeEjecutar()) {
+      this.form.get('cantidad_ejecutada')?.disable();
+    } else {
+      this.form.get('cantidad_ejecutada')?.enable();
+    }
     this.dialogRef = this.dialog.open(this.apFormTemplate, {
       width: 'min(580px, 95vw)', maxHeight: '90vh',
     });
@@ -117,7 +131,6 @@ export class ActividadProyectoListComponent implements OnInit {
       cantidad_planificada: (val.cantidad_planificada ?? 0).toString(),
       cantidad_ejecutada:   (val.cantidad_ejecutada ?? 0).toString(),
       costo_unitario:       val.costo_unitario != null ? val.costo_unitario.toString() : undefined,
-      porcentaje_avance:    (val.porcentaje_avance ?? 0).toString(),
     };
 
     const editing = this.editingAp();
@@ -129,6 +142,7 @@ export class ActividadProyectoListComponent implements OnInit {
       next: () => {
         this.saving.set(false);
         this.form.get('actividad')?.enable();
+        this.form.get('cantidad_ejecutada')?.enable();
         this.dialogRef?.close();
         this.loadAsignaciones();
         this.snackBar.open(
@@ -140,6 +154,7 @@ export class ActividadProyectoListComponent implements OnInit {
       error: (err) => {
         this.saving.set(false);
         this.form.get('actividad')?.enable();
+        this.form.get('cantidad_ejecutada')?.enable();
         const e = err as { error?: Record<string, string[]> };
         const firstError = e.error ? Object.values(e.error).flat()[0] : null;
         this.snackBar.open(firstError ?? 'Error al guardar.', 'Cerrar', { duration: 5000, panelClass: ['snack-error'] });
@@ -149,6 +164,7 @@ export class ActividadProyectoListComponent implements OnInit {
 
   onCancelar(): void {
     this.form.get('actividad')?.enable();
+    this.form.get('cantidad_ejecutada')?.enable();
     this.dialogRef?.close();
   }
 

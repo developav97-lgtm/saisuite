@@ -1,0 +1,179 @@
+// ── Layout de dos columnas ────────────────────────────────────
+.tf-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+  align-items: start;
+
+  @media (max-width: 960px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.tf-main,
+.tf-side {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+// ── Header ────────────────────────────────────────────────────
+.tf-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.tf-eyebrow {
+  font-size: 0.75rem;
+  color: var(--sc-text-muted);
+  margin: 0 0 0.1rem;
+  font-weight: 500;
+}
+
+.tf-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.tf-spinner {
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 0.4rem;
+}
+
+// ── Ícono prefijo en campos de contacto ──────────────────────
+.tf-field-icon {
+  font-size: 1rem !important;
+  width: 1rem !important;
+  height: 1rem !important;
+  color: var(--sc-text-muted);
+  margin-right: 0.25rem;
+}
+
+// ── Dirección: botón toggle ───────────────────────────────────
+.tf-dir-toggle-btn {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+// ── Hint de dirección inactiva ────────────────────────────────
+.tf-dir-hint {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--sc-text-muted);
+  margin: 0;
+
+  mat-icon {
+    font-size: 1rem;
+    width: 1rem;
+    height: 1rem;
+    flex-shrink: 0;
+  }
+}
+
+// ── Hint de sincronización ────────────────────────────────────
+.tf-sync-hint {
+  font-size: 0.85rem;
+  color: var(--sc-text-secondary);
+  margin: 0;
+  line-height: 1.5;
+}
+
+// ── Form de dirección (columna única, para el sidebar) ────────
+.tf-dir-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding-top: 0.25rem;
+
+  mat-form-field {
+    width: 100%;
+  }
+}
+
+// ── Items de dirección (modo edición) ─────────────────────────
+.tf-dir-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border: 1px solid var(--sc-surface-border);
+  border-radius: var(--sc-radius);
+  margin-bottom: 0.75rem;
+
+  &--new {
+    border-color: var(--sc-primary);
+    border-style: dashed;
+  }
+
+  &__btns {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.25rem;
+  }
+
+  &__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    padding-top: 0.5rem;
+  }
+}
+
+// ── Resumen de dirección ───────────────────────────────────────
+.tf-dir-summary {
+  flex: 1;
+
+  &__header {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-bottom: 0.35rem;
+  }
+}
+
+.tf-dir-text {
+  font-size: 0.875rem;
+  margin: 0 0 0.15rem;
+  color: var(--sc-text-primary);
+
+  &--muted { color: var(--sc-text-muted); }
+}
+
+.tf-dir-badge {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 10px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: var(--sc-surface-hover);
+  color: var(--sc-text-secondary);
+
+  &--principal   { background: #e3f2fd; color: #1565c0; }
+  &--sucursal    { background: #e8f5e9; color: #2e7d32; }
+  &--bodega      { background: #fff3e0; color: #e65100; }
+  &--facturacion { background: #f3e5f5; color: #6a1b9a; }
+  &--otro        { background: #f5f5f5; color: #757575; }
+}
+
+.tf-dir-principal {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--sc-primary);
+  background: var(--sc-primary-light, #e3f2fd);
+  padding: 1px 8px;
+  border-radius: 10px;
+}
+
+.tf-dir-nombre {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--sc-text-secondary);
+}

@@ -34,6 +34,11 @@ export const ADMIN_ROUTES: Routes = [
         loadComponent: () =>
           import('./consecutivos/consecutivo-list.component').then(m => m.ConsecutivoListComponent),
       },
+      {
+        path: 'proyectos-config',
+        loadComponent: () =>
+          import('./proyectos-config/proyectos-config.component').then(m => m.ProyectosConfigComponent),
+      },
       { path: '', redirectTo: 'usuarios', pathMatch: 'full' },
     ],
   },

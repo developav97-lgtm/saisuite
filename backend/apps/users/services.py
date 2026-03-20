@@ -5,6 +5,11 @@ Las views no contienen lógica de negocio.
 """
 import logging
 from django.contrib.auth import authenticate
+from django.contrib.auth.tokens import default_token_generator
+from django.core.mail import send_mail
+from django.conf import settings
+from django.utils.encoding import force_bytes, force_str
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.db import transaction
 from rest_framework.exceptions import AuthenticationFailed, ValidationError
 from rest_framework_simplejwt.tokens import RefreshToken, TokenError
@@ -213,6 +218,56 @@ class UserService:
             },
         )
         return user
+
+    @staticmethod
+    def request_password_reset(email: str) -> None:
+        """
+        Genera token de reset y envía email.
+        Siempre retorna sin error (no revela si el email existe).
+        """
+        try:
+            user = User.objects.get(email=email, is_active=True)
+        except User.DoesNotExist:
+            return  # silencioso — no revelar si el email existe
+
+        uid   = urlsafe_base64_encode(force_bytes(user.pk))
+        token = default_token_generator.make_token(user)
+        frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:4200')
+        reset_url = f'{frontend_url}/auth/reset-password?uid={uid}&token={token}'
+
+        try:
+            send_mail(
+                subject='[SaiSuite] Recuperación de contraseña',
+                message=(
+                    f'Hola {user.first_name or user.email},\n\n'
+                    f'Recibimos una solicitud para restablecer tu contraseña.\n\n'
+                    f'Haz clic en el siguiente enlace (válido por 1 hora):\n{reset_url}\n\n'
+                    f'Si no solicitaste esto, ignora este mensaje.\n\n'
+                    f'— SaiSuite\n'
+                ),
+                from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@saisuite.com'),
+                recipient_list=[email],
+                fail_silently=True,
+            )
+        except Exception:
+            pass  # silencioso — nunca fallar por problemas de email
+        logger.info('password_reset_requested', extra={'email': email})
+
+    @staticmethod
+    def confirm_password_reset(uid_b64: str, token: str, new_password: str) -> None:
+        """Valida token y aplica la nueva contraseña."""
+        try:
+            uid  = force_str(urlsafe_base64_decode(uid_b64))
+            user = User.objects.get(pk=uid)
+        except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+            raise ValidationError('El enlace de recuperación es inválido.')
+
+        if not default_token_generator.check_token(user, token):
+            raise ValidationError('El enlace ha expirado o ya fue usado.')
+
+        user.set_password(new_password)
+        user.save(update_fields=['password'])
+        logger.info('password_reset_confirmed', extra={'user_id': str(user.id)})
 
     @staticmethod
     @transaction.atomic

@@ -6,3 +6,10 @@ SECRET_KEY = env('SECRET_KEY', default='dev-secret-key-cambiar-en-produccion')
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0', 'backend', 'saisuite-api']
 CORS_ALLOWED_ORIGINS = env.list('CORS_ALLOWED_ORIGINS', default=['http://localhost:4200'])
 CORS_ALLOW_CREDENTIALS = True
+
+# Email: en dev imprime en consola
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+DEFAULT_FROM_EMAIL = 'SaiSuite <noreply@saisuite.com>'
+
+# URL del frontend — se usa en emails de recuperación de contraseña
+FRONTEND_URL = env('FRONTEND_URL', default='http://localhost:4200')

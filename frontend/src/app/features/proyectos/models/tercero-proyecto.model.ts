@@ -20,6 +20,8 @@ export interface TerceroProyecto {
   rol_display: string;
   fase: string | null;
   fase_nombre: string | null;
+  tercero_fk: string | null;
+  tercero_fk_nombre: string | null;
   activo: boolean;
   created_at: string;
 }
@@ -29,6 +31,7 @@ export interface TerceroProyectoCreate {
   tercero_nombre: string;
   rol: RolTercero;
   fase?: string | null;
+  tercero_fk?: string | null;
 }
 
 export const ROL_LABELS: Record<RolTercero, string> = {

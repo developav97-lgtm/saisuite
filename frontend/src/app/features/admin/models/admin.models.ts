@@ -55,6 +55,24 @@ export interface CompanyModule {
   is_active: boolean;
 }
 
+export interface CompanyLicense {
+  id: string;
+  plan: string;
+  status: 'trial' | 'active' | 'expired' | 'suspended';
+  starts_at: string;
+  expires_at: string;
+  max_users: number;
+  days_until_expiry: number;
+  is_expired: boolean;
+}
+
+export const LICENSE_STATUS_LABELS: Record<string, string> = {
+  trial:     'Prueba',
+  active:    'Activa',
+  expired:   'Expirada',
+  suspended: 'Suspendida',
+};
+
 export interface CompanySettings {
   id: string;
   name: string;

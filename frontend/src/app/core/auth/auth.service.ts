@@ -65,6 +65,14 @@ export class AuthService {
     return this.http.get<UserCompanyInfo[]>('/api/v1/auth/me/companies/');
   }
 
+  requestPasswordReset(email: string): Observable<{ detail: string }> {
+    return this.http.post<{ detail: string }>('/api/v1/auth/password-reset/', { email });
+  }
+
+  confirmPasswordReset(uid: string, token: string, password: string): Observable<{ detail: string }> {
+    return this.http.post<{ detail: string }>('/api/v1/auth/password-reset/confirm/', { uid, token, password });
+  }
+
   getAccessToken(): string | null {
     return localStorage.getItem(ACCESS_KEY);
   }

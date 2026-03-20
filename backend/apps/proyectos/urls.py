@@ -31,6 +31,7 @@ from apps.proyectos.views import (
     ProyectoViewSet, FaseViewSet,
     TerceroProyectoViewSet, DocumentoContableViewSet, HitoViewSet,
     ActividadViewSet, ActividadProyectoViewSet,
+    ConfiguracionModuloView,
 )
 
 router = DefaultRouter()
@@ -103,6 +104,9 @@ urlpatterns = [
         ActividadProyectoViewSet.as_view({'patch': 'partial_update', 'delete': 'destroy'}),
         name='proyecto-actividades-detail',
     ),
+
+    # ── Configuración del módulo ───────────────────────────────
+    path('config/', ConfiguracionModuloView.as_view(), name='proyectos-config'),
 
     # ── Router principal de proyectos ──────────────────────────
     path('', include(router.urls)),

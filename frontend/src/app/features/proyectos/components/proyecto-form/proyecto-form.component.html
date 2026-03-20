@@ -48,7 +48,19 @@
               <mat-label>Código</mat-label>
               <input matInput formControlName="codigo" [placeholder]="editMode() ? '' : 'Auto-generado'" />
               @if (!editMode()) { <mat-icon matSuffix class="pf-codigo-icon">auto_awesome</mat-icon> }
-              @if (!editMode()) { <mat-hint>Se generará automáticamente al guardar</mat-hint> }
+              @if (!editMode()) { <mat-hint>Se generará automáticamente</mat-hint> }
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
+              <mat-label>Tipo</mat-label>
+              <mat-select formControlName="tipo">
+                @for (opt of tipoOptions; track opt.value) {
+                  <mat-option [value]="opt.value">{{ opt.label }}</mat-option>
+                }
+              </mat-select>
+              @if (form.get('tipo')?.invalid && form.get('tipo')?.touched) {
+                <mat-error>Requerido.</mat-error>
+              }
             </mat-form-field>
 
             @if (!editMode() && selectedTipo()) {
@@ -69,18 +81,6 @@
                 </mat-form-field>
               }
             }
-
-            <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
-              <mat-label>Tipo</mat-label>
-              <mat-select formControlName="tipo">
-                @for (opt of tipoOptions; track opt.value) {
-                  <mat-option [value]="opt.value">{{ opt.label }}</mat-option>
-                }
-              </mat-select>
-              @if (form.get('tipo')?.invalid && form.get('tipo')?.touched) {
-                <mat-error>Requerido.</mat-error>
-              }
-            </mat-form-field>
 
             <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always" class="sc-field--full">
               <mat-label>Nombre del proyecto</mat-label>

@@ -77,8 +77,15 @@ export class SidebarComponent implements OnInit {
             { label: 'Lista', icon: 'list', route: '/proyectos' },
             { label: 'Nuevo', icon: 'add', route: '/proyectos/nuevo' },
             { label: 'Catálogo de actividades', icon: 'construction', route: '/proyectos/actividades' },
+            { label: 'Configuración', icon: 'tune', route: '/admin/proyectos-config' },
           ],
         },
+      ],
+    },
+    {
+      sectionLabel: 'Catálogos',
+      items: [
+        { label: 'Terceros', icon: 'people', route: '/terceros' },
       ],
     },
     {
@@ -91,7 +98,6 @@ export class SidebarComponent implements OnInit {
           children: [
             { label: 'Usuarios',      icon: 'group',    route: '/admin/usuarios' },
             { label: 'Empresa',       icon: 'business', route: '/admin/empresa' },
-            { label: 'Módulos',       icon: 'apps',     route: '/admin/modulos' },
             { label: 'Consecutivos',  icon: 'tag',      route: '/admin/consecutivos' },
           ],
         },

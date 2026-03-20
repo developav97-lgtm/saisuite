@@ -25,6 +25,7 @@ import {
 } from '../../models/tercero-proyecto.model';
 import { FaseList } from '../../models/fase.model';
 import { ConfirmDialogComponent } from '../../../../shared/components/confirm-dialog/confirm-dialog.component';
+import { TerceroSelectorComponent, TerceroSeleccionado } from '../../../../shared/components/tercero-selector/tercero-selector.component';
 
 @Component({
   selector: 'app-tercero-list',
@@ -36,15 +37,15 @@ import { ConfirmDialogComponent } from '../../../../shared/components/confirm-di
     MatTableModule, MatButtonModule, MatIconModule,
     MatFormFieldModule, MatInputModule, MatSelectModule,
     MatTooltipModule, MatDialogModule, MatProgressBarModule,
-    MatChipsModule,
+    MatChipsModule, TerceroSelectorComponent,
   ],
 })
 export class TerceroListComponent implements OnInit {
-  private readonly service   = inject(TerceroProyectoService);
+  private readonly service     = inject(TerceroProyectoService);
   private readonly faseService = inject(FaseService);
-  private readonly fb        = inject(FormBuilder);
-  private readonly dialog    = inject(MatDialog);
-  private readonly snackBar  = inject(MatSnackBar);
+  private readonly fb          = inject(FormBuilder);
+  private readonly dialog      = inject(MatDialog);
+  private readonly snackBar    = inject(MatSnackBar);
 
   readonly proyectoId = input.required<string>();
 
@@ -52,7 +53,10 @@ export class TerceroListComponent implements OnInit {
   readonly fases     = signal<FaseList[]>([]);
   readonly loading   = signal(false);
 
-  readonly displayedColumns = ['tercero_nombre', 'tercero_id', 'rol', 'fase', 'acciones'];
+  // Tercero seleccionado en el autocomplete
+  private terceroSeleccionado: TerceroSeleccionado | null = null;
+
+  readonly displayedColumns = ['tercero_nombre', 'rol', 'fase', 'acciones'];
 
   readonly ROL_LABELS  = ROL_LABELS;
   readonly ROL_OPTIONS = ROL_OPTIONS;
@@ -62,10 +66,8 @@ export class TerceroListComponent implements OnInit {
   private dialogRef: MatDialogRef<unknown> | null = null;
 
   readonly form = this.fb.group({
-    tercero_id:     ['', Validators.required],
-    tercero_nombre: ['', Validators.required],
-    rol:            ['' as RolTercero, Validators.required],
-    fase:           [null as string | null],
+    rol:  ['' as RolTercero, Validators.required],
+    fase: [null as string | null],
   });
 
   ngOnInit(): void {
@@ -88,21 +90,31 @@ export class TerceroListComponent implements OnInit {
   }
 
   abrirDialogVincular(): void {
+    this.terceroSeleccionado = null;
     this.form.reset({ fase: null });
     this.dialogRef = this.dialog.open(this.terceroFormTemplate, {
-      width: '520px',
+      width: '540px',
       disableClose: false,
     });
   }
 
+  onTerceroSeleccionado(tercero: TerceroSeleccionado | null): void {
+    this.terceroSeleccionado = tercero;
+  }
+
   vincular(): void {
     if (this.form.invalid) { this.form.markAllAsTouched(); return; }
+    if (!this.terceroSeleccionado) {
+      this.snackBar.open('Selecciona un tercero del catálogo.', 'Cerrar', { duration: 3000 });
+      return;
+    }
     const val = this.form.getRawValue();
     this.service.vincular(this.proyectoId(), {
-      tercero_id:     val.tercero_id!,
-      tercero_nombre: val.tercero_nombre!,
+      tercero_id:     this.terceroSeleccionado.numero_identificacion,
+      tercero_nombre: this.terceroSeleccionado.nombre_completo,
       rol:            val.rol as RolTercero,
       fase:           val.fase ?? null,
+      tercero_fk:     this.terceroSeleccionado.id,
     }).subscribe({
       next: () => {
         this.dialogRef?.close();
