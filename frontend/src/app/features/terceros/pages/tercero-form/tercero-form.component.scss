@@ -83,7 +83,7 @@
   line-height: 1.5;
 }
 
-// ── Form de dirección (columna única, para el sidebar) ────────
+// ── Form de dirección ─────────────────────────────────────────
 .tf-dir-form {
   display: flex;
   flex-direction: column;
@@ -95,19 +95,43 @@
   }
 }
 
+// ── Fila de 2 columnas dentro del form de dirección ───────────
+.tf-dir-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+
+  mat-form-field {
+    width: 100%;
+  }
+}
+
 // ── Items de dirección (modo edición) ─────────────────────────
 .tf-dir-item {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  padding: 0.75rem;
+  padding: 0.875rem;
   border: 1px solid var(--sc-surface-border);
+  border-left: 3px solid var(--sc-surface-border);
   border-radius: var(--sc-radius);
   margin-bottom: 0.75rem;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+
+  &:hover:not(&--editing) {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    border-left-color: var(--sc-primary, #1976d2);
+  }
 
   &--new {
-    border-color: var(--sc-primary);
+    border-color: var(--sc-primary, #1976d2);
     border-style: dashed;
+    border-left-style: dashed;
+  }
+
+  &--editing {
+    border-left-color: var(--sc-primary, #1976d2);
+    background: var(--sc-surface-hover, #f8f9fa);
   }
 
   &__btns {
@@ -121,6 +145,7 @@
     justify-content: flex-end;
     gap: 0.5rem;
     padding-top: 0.5rem;
+    border-top: 1px solid var(--sc-surface-border);
   }
 }
 
@@ -133,21 +158,56 @@
     align-items: center;
     flex-wrap: wrap;
     gap: 0.4rem;
-    margin-bottom: 0.35rem;
+    margin-bottom: 0.5rem;
   }
 }
 
 .tf-dir-text {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.25rem;
   font-size: 0.875rem;
-  margin: 0 0 0.15rem;
+  margin: 0 0 0.2rem;
   color: var(--sc-text-primary);
 
-  &--muted { color: var(--sc-text-muted); }
+  &--muted { color: var(--sc-text-muted); font-size: 0.82rem; }
+}
+
+.tf-dir-loc-icon {
+  font-size: 0.95rem !important;
+  width: 0.95rem !important;
+  height: 0.95rem !important;
+  margin-top: 1px;
+  color: var(--sc-primary, #1976d2);
+  flex-shrink: 0;
+}
+
+.tf-dir-contacto {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.6rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--sc-surface-border);
+
+  &__item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.8rem;
+    color: var(--sc-text-secondary);
+
+    mat-icon {
+      font-size: 0.9rem !important;
+      width: 0.9rem !important;
+      height: 0.9rem !important;
+    }
+  }
 }
 
 .tf-dir-badge {
   display: inline-block;
-  padding: 1px 8px;
+  padding: 2px 8px;
   border-radius: 10px;
   font-size: 0.7rem;
   font-weight: 600;
@@ -164,16 +224,73 @@
 }
 
 .tf-dir-principal {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
   font-size: 0.7rem;
   font-weight: 600;
-  color: var(--sc-primary);
-  background: var(--sc-primary-light, #e3f2fd);
-  padding: 1px 8px;
+  color: #1565c0;
+  background: #e3f2fd;
+  padding: 2px 8px;
   border-radius: 10px;
+
+  &__icon {
+    font-size: 0.8rem !important;
+    width: 0.8rem !important;
+    height: 0.8rem !important;
+  }
 }
 
 .tf-dir-nombre {
   font-size: 0.8rem;
   font-weight: 500;
   color: var(--sc-text-secondary);
+}
+
+// ── País readonly ──────────────────────────────────────────────
+.tf-dir-pais {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.5rem;
+  background: var(--sc-surface-hover, #f5f5f5);
+  border-radius: var(--sc-radius);
+  font-size: 0.82rem;
+  color: var(--sc-text-muted);
+
+  &__icon {
+    font-size: 1rem !important;
+    width: 1rem !important;
+    height: 1rem !important;
+    flex-shrink: 0;
+  }
+
+  strong { color: var(--sc-text-primary); }
+}
+
+// ── Empty state en edición ─────────────────────────────────────
+.tf-dir-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2.5rem 1rem;
+  text-align: center;
+  color: var(--sc-text-muted);
+  background: var(--sc-surface-hover, #fafafa);
+  border-radius: var(--sc-radius);
+  border: 1px dashed var(--sc-surface-border);
+
+  mat-icon {
+    font-size: 2.5rem;
+    width: 2.5rem;
+    height: 2.5rem;
+    opacity: 0.4;
+    margin-bottom: 0.5rem;
+  }
+
+  p {
+    margin: 0 0 1rem;
+    font-size: 0.875rem;
+  }
 }

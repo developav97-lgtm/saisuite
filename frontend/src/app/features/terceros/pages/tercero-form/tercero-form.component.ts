@@ -10,6 +10,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
+import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
@@ -20,6 +21,9 @@ import {
   TerceroCreate, TerceroDireccion,
   TipoIdentificacion, TipoPersona, TipoTercero, TipoDireccion,
 } from '../../../../core/models/tercero.model';
+import {
+  COLOMBIA_DEPARTAMENTOS, COLOMBIA_CIUDADES,
+} from '../../../../shared/data/colombia-geo';
 
 const FORM_EMPTY = {
   tipo_persona:          'natural'   as TipoPersona,
@@ -37,15 +41,13 @@ const FORM_EMPTY = {
 };
 
 const DIR_EMPTY = {
-  agregar: false,
+  agregar:           false,
   tipo:              'principal' as TipoDireccion,
   nombre_sucursal:   '',
-  pais:              'Colombia',
   departamento:      '',
   ciudad:            '',
   direccion_linea1:  '',
   direccion_linea2:  '',
-  codigo_postal:     '',
   nombre_contacto:   '',
   telefono_contacto: '',
   email_contacto:    '',
@@ -60,6 +62,7 @@ const DIR_EMPTY = {
     CommonModule, ReactiveFormsModule, RouterModule,
     MatButtonModule, MatIconModule,
     MatFormFieldModule, MatInputModule, MatSelectModule,
+    MatAutocompleteModule,
     MatTooltipModule, MatProgressSpinnerModule,
     MatDialogModule,
   ],
@@ -77,14 +80,34 @@ export class TerceroFormComponent implements OnInit {
   readonly saving  = signal(false);
 
   // Direcciones existentes (solo en edición)
-  readonly direcciones       = signal<TerceroDireccion[]>([]);
-  readonly editingDirId      = signal<string | null>(null);   // id de la dirección en edición inline
-  readonly showNewDirForm    = signal(false);                  // mostrar form de nueva dirección
-  readonly savingDir         = signal(false);
+  readonly direcciones    = signal<TerceroDireccion[]>([]);
+  readonly editingDirId   = signal<string | null>(null);
+  readonly showNewDirForm = signal(false);
+  readonly savingDir      = signal(false);
+
+  // Autocomplete geo
+  readonly deptQuery     = signal('');
+  readonly cityQuery     = signal('');
+  readonly deptoActivo   = signal('');   // depto seleccionado para filtrar ciudades
+
+  readonly deptoOptions = computed(() => {
+    const q = this.deptQuery().toLowerCase();
+    if (!q) return COLOMBIA_DEPARTAMENTOS;
+    return COLOMBIA_DEPARTAMENTOS.filter(d => d.nombre.toLowerCase().includes(q));
+  });
+
+  readonly cityOptions = computed(() => {
+    const depto = COLOMBIA_DEPARTAMENTOS.find(d => d.nombre === this.deptoActivo());
+    if (!depto) return [];
+    const q = this.cityQuery().toLowerCase();
+    return COLOMBIA_CIUDADES
+      .filter(c => c.departamento === depto.codigo)
+      .filter(c => !q || c.nombre.toLowerCase().includes(q));
+  });
 
   readonly editMode = computed(() => !!this.editId());
 
-  readonly tipoPersonaOptions     = [
+  readonly tipoPersonaOptions = [
     { value: 'natural',  label: 'Persona natural'   },
     { value: 'juridica', label: 'Persona jurídica'  },
   ];
@@ -129,17 +152,15 @@ export class TerceroFormComponent implements OnInit {
     celular:               [FORM_EMPTY.celular],
   });
 
-  // ── Form dirección (al crear o al agregar/editar en edición) ───────────────
+  // ── Form dirección ─────────────────────────────────────────────────────────
   readonly dirForm = this.fb.group({
-    agregar: [false],
+    agregar:           [false],
     tipo:              [DIR_EMPTY.tipo as TipoDireccion],
     nombre_sucursal:   [DIR_EMPTY.nombre_sucursal],
-    pais:              [DIR_EMPTY.pais],
     departamento:      [DIR_EMPTY.departamento],
     ciudad:            [DIR_EMPTY.ciudad],
     direccion_linea1:  [DIR_EMPTY.direccion_linea1],
     direccion_linea2:  [DIR_EMPTY.direccion_linea2],
-    codigo_postal:     [DIR_EMPTY.codigo_postal],
     nombre_contacto:   [DIR_EMPTY.nombre_contacto],
     telefono_contacto: [DIR_EMPTY.telefono_contacto],
     email_contacto:    [DIR_EMPTY.email_contacto],
@@ -172,9 +193,45 @@ export class TerceroFormComponent implements OnInit {
     }
   }
 
+  // ── Autocomplete handlers ──────────────────────────────────────────────────
+
+  onDeptoInput(event: Event): void {
+    this.deptQuery.set((event.target as HTMLInputElement).value);
+  }
+
+  onDeptoSelected(nombre: string): void {
+    this.deptoActivo.set(nombre);
+    this.deptQuery.set('');
+    this.cityQuery.set('');
+    this.dirForm.patchValue({ ciudad: '' });
+  }
+
+  onCityInput(event: Event): void {
+    this.cityQuery.set((event.target as HTMLInputElement).value);
+  }
+
+  private resetGeoSignals(): void {
+    this.deptQuery.set('');
+    this.cityQuery.set('');
+    this.deptoActivo.set('');
+  }
+
   // ── Guardar datos del tercero ──────────────────────────────────────────────
   guardar(): void {
     if (this.form.invalid) { this.form.markAllAsTouched(); return; }
+
+    // Validación: debe haber al menos una dirección
+    if (this.editMode()) {
+      if (this.direcciones().length === 0) {
+        this.snack.open('Debe agregar al menos una dirección antes de guardar.', 'Cerrar', { duration: 5000 });
+        return;
+      }
+    } else {
+      if (!this.agregarDir) {
+        this.snack.open('Debe agregar al menos una dirección antes de guardar.', 'Cerrar', { duration: 5000 });
+        return;
+      }
+    }
 
     if (this.agregarDir) {
       const d = this.dirForm;
@@ -214,12 +271,11 @@ export class TerceroFormComponent implements OnInit {
           this.service.addDireccion(t.id, {
             tipo:              d.tipo as TipoDireccion,
             nombre_sucursal:   d.nombre_sucursal   ?? '',
-            pais:              d.pais              ?? 'Colombia',
+            pais:              'Colombia',
             departamento:      d.departamento      ?? '',
             ciudad:            d.ciudad            ?? '',
             direccion_linea1:  d.direccion_linea1  ?? '',
             direccion_linea2:  d.direccion_linea2  ?? '',
-            codigo_postal:     d.codigo_postal     ?? '',
             nombre_contacto:   d.nombre_contacto   ?? '',
             telefono_contacto: d.telefono_contacto ?? '',
             email_contacto:    d.email_contacto    ?? '',
@@ -248,31 +304,34 @@ export class TerceroFormComponent implements OnInit {
   abrirEditarDir(dir: TerceroDireccion): void {
     this.showNewDirForm.set(false);
     this.editingDirId.set(dir.id);
+    this.deptoActivo.set(dir.departamento ?? '');
+    this.deptQuery.set('');
+    this.cityQuery.set('');
     this.dirForm.reset({
       agregar:           true,
       tipo:              dir.tipo,
-      nombre_sucursal:   dir.nombre_sucursal,
-      pais:              dir.pais,
-      departamento:      dir.departamento,
-      ciudad:            dir.ciudad,
-      direccion_linea1:  dir.direccion_linea1,
-      direccion_linea2:  dir.direccion_linea2,
-      codigo_postal:     dir.codigo_postal,
-      nombre_contacto:   dir.nombre_contacto,
-      telefono_contacto: dir.telefono_contacto,
-      email_contacto:    dir.email_contacto,
+      nombre_sucursal:   dir.nombre_sucursal   ?? '',
+      departamento:      dir.departamento      ?? '',
+      ciudad:            dir.ciudad            ?? '',
+      direccion_linea1:  dir.direccion_linea1  ?? '',
+      direccion_linea2:  dir.direccion_linea2  ?? '',
+      nombre_contacto:   dir.nombre_contacto   ?? '',
+      telefono_contacto: dir.telefono_contacto ?? '',
+      email_contacto:    dir.email_contacto    ?? '',
     });
   }
 
   abrirNuevaDir(): void {
     this.editingDirId.set(null);
     this.showNewDirForm.set(true);
+    this.resetGeoSignals();
     this.dirForm.reset({ ...DIR_EMPTY, agregar: true });
   }
 
   cancelarDir(): void {
     this.editingDirId.set(null);
     this.showNewDirForm.set(false);
+    this.resetGeoSignals();
     this.dirForm.reset(DIR_EMPTY);
   }
 
@@ -285,15 +344,30 @@ export class TerceroFormComponent implements OnInit {
     if (d.invalid) { d.markAllAsTouched(); return; }
 
     const raw = d.getRawValue();
+
+    // Validación: no permitir múltiples direcciones principales
+    if (raw.tipo === 'principal') {
+      const dirId = this.editingDirId();
+      const yaHayPrincipal = this.direcciones().some(
+        dir => dir.es_principal && dir.id !== dirId,
+      );
+      if (yaHayPrincipal) {
+        this.snack.open(
+          'Ya existe una dirección principal. Edítala y cambia su tipo antes de asignar otra.',
+          'Cerrar',
+          { duration: 5000 },
+        );
+        return;
+      }
+    }
     const dirData: Partial<TerceroDireccion> = {
       tipo:              raw.tipo as TipoDireccion,
       nombre_sucursal:   raw.nombre_sucursal   ?? '',
-      pais:              raw.pais              ?? 'Colombia',
+      pais:              'Colombia',
       departamento:      raw.departamento      ?? '',
       ciudad:            raw.ciudad            ?? '',
       direccion_linea1:  raw.direccion_linea1  ?? '',
       direccion_linea2:  raw.direccion_linea2  ?? '',
-      codigo_postal:     raw.codigo_postal     ?? '',
       nombre_contacto:   raw.nombre_contacto   ?? '',
       telefono_contacto: raw.telefono_contacto ?? '',
       email_contacto:    raw.email_contacto    ?? '',

@@ -21,6 +21,7 @@ import { AdminService } from '../../../admin/services/admin.service';
 import { AdminUser } from '../../../admin/models/admin.models';
 import { ConsecutivoService } from '../../../admin/services/consecutivo.service';
 import { ConsecutivoConfig } from '../../../admin/models/consecutivo.model';
+import { TerceroSelectorComponent, TerceroSeleccionado } from '../../../../shared/components/tercero-selector/tercero-selector.component';
 
 interface SelectOption { label: string; value: string; }
 
@@ -35,6 +36,7 @@ interface SelectOption { label: string; value: string; }
     MatSelectModule, MatAutocompleteModule,
     MatDatepickerModule, MatNativeDateModule,
     MatCardModule, MatIconModule, MatProgressSpinnerModule,
+    TerceroSelectorComponent,
   ],
 })
 export class ProyectoFormComponent implements OnInit {
@@ -47,9 +49,10 @@ export class ProyectoFormComponent implements OnInit {
   private readonly adminService        = inject(AdminService);
   private readonly consecutivoService  = inject(ConsecutivoService);
 
-  readonly editMode          = signal(false);
-  readonly proyectoId        = signal<string | null>(null);
-  readonly saving            = signal(false);
+  readonly editMode             = signal(false);
+  readonly proyectoId           = signal<string | null>(null);
+  readonly saving               = signal(false);
+  readonly clienteDisplayText   = signal('');
   readonly usuarios          = signal<AdminUser[]>([]);
   readonly allConsecutivos   = signal<ConsecutivoConfig[]>([]);
   readonly selectedTipo      = signal<TipoProyecto | null>(null);
@@ -191,6 +194,9 @@ export class ProyectoFormComponent implements OnInit {
   private loadProyecto(id: string): void {
     this.proyectoService.getById(id).subscribe({
       next: (p: ProyectoDetail) => {
+        this.clienteDisplayText.set(
+          p.cliente_nombre ? `${p.cliente_nombre} (${p.cliente_id})` : '',
+        );
         this.form.patchValue({
           codigo: p.codigo, nombre: p.nombre, tipo: p.tipo,
           cliente_id: p.cliente_id, cliente_nombre: p.cliente_nombre,
@@ -208,6 +214,11 @@ export class ProyectoFormComponent implements OnInit {
       },
       error: () => this.snackBar.open('No se pudo cargar el proyecto.', 'Cerrar', { duration: 4000, panelClass: ['snack-error'] }),
     });
+  }
+
+  onClienteSeleccionado(tercero: TerceroSeleccionado | null): void {
+    this.form.controls.cliente_id.setValue(tercero?.numero_identificacion ?? '');
+    this.form.controls.cliente_nombre.setValue(tercero?.nombre_completo ?? '');
   }
 
   onGerenteSelected(userId: string): void {
@@ -242,7 +253,8 @@ export class ProyectoFormComponent implements OnInit {
       next: (p) => {
         this.saving.set(false);
         this.snackBar.open(`Proyecto "${p.nombre}" ${proyectoId ? 'actualizado' : 'creado'}.`, 'Cerrar', { duration: 3000, panelClass: ['snack-success'] });
-        setTimeout(() => this.router.navigate(['/proyectos', p.id]), 1000);
+        const destino = p.id ? ['/proyectos', p.id] : ['/proyectos'];
+        setTimeout(() => this.router.navigate(destino), 1000);
       },
       error: (err) => {
         this.saving.set(false);

@@ -170,7 +170,7 @@
       <!-- ── COLUMNA LATERAL ── -->
       <div class="tf-side">
 
-        <!-- Card: Dirección principal (solo al crear) -->
+        <!-- ─ Card: Dirección principal (solo al crear) ─ -->
         @if (!editMode()) {
           <div class="sc-card">
             <div class="sc-card__header">
@@ -188,35 +188,56 @@
               <div class="sc-card__body">
                 <div class="tf-dir-form" [formGroup]="dirForm">
 
-                  <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
-                    <mat-label>Tipo de dirección</mat-label>
-                    <mat-select formControlName="tipo">
-                      @for (op of tipoDireccionOptions; track op.value) {
-                        <mat-option [value]="op.value">{{ op.label }}</mat-option>
+                  <div class="tf-dir-row">
+                    <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
+                      <mat-label>Tipo</mat-label>
+                      <mat-select formControlName="tipo">
+                        @for (op of tipoDireccionOptions; track op.value) {
+                          <mat-option [value]="op.value">{{ op.label }}</mat-option>
+                        }
+                      </mat-select>
+                    </mat-form-field>
+
+                    <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
+                      <mat-label>Nombre del punto</mat-label>
+                      <input matInput formControlName="nombre_sucursal" placeholder="Ej: Oficina principal" />
+                    </mat-form-field>
+                  </div>
+
+                  <div class="tf-dir-row">
+                    <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
+                      <mat-label>Departamento *</mat-label>
+                      <input matInput formControlName="departamento"
+                             [matAutocomplete]="autoDepC"
+                             (input)="onDeptoInput($event)"
+                             placeholder="Buscar…" />
+                      <mat-autocomplete #autoDepC="matAutocomplete"
+                                        (optionSelected)="onDeptoSelected($event.option.value)">
+                        @for (d of deptoOptions(); track d.codigo) {
+                          <mat-option [value]="d.nombre">{{ d.nombre }}</mat-option>
+                        }
+                      </mat-autocomplete>
+                      @if (dirForm.get('departamento')?.invalid && dirForm.get('departamento')?.touched) {
+                        <mat-error>Obligatorio.</mat-error>
                       }
-                    </mat-select>
-                  </mat-form-field>
+                    </mat-form-field>
 
-                  <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
-                    <mat-label>Nombre del punto</mat-label>
-                    <input matInput formControlName="nombre_sucursal" placeholder="Ej: Oficina principal" />
-                  </mat-form-field>
-
-                  <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
-                    <mat-label>Departamento *</mat-label>
-                    <input matInput formControlName="departamento" placeholder="Valle del Cauca" />
-                    @if (dirForm.get('departamento')?.invalid && dirForm.get('departamento')?.touched) {
-                      <mat-error>Obligatorio.</mat-error>
-                    }
-                  </mat-form-field>
-
-                  <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
-                    <mat-label>Ciudad *</mat-label>
-                    <input matInput formControlName="ciudad" placeholder="Cali" />
-                    @if (dirForm.get('ciudad')?.invalid && dirForm.get('ciudad')?.touched) {
-                      <mat-error>Obligatorio.</mat-error>
-                    }
-                  </mat-form-field>
+                    <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
+                      <mat-label>Ciudad *</mat-label>
+                      <input matInput formControlName="ciudad"
+                             [matAutocomplete]="autoCityC"
+                             (input)="onCityInput($event)"
+                             placeholder="Buscar…" />
+                      <mat-autocomplete #autoCityC="matAutocomplete">
+                        @for (c of cityOptions(); track c.codigo) {
+                          <mat-option [value]="c.nombre">{{ c.nombre }}</mat-option>
+                        }
+                      </mat-autocomplete>
+                      @if (dirForm.get('ciudad')?.invalid && dirForm.get('ciudad')?.touched) {
+                        <mat-error>Obligatorio.</mat-error>
+                      }
+                    </mat-form-field>
+                  </div>
 
                   <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
                     <mat-label>Dirección (línea 1) *</mat-label>
@@ -232,29 +253,26 @@
                   </mat-form-field>
 
                   <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
-                    <mat-label>Código postal</mat-label>
-                    <input matInput formControlName="codigo_postal" />
-                  </mat-form-field>
-
-                  <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
-                    <mat-label>País</mat-label>
-                    <input matInput formControlName="pais" />
-                  </mat-form-field>
-
-                  <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
                     <mat-label>Nombre de contacto</mat-label>
                     <input matInput formControlName="nombre_contacto" />
                   </mat-form-field>
 
-                  <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
-                    <mat-label>Teléfono contacto</mat-label>
-                    <input matInput formControlName="telefono_contacto" />
-                  </mat-form-field>
+                  <div class="tf-dir-row">
+                    <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
+                      <mat-label>Teléfono contacto</mat-label>
+                      <input matInput formControlName="telefono_contacto" />
+                    </mat-form-field>
 
-                  <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
-                    <mat-label>Email contacto</mat-label>
-                    <input matInput formControlName="email_contacto" type="email" />
-                  </mat-form-field>
+                    <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
+                      <mat-label>Email contacto</mat-label>
+                      <input matInput formControlName="email_contacto" type="email" />
+                    </mat-form-field>
+                  </div>
+
+                  <div class="tf-dir-pais">
+                    <mat-icon class="tf-dir-pais__icon">public</mat-icon>
+                    <span class="tf-dir-pais__text">País: <strong>Colombia</strong></span>
+                  </div>
 
                 </div>
               </div>
@@ -262,15 +280,14 @@
               <div class="sc-card__body">
                 <p class="tf-dir-hint">
                   <mat-icon>info</mat-icon>
-                  Activa esta sección para registrar la dirección junto con el tercero.
-                  Podrás agregar más después.
+                  Activa esta sección para registrar la dirección. Es obligatorio tener al menos una.
                 </p>
               </div>
             }
           </div>
         }
 
-        <!-- Card: Direcciones (solo en edición) -->
+        <!-- ─ Card: Direcciones (solo en edición) ─ -->
         @if (editMode()) {
           <div class="sc-card">
             <div class="sc-card__header">
@@ -287,41 +304,62 @@
 
               <!-- Lista de direcciones existentes -->
               @for (dir of direcciones(); track dir.id) {
-                <div class="tf-dir-item">
+                <div class="tf-dir-item" [class.tf-dir-item--editing]="editingDirId() === dir.id">
 
                   @if (editingDirId() === dir.id) {
-                    <!-- Form edición inline (columna única) -->
+                    <!-- Form edición inline -->
                     <div class="tf-dir-form" [formGroup]="dirForm">
 
-                      <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
-                        <mat-label>Tipo de dirección</mat-label>
-                        <mat-select formControlName="tipo">
-                          @for (op of tipoDireccionOptions; track op.value) {
-                            <mat-option [value]="op.value">{{ op.label }}</mat-option>
+                      <div class="tf-dir-row">
+                        <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
+                          <mat-label>Tipo</mat-label>
+                          <mat-select formControlName="tipo">
+                            @for (op of tipoDireccionOptions; track op.value) {
+                              <mat-option [value]="op.value">{{ op.label }}</mat-option>
+                            }
+                          </mat-select>
+                        </mat-form-field>
+
+                        <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
+                          <mat-label>Nombre del punto</mat-label>
+                          <input matInput formControlName="nombre_sucursal" />
+                        </mat-form-field>
+                      </div>
+
+                      <div class="tf-dir-row">
+                        <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
+                          <mat-label>Departamento *</mat-label>
+                          <input matInput formControlName="departamento"
+                                 [matAutocomplete]="autoDepE"
+                                 (input)="onDeptoInput($event)"
+                                 placeholder="Buscar…" />
+                          <mat-autocomplete #autoDepE="matAutocomplete"
+                                            (optionSelected)="onDeptoSelected($event.option.value)">
+                            @for (d of deptoOptions(); track d.codigo) {
+                              <mat-option [value]="d.nombre">{{ d.nombre }}</mat-option>
+                            }
+                          </mat-autocomplete>
+                          @if (dirForm.get('departamento')?.invalid && dirForm.get('departamento')?.touched) {
+                            <mat-error>Obligatorio.</mat-error>
                           }
-                        </mat-select>
-                      </mat-form-field>
+                        </mat-form-field>
 
-                      <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
-                        <mat-label>Nombre del punto</mat-label>
-                        <input matInput formControlName="nombre_sucursal" placeholder="Ej: Oficina principal" />
-                      </mat-form-field>
-
-                      <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
-                        <mat-label>Departamento *</mat-label>
-                        <input matInput formControlName="departamento" />
-                        @if (dirForm.get('departamento')?.invalid && dirForm.get('departamento')?.touched) {
-                          <mat-error>Obligatorio.</mat-error>
-                        }
-                      </mat-form-field>
-
-                      <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
-                        <mat-label>Ciudad *</mat-label>
-                        <input matInput formControlName="ciudad" />
-                        @if (dirForm.get('ciudad')?.invalid && dirForm.get('ciudad')?.touched) {
-                          <mat-error>Obligatorio.</mat-error>
-                        }
-                      </mat-form-field>
+                        <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
+                          <mat-label>Ciudad *</mat-label>
+                          <input matInput formControlName="ciudad"
+                                 [matAutocomplete]="autoCityE"
+                                 (input)="onCityInput($event)"
+                                 placeholder="Buscar…" />
+                          <mat-autocomplete #autoCityE="matAutocomplete">
+                            @for (c of cityOptions(); track c.codigo) {
+                              <mat-option [value]="c.nombre">{{ c.nombre }}</mat-option>
+                            }
+                          </mat-autocomplete>
+                          @if (dirForm.get('ciudad')?.invalid && dirForm.get('ciudad')?.touched) {
+                            <mat-error>Obligatorio.</mat-error>
+                          }
+                        </mat-form-field>
+                      </div>
 
                       <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
                         <mat-label>Dirección (línea 1) *</mat-label>
@@ -333,17 +371,7 @@
 
                       <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
                         <mat-label>Dirección (línea 2)</mat-label>
-                        <input matInput formControlName="direccion_linea2" placeholder="Apto 201, Oficina 3" />
-                      </mat-form-field>
-
-                      <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
-                        <mat-label>Código postal</mat-label>
-                        <input matInput formControlName="codigo_postal" />
-                      </mat-form-field>
-
-                      <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
-                        <mat-label>País</mat-label>
-                        <input matInput formControlName="pais" />
+                        <input matInput formControlName="direccion_linea2" />
                       </mat-form-field>
 
                       <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
@@ -351,15 +379,22 @@
                         <input matInput formControlName="nombre_contacto" />
                       </mat-form-field>
 
-                      <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
-                        <mat-label>Teléfono contacto</mat-label>
-                        <input matInput formControlName="telefono_contacto" />
-                      </mat-form-field>
+                      <div class="tf-dir-row">
+                        <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
+                          <mat-label>Teléfono contacto</mat-label>
+                          <input matInput formControlName="telefono_contacto" />
+                        </mat-form-field>
 
-                      <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
-                        <mat-label>Email contacto</mat-label>
-                        <input matInput formControlName="email_contacto" type="email" />
-                      </mat-form-field>
+                        <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
+                          <mat-label>Email contacto</mat-label>
+                          <input matInput formControlName="email_contacto" type="email" />
+                        </mat-form-field>
+                      </div>
+
+                      <div class="tf-dir-pais">
+                        <mat-icon class="tf-dir-pais__icon">public</mat-icon>
+                        <span class="tf-dir-pais__text">País: <strong>Colombia</strong></span>
+                      </div>
 
                     </div>
                     <div class="tf-dir-item__actions">
@@ -371,28 +406,51 @@
                     </div>
 
                   } @else {
-                    <!-- Resumen de la dirección -->
+                    <!-- Resumen card -->
                     <div class="tf-dir-summary">
                       <div class="tf-dir-summary__header">
                         <span class="tf-dir-badge tf-dir-badge--{{ dir.tipo }}">{{ dir.tipo }}</span>
                         @if (dir.es_principal) {
-                          <span class="tf-dir-principal">Principal</span>
+                          <span class="tf-dir-principal">
+                            <mat-icon class="tf-dir-principal__icon">home</mat-icon> Principal
+                          </span>
                         }
                         @if (dir.nombre_sucursal) {
                           <span class="tf-dir-nombre">{{ dir.nombre_sucursal }}</span>
                         }
                       </div>
-                      <p class="tf-dir-text">{{ dir.direccion_linea1 }}</p>
-                      @if (dir.direccion_linea2) {
-                        <p class="tf-dir-text">{{ dir.direccion_linea2 }}</p>
-                      }
+                      <p class="tf-dir-text">
+                        <mat-icon class="tf-dir-loc-icon">location_on</mat-icon>
+                        {{ dir.direccion_linea1 }}{{ dir.direccion_linea2 ? ', ' + dir.direccion_linea2 : '' }}
+                      </p>
                       <p class="tf-dir-text tf-dir-text--muted">{{ dir.ciudad }}, {{ dir.departamento }}</p>
+                      @if (dir.nombre_contacto || dir.telefono_contacto || dir.email_contacto) {
+                        <div class="tf-dir-contacto">
+                          @if (dir.nombre_contacto) {
+                            <span class="tf-dir-contacto__item">
+                              <mat-icon>person</mat-icon>{{ dir.nombre_contacto }}
+                            </span>
+                          }
+                          @if (dir.telefono_contacto) {
+                            <span class="tf-dir-contacto__item">
+                              <mat-icon>phone</mat-icon>{{ dir.telefono_contacto }}
+                            </span>
+                          }
+                          @if (dir.email_contacto) {
+                            <span class="tf-dir-contacto__item">
+                              <mat-icon>email</mat-icon>{{ dir.email_contacto }}
+                            </span>
+                          }
+                        </div>
+                      }
                     </div>
                     <div class="tf-dir-item__btns">
                       <button mat-icon-button matTooltip="Editar dirección" (click)="abrirEditarDir(dir)">
                         <mat-icon>edit</mat-icon>
                       </button>
-                      <button mat-icon-button matTooltip="Eliminar dirección" color="warn"
+                      <button mat-icon-button color="warn"
+                              [matTooltip]="dir.es_principal ? 'No se puede eliminar la dirección principal' : 'Eliminar dirección'"
+                              [disabled]="dir.es_principal"
                               (click)="confirmarEliminarDir(dir)">
                         <mat-icon>delete</mat-icon>
                       </button>
@@ -407,35 +465,56 @@
                 <div class="tf-dir-item tf-dir-item--new">
                   <div class="tf-dir-form" [formGroup]="dirForm">
 
-                    <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
-                      <mat-label>Tipo de dirección</mat-label>
-                      <mat-select formControlName="tipo">
-                        @for (op of tipoDireccionOptions; track op.value) {
-                          <mat-option [value]="op.value">{{ op.label }}</mat-option>
+                    <div class="tf-dir-row">
+                      <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
+                        <mat-label>Tipo</mat-label>
+                        <mat-select formControlName="tipo">
+                          @for (op of tipoDireccionOptions; track op.value) {
+                            <mat-option [value]="op.value">{{ op.label }}</mat-option>
+                          }
+                        </mat-select>
+                      </mat-form-field>
+
+                      <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
+                        <mat-label>Nombre del punto</mat-label>
+                        <input matInput formControlName="nombre_sucursal" placeholder="Ej: Bodega Norte" />
+                      </mat-form-field>
+                    </div>
+
+                    <div class="tf-dir-row">
+                      <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
+                        <mat-label>Departamento *</mat-label>
+                        <input matInput formControlName="departamento"
+                               [matAutocomplete]="autoDepN"
+                               (input)="onDeptoInput($event)"
+                               placeholder="Buscar…" />
+                        <mat-autocomplete #autoDepN="matAutocomplete"
+                                          (optionSelected)="onDeptoSelected($event.option.value)">
+                          @for (d of deptoOptions(); track d.codigo) {
+                            <mat-option [value]="d.nombre">{{ d.nombre }}</mat-option>
+                          }
+                        </mat-autocomplete>
+                        @if (dirForm.get('departamento')?.invalid && dirForm.get('departamento')?.touched) {
+                          <mat-error>Obligatorio.</mat-error>
                         }
-                      </mat-select>
-                    </mat-form-field>
+                      </mat-form-field>
 
-                    <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
-                      <mat-label>Nombre del punto</mat-label>
-                      <input matInput formControlName="nombre_sucursal" placeholder="Ej: Oficina principal" />
-                    </mat-form-field>
-
-                    <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
-                      <mat-label>Departamento *</mat-label>
-                      <input matInput formControlName="departamento" />
-                      @if (dirForm.get('departamento')?.invalid && dirForm.get('departamento')?.touched) {
-                        <mat-error>Obligatorio.</mat-error>
-                      }
-                    </mat-form-field>
-
-                    <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
-                      <mat-label>Ciudad *</mat-label>
-                      <input matInput formControlName="ciudad" />
-                      @if (dirForm.get('ciudad')?.invalid && dirForm.get('ciudad')?.touched) {
-                        <mat-error>Obligatorio.</mat-error>
-                      }
-                    </mat-form-field>
+                      <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
+                        <mat-label>Ciudad *</mat-label>
+                        <input matInput formControlName="ciudad"
+                               [matAutocomplete]="autoCityN"
+                               (input)="onCityInput($event)"
+                               placeholder="Buscar…" />
+                        <mat-autocomplete #autoCityN="matAutocomplete">
+                          @for (c of cityOptions(); track c.codigo) {
+                            <mat-option [value]="c.nombre">{{ c.nombre }}</mat-option>
+                          }
+                        </mat-autocomplete>
+                        @if (dirForm.get('ciudad')?.invalid && dirForm.get('ciudad')?.touched) {
+                          <mat-error>Obligatorio.</mat-error>
+                        }
+                      </mat-form-field>
+                    </div>
 
                     <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
                       <mat-label>Dirección (línea 1) *</mat-label>
@@ -451,29 +530,26 @@
                     </mat-form-field>
 
                     <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
-                      <mat-label>Código postal</mat-label>
-                      <input matInput formControlName="codigo_postal" />
-                    </mat-form-field>
-
-                    <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
-                      <mat-label>País</mat-label>
-                      <input matInput formControlName="pais" />
-                    </mat-form-field>
-
-                    <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
                       <mat-label>Nombre de contacto</mat-label>
                       <input matInput formControlName="nombre_contacto" />
                     </mat-form-field>
 
-                    <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
-                      <mat-label>Teléfono contacto</mat-label>
-                      <input matInput formControlName="telefono_contacto" />
-                    </mat-form-field>
+                    <div class="tf-dir-row">
+                      <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
+                        <mat-label>Teléfono contacto</mat-label>
+                        <input matInput formControlName="telefono_contacto" />
+                      </mat-form-field>
 
-                    <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
-                      <mat-label>Email contacto</mat-label>
-                      <input matInput formControlName="email_contacto" type="email" />
-                    </mat-form-field>
+                      <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
+                        <mat-label>Email contacto</mat-label>
+                        <input matInput formControlName="email_contacto" type="email" />
+                      </mat-form-field>
+                    </div>
+
+                    <div class="tf-dir-pais">
+                      <mat-icon class="tf-dir-pais__icon">public</mat-icon>
+                      <span class="tf-dir-pais__text">País: <strong>Colombia</strong></span>
+                    </div>
 
                   </div>
                   <div class="tf-dir-item__actions">
@@ -488,10 +564,13 @@
 
               <!-- Estado vacío -->
               @if (direcciones().length === 0 && !showNewDirForm()) {
-                <p class="tf-dir-hint">
-                  <mat-icon>info</mat-icon>
-                  No hay direcciones. Usa "Agregar" para añadir una.
-                </p>
+                <div class="tf-dir-empty">
+                  <mat-icon>location_off</mat-icon>
+                  <p>No hay direcciones registradas.</p>
+                  <button mat-stroked-button color="primary" type="button" (click)="abrirNuevaDir()">
+                    <mat-icon>add</mat-icon> Agregar primera dirección
+                  </button>
+                </div>
               }
 
             </div>

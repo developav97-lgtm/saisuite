@@ -1,6 +1,6 @@
 import {
   ChangeDetectionStrategy, Component, OnInit, OnDestroy,
-  inject, output, signal, computed,
+  inject, input, output, signal, computed, effect,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormControl } from '@angular/forms';
@@ -37,6 +37,11 @@ export class TerceroSelectorComponent implements OnInit, OnDestroy {
   private readonly terceroService = inject(TerceroService);
   private readonly destroy$ = new Subject<void>();
 
+  /** Texto inicial que se muestra en el input (modo edición) */
+  readonly initialDisplayText = input<string>('');
+  /** Label del campo */
+  readonly label = input<string>('Buscar tercero (nombre o NIT)');
+
   readonly terceroSeleccionado = output<TerceroSeleccionado | null>();
 
   readonly searchControl = new FormControl('');
@@ -45,12 +50,26 @@ export class TerceroSelectorComponent implements OnInit, OnDestroy {
   readonly seleccionado  = signal<TerceroList | null>(null);
   readonly sinResultados = computed(() => !this.buscando() && this.opciones().length === 0);
 
+  constructor() {
+    // Reacciona de forma reactiva al initialDisplayText (puede llegar después del ngOnInit
+    // si el padre carga datos de forma asíncrona)
+    effect(() => {
+      const text = this.initialDisplayText();
+      if (text && !this.seleccionado()) {
+        this.searchControl.setValue(text, { emitEvent: false });
+      }
+    });
+  }
+
   ngOnInit(): void {
     this.searchControl.valueChanges.pipe(
       debounceTime(300),
       distinctUntilChanged(),
       switchMap(query => {
-        const q = (query ?? '').trim();
+        // Cuando mat-autocomplete selecciona una opción, el valor puede ser
+        // un objeto TerceroList en lugar de string — ignorar esos casos
+        if (typeof query !== 'string') return of([]);
+        const q = query.trim();
         if (q.length < 2) {
           this.opciones.set([]);
           return of([]);

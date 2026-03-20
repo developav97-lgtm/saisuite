@@ -100,23 +100,17 @@
           <span class="sc-card__title">Cliente</span>
         </div>
         <div class="sc-card__body">
-          <div class="sc-form-grid">
-            <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
-              <mat-label>NIT / ID Cliente</mat-label>
-              <input matInput formControlName="cliente_id" placeholder="900111222-0" />
-              @if (form.get('cliente_id')?.invalid && form.get('cliente_id')?.touched) {
-                <mat-error>Requerido.</mat-error>
-              }
-            </mat-form-field>
-
-            <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
-              <mat-label>Nombre del cliente</mat-label>
-              <input matInput formControlName="cliente_nombre" placeholder="Razón social o nombre" />
-              @if (form.get('cliente_nombre')?.invalid && form.get('cliente_nombre')?.touched) {
-                <mat-error>Requerido.</mat-error>
-              }
-            </mat-form-field>
-          </div>
+          <app-tercero-selector
+            [label]="'Cliente *'"
+            [initialDisplayText]="clienteDisplayText()"
+            (terceroSeleccionado)="onClienteSeleccionado($event)"
+          />
+          @if (form.get('cliente_id')?.invalid && form.get('cliente_id')?.touched) {
+            <p class="pf-field-error">
+              <mat-icon>error_outline</mat-icon>
+              Selecciona el cliente del proyecto.
+            </p>
+          }
         </div>
       </div>
 

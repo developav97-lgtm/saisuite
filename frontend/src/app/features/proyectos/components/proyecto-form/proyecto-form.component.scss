@@ -126,3 +126,18 @@
   letter-spacing: 0.07em;
   margin: 0;
 }
+
+.pf-field-error {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  color: var(--mat-form-field-error-text-color, #b00020);
+  margin: 0.25rem 0 0;
+
+  mat-icon {
+    font-size: 0.9rem;
+    width: 0.9rem;
+    height: 0.9rem;
+  }
+}
