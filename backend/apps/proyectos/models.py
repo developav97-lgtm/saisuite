@@ -6,6 +6,7 @@ import logging
 from decimal import Decimal
 from django.db import models
 from django.conf import settings
+from django.core.validators import MinValueValidator, MaxValueValidator
 from apps.core.models import BaseModel
 
 logger = logging.getLogger(__name__)
@@ -386,3 +387,243 @@ class Hito(BaseModel):
     def __str__(self):
         estado = 'Facturado' if self.facturado else 'Pendiente'
         return f'{self.proyecto.codigo} — {self.nombre} ({estado})'
+
+
+class TareaTag(BaseModel):
+    """
+    Etiquetas para categorizar y filtrar tareas.
+    Hereda company de BaseModel — no duplicar FK.
+    """
+    nombre = models.CharField(max_length=50)
+    color = models.CharField(
+        max_length=20,
+        default='blue',
+        choices=[
+            ('red', 'Rojo'),
+            ('orange', 'Naranja'),
+            ('yellow', 'Amarillo'),
+            ('green', 'Verde'),
+            ('blue', 'Azul'),
+            ('purple', 'Morado'),
+            ('pink', 'Rosa'),
+            ('gray', 'Gris'),
+        ]
+    )
+
+    class Meta:
+        unique_together = [('company', 'nombre')]
+        ordering = ['nombre']
+        verbose_name = 'Etiqueta de Tarea'
+        verbose_name_plural = 'Etiquetas de Tareas'
+
+    def __str__(self):
+        return self.nombre
+
+
+class Tarea(BaseModel):
+    """
+    Tarea de proyecto con capacidades avanzadas.
+    Reemplaza ActividadProyecto con funcionalidad completa tipo Odoo.
+    """
+
+    # ===== RELACIONES PRINCIPALES =====
+    proyecto = models.ForeignKey(
+        'Proyecto',
+        on_delete=models.CASCADE,
+        related_name='tareas'
+    )
+    fase = models.ForeignKey(
+        'Fase',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='tareas'
+    )
+
+    # ===== JERARQUÍA (SUBTAREAS MULTI-NIVEL) =====
+    tarea_padre = models.ForeignKey(
+        'self',
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name='subtareas'
+    )
+
+    # ===== BÁSICO =====
+    nombre = models.CharField(max_length=200)
+    descripcion = models.TextField(blank=True)
+    codigo = models.CharField(max_length=50, blank=True)  # auto: TASK-00001
+
+    # ===== ASIGNACIÓN Y COLABORACIÓN =====
+    responsable = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='tareas_asignadas'
+    )
+    followers = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        related_name='tareas_siguiendo',
+        blank=True
+    )
+
+    # ===== CLASIFICACIÓN =====
+    prioridad = models.IntegerField(
+        default=2,
+        choices=[
+            (1, 'Baja'),
+            (2, 'Normal'),
+            (3, 'Alta'),
+            (4, 'Urgente'),
+        ]
+    )
+    tags = models.ManyToManyField('TareaTag', related_name='tareas', blank=True)
+
+    # ===== FECHAS =====
+    fecha_inicio = models.DateField(null=True, blank=True)
+    fecha_fin = models.DateField(null=True, blank=True)
+    fecha_limite = models.DateField(null=True, blank=True)  # deadline
+
+    # ===== ESTADO Y PROGRESO =====
+    estado = models.CharField(
+        max_length=20,
+        default='por_hacer',
+        choices=[
+            ('por_hacer', 'Por Hacer'),
+            ('en_progreso', 'En Progreso'),
+            ('en_revision', 'En Revisión'),
+            ('bloqueada', 'Bloqueada'),
+            ('completada', 'Completada'),
+            ('cancelada', 'Cancelada'),
+        ]
+    )
+    porcentaje_completado = models.IntegerField(
+        default=0,
+        validators=[MinValueValidator(0), MaxValueValidator(100)]
+    )
+
+    # ===== TIMESHEET (HORAS) =====
+    horas_estimadas = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0
+    )
+    horas_registradas = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0
+    )
+
+    # ===== RECURRENCIA =====
+    es_recurrente = models.BooleanField(default=False)
+    frecuencia_recurrencia = models.CharField(
+        max_length=20,
+        null=True,
+        blank=True,
+        choices=[
+            ('diaria', 'Diaria'),
+            ('semanal', 'Semanal'),
+            ('mensual', 'Mensual'),
+        ]
+    )
+    proxima_generacion = models.DateField(null=True, blank=True)
+
+    # ===== LEGACY (MIGRACIÓN) =====
+    actividad_proyecto_id = models.UUIDField(
+        null=True,
+        blank=True,
+        editable=False,
+        help_text='ID de ActividadProyecto original (solo para migración)'
+    )
+
+    class Meta:
+        ordering = ['-prioridad', 'fecha_limite', 'nombre']
+        indexes = [
+            models.Index(fields=['proyecto', 'estado']),
+            models.Index(fields=['responsable']),
+            models.Index(fields=['fecha_limite']),
+        ]
+        verbose_name = 'Tarea'
+        verbose_name_plural = 'Tareas'
+
+    def __str__(self):
+        return f"{self.codigo} - {self.nombre}" if self.codigo else self.nombre
+
+    def clean(self):
+        """Validaciones de negocio"""
+        from django.core.exceptions import ValidationError
+
+        # Validar fechas
+        if self.fecha_inicio and self.fecha_fin:
+            if self.fecha_inicio >= self.fecha_fin:
+                raise ValidationError({
+                    'fecha_fin': 'Fecha fin debe ser posterior a fecha inicio'
+                })
+
+        # Validar que no sea su propia subtarea
+        if self.tarea_padre_id and self.id and self.tarea_padre_id == self.id:
+            raise ValidationError({
+                'tarea_padre': 'Una tarea no puede ser subtarea de sí misma'
+            })
+
+        # Validar que tarea_padre pertenece al mismo proyecto
+        if self.tarea_padre and self.tarea_padre.proyecto_id != self.proyecto_id:
+            raise ValidationError({
+                'tarea_padre': 'Tarea padre debe pertenecer al mismo proyecto'
+            })
+
+        # Validar nivel máximo de jerarquía (5 niveles)
+        if self.tarea_padre and self.nivel_jerarquia >= 5:
+            raise ValidationError({
+                'tarea_padre': 'Máximo 5 niveles de subtareas permitidos'
+            })
+
+    def save(self, *args, **kwargs):
+        # Generar código automáticamente
+        if not self.codigo:
+            from django.db.models import Max
+            from django.db.models.functions import Cast, Substr
+
+            ultimo_numero = Tarea.all_objects.filter(
+                proyecto=self.proyecto
+            ).aggregate(
+                max_num=Max(
+                    Cast(
+                        Substr('codigo', 6),  # Después de "TASK-"
+                        output_field=models.IntegerField()
+                    )
+                )
+            )['max_num'] or 0
+
+            self.codigo = f"TASK-{ultimo_numero + 1:05d}"
+
+        super().save(*args, **kwargs)
+
+    @property
+    def es_vencida(self):
+        """Retorna True si la tarea está vencida"""
+        from django.utils import timezone
+        if not self.fecha_limite:
+            return False
+        return (
+            self.fecha_limite < timezone.now().date()
+            and self.estado not in ['completada', 'cancelada']
+        )
+
+    @property
+    def tiene_subtareas(self):
+        """Retorna True si la tarea tiene subtareas"""
+        return self.subtareas.exists()
+
+    @property
+    def nivel_jerarquia(self):
+        """Retorna el nivel de jerarquía (0=raíz, 1=sub, 2=sub-sub, etc.)"""
+        nivel = 0
+        padre = self.tarea_padre
+        while padre:
+            nivel += 1
+            if nivel > 10:  # Prevenir loops infinitos
+                break
+            padre = padre.tarea_padre
+        return nivel

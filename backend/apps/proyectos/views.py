@@ -10,7 +10,7 @@ from rest_framework.filters import SearchFilter, OrderingFilter
 from rest_framework.views import APIView
 from django_filters.rest_framework import DjangoFilterBackend
 
-from apps.proyectos.models import Proyecto, Fase, TerceroProyecto, DocumentoContable, Hito, Actividad, ActividadProyecto
+from apps.proyectos.models import Proyecto, Fase, TerceroProyecto, DocumentoContable, Hito, Actividad, ActividadProyecto, Tarea, TareaTag
 from apps.proyectos.serializers import (
     ProyectoListSerializer,
     ProyectoDetailSerializer,
@@ -32,6 +32,8 @@ from apps.proyectos.serializers import (
     ActividadProyectoSerializer,
     ActividadProyectoCreateUpdateSerializer,
     ConfiguracionModuloSerializer,
+    TareaSerializer,
+    TareaTagSerializer,
 )
 from apps.proyectos.services import (
     ProyectoService,
@@ -44,8 +46,8 @@ from apps.proyectos.services import (
     ConfiguracionModuloService,
     ProyectoException,
 )
-from apps.proyectos.filters import ProyectoFilter
-from apps.proyectos.permissions import CanAccessProyectos, CanEditProyecto
+from apps.proyectos.filters import ProyectoFilter, TareaFilter
+from apps.proyectos.permissions import CanAccessProyectos, CanEditProyecto, TareaPermission
 
 logger = logging.getLogger(__name__)
 
@@ -395,3 +397,159 @@ class ConfiguracionModuloView(APIView):
         serializer.is_valid(raise_exception=True)
         updated = ConfiguracionModuloService.update(request.user.company, serializer.validated_data)
         return Response(ConfiguracionModuloSerializer(updated).data)
+
+
+class TareaViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para Tarea con filtros avanzados.
+
+    Endpoints:
+      GET/POST        /api/v1/proyectos/tareas/
+      GET/PATCH/DEL   /api/v1/proyectos/tareas/{id}/
+      POST            /api/v1/proyectos/tareas/{id}/agregar-follower/
+      DELETE          /api/v1/proyectos/tareas/{id}/quitar-follower/{user_id}/
+      POST            /api/v1/proyectos/tareas/{id}/cambiar-estado/
+    """
+
+    serializer_class   = TareaSerializer
+    permission_classes = [TareaPermission]
+    filter_backends    = [DjangoFilterBackend, OrderingFilter]
+    filterset_class    = TareaFilter
+    ordering_fields    = ['prioridad', 'fecha_limite', 'created_at', 'nombre']
+    ordering           = ['-prioridad', 'fecha_limite']
+
+    def get_queryset(self):
+        company = getattr(self.request.user, 'company', None)
+        qs = Tarea.all_objects.select_related(
+            'proyecto', 'fase', 'responsable', 'tarea_padre'
+        ).prefetch_related('followers', 'tags', 'subtareas')
+
+        if company:
+            qs = qs.filter(proyecto__company=company)
+
+        # Filtrar por proyecto si viene en query params o kwargs de URL anidada
+        proyecto_id = (
+            self.request.query_params.get('proyecto_id') or
+            self.kwargs.get('proyecto_pk')
+        )
+        if proyecto_id:
+            qs = qs.filter(proyecto_id=proyecto_id)
+
+        return qs
+
+    def perform_create(self, serializer):
+        company = getattr(self.request.user, 'company', None)
+        serializer.save(company=company)
+
+    @action(detail=True, methods=['post'], url_path='agregar-follower')
+    def agregar_follower(self, request, pk=None):
+        """POST /api/v1/proyectos/tareas/{id}/agregar-follower/"""
+        tarea   = self.get_object()
+        user_id = request.data.get('user_id')
+
+        if not user_id:
+            return Response(
+                {'error': 'user_id es requerido'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        from apps.users.models import User as UserModel
+        try:
+            user = UserModel.objects.get(id=user_id)
+        except UserModel.DoesNotExist:
+            return Response(
+                {'error': 'Usuario no encontrado'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        tarea.followers.add(user)
+        logger.info('tarea_follower_agregado', extra={
+            'tarea_id': str(tarea.id), 'user_id': str(user.id)
+        })
+        return Response({
+            'message': f'Follower {user.full_name} agregado',
+            'followers_count': tarea.followers.count(),
+        })
+
+    @action(
+        detail=True, methods=['delete'],
+        url_path=r'quitar-follower/(?P<user_id>[^/.]+)',
+    )
+    def quitar_follower(self, request, pk=None, user_id=None):
+        """DELETE /api/v1/proyectos/tareas/{id}/quitar-follower/{user_id}/"""
+        tarea = self.get_object()
+
+        from apps.users.models import User as UserModel
+        try:
+            user = UserModel.objects.get(id=user_id)
+        except UserModel.DoesNotExist:
+            return Response(
+                {'error': 'Usuario no encontrado'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        tarea.followers.remove(user)
+        logger.info('tarea_follower_quitado', extra={
+            'tarea_id': str(tarea.id), 'user_id': str(user.id)
+        })
+        return Response({
+            'message': f'Follower {user.full_name} quitado',
+            'followers_count': tarea.followers.count(),
+        })
+
+    @action(detail=True, methods=['post'], url_path='cambiar-estado')
+    def cambiar_estado(self, request, pk=None):
+        """POST /api/v1/proyectos/tareas/{id}/cambiar-estado/"""
+        tarea        = self.get_object()
+        nuevo_estado = request.data.get('estado')
+
+        if not nuevo_estado:
+            return Response(
+                {'error': 'estado es requerido'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        estados_validos = [c[0] for c in Tarea._meta.get_field('estado').choices]
+        if nuevo_estado not in estados_validos:
+            return Response(
+                {'error': f'Estado inválido. Opciones: {estados_validos}'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # No se puede completar si hay subtareas pendientes
+        if nuevo_estado == 'completada' and tarea.tiene_subtareas:
+            pendientes = tarea.subtareas.exclude(estado__in=['completada', 'cancelada'])
+            if pendientes.exists():
+                return Response(
+                    {'error': 'No se puede completar: hay subtareas pendientes'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        tarea.estado = nuevo_estado
+        tarea.save()
+        logger.info('tarea_estado_cambiado', extra={
+            'tarea_id': str(tarea.id), 'nuevo_estado': nuevo_estado
+        })
+        return Response(self.get_serializer(tarea).data)
+
+
+class TareaTagViewSet(viewsets.ModelViewSet):
+    """
+    CRUD de etiquetas de tareas por empresa.
+    GET/POST       /api/v1/proyectos/tags/
+    GET/PATCH/DEL  /api/v1/proyectos/tags/{id}/
+    """
+
+    serializer_class   = TareaTagSerializer
+    permission_classes = [CanAccessProyectos]
+
+    def get_queryset(self):
+        company = getattr(self.request.user, 'company', None)
+        qs = TareaTag.all_objects.all()
+        if company:
+            qs = qs.filter(company=company)
+        return qs
+
+    def perform_create(self, serializer):
+        company = getattr(self.request.user, 'company', None)
+        serializer.save(company=company)

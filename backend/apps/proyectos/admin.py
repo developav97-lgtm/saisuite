@@ -2,7 +2,10 @@
 SaiSuite — Proyectos: Admin
 """
 from django.contrib import admin
-from apps.proyectos.models import Proyecto, Fase, TerceroProyecto, DocumentoContable, Hito, Actividad, ActividadProyecto
+from apps.proyectos.models import (
+    Proyecto, Fase, TerceroProyecto, DocumentoContable, Hito,
+    Actividad, ActividadProyecto, Tarea, TareaTag,
+)
 
 
 class FaseInline(admin.TabularInline):
@@ -98,4 +101,58 @@ class ActividadProyectoAdmin(admin.ModelAdmin):
     list_filter   = ['actividad__tipo']
     search_fields = ['actividad__codigo', 'actividad__nombre', 'proyecto__codigo']
     raw_id_fields = ['proyecto', 'actividad', 'fase']
+    readonly_fields = ['id', 'created_at', 'updated_at']
+
+
+@admin.register(Tarea)
+class TareaAdmin(admin.ModelAdmin):
+    list_display = [
+        'codigo', 'nombre', 'proyecto', 'responsable',
+        'estado', 'prioridad', 'porcentaje_completado', 'fecha_limite'
+    ]
+    list_filter = ['estado', 'prioridad', 'proyecto', 'fase']
+    search_fields = ['nombre', 'codigo', 'descripcion']
+    raw_id_fields = ['proyecto', 'fase', 'tarea_padre', 'responsable']
+    filter_horizontal = ['followers', 'tags']
+    readonly_fields = ['codigo', 'actividad_proyecto_id', 'nivel_jerarquia', 'id', 'created_at', 'updated_at']
+
+    fieldsets = (
+        ('Información Básica', {
+            'fields': ('id', 'codigo', 'nombre', 'descripcion', 'proyecto', 'fase')
+        }),
+        ('Jerarquía', {
+            'fields': ('tarea_padre', 'nivel_jerarquia')
+        }),
+        ('Asignación', {
+            'fields': ('responsable', 'followers')
+        }),
+        ('Clasificación', {
+            'fields': ('estado', 'prioridad', 'tags', 'porcentaje_completado')
+        }),
+        ('Fechas', {
+            'fields': ('fecha_inicio', 'fecha_fin', 'fecha_limite')
+        }),
+        ('Timesheet', {
+            'fields': ('horas_estimadas', 'horas_registradas')
+        }),
+        ('Recurrencia', {
+            'fields': ('es_recurrente', 'frecuencia_recurrencia', 'proxima_generacion'),
+            'classes': ('collapse',)
+        }),
+        ('Legacy', {
+            'fields': ('actividad_proyecto_id',),
+            'classes': ('collapse',)
+        }),
+        ('Metadatos', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',),
+        }),
+    )
+
+
+@admin.register(TareaTag)
+class TareaTagAdmin(admin.ModelAdmin):
+    list_display = ['nombre', 'color', 'company']
+    list_filter = ['color', 'company']
+    search_fields = ['nombre']
     readonly_fields = ['id', 'created_at', 'updated_at']

@@ -24,6 +24,15 @@ Rutas Fase B:
 Rutas Actividades por proyecto:
   GET/POST       /api/v1/proyectos/{id}/actividades/
   PATCH/DELETE   /api/v1/proyectos/{id}/actividades/{pk}/
+
+Rutas Tareas:
+  GET/POST       /api/v1/proyectos/tareas/
+  GET/PATCH/DEL  /api/v1/proyectos/tareas/{id}/
+  POST           /api/v1/proyectos/tareas/{id}/agregar-follower/
+  DELETE         /api/v1/proyectos/tareas/{id}/quitar-follower/{user_id}/
+  POST           /api/v1/proyectos/tareas/{id}/cambiar-estado/
+  GET/POST       /api/v1/proyectos/tags/
+  GET/PATCH/DEL  /api/v1/proyectos/tags/{id}/
 """
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter, SimpleRouter
@@ -32,6 +41,7 @@ from apps.proyectos.views import (
     TerceroProyectoViewSet, DocumentoContableViewSet, HitoViewSet,
     ActividadViewSet, ActividadProyectoViewSet,
     ConfiguracionModuloView,
+    TareaViewSet, TareaTagViewSet,
 )
 
 router = DefaultRouter()
@@ -41,9 +51,17 @@ router.register(r'', ProyectoViewSet, basename='proyecto')
 actividad_router = SimpleRouter()
 actividad_router.register(r'actividades', ActividadViewSet, basename='actividad')
 
+# Tareas y tags
+tarea_router = SimpleRouter()
+tarea_router.register(r'tareas', TareaViewSet, basename='tarea')
+tarea_router.register(r'tags', TareaTagViewSet, basename='tareatag')
+
 urlpatterns = [
     # ── Catálogo de actividades ────────────────────────────────
     path('', include(actividad_router.urls)),
+
+    # ── Tareas y Tags ──────────────────────────────────────────
+    path('', include(tarea_router.urls)),
 
     # ── Fases ──────────────────────────────────────────────────
     path(
