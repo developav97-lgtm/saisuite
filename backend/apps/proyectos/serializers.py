@@ -74,7 +74,7 @@ class FaseDetailSerializer(serializers.ModelSerializer):
 
 
 class FaseCreateUpdateSerializer(serializers.ModelSerializer):
-    """Serializer de escritura para fases. porcentaje_avance es auto-calculado."""
+    """Serializer de escritura para fases."""
 
     class Meta:
         model  = Fase
@@ -84,8 +84,15 @@ class FaseCreateUpdateSerializer(serializers.ModelSerializer):
             'fecha_inicio_real', 'fecha_fin_real',
             'presupuesto_mano_obra', 'presupuesto_materiales',
             'presupuesto_subcontratos', 'presupuesto_equipos',
-            'presupuesto_otros',
+            'presupuesto_otros', 'porcentaje_avance',
         ]
+
+    def validate_porcentaje_avance(self, value):
+        if not (Decimal('0') <= value <= Decimal('100')):
+            raise serializers.ValidationError(
+                'El porcentaje de avance debe estar entre 0 y 100.'
+            )
+        return value
 
     def validate(self, attrs):
         inicio = attrs.get('fecha_inicio_planificada')
@@ -252,7 +259,7 @@ class DocumentoContableListSerializer(serializers.ModelSerializer):
         model  = DocumentoContable
         fields = [
             'id', 'tipo_documento', 'tipo_documento_display',
-            'numero_documento', 'fecha_documento',
+            'saiopen_doc_id', 'numero_documento', 'fecha_documento',
             'tercero_nombre', 'valor_neto',
             'sincronizado_desde_saiopen',
         ]

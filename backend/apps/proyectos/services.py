@@ -578,6 +578,17 @@ class TerceroProyectoService:
         Regla: un tercero puede tener múltiples roles en el mismo proyecto,
         pero no el mismo rol+fase duplicado (unique_together).
         """
+        # Validación explícita de duplicado (unique_together no captura NULL en SQL)
+        if TerceroProyecto.all_objects.filter(
+            proyecto=proyecto,
+            tercero_id=data.get('tercero_id'),
+            rol=data.get('rol'),
+            fase=data.get('fase'),
+        ).exists():
+            raise ValidationError(
+                {'non_field_errors': 'Este tercero ya tiene el mismo rol en esta fase.'}
+            )
+
         tercero = TerceroProyecto(
             proyecto=proyecto,
             company=proyecto.company,

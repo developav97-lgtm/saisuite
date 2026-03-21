@@ -8,7 +8,7 @@ from django.contrib.auth import get_user_model
 from apps.companies.models import Company, CompanyModule
 from apps.proyectos.models import (
     Proyecto, Fase, TerceroProyecto, DocumentoContable, Hito,
-    EstadoProyecto,
+    EstadoProyecto, ConfiguracionModulo,
 )
 from apps.proyectos.services import (
     ProyectoService,
@@ -173,6 +173,11 @@ class ProyectoServiceEstadoTest(TestCase):
         self.assertEqual(proyecto.estado, EstadoProyecto.PLANIFICADO)
 
     def test_transicion_planificado_a_ejecucion_sin_sync(self):
+        # El service solo bloquea si ConfiguracionModulo.requiere_sync_saiopen_para_ejecucion=True
+        ConfiguracionModulo.objects.create(
+            company=self.company,
+            requiere_sync_saiopen_para_ejecucion=True,
+        )
         self.proyecto.estado = EstadoProyecto.PLANIFICADO
         self.proyecto.save()
         with self.assertRaises(TransicionEstadoInvalidaException):
@@ -336,9 +341,9 @@ class ProyectoServiceFinancieroTest(TestCase):
             presupuesto_materiales=Decimal('200000'),
         )
         resultado = ProyectoService.get_estado_financiero(self.proyecto)
-        self.assertEqual(resultado['presupuesto_costos'], '600000.00')
+        self.assertEqual(Decimal(resultado['presupuesto_costos']), Decimal('600000.00'))
         # AIU = 600000 * (1 + 0.10 + 0.05 + 0.10) = 600000 * 1.25 = 750000
-        self.assertEqual(resultado['precio_venta_aiu'], '750000.00')
+        self.assertEqual(Decimal(resultado['precio_venta_aiu']), Decimal('750000.00'))
 
 
 class MultiTenantTest(TestCase):

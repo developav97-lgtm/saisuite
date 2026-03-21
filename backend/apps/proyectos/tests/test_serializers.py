@@ -29,10 +29,10 @@ def _crear_user(company, email='u@test.com'):
     return User.objects.create_user(email=email, password='x', company=company, role='company_admin')
 
 
-def _crear_proyecto(company, gerente):
+def _crear_proyecto(company, gerente, codigo='PRY-001'):
     return Proyecto.all_objects.create(
         company=company, gerente=gerente,
-        codigo='PRY-001', nombre='P', tipo='servicios',
+        codigo=codigo, nombre='P', tipo='servicios',
         cliente_id='1', cliente_nombre='C',
         fecha_inicio_planificada='2026-04-01',
         fecha_fin_planificada='2026-12-31',
@@ -177,9 +177,7 @@ class TerceroProyectoCreateSerializerTest(TestCase):
 
     def test_fase_de_otro_proyecto_falla(self):
         otro_user     = _crear_user(self.company, 'otro@test.com')
-        otro_proyecto = _crear_proyecto(self.company, otro_user)
-        otro_proyecto.codigo = 'PRY-002'
-        otro_proyecto.save()
+        otro_proyecto = _crear_proyecto(self.company, otro_user, codigo='PRY-002')
         fase_ajena = _crear_fase(self.company, otro_proyecto, orden=2)
         s = TerceroProyectoCreateSerializer(
             data=self._base_data(fase=str(fase_ajena.id)),
@@ -280,9 +278,7 @@ class HitoCreateSerializerTest(TestCase):
 
     def test_fase_otro_proyecto_falla(self):
         otro_user = _crear_user(self.company, 'otro_hito@test.com')
-        otro_proyecto = _crear_proyecto(self.company, otro_user)
-        otro_proyecto.codigo = 'PRY-099'
-        otro_proyecto.save()
+        otro_proyecto = _crear_proyecto(self.company, otro_user, codigo='PRY-099')
         fase_ajena = _crear_fase(self.company, otro_proyecto, orden=2)
         s = HitoCreateSerializer(
             data=self._base_data(fase=str(fase_ajena.id)),

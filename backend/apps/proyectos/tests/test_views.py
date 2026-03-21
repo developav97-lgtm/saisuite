@@ -344,7 +344,7 @@ class TerceroProyectoViewTest(APITestCase):
         }
         resp = self.client.post(self.url, data, format='json')
         self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(resp.data['fase'], str(fase.id))
+        self.assertEqual(str(resp.data['fase']), str(fase.id))
 
     def test_aislamiento_proyecto(self):
         """No se deben ver terceros de otro proyecto."""

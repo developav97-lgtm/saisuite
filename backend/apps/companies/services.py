@@ -47,7 +47,7 @@ class CompanyService:
         )
         logger.info(
             'company_created',
-            extra={'company_id': str(company.id), 'nit': company.nit, 'name': company.name},
+            extra={'company_id': str(company.id), 'nit': company.nit, 'company_name': company.name},
         )
         return company
 
@@ -89,7 +89,7 @@ class CompanyService:
 
         logger.info(
             'module_activated',
-            extra={'company_id': str(company.id), 'module': module, 'created': created},
+            extra={'company_id': str(company.id), 'module_name': module, 'is_created': created},
         )
         return obj
 
@@ -106,7 +106,7 @@ class CompanyService:
         updated = CompanyModule.objects.filter(company=company, module=module).update(is_active=False)
         logger.info(
             'module_deactivated',
-            extra={'company_id': str(company.id), 'module': module, 'rows_updated': updated},
+            extra={'company_id': str(company.id), 'module_name': module, 'rows_updated': updated},
         )
 
     @staticmethod
