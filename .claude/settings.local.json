@@ -96,7 +96,27 @@
       "Bash(python -m pytest apps/users/tests/ -x -q 2>&1 | tail -25)",
       "Bash(source ../.venv/bin/activate 2>/dev/null || source venv/bin/activate 2>/dev/null || true && which python && python -m pytest apps/users/tests/ -x -q 2>&1 | tail -25)",
       "Bash(find /Users/juanandrade/Desktop/saisuite -name \"*.venv\" -o -name \"venv\" -type d 2>/dev/null | head -5)",
-      "Bash(.venv/bin/python -m pytest apps/users/tests/ -x -q 2>&1 | tail -25)"
+      "Bash(.venv/bin/python -m pytest apps/users/tests/ -x -q 2>&1 | tail -25)",
+      "Bash(cd /Users/juanandrade/Desktop/saisuite/backend && .venv/bin/python -m pytest apps/companies/tests/ -x -q 2>&1 | tail -30)",
+      "Bash(.venv/bin/python -m pytest apps/companies/tests/ -q 2>&1 | tail -20)",
+      "Bash(.venv/bin/python -m pytest apps/companies/tests/ --cov=apps.companies --cov-report=term-missing --no-cov-on-fail -q 2>&1 | tail -30)",
+      "Bash(.venv/bin/python -m pytest apps/companies/tests/ --cov=apps.companies --cov-report=term-missing --no-header -q 2>&1 | grep \"apps/companies\")",
+      "Bash(cd /Users/juanandrade/Desktop/saisuite/backend && python -m pytest apps/proyectos/tests/ --cov=apps.proyectos.models --cov-report=term-missing -q 2>&1 | tail -60)",
+      "Bash(source ../.venv/bin/activate 2>/dev/null || source .venv/bin/activate 2>/dev/null || true && which python && python -c \"import django; print\\(django.__version__\\)\" 2>&1)",
+      "Bash(.venv/bin/python -m pytest apps/proyectos/tests/ --cov=apps.proyectos.models --cov-report=term-missing -q 2>&1 | tail -70)",
+      "Bash(.venv/bin/python -m pytest apps/proyectos/tests/test_fase_model.py::TestFaseModel::test_crear_fase_con_campos_obligatorios apps/proyectos/tests/test_configuracion_modulo_model.py::TestConfiguracionModuloModel::test_dias_alerta_vencimiento_positivo apps/proyectos/tests/test_tercero_proyecto_model.py::TestTerceroProyectoModel::test_unique_together_proyecto_tercero_rol_fase_sin_fase -v 2>&1 | tail -50)",
+      "Bash(.venv/bin/python -m pytest apps/proyectos/tests/test_fase_model.py::TestFaseModel::test_crear_fase_con_campos_obligatorios -v -s 2>&1 | grep -A 20 \"FAILED\\\\|Error\\\\|assert\")",
+      "Bash(.venv/bin/python -m pytest apps/proyectos/tests/test_fase_model.py apps/proyectos/tests/test_tercero_proyecto_model.py apps/proyectos/tests/test_configuracion_modulo_model.py -v --no-cov 2>&1 | tail -40)",
+      "Bash(.venv/bin/python -m pytest apps/proyectos/tests/ --cov=apps.proyectos.models --cov-report=term-missing -q --no-header 2>&1 | grep -E \"passed|failed|error|FAILED|proyectos/models|TOTAL|coverage\")",
+      "Bash(.venv/bin/python -m pytest apps/proyectos/tests/ --cov=apps.proyectos --cov-report=term-missing -q --no-header --no-cov-on-fail 2>&1 | grep -E \"proyectos/|passed|failed|TOTAL\" | head -20)",
+      "Bash(.venv/bin/python -m pytest apps/proyectos/tests/ --cov=apps.proyectos --cov-report=term-missing -q --no-header --no-cov-on-fail 2>&1 | grep -E \"TOTAL|passed|failed\" | tail -5)",
+      "Bash(.venv/bin/python -m pytest apps/proyectos/tests/ --cov=apps.proyectos --cov-report=term-missing -q --no-header --no-cov-on-fail 2>&1 | grep \"apps/proyectos/\" | grep -v \"migration\\\\|__init__\\\\|tests/\")",
+      "Bash(.venv/bin/python -m pytest apps/proyectos/tests/test_proyecto_services.py apps/proyectos/tests/test_signals.py apps/proyectos/tests/test_proyecto_views.py apps/proyectos/tests/test_actividad_views.py apps/proyectos/tests/test_actividad_proyecto_views.py apps/proyectos/tests/test_fase_views.py apps/proyectos/tests/test_tercero_proyecto_views.py --no-cov -q 2>&1 | tail -40)",
+      "Bash(.venv/bin/python -m pytest apps/proyectos/tests/test_actividad_views.py::ActividadListCreateTest::test_listar_actividades -s --no-cov -q 2>&1 | grep -A 5 \"resp.data\\\\|AssertionError\\\\|results\\\\|count\" | head -20)",
+      "Bash(.venv/bin/python -c \"\nimport django, os\nos.environ.setdefault\\('DJANGO_SETTINGS_MODULE', 'config.settings.development'\\)\ndjango.setup\\(\\)\nfrom django.conf import settings\nprint\\(settings.REST_FRAMEWORK.get\\('DEFAULT_PAGINATION_CLASS', 'NONE'\\)\\)\nprint\\(settings.REST_FRAMEWORK.get\\('PAGE_SIZE', 'NONE'\\)\\)\n\")",
+      "Bash(.venv/bin/python -m pytest apps/proyectos/tests/test_proyecto_services.py apps/proyectos/tests/test_signals.py apps/proyectos/tests/test_proyecto_views.py apps/proyectos/tests/test_actividad_views.py apps/proyectos/tests/test_actividad_proyecto_views.py apps/proyectos/tests/test_fase_views.py apps/proyectos/tests/test_tercero_proyecto_views.py --no-cov -q 2>&1 | tail -20)",
+      "Bash(.venv/bin/python -m pytest apps/proyectos/tests/ --cov=apps.proyectos --cov-report=term-missing -q --no-header --no-cov-on-fail 2>&1 | grep -E \"apps/proyectos/[^/]+\\\\.py|passed|failed|TOTAL\" | grep -v \"migration\\\\|__init__\\\\|tests/\" | head -20)",
+      "Bash(npx ng test --include=\"**/proyectos/**/*.spec.ts\" --watch=false --browsers=ChromeHeadless 2>&1 | grep -E \"FAILED$\" | head -20)"
     ]
   }
 }
