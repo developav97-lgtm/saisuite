@@ -9,6 +9,7 @@ from apps.proyectos.models import (
     Proyecto, Fase, TerceroProyecto, DocumentoContable, Hito,
     TipoProyecto, EstadoProyecto, RolTercero, TipoDocumento,
     Actividad, ActividadProyecto, TipoActividad, ConfiguracionModulo,
+    Tarea, TareaTag,
 )
 
 logger = logging.getLogger(__name__)
@@ -492,3 +493,164 @@ class ConfiguracionModuloSerializer(serializers.ModelSerializer):
             'requiere_sync_saiopen_para_ejecucion',
             'dias_alerta_vencimiento',
         ]
+
+
+# ──────────────────────────────────────────────
+# Sistema de Tareas
+# ──────────────────────────────────────────────
+
+class TareaTagSerializer(serializers.ModelSerializer):
+    """Serializer para tags de tareas."""
+
+    class Meta:
+        model = TareaTag
+        fields = ['id', 'nombre', 'color', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+
+class TareaSerializer(serializers.ModelSerializer):
+    """
+    Serializer para Tarea con nested subtareas y followers.
+    """
+
+    # Campos calculados (read-only)
+    es_vencida      = serializers.BooleanField(read_only=True)
+    tiene_subtareas = serializers.BooleanField(read_only=True)
+    nivel_jerarquia = serializers.IntegerField(read_only=True)
+
+    # Nested serializers para lectura
+    responsable_detail  = serializers.SerializerMethodField()
+    proyecto_detail     = serializers.SerializerMethodField()
+    fase_detail         = serializers.SerializerMethodField()
+    tags_detail         = TareaTagSerializer(source='tags', many=True, read_only=True)
+    subtareas_detail    = serializers.SerializerMethodField()
+    followers_detail    = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Tarea
+        fields = [
+            'id', 'codigo', 'nombre', 'descripcion',
+            'proyecto', 'proyecto_detail',
+            'fase', 'fase_detail',
+            'tarea_padre',
+            'responsable', 'responsable_detail',
+            'followers', 'followers_detail',
+            'prioridad', 'tags', 'tags_detail',
+            'fecha_inicio', 'fecha_fin', 'fecha_limite',
+            'estado', 'porcentaje_completado',
+            'horas_estimadas', 'horas_registradas',
+            'es_recurrente', 'frecuencia_recurrencia', 'proxima_generacion',
+            'es_vencida', 'tiene_subtareas', 'nivel_jerarquia',
+            'subtareas_detail',
+            'created_at', 'updated_at',
+        ]
+        read_only_fields = [
+            'id', 'codigo', 'es_vencida', 'tiene_subtareas',
+            'nivel_jerarquia', 'created_at', 'updated_at',
+        ]
+
+    def get_responsable_detail(self, obj):
+        if obj.responsable:
+            return {
+                'id': str(obj.responsable.id),
+                'nombre': obj.responsable.full_name,
+                'email': obj.responsable.email,
+            }
+        return None
+
+    def get_proyecto_detail(self, obj):
+        return {
+            'id': str(obj.proyecto.id),
+            'nombre': obj.proyecto.nombre,
+            'codigo': obj.proyecto.codigo,
+        }
+
+    def get_fase_detail(self, obj):
+        if obj.fase:
+            return {
+                'id': str(obj.fase.id),
+                'nombre': obj.fase.nombre,
+                'orden': obj.fase.orden,
+            }
+        return None
+
+    def get_followers_detail(self, obj):
+        return [
+            {
+                'id': str(f.id),
+                'nombre': f.full_name,
+                'email': f.email,
+            }
+            for f in obj.followers.all()
+        ]
+
+    def get_subtareas_detail(self, obj):
+        """Nested subtareas (máximo 2 niveles para performance)."""
+        if obj.nivel_jerarquia >= 2:
+            return []
+        subtareas = obj.subtareas.all()
+        return TareaSerializer(subtareas, many=True, context=self.context).data
+
+    def validate(self, data):
+        """Validaciones de negocio."""
+        fecha_inicio = data.get('fecha_inicio')
+        fecha_fin    = data.get('fecha_fin')
+        if fecha_inicio and fecha_fin and fecha_inicio >= fecha_fin:
+            raise serializers.ValidationError({
+                'fecha_fin': 'Fecha fin debe ser posterior a fecha inicio'
+            })
+
+        tarea_padre = data.get('tarea_padre')
+        proyecto    = data.get('proyecto')
+        if tarea_padre and proyecto and tarea_padre.proyecto_id != proyecto.id:
+            raise serializers.ValidationError({
+                'tarea_padre': 'Tarea padre debe pertenecer al mismo proyecto'
+            })
+
+        horas_estimadas   = data.get('horas_estimadas', 0)
+        horas_registradas = data.get('horas_registradas', 0)
+        if horas_estimadas and horas_registradas > horas_estimadas * 2:
+            raise serializers.ValidationError({
+                'horas_registradas': 'Horas registradas exceden significativamente las estimadas'
+            })
+
+        return data
+
+    def create(self, validated_data):
+        """Crear tarea y auto-agregar creador y responsable como followers."""
+        followers = validated_data.pop('followers', [])
+        tags      = validated_data.pop('tags', [])
+
+        tarea = Tarea.all_objects.create(**validated_data)
+
+        # Auto-agregar creador como follower
+        request = self.context.get('request')
+        if request and request.user and request.user.is_authenticated:
+            tarea.followers.add(request.user)
+
+        # Auto-agregar responsable como follower
+        if tarea.responsable:
+            tarea.followers.add(tarea.responsable)
+
+        # Agregar followers y tags adicionales
+        if followers:
+            tarea.followers.add(*followers)
+        if tags:
+            tarea.tags.set(tags)
+
+        return tarea
+
+    def update(self, instance, validated_data):
+        followers = validated_data.pop('followers', None)
+        tags      = validated_data.pop('tags', None)
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+
+        if followers is not None:
+            instance.followers.set(followers)
+        if tags is not None:
+            instance.tags.set(tags)
+
+        return instance
