@@ -1,8 +1,8 @@
 # CONTEXT.md - Estado Actual Proyecto Saicloud
 
-**Última actualización:** 19-20 Marzo 2026
+**Última actualización:** 21 Marzo 2026
 
-## Estado Módulo de Proyectos: 85%
+## Estado Módulo de Proyectos: 90% — Sistema de Tareas Fase 1 COMPLETADA ✅
 
 ### ✅ Completado (85%)
 - Planificación completa (Fases 1-3)
@@ -12,6 +12,15 @@
 - Actividades (catálogo + asignación)
 - **Grupo 5: Licencias & Seguridad** (8 puntos) ✅
 - **Grupo 4: Fases & Ejecución** (5 puntos) ✅
+
+### ✅ Sistema de Tareas — Fase 1 Backend Core COMPLETA (21 Marzo 2026)
+- `apps/proyectos/tarea_services.py` — TareaService con toda la lógica de negocio
+- `apps/proyectos/signals.py` — Signals de Tarea (auto-followers, recurrencia, avance padre)
+- `apps/proyectos/tests/conftest.py` — Fixtures de pytest para módulo proyectos
+- `apps/proyectos/tests/test_tarea_services.py` — 35 tests de servicios (todos PASSED)
+- `apps/proyectos/tests/test_tarea_signals.py` — 8 tests de signals (todos PASSED)
+- Cobertura: tarea_services 97%, models 99%, signals 94%, views 96%
+- 485 tests totales, todos PASSED
 
 ### 🔄 En Proceso (10%)
 - **Grupo 3: Terceros** (5 puntos) - Correcciones en vistas Angular

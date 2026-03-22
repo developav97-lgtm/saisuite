@@ -116,7 +116,17 @@
       "Bash(.venv/bin/python -c \"\nimport django, os\nos.environ.setdefault\\('DJANGO_SETTINGS_MODULE', 'config.settings.development'\\)\ndjango.setup\\(\\)\nfrom django.conf import settings\nprint\\(settings.REST_FRAMEWORK.get\\('DEFAULT_PAGINATION_CLASS', 'NONE'\\)\\)\nprint\\(settings.REST_FRAMEWORK.get\\('PAGE_SIZE', 'NONE'\\)\\)\n\")",
       "Bash(.venv/bin/python -m pytest apps/proyectos/tests/test_proyecto_services.py apps/proyectos/tests/test_signals.py apps/proyectos/tests/test_proyecto_views.py apps/proyectos/tests/test_actividad_views.py apps/proyectos/tests/test_actividad_proyecto_views.py apps/proyectos/tests/test_fase_views.py apps/proyectos/tests/test_tercero_proyecto_views.py --no-cov -q 2>&1 | tail -20)",
       "Bash(.venv/bin/python -m pytest apps/proyectos/tests/ --cov=apps.proyectos --cov-report=term-missing -q --no-header --no-cov-on-fail 2>&1 | grep -E \"apps/proyectos/[^/]+\\\\.py|passed|failed|TOTAL\" | grep -v \"migration\\\\|__init__\\\\|tests/\" | head -20)",
-      "Bash(npx ng test --include=\"**/proyectos/**/*.spec.ts\" --watch=false --browsers=ChromeHeadless 2>&1 | grep -E \"FAILED$\" | head -20)"
+      "Bash(npx ng test --include=\"**/proyectos/**/*.spec.ts\" --watch=false --browsers=ChromeHeadless 2>&1 | grep -E \"FAILED$\" | head -20)",
+      "Bash(cd /Users/juanandrade/Desktop/saisuite/backend && python -m pytest apps/proyectos/tests/test_tarea_services.py apps/proyectos/tests/test_tarea_signals.py -v --tb=short 2>&1 | head -120)",
+      "Bash(source ../venv/bin/activate 2>/dev/null || source venv/bin/activate 2>/dev/null; which python)",
+      "Bash(python -m pytest apps/proyectos/tests/test_tarea_services.py apps/proyectos/tests/test_tarea_signals.py -v --tb=short --no-cov 2>&1 | head -150)",
+      "Bash(ls -la *.txt 2>/dev/null; ls requirements* 2>/dev/null; pip show django 2>/dev/null | head -3)",
+      "Bash(source /Users/juanandrade/Desktop/saisuite/backend/venv/bin/activate && python -m pytest apps/proyectos/tests/test_tarea_services.py apps/proyectos/tests/test_tarea_signals.py -v --tb=short --no-cov 2>&1 | head -150)",
+      "Bash(python3 -c \"import django; print\\(django.__version__\\)\" 2>/dev/null || echo \"Django not in PATH python\"\nwhich python3.11 2>/dev/null; which python3.12 2>/dev/null)",
+      "Bash(python3.11 -c \"import django; print\\(django.__version__\\)\" 2>/dev/null && echo \"Found in 3.11\" || echo \"Not in 3.11\"\npython3.12 -c \"import django; print\\(django.__version__\\)\" 2>/dev/null && echo \"Found in 3.12\" || echo \"Not in 3.12\")",
+      "Bash(/opt/miniconda3/bin/python -c \"import django; print\\(django.__version__\\)\" 2>/dev/null || echo \"Not in conda base\"\nls /opt/miniconda3/envs/ 2>/dev/null)",
+      "Skill(telegram:configure)",
+      "Bash(ls ~/.claude/plugins/ 2>/dev/null\ncat ~/.claude/plugins/plugins.json 2>/dev/null || find ~/.claude/plugins -name \"*.json\" 2>/dev/null | head -10)"
     ]
   }
 }
