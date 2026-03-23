@@ -1,0 +1,148 @@
+<div class="sc-page tk-page">
+
+  <!-- Header -->
+  <div class="sc-page-header">
+    <div class="tk-header-left">
+      <h1 class="sc-page-header__title">Tablero Kanban</h1>
+      <span class="tk-badge-total">{{ totalTareas }} tareas</span>
+    </div>
+    <div class="tk-header-actions">
+      <button mat-stroked-button matTooltip="Ver lista" (click)="irALista()">
+        <mat-icon>view_list</mat-icon>
+        Lista
+      </button>
+      <button mat-raised-button color="primary" (click)="nuevaTarea()">
+        <mat-icon>add</mat-icon>
+        Nueva tarea
+      </button>
+    </div>
+  </div>
+
+  <!-- Filtros -->
+  <div class="tk-filters sc-card">
+
+    <!-- Búsqueda -->
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="tk-search">
+      <mat-label>Buscar tareas…</mat-label>
+      <mat-icon matPrefix>search</mat-icon>
+      <input matInput
+        [ngModel]="searchText()"
+        (ngModelChange)="searchText.set($event)"
+        (keyup.enter)="onSearch()" />
+      @if (searchText()) {
+        <button mat-icon-button matSuffix (click)="searchText.set(''); onSearch()" aria-label="Limpiar">
+          <mat-icon>close</mat-icon>
+        </button>
+      }
+    </mat-form-field>
+
+    <!-- Proyecto -->
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="tk-filter">
+      <mat-label>Proyecto</mat-label>
+      <mat-icon matPrefix>folder_open</mat-icon>
+      <mat-select
+        [ngModel]="proyectoFilter()"
+        (ngModelChange)="onProyectoChange($event)">
+        <mat-option [value]="null">Todos los proyectos</mat-option>
+        @for (p of proyectos(); track p.id) {
+          <mat-option [value]="p.id">{{ p.codigo }} — {{ p.nombre }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <!-- Responsable -->
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="tk-filter">
+      <mat-label>Responsable</mat-label>
+      <mat-icon matPrefix>person</mat-icon>
+      <mat-select
+        [ngModel]="responsableFilter()"
+        (ngModelChange)="onResponsableChange($event)">
+        <mat-option [value]="null">Todos</mat-option>
+        <mat-option value="mis-tareas"><strong>Mis tareas</strong></mat-option>
+        <mat-divider />
+        @for (u of usuarios(); track u.id) {
+          <mat-option [value]="u.id">{{ u.full_name }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <!-- Prioridad -->
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="tk-filter">
+      <mat-label>Prioridad</mat-label>
+      <mat-select
+        [ngModel]="prioridadFilter()"
+        (ngModelChange)="prioridadFilter.set($event); onFilter()">
+        @for (opt of prioridadOptions; track opt.value) {
+          <mat-option [value]="opt.value">{{ opt.label }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <!-- Limpiar filtros -->
+    @if (hayFiltrosActivos) {
+      <button mat-stroked-button class="tk-clear-btn" (click)="limpiarFiltros()"
+        matTooltip="Limpiar todos los filtros">
+        <mat-icon>filter_list_off</mat-icon>
+        Limpiar
+      </button>
+    }
+
+  </div>
+
+  <!-- Loading -->
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate" class="tk-progress" />
+  }
+
+  <!-- Board -->
+  <div class="tk-board" cdkDropListGroup>
+    @for (col of columnas; track col.id) {
+      <div class="tk-column">
+
+        <!-- Cabecera columna -->
+        <div class="tk-col-header" [style.border-top-color]="col.color">
+          <span class="tk-col-nombre">{{ col.nombre }}</span>
+          <span class="tk-col-count"
+            [style.background]="col.color + '22'"
+            [style.color]="col.color">
+            {{ col.tareas.length }}
+          </span>
+        </div>
+
+        <!-- Drop zone -->
+        <div class="tk-col-body"
+          cdkDropList
+          [id]="col.id"
+          [cdkDropListData]="col.tareas"
+          (cdkDropListDropped)="onDrop($event, col)">
+
+          @for (tarea of col.tareas; track tarea.id) {
+            <div cdkDrag class="tk-drag-item">
+              <app-tarea-card
+                [tarea]="tarea"
+                [enableProgressEdit]="true"
+                (edit)="editarTarea($event)"
+                (eliminar)="confirmarEliminar($event)"
+                (viewDetail)="verDetalle($event)"
+                (progressUpdate)="onProgressUpdate($event)"
+                (timeRegister)="onTimeRegister($event)" />
+
+              <ng-template cdkDragPlaceholder>
+                <div class="tk-placeholder"></div>
+              </ng-template>
+            </div>
+          }
+
+          @if (col.tareas.length === 0) {
+            <div class="tk-empty-col">
+              <mat-icon>inbox</mat-icon>
+              <span>Sin tareas</span>
+            </div>
+          }
+
+        </div>
+      </div>
+    }
+  </div>
+
+</div>

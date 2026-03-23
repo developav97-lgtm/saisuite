@@ -18,11 +18,10 @@
       <button mat-raised-button color="primary" (click)="guardar()" [disabled]="saving() || form.invalid">
         @if (saving()) {
           <mat-spinner diameter="16" class="tf-spinner" />
-          Guardando…
         } @else {
           <mat-icon>save</mat-icon>
-          {{ editMode() ? 'Actualizar' : 'Crear tercero' }}
         }
+        {{ saving() ? 'Guardando…' : (editMode() ? 'Actualizar' : 'Crear tercero') }}
       </button>
     </div>
   </div>

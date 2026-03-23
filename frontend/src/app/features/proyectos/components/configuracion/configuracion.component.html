@@ -1,0 +1,163 @@
+<div class="sc-page cfg-page">
+
+  <!-- Header -->
+  <div class="sc-page-header">
+    <h1 class="sc-page-header__title">Configuración de Proyectos</h1>
+  </div>
+
+  <!-- Loading -->
+  @if (loading()) {
+    <div class="cfg-loading">
+      <mat-spinner diameter="48" />
+      <span>Cargando configuración…</span>
+    </div>
+  }
+
+  @if (!loading()) {
+    <form [formGroup]="form" (ngSubmit)="guardar()">
+      <div class="cfg-body">
+
+        <!-- ── Timesheet ──────────────────────────────────────────── -->
+        <mat-card class="cfg-card">
+          <mat-card-header>
+            <mat-icon mat-card-avatar>schedule</mat-icon>
+            <mat-card-title>Registro de tiempo (Timesheet)</mat-card-title>
+            <mat-card-subtitle>
+              Define cómo los usuarios registran las horas trabajadas en cada tarea.
+            </mat-card-subtitle>
+          </mat-card-header>
+
+          <mat-divider />
+
+          <mat-card-content class="cfg-card-content">
+
+            <div class="cfg-field-label">Modo de registro</div>
+
+            <!-- Selector de modo -->
+            <mat-form-field appearance="outline" class="cfg-select-field">
+              <mat-label>Modo de timesheet</mat-label>
+              <mat-select formControlName="modo_timesheet">
+                @for (modo of modosTimesheet; track modo.value) {
+                  <mat-option [value]="modo.value">
+                    <div class="cfg-modo-option">
+                      <mat-icon>{{ modo.icon }}</mat-icon>
+                      <span>{{ modo.label }}</span>
+                    </div>
+                  </mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+
+            <!-- Descripción del modo seleccionado -->
+            @if (modoSeleccionado(); as modo) {
+              <div class="cfg-modo-desc">
+                <mat-icon class="cfg-modo-desc-icon">{{ modo.icon }}</mat-icon>
+                <div>
+                  <strong>{{ modo.label }}</strong>
+                  <p>{{ modo.description }}</p>
+                </div>
+              </div>
+            }
+
+            <!-- Grilla de modos para referencia visual -->
+            <div class="cfg-modos-grid">
+              @for (modo of modosTimesheet; track modo.value) {
+                <div class="cfg-modo-card"
+                  [class.cfg-modo-card--selected]="form.value.modo_timesheet === modo.value"
+                  (click)="form.controls.modo_timesheet.setValue(modo.value)">
+                  <mat-icon class="cfg-modo-card-icon">{{ modo.icon }}</mat-icon>
+                  <span class="cfg-modo-card-label">{{ modo.label }}</span>
+                </div>
+              }
+            </div>
+
+          </mat-card-content>
+        </mat-card>
+
+        <!-- ── Integraciones ──────────────────────────────────────── -->
+        <mat-card class="cfg-card">
+          <mat-card-header>
+            <mat-icon mat-card-avatar>sync</mat-icon>
+            <mat-card-title>Integraciones</mat-card-title>
+            <mat-card-subtitle>
+              Comportamiento con Saiopen y otros sistemas externos.
+            </mat-card-subtitle>
+          </mat-card-header>
+
+          <mat-divider />
+
+          <mat-card-content class="cfg-card-content">
+            <div class="cfg-checkbox-row">
+              <mat-checkbox formControlName="requiere_sync_saiopen_para_ejecucion">
+                Requiere sincronización con Saiopen para ejecutar tareas
+              </mat-checkbox>
+              <p class="cfg-checkbox-hint">
+                Si está activo, las tareas solo pueden cambiar a «En progreso» cuando
+                el proyecto esté correctamente sincronizado con Saiopen.
+              </p>
+            </div>
+          </mat-card-content>
+        </mat-card>
+
+        <!-- ── Alertas ────────────────────────────────────────────── -->
+        <mat-card class="cfg-card">
+          <mat-card-header>
+            <mat-icon mat-card-avatar>notifications</mat-icon>
+            <mat-card-title>Alertas y vencimientos</mat-card-title>
+            <mat-card-subtitle>
+              Configura con cuánta anticipación se muestran las alertas de tareas próximas a vencer.
+            </mat-card-subtitle>
+          </mat-card-header>
+
+          <mat-divider />
+
+          <mat-card-content class="cfg-card-content">
+            <mat-form-field appearance="outline" class="cfg-number-field">
+              <mat-label>Días de alerta antes del vencimiento</mat-label>
+              <input matInput type="number" formControlName="dias_alerta_vencimiento"
+                min="1" max="365" />
+              <mat-icon matSuffix>event_upcoming</mat-icon>
+              @if (form.controls.dias_alerta_vencimiento.hasError('min') ||
+                   form.controls.dias_alerta_vencimiento.hasError('max')) {
+                <mat-error>Ingresa un valor entre 1 y 365 días.</mat-error>
+              }
+              <mat-hint>Las tareas que vencen dentro de este plazo aparecerán resaltadas.</mat-hint>
+            </mat-form-field>
+          </mat-card-content>
+        </mat-card>
+
+      </div><!-- /cfg-body -->
+
+      <!-- Barra de acciones fija -->
+      <div class="cfg-actions" [class.cfg-actions--dirty]="form.dirty">
+        <span class="cfg-actions-status">
+          @if (form.dirty) {
+            <mat-icon>edit</mat-icon>
+            Cambios sin guardar
+          } @else {
+            <mat-icon>check_circle</mat-icon>
+            Configuración guardada
+          }
+        </span>
+        <div class="cfg-actions-buttons">
+          <button mat-stroked-button type="button"
+            [disabled]="!form.dirty || saving()"
+            (click)="cancelar()">
+            Cancelar
+          </button>
+          <button mat-flat-button color="primary" type="submit"
+            [disabled]="form.invalid || saving()">
+            @if (saving()) {
+              <mat-spinner diameter="18" class="cfg-spinner-btn" />
+            } @else {
+              <mat-icon>save</mat-icon>
+            }
+            Guardar cambios
+          </button>
+        </div>
+      </div>
+
+    </form>
+  }
+
+</div>

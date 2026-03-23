@@ -10,6 +10,49 @@ export const PROYECTOS_ROUTES: Routes = [
   },
   {
     // Debe ir ANTES de :id para que no sea capturado como UUID
+    path: 'tareas',
+    loadComponent: () =>
+      import('./components/tarea-list/tarea-list.component').then(
+        (m) => m.TareaListComponent
+      ),
+  },
+  {
+    path: 'tareas/kanban',
+    loadComponent: () =>
+      import('./components/tarea-kanban/tarea-kanban.component').then(
+        (m) => m.TareaKanbanComponent
+      ),
+  },
+  {
+    path: 'tareas/nueva',
+    loadComponent: () =>
+      import('./components/tarea-form/tarea-form.component').then(
+        (m) => m.TareaFormComponent
+      ),
+  },
+  {
+    path: 'tareas/:id',
+    loadComponent: () =>
+      import('./components/tarea-detail/tarea-detail.component').then(
+        (m) => m.TareaDetailComponent
+      ),
+  },
+  {
+    path: 'tareas/:id/editar',
+    loadComponent: () =>
+      import('./components/tarea-form/tarea-form.component').then(
+        (m) => m.TareaFormComponent
+      ),
+  },
+  {
+    path: 'configuracion',
+    loadComponent: () =>
+      import('./components/configuracion/configuracion.component').then(
+        (m) => m.ConfiguracionComponent
+      ),
+  },
+  {
+    // Debe ir ANTES de :id para que no sea capturado como UUID
     path: 'actividades',
     loadComponent: () =>
       import('./components/actividad-list/actividad-list.component').then(

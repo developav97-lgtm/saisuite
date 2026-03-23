@@ -1,0 +1,178 @@
+// ── Header actions ─────────────────────────────────────────────
+.tl-header-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+// ── Filtros ────────────────────────────────────────────────────
+.tl-filters-card {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  align-items: center;
+  padding: 0.875rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.tl-search {
+  flex: 1;
+  min-width: 200px;
+}
+
+.tl-filter {
+  width: 185px;
+  flex-shrink: 0;
+}
+
+// ── Progress bar ───────────────────────────────────────────────
+.tl-progress {
+  margin-bottom: -4px;
+  border-radius: var(--sc-radius) var(--sc-radius) 0 0;
+}
+
+// ── Tabla ──────────────────────────────────────────────────────
+.tl-table {
+  border-radius: var(--sc-radius);
+}
+
+.tl-row {
+  cursor: pointer;
+}
+
+// ── Código ────────────────────────────────────────────────────
+.tl-codigo {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--sc-primary);
+  background: var(--sc-primary-light);
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+// ── Nombre ─────────────────────────────────────────────────────
+.tl-cell-nombre {
+  font-weight: 500;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// ── Avance ────────────────────────────────────────────────────
+.tl-avance {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 110px;
+
+  &__bar {
+    flex: 1;
+    border-radius: 4px;
+    height: 6px;
+  }
+
+  &__pct {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--sc-text-muted);
+    white-space: nowrap;
+    min-width: 34px;
+  }
+}
+
+// ── Vencida ────────────────────────────────────────────────────
+.tl-vencida {
+  color: var(--mat-red-600, #e53935);
+  font-weight: 600;
+}
+
+// ── Acciones ──────────────────────────────────────────────────
+.tl-col-acciones {
+  width: 120px;
+  justify-content: flex-end !important;
+}
+
+// ── Estado badge ──────────────────────────────────────────────
+.tl-estado-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 20px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+
+  &::before {
+    content: '';
+    display: block;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: currentColor;
+    flex-shrink: 0;
+  }
+
+  &--por_hacer   { background: rgba(158, 158, 158, 0.15); color: #9e9e9e; }
+  &--en_progreso { background: rgba(33,  150, 243, 0.15); color: #42a5f5; }
+  &--en_revision { background: rgba(255, 152,   0, 0.15); color: #ffa726; }
+  &--bloqueada   { background: rgba(239,  83,  80, 0.15); color: #ef5350; }
+  &--completada  { background: rgba(76,  175,  80, 0.15); color: #66bb6a; }
+  &--cancelada   { background: rgba(158, 158, 158, 0.12); color: #757575; }
+}
+
+// ── Prioridad badge ───────────────────────────────────────────
+.tl-prioridad-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 4px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+
+  &--1 { background: rgba(76,  175,  80, 0.12); color: #66bb6a; }  // Baja
+  &--2 { background: rgba(33,  150, 243, 0.12); color: #42a5f5; }  // Normal
+  &--3 { background: rgba(255, 152,   0, 0.15); color: #ffa726; }  // Alta
+  &--4 { background: rgba(239,  83,  80, 0.15); color: #ef5350; }  // Urgente
+}
+
+// ── Empty state ────────────────────────────────────────────────
+.tl-empty {
+  border: 1px solid var(--sc-surface-border);
+  border-top: none;
+  border-radius: 0 0 var(--sc-radius) var(--sc-radius);
+}
+
+// ── Responsive ────────────────────────────────────────────────
+@media (max-width: 960px) {
+  .mat-column-porcentaje {
+    display: none !important;
+  }
+}
+
+@media (max-width: 680px) {
+  .mat-column-responsable,
+  .mat-column-prioridad,
+  .mat-column-fecha_limite {
+    display: none !important;
+  }
+
+  .tl-cell-nombre {
+    max-width: none;
+  }
+
+  .tl-filter {
+    flex: 1;
+    min-width: 130px;
+    width: auto;
+  }
+}

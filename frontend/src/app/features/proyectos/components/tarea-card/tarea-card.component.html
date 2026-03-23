@@ -1,0 +1,100 @@
+<mat-card class="tc-card"
+  [class.tc-card--vencida]="tarea().es_vencida"
+  [class.tc-card--compact]="compact()"
+  (click)="onViewDetail()">
+
+  <mat-card-content>
+
+    <!-- Fila superior: código + prioridad + acciones -->
+    <div class="tc-header">
+      <div class="tc-meta">
+        <span class="tc-codigo">{{ tarea().codigo }}</span>
+        <mat-icon
+          [class]="prioridadIconClass()"
+          [matTooltip]="'Prioridad: ' + PRIORIDAD_LABELS[tarea().prioridad]">
+          {{ PRIORIDAD_ICONS[tarea().prioridad] }}
+        </mat-icon>
+      </div>
+
+      @if (showActions()) {
+        <div class="tc-actions" (click)="$event.stopPropagation()">
+          <button mat-icon-button matTooltip="Registrar tiempo" (click)="onTimeRegister($event)">
+            <mat-icon>schedule</mat-icon>
+          </button>
+          <button mat-icon-button matTooltip="Editar" (click)="onEdit($event)">
+            <mat-icon>edit</mat-icon>
+          </button>
+          <button mat-icon-button matTooltip="Eliminar" color="warn" (click)="onEliminar($event)">
+            <mat-icon>delete_outline</mat-icon>
+          </button>
+        </div>
+      }
+    </div>
+
+    <!-- Nombre -->
+    <p class="tc-nombre">{{ tarea().nombre }}</p>
+
+    <!-- Descripción (solo si no compact) -->
+    @if (!compact() && tarea().descripcion) {
+      <p class="tc-descripcion">
+        {{ tarea().descripcion | slice:0:80 }}{{ tarea().descripcion.length > 80 ? '…' : '' }}
+      </p>
+    }
+
+    <!-- Responsable -->
+    @if (tarea().responsable_detail) {
+      <div class="tc-responsable">
+        <mat-icon>person</mat-icon>
+        <span>{{ tarea().responsable_detail!.nombre }}</span>
+      </div>
+    } @else {
+      <div class="tc-responsable tc-responsable--vacio">
+        <mat-icon>person_outline</mat-icon>
+        <span>Sin asignar</span>
+      </div>
+    }
+
+    <!-- Tags -->
+    @if (tarea().tags_detail && tarea().tags_detail!.length > 0) {
+      <div class="tc-tags">
+        @for (tag of tarea().tags_detail!; track tag.id) {
+          <span class="tc-tag" [class]="'tc-tag--' + tag.color">{{ tag.nombre }}</span>
+        }
+      </div>
+    }
+
+    <!-- Footer: fecha límite + progreso + subtareas -->
+    <div class="tc-footer">
+      @if (tarea().fecha_limite) {
+        <span class="tc-fecha" [class.tc-fecha--vencida]="tarea().es_vencida">
+          <mat-icon>event</mat-icon>
+          {{ tarea().fecha_limite | date:'dd/MM/yy' }}
+        </span>
+      }
+
+      <span class="tc-progreso" [class.tc-progreso--editable]="enableProgressEdit()">
+        @if (editandoProgreso()) {
+          <input
+            class="tc-progreso-input"
+            type="number" min="0" max="100"
+            [value]="progresoTemporal()"
+            (input)="onProgresoChange($event)"
+            (blur)="onProgresoBlur()"
+            (keydown)="onProgresoKeydown($event)"
+            (click)="$event.stopPropagation()"
+          />
+        } @else {
+          <mat-icon>trending_up</mat-icon>
+          <span (click)="onProgresoClick($event)">{{ tarea().porcentaje_completado }}%</span>
+        }
+      </span>
+
+      @if (tarea().tiene_subtareas) {
+        <span class="tc-subtareas" matTooltip="Tiene subtareas">
+          <mat-icon>account_tree</mat-icon>
+        </span>
+      }
+    </div>
+
+  </mat-card-content>
+</mat-card>

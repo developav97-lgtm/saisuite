@@ -9,7 +9,7 @@ from apps.proyectos.models import (
     Proyecto, Fase, TerceroProyecto, DocumentoContable, Hito,
     TipoProyecto, EstadoProyecto, RolTercero, TipoDocumento,
     Actividad, ActividadProyecto, TipoActividad, ConfiguracionModulo,
-    Tarea, TareaTag,
+    Tarea, TareaTag, SesionTrabajo,
 )
 
 logger = logging.getLogger(__name__)
@@ -492,6 +492,7 @@ class ConfiguracionModuloSerializer(serializers.ModelSerializer):
         fields = [
             'requiere_sync_saiopen_para_ejecucion',
             'dias_alerta_vencimiento',
+            'modo_timesheet',
         ]
 
 
@@ -522,6 +523,7 @@ class TareaSerializer(serializers.ModelSerializer):
     responsable_detail  = serializers.SerializerMethodField()
     proyecto_detail     = serializers.SerializerMethodField()
     fase_detail         = serializers.SerializerMethodField()
+    cliente_detail      = serializers.SerializerMethodField()
     tags_detail         = TareaTagSerializer(source='tags', many=True, read_only=True)
     subtareas_detail    = serializers.SerializerMethodField()
     followers_detail    = serializers.SerializerMethodField()
@@ -533,6 +535,7 @@ class TareaSerializer(serializers.ModelSerializer):
             'proyecto', 'proyecto_detail',
             'fase', 'fase_detail',
             'tarea_padre',
+            'cliente', 'cliente_detail',
             'responsable', 'responsable_detail',
             'followers', 'followers_detail',
             'prioridad', 'tags', 'tags_detail',
@@ -548,6 +551,15 @@ class TareaSerializer(serializers.ModelSerializer):
             'id', 'codigo', 'es_vencida', 'tiene_subtareas',
             'nivel_jerarquia', 'created_at', 'updated_at',
         ]
+
+    def get_cliente_detail(self, obj):
+        if obj.cliente:
+            return {
+                'id': str(obj.cliente.id),
+                'nombre': obj.cliente.nombre_completo,
+                'numero_identificacion': obj.cliente.numero_identificacion,
+            }
+        return None
 
     def get_responsable_detail(self, obj):
         if obj.responsable:
@@ -654,3 +666,41 @@ class TareaSerializer(serializers.ModelSerializer):
             instance.tags.set(tags)
 
         return instance
+
+
+# ──────────────────────────────────────────────
+# Timesheet — SesionTrabajo
+# ──────────────────────────────────────────────
+
+class SesionTrabajoSerializer(serializers.ModelSerializer):
+    """Serializer para sesiones de trabajo (cronómetro)."""
+    duracion_horas = serializers.SerializerMethodField()
+    usuario_detail = UserSummarySerializer(source='usuario', read_only=True)
+    tarea_detail   = serializers.SerializerMethodField()
+
+    class Meta:
+        model = SesionTrabajo
+        fields = [
+            'id',
+            'tarea', 'tarea_detail',
+            'usuario', 'usuario_detail',
+            'inicio', 'fin',
+            'pausas',
+            'duracion_segundos', 'duracion_horas',
+            'estado', 'notas',
+            'created_at', 'updated_at',
+        ]
+        read_only_fields = [
+            'id', 'duracion_segundos', 'duracion_horas',
+            'created_at', 'updated_at',
+        ]
+
+    def get_duracion_horas(self, obj: SesionTrabajo) -> str:
+        return str(obj.duracion_horas.quantize(Decimal('0.01')))
+
+    def get_tarea_detail(self, obj: SesionTrabajo) -> dict:
+        return {
+            'id':     str(obj.tarea.id),
+            'codigo': obj.tarea.codigo,
+            'nombre': obj.tarea.nombre,
+        }

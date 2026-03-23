@@ -1,0 +1,348 @@
+<div class="sc-page">
+
+  <!-- Header -->
+  <div class="sc-page-header">
+    <div class="tf-header-left">
+      <button mat-icon-button (click)="cancelar()" matTooltip="Volver">
+        <mat-icon>arrow_back</mat-icon>
+      </button>
+      <div>
+        <p class="tf-header-eyebrow">Tareas</p>
+        <h1 class="sc-page-header__title">
+          @if (editMode()) { Editar tarea } @else { Nueva tarea }
+        </h1>
+      </div>
+    </div>
+
+    <div class="tf-header-actions">
+      <button mat-stroked-button type="button" (click)="cancelar()">
+        Cancelar
+      </button>
+      <button mat-raised-button color="primary" type="button"
+        (click)="guardar()" [disabled]="form.invalid || saving()">
+        @if (saving()) {
+          <mat-spinner diameter="14" class="tf-spinner-btn" />
+        } @else {
+          <mat-icon>save</mat-icon>
+        }
+        {{ saving() ? 'Guardando…' : (editMode() ? 'Actualizar' : 'Crear tarea') }}
+      </button>
+    </div>
+  </div>
+
+  <form [formGroup]="form" (ngSubmit)="guardar()" class="tf-layout">
+
+    <!-- Columna principal -->
+    <div class="tf-main">
+
+      <!-- Información general -->
+      <div class="sc-card">
+        <div class="sc-card__header">
+          <mat-icon>assignment</mat-icon>
+          <span class="sc-card__title">Información general</span>
+        </div>
+        <div class="sc-card__body">
+          <div class="sc-form-grid">
+
+            <mat-form-field appearance="outline" subscriptSizing="dynamic"
+              floatLabel="always" class="sc-field--full">
+              <mat-label>Nombre *</mat-label>
+              <input matInput formControlName="nombre"
+                placeholder="Ej: Diseñar mockup de pantalla de inicio" />
+              @if (form.controls.nombre.invalid && form.controls.nombre.touched) {
+                <mat-error>El nombre es obligatorio (máx. 200 caracteres).</mat-error>
+              }
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" subscriptSizing="dynamic"
+              floatLabel="always" class="sc-field--full">
+              <mat-label>Descripción</mat-label>
+              <textarea matInput formControlName="descripcion" rows="3"
+                placeholder="Descripción detallada de la tarea…"></textarea>
+            </mat-form-field>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- Fechas -->
+      <div class="sc-card">
+        <div class="sc-card__header">
+          <mat-icon>calendar_month</mat-icon>
+          <span class="sc-card__title">Fechas</span>
+        </div>
+        <div class="sc-card__body">
+          <div class="sc-form-grid">
+
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
+              <mat-label>Fecha inicio</mat-label>
+              <input matInput [matDatepicker]="pickerInicio"
+                formControlName="fecha_inicio" placeholder="dd/mm/aaaa" />
+              <mat-datepicker-toggle matSuffix [for]="pickerInicio" />
+              <mat-datepicker #pickerInicio />
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
+              <mat-label>Fecha fin</mat-label>
+              <input matInput [matDatepicker]="pickerFin"
+                formControlName="fecha_fin" placeholder="dd/mm/aaaa" />
+              <mat-datepicker-toggle matSuffix [for]="pickerFin" />
+              <mat-datepicker #pickerFin />
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
+              <mat-label>Fecha límite</mat-label>
+              <input matInput [matDatepicker]="pickerLimite"
+                formControlName="fecha_limite" placeholder="dd/mm/aaaa" />
+              <mat-datepicker-toggle matSuffix [for]="pickerLimite" />
+              <mat-datepicker #pickerLimite />
+            </mat-form-field>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- Recurrencia -->
+      <div class="sc-card">
+        <div class="sc-card__header">
+          <mat-icon>repeat</mat-icon>
+          <span class="sc-card__title">Recurrencia</span>
+        </div>
+        <div class="sc-card__body sc-card__body--gap">
+
+          <mat-checkbox formControlName="es_recurrente">
+            Tarea recurrente
+          </mat-checkbox>
+
+          @if (esRecurrente()) {
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
+              <mat-label>Frecuencia *</mat-label>
+              <mat-select formControlName="frecuencia_recurrencia">
+                @for (opt of frecuenciaOptions; track opt.value) {
+                  <mat-option [value]="opt.value">{{ opt.label }}</mat-option>
+                }
+              </mat-select>
+              @if (form.controls.frecuencia_recurrencia.invalid && form.controls.frecuencia_recurrencia.touched) {
+                <mat-error>Selecciona una frecuencia.</mat-error>
+              }
+            </mat-form-field>
+          }
+
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Columna lateral -->
+    <div class="tf-side">
+
+      <!-- Proyecto / Fase / Jerarquía -->
+      <div class="sc-card">
+        <div class="sc-card__header">
+          <mat-icon>folder_open</mat-icon>
+          <span class="sc-card__title">Proyecto</span>
+        </div>
+        <div class="sc-card__body sc-card__body--gap">
+
+          <!-- Proyecto (autocomplete server-side) -->
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
+            <mat-label>Proyecto *</mat-label>
+            <mat-icon matPrefix>work</mat-icon>
+            <input matInput
+              [formControl]="proyectoSearch"
+              [matAutocomplete]="autoProyecto"
+              placeholder="Buscar proyecto…" />
+            <mat-autocomplete #autoProyecto="matAutocomplete"
+              [displayWith]="displayProyecto"
+              (optionSelected)="onProyectoSelected($event)">
+              @for (p of proyectoOptions(); track p.id) {
+                <mat-option [value]="p">
+                  <span class="tf-option-codigo">{{ p.codigo }}</span>
+                  {{ p.nombre }}
+                </mat-option>
+              }
+              @if (proyectoOptions().length === 0) {
+                <mat-option disabled>Sin resultados</mat-option>
+              }
+            </mat-autocomplete>
+            @if (form.controls.proyecto.invalid && form.controls.proyecto.touched) {
+              <mat-error>Selecciona un proyecto.</mat-error>
+            }
+          </mat-form-field>
+
+          <!-- Fase (autocomplete client-side, depende del proyecto) -->
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
+            <mat-label>Fase</mat-label>
+            <mat-icon matPrefix>layers</mat-icon>
+            <input matInput
+              [formControl]="faseSearch"
+              [matAutocomplete]="autoFase"
+              (blur)="onFaseBlur()"
+              placeholder="Selecciona una fase…" />
+            @if (loadingFases()) {
+              <mat-spinner matSuffix diameter="16" />
+            }
+            <mat-autocomplete #autoFase="matAutocomplete"
+              [displayWith]="displayFase"
+              (optionSelected)="onFaseSelected($event)">
+              @for (f of fasesFiltradas(); track f.id) {
+                <mat-option [value]="f">{{ f.nombre }}</mat-option>
+              }
+              @if (!loadingFases() && fasesFiltradas().length === 0) {
+                <mat-option disabled>
+                  {{ form.controls.proyecto.value ? 'Sin fases en este proyecto' : 'Primero selecciona un proyecto' }}
+                </mat-option>
+              }
+            </mat-autocomplete>
+          </mat-form-field>
+
+          <!-- Tarea padre (autocomplete client-side, depende del proyecto) -->
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
+            <mat-label>Tarea padre</mat-label>
+            <mat-icon matPrefix>account_tree</mat-icon>
+            <input matInput
+              [formControl]="tareaPadreSearch"
+              [matAutocomplete]="autoTareaPadre"
+              (blur)="onTareaPadreBlur()"
+              placeholder="Buscar tarea padre…" />
+            <mat-autocomplete #autoTareaPadre="matAutocomplete"
+              [displayWith]="displayTarea"
+              (optionSelected)="onTareaPadreSelected($event)">
+              @for (t of tareasPadreFiltradas(); track t.id) {
+                <mat-option [value]="t">
+                  <span class="tf-option-codigo">{{ t.codigo }}</span>
+                  {{ t.nombre }}
+                </mat-option>
+              }
+              @if (tareasPadreFiltradas().length === 0) {
+                <mat-option disabled>
+                  {{ form.controls.proyecto.value ? 'Sin tareas disponibles' : 'Primero selecciona un proyecto' }}
+                </mat-option>
+              }
+            </mat-autocomplete>
+          </mat-form-field>
+
+          <!-- Cliente (opcional) -->
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
+            <mat-label>Cliente (opcional)</mat-label>
+            <mat-icon matPrefix>business</mat-icon>
+            <input matInput
+              [formControl]="clienteSearch"
+              [matAutocomplete]="autoCliente"
+              (blur)="onClienteBlur()"
+              placeholder="Buscar cliente…" />
+            <mat-autocomplete #autoCliente="matAutocomplete"
+              [displayWith]="displayCliente"
+              (optionSelected)="onClienteSelected($event)">
+              @for (c of clientesFiltrados(); track c.id) {
+                <mat-option [value]="c">
+                  <span class="tf-option-codigo">{{ c.numero_identificacion }}</span>
+                  {{ c.nombre_completo }}
+                </mat-option>
+              }
+              @if (clientesFiltrados().length === 0) {
+                <mat-option disabled>Sin resultados</mat-option>
+              }
+            </mat-autocomplete>
+          </mat-form-field>
+
+        </div>
+      </div>
+
+      <!-- Asignación -->
+      <div class="sc-card">
+        <div class="sc-card__header">
+          <mat-icon>person</mat-icon>
+          <span class="sc-card__title">Asignación</span>
+        </div>
+        <div class="sc-card__body sc-card__body--gap">
+
+          <!-- Responsable (autocomplete client-side) -->
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
+            <mat-label>Responsable</mat-label>
+            <mat-icon matPrefix>manage_accounts</mat-icon>
+            <input matInput
+              [formControl]="responsableSearch"
+              [matAutocomplete]="autoResponsable"
+              (blur)="onResponsableBlur()"
+              placeholder="Buscar usuario…" />
+            <mat-autocomplete #autoResponsable="matAutocomplete"
+              [displayWith]="displayUsuario"
+              (optionSelected)="onResponsableSelected($event)">
+              @for (u of responsablesFiltrados(); track u.id) {
+                <mat-option [value]="u">
+                  <span class="tf-option-nombre">{{ u.full_name }}</span>
+                  <span class="tf-option-email">{{ u.email }}</span>
+                </mat-option>
+              }
+              @if (responsablesFiltrados().length === 0) {
+                <mat-option disabled>Sin usuarios disponibles</mat-option>
+              }
+            </mat-autocomplete>
+          </mat-form-field>
+
+        </div>
+      </div>
+
+      <!-- Estado y prioridad -->
+      <div class="sc-card">
+        <div class="sc-card__header">
+          <mat-icon>tune</mat-icon>
+          <span class="sc-card__title">Estado y prioridad</span>
+        </div>
+        <div class="sc-card__body sc-card__body--gap">
+
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
+            <mat-label>Prioridad</mat-label>
+            <mat-select formControlName="prioridad">
+              @for (opt of prioridadOptions; track opt.value) {
+                <mat-option [value]="opt.value">{{ opt.label }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+
+          @if (editMode()) {
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
+              <mat-label>Estado</mat-label>
+              <mat-select formControlName="estado">
+                @for (opt of estadoOptions; track opt.value) {
+                  <mat-option [value]="opt.value">{{ opt.label }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+          }
+
+        </div>
+      </div>
+
+      <!-- Timesheet -->
+      <div class="sc-card">
+        <div class="sc-card__header">
+          <mat-icon>schedule</mat-icon>
+          <span class="sc-card__title">Timesheet</span>
+        </div>
+        <div class="sc-card__body sc-card__body--gap">
+
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
+            <mat-label>Horas estimadas</mat-label>
+            <input matInput type="number" min="0" step="0.5"
+              formControlName="horas_estimadas" placeholder="0" />
+            <span matTextSuffix>h</span>
+          </mat-form-field>
+
+          @if (editMode()) {
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
+              <mat-label>% Completado</mat-label>
+              <input matInput type="number" min="0" max="100"
+                formControlName="porcentaje_completado" placeholder="0" />
+              <span matTextSuffix>%</span>
+            </mat-form-field>
+          }
+
+        </div>
+      </div>
+
+    </div>
+
+  </form>
+</div>

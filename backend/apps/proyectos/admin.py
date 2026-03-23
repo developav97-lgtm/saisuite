@@ -4,7 +4,7 @@ SaiSuite — Proyectos: Admin
 from django.contrib import admin
 from apps.proyectos.models import (
     Proyecto, Fase, TerceroProyecto, DocumentoContable, Hito,
-    Actividad, ActividadProyecto, Tarea, TareaTag,
+    Actividad, ActividadProyecto, Tarea, TareaTag, SesionTrabajo,
 )
 
 
@@ -156,3 +156,13 @@ class TareaTagAdmin(admin.ModelAdmin):
     list_filter = ['color', 'company']
     search_fields = ['nombre']
     readonly_fields = ['id', 'created_at', 'updated_at']
+
+
+@admin.register(SesionTrabajo)
+class SesionTrabajoAdmin(admin.ModelAdmin):
+    list_display  = ['tarea', 'usuario', 'inicio', 'fin', 'duracion_horas', 'estado']
+    list_filter   = ['estado', 'inicio']
+    search_fields = ['tarea__codigo', 'tarea__nombre', 'usuario__email']
+    raw_id_fields = ['tarea', 'usuario']
+    readonly_fields = ['id', 'duracion_horas', 'created_at', 'updated_at']
+    date_hierarchy = 'inicio'

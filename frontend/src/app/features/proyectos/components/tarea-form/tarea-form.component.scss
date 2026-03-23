@@ -1,0 +1,76 @@
+// ── Layout dos columnas ────────────────────────────────────────
+.tf-layout {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.tf-main,
+.tf-side {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+// ── Header ─────────────────────────────────────────────────────
+.tf-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.tf-header-eyebrow {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--sc-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.tf-header-actions {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+// ── Spinner en botón ───────────────────────────────────────────
+.tf-spinner-btn {
+  display: inline-block;
+  margin-right: 0.4rem;
+}
+
+// ── Opciones de autocomplete ───────────────────────────────────
+.tf-option-codigo {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--sc-primary, #1976d2);
+  background: var(--sc-primary-light, rgba(25, 118, 210, 0.1));
+  padding: 0.1rem 0.3rem;
+  border-radius: 3px;
+  margin-right: 0.4rem;
+}
+
+.tf-option-nombre {
+  display: block;
+  font-weight: 500;
+  font-size: 0.875rem;
+}
+
+.tf-option-email {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--sc-text-muted, #9e9e9e);
+}
+
+// ── Responsive ────────────────────────────────────────────────
+@media (max-width: 900px) {
+  .tf-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .tf-side {
+    order: -1;
+  }
+}

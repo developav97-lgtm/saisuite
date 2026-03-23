@@ -464,6 +464,19 @@ mat-card.mat-mdc-card {
 .snack-success .mdc-snackbar__surface { background-color: #166534 !important; }
 .snack-error   .mdc-snackbar__surface { background-color: #991b1b !important; }
 
+// ── Tarea Dialog (modal kanban) ────────────────────────────────
+// El mat-dialog-container debe ocupar el 100% del height definido
+// en el open() config para que el layout flex interno funcione.
+.trd-dialog-panel {
+  .mat-mdc-dialog-container,
+  .mat-mdc-dialog-surface {
+    height: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    padding: 0 !important;
+  }
+}
+
 // ── Helpers ───────────────────────────────────────────────────
 .sc-form-field-full { width: 100%; }
 

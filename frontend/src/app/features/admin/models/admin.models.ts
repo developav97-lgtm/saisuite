@@ -21,7 +21,7 @@ export const ROLE_OPTIONS = (Object.entries(ROLE_LABELS) as [UserRole, string][]
 
 export type ModuleKey = 'ventas' | 'cobros' | 'dashboard' | 'proyectos';
 
-export const MODULE_LABELS: Record<ModuleKey, string> = {
+export const MODULE_LABELS: Record<ModuleKey, string | undefined> = {
   ventas:    'SaiVentas',
   cobros:    'SaiCobros',
   dashboard: 'SaiDashboard',

@@ -27,7 +27,7 @@
         <span class="ts-option-nit">{{ op.numero_identificacion }}</span>
       </mat-option>
     }
-    @if (sinResultados() && searchControl.value && (searchControl.value?.length ?? 0) >= 2) {
+    @if (sinResultados() && searchControl.value && searchControl.value.length >= 2) {
       <mat-option disabled>Sin resultados para "{{ searchControl.value }}"</mat-option>
     }
   </mat-autocomplete>

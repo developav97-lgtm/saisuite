@@ -1,0 +1,266 @@
+/**
+ * SaiSuite — TareaDialogComponent
+ * Modal de vista rápida de tarea abierto desde el Kanban.
+ * Permite cambiar estado sin salir del tablero.
+ */
+import {
+  ChangeDetectionStrategy, ChangeDetectorRef,
+  Component, OnInit, inject, signal, computed,
+} from '@angular/core';
+import { DatePipe } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatTabsModule } from '@angular/material/tabs';
+import { MatDividerModule } from '@angular/material/divider';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import {
+  MatDialogRef,
+  MAT_DIALOG_DATA,
+  MatDialogModule,
+} from '@angular/material/dialog';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { TareaService } from '../../services/tarea.service';
+import { ConfiguracionProyectoService } from '../../services/configuracion-proyecto.service';
+import { TareaCardComponent } from '../tarea-card/tarea-card.component';
+import { CronometroComponent } from '../../../../shared/components/cronometro/cronometro.component';
+import { Tarea, TareaEstado } from '../../models/tarea.model';
+import { ConfiguracionProyecto } from '../../models/configuracion-proyecto.model';
+import { SesionTrabajo } from '../../models/sesion-trabajo.model';
+
+export interface TareaDialogData {
+  tareaId: string;
+}
+
+export interface TareaDialogResult {
+  updated: boolean;
+  tarea?: Tarea;
+  /** Si se establece, el Kanban navega a esta ruta al cerrar en vez de limpiar la URL. */
+  navigateTo?: string[];
+  navigateParams?: Record<string, string>;
+}
+
+const ESTADO_LABELS: Record<string, string | undefined> = {
+  por_hacer:   'Por Hacer',
+  en_progreso: 'En Progreso',
+  en_revision: 'En Revisión',
+  bloqueada:   'Bloqueada',
+  completada:  'Completada',
+  cancelada:   'Cancelada',
+};
+
+const ESTADO_COLORS: Record<string, string | undefined> = {
+  por_hacer:   '#9e9e9e',
+  en_progreso: '#1e88e5',
+  en_revision: '#fb8c00',
+  bloqueada:   '#e53935',
+  completada:  '#43a047',
+  cancelada:   '#757575',
+};
+
+const PRIORIDAD_LABELS: Record<string, string | undefined> = {
+  1: 'Baja',
+  2: 'Normal',
+  3: 'Alta',
+  4: 'Urgente',
+};
+
+const PRIORIDAD_COLORS: Record<string, string | undefined> = {
+  1: '#43a047',
+  2: '#1e88e5',
+  3: '#fb8c00',
+  4: '#e53935',
+};
+
+const PRIORIDAD_ICONS: Record<string, string | undefined> = {
+  1: 'arrow_downward',
+  2: 'remove',
+  3: 'arrow_upward',
+  4: 'priority_high',
+};
+
+@Component({
+  selector: 'app-tarea-dialog',
+  templateUrl: './tarea-dialog.component.html',
+  styleUrl: './tarea-dialog.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [
+    DatePipe, FormsModule,
+    MatButtonModule, MatIconModule,
+    MatProgressBarModule, MatProgressSpinnerModule,
+    MatTabsModule, MatDividerModule, MatTooltipModule,
+    MatDialogModule,
+    TareaCardComponent, CronometroComponent,
+  ],
+})
+export class TareaDialogComponent implements OnInit {
+  private readonly dialogRef     = inject<MatDialogRef<TareaDialogComponent, TareaDialogResult>>(MatDialogRef);
+  private readonly data          = inject<TareaDialogData>(MAT_DIALOG_DATA);
+  private readonly tareaService  = inject(TareaService);
+  private readonly configService = inject(ConfiguracionProyectoService);
+  private readonly snackBar      = inject(MatSnackBar);
+  private readonly cdr           = inject(ChangeDetectorRef);
+
+  readonly loading  = signal(true);
+  readonly changing = signal(false);
+  readonly tarea    = signal<Tarea | null>(null);
+
+  // ── Timesheet ────────────────────────────────────────────────
+  readonly config        = signal<ConfiguracionProyecto | null>(null);
+  readonly editandoHoras = signal(false);
+  /** Propiedad plana para [(ngModel)] — signals no son compatibles con ngModel */
+  horasAdicionales = 0;
+
+  readonly modoManualHabilitado = computed(() => {
+    const m = this.config()?.modo_timesheet;
+    return m === 'manual' || m === 'ambos';
+  });
+  readonly modoCronometroHabilitado = computed(() => {
+    const m = this.config()?.modo_timesheet;
+    return m === 'cronometro' || m === 'ambos';
+  });
+  readonly modoTimesheetDesactivado = computed(() =>
+    this.config() !== null && this.config()!.modo_timesheet === 'desactivado'
+  );
+
+  readonly estadoLabel   = computed(() => ESTADO_LABELS[this.tarea()?.estado ?? ''] ?? '—');
+  readonly estadoColor   = computed(() => ESTADO_COLORS[this.tarea()?.estado ?? ''] ?? '#9e9e9e');
+  readonly prioridadLabel = computed(() => PRIORIDAD_LABELS[String(this.tarea()?.prioridad ?? '')] ?? '—');
+  readonly prioridadColor = computed(() => PRIORIDAD_COLORS[String(this.tarea()?.prioridad ?? '')] ?? '#9e9e9e');
+  readonly prioridadIcon  = computed(() => PRIORIDAD_ICONS[String(this.tarea()?.prioridad ?? '')] ?? 'remove');
+
+  readonly estadoLabels  = ESTADO_LABELS;
+  readonly estadoColors  = ESTADO_COLORS;
+
+  readonly estadosDisponibles: TareaEstado[] = [
+    'por_hacer', 'en_progreso', 'en_revision', 'bloqueada', 'completada', 'cancelada',
+  ];
+
+  ngOnInit(): void {
+    this.tareaService.getById(this.data.tareaId).subscribe({
+      next: (tarea) => {
+        this.tarea.set(tarea);
+        this.loading.set(false);
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.snackBar.open('No se pudo cargar la tarea.', 'Cerrar', {
+          duration: 4000, panelClass: ['snack-error'],
+        });
+        this.dialogRef.close();
+      },
+    });
+    this.configService.obtener().subscribe({
+      next: (c) => { this.config.set(c); this.cdr.markForCheck(); },
+      error: () => { /* sin config: timesheet desactivado por defecto */ },
+    });
+  }
+
+  cambiarEstado(nuevoEstado: TareaEstado): void {
+    const t = this.tarea();
+    if (!t || this.changing()) return;
+    this.changing.set(true);
+    this.tareaService.cambiarEstado(t.id, nuevoEstado).subscribe({
+      next: (updated) => {
+        this.tarea.set(updated);
+        this.changing.set(false);
+        this.snackBar.open(
+          `Estado cambiado a "${ESTADO_LABELS[nuevoEstado] ?? nuevoEstado}".`,
+          'Cerrar', { duration: 2500, panelClass: ['snack-success'] },
+        );
+        this.cdr.markForCheck();
+        // Notificar al Kanban que hubo cambio
+        this.dialogRef.close({ updated: true, tarea: updated });
+      },
+      error: (err: { error?: { detail?: string } }) => {
+        const msg = err.error?.detail ?? 'No se pudo cambiar el estado.';
+        this.snackBar.open(msg, 'Cerrar', { duration: 4000, panelClass: ['snack-error'] });
+        this.changing.set(false);
+        this.cdr.markForCheck();
+      },
+    });
+  }
+
+  verDetalleCompleto(): void {
+    const t = this.tarea();
+    if (!t) return;
+    this.dialogRef.close({
+      updated: false,
+      navigateTo: ['/proyectos/tareas', t.id],
+      navigateParams: { returnTo: 'kanban' },
+    });
+  }
+
+  editarTarea(): void {
+    const t = this.tarea();
+    if (!t) return;
+    this.dialogRef.close({
+      updated: false,
+      navigateTo: ['/proyectos/tareas', t.id, 'editar'],
+    });
+  }
+
+  cerrar(): void {
+    this.dialogRef.close();
+  }
+
+  verSubtarea(subtarea: Tarea): void {
+    this.dialogRef.close({
+      updated: false,
+      navigateTo: ['/proyectos/tareas', subtarea.id],
+      navigateParams: { returnTo: 'kanban' },
+    });
+  }
+
+  // ── Timesheet: modo manual ────────────────────────────────────
+
+  onHorasClick(): void {
+    this.horasAdicionales = 0;
+    this.editandoHoras.set(true);
+  }
+
+  onHorasKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Enter')  { this.guardarHoras(); }
+    if (event.key === 'Escape') { this.cancelarEdicionHoras(); }
+  }
+
+  guardarHoras(): void {
+    const horas = this.horasAdicionales;
+    const tarea = this.tarea();
+    if (!tarea || horas <= 0) { this.cancelarEdicionHoras(); return; }
+
+    this.tareaService.agregarHoras(tarea.id, horas).subscribe({
+      next: (actualizada) => {
+        this.tarea.set(actualizada);
+        this.snackBar.open(`${horas}h agregadas correctamente.`, 'Cerrar', {
+          duration: 2500, panelClass: ['snack-success'],
+        });
+        this.cancelarEdicionHoras();
+        this.cdr.markForCheck();
+      },
+      error: (err: { error?: { detail?: string } }) => {
+        const msg = err.error?.detail ?? 'Error al agregar horas.';
+        this.snackBar.open(msg, 'Cerrar', { duration: 4000, panelClass: ['snack-error'] });
+      },
+    });
+  }
+
+  cancelarEdicionHoras(): void {
+    this.editandoHoras.set(false);
+    this.horasAdicionales = 0;
+  }
+
+  // ── Timesheet: cronómetro ─────────────────────────────────────
+
+  onSesionFinalizada(_sesion: SesionTrabajo): void {
+    const t = this.tarea();
+    if (!t) return;
+    // Recargar tarea para actualizar horas_registradas
+    this.tareaService.getById(t.id).subscribe({
+      next: (actualizada) => { this.tarea.set(actualizada); this.cdr.markForCheck(); },
+      error: () => { /* silencioso */ },
+    });
+  }
+}

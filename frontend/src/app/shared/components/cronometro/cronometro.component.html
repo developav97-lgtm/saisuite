@@ -1,0 +1,64 @@
+<div class="crn-container">
+
+  @if (estaInactiva()) {
+    <!-- Sin sesión activa -->
+    <button mat-stroked-button (click)="iniciar()" [disabled]="loading()">
+      @if (loading()) {
+        <mat-spinner diameter="16" class="crn-spinner" />
+      } @else {
+        <mat-icon>play_arrow</mat-icon>
+      }
+      Iniciar cronómetro
+    </button>
+
+  } @else {
+    <!-- Sesión activa o pausada -->
+    <div class="crn-activo">
+
+      <!-- Display de tiempo -->
+      <div class="crn-tiempo-display" [class.crn-pausado]="estaPausada()">
+        <mat-icon class="crn-icon-reloj">
+          {{ estaPausada() ? 'pause_circle' : 'timer' }}
+        </mat-icon>
+        <span class="crn-tiempo">{{ formatearTiempo() }}</span>
+        @if (estaPausada()) {
+          <span class="crn-pausado-label">PAUSADO</span>
+        }
+      </div>
+
+      <!-- Acciones -->
+      <div class="crn-actions">
+        @if (estaActiva()) {
+          <button mat-icon-button (click)="pausar()" [disabled]="loading()"
+            matTooltip="Pausar">
+            <mat-icon>pause</mat-icon>
+          </button>
+        } @else if (estaPausada()) {
+          <button mat-icon-button color="primary" (click)="reanudar()" [disabled]="loading()"
+            matTooltip="Reanudar">
+            <mat-icon>play_arrow</mat-icon>
+          </button>
+        }
+
+        <button mat-raised-button color="warn" (click)="detener()" [disabled]="loading()">
+          @if (loading()) {
+            <mat-spinner diameter="14" />
+          } @else {
+            <mat-icon>stop</mat-icon>
+          }
+          Detener
+        </button>
+      </div>
+
+      <!-- Notas opcionales -->
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always"
+        class="crn-notas">
+        <mat-label>Notas (opcional)</mat-label>
+        <textarea matInput [(ngModel)]="notas" rows="2"
+          placeholder="¿En qué trabajaste?"></textarea>
+      </mat-form-field>
+
+    </div>
+  }
+
+</div>

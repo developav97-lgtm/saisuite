@@ -1,0 +1,538 @@
+// ── Layout página ──────────────────────────────────────────────
+// La página NO usa altura fija — scrollea completa via .sc-page.
+// El sidebar usa sticky para mantenerse visible al hacer scroll en main.
+.td-page {
+  display: flex;
+  flex-direction: column;
+}
+
+// ── Loading ─────────────────────────────────────────────────────
+.td-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 1rem;
+  gap: 1rem;
+  color: var(--sc-text-muted, #9e9e9e);
+}
+
+// ── Header ─────────────────────────────────────────────────────
+.td-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.td-header-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.td-codigo {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--sc-primary, #1976d2);
+  background: var(--sc-primary-light, rgba(25, 118, 210, 0.1));
+  padding: 0.1rem 0.35rem;
+  border-radius: 3px;
+  width: fit-content;
+  margin-bottom: 0.2rem;
+}
+
+.td-header-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.td-spinner-btn {
+  display: inline-block;
+}
+
+// ── Progreso global ────────────────────────────────────────────
+.td-progress-section {
+  margin-bottom: 0.75rem;
+  padding: 0.75rem 1rem;
+}
+
+.td-progress-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  color: var(--sc-text-muted, #757575);
+  margin-bottom: 0.4rem;
+}
+
+.td-progress--completada {
+  --mdc-linear-progress-active-indicator-color: #43a047;
+}
+
+// ── Body 2 columnas ───────────────────────────────────────────
+// Grid simple sin restricción de altura — el contenido fluye
+// y la página completa hace scroll.
+.td-body {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 1rem;
+  align-items: start;   // columnas no se estiran; cada una vale su contenido
+  padding-bottom: 2rem;
+}
+
+.td-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.td-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  // Sticky: el sidebar se ancla al top y queda visible mientras se scrollea main
+  position: sticky;
+  top: 1rem;
+  // Altura máxima para que no desborde la pantalla en casos extremos
+  max-height: calc(100vh - 80px);
+  overflow-y: auto;
+}
+
+// ── Estado rápido ──────────────────────────────────────────────
+.td-estado-card {
+  padding: 0.75rem 1rem;
+}
+
+.td-section-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--sc-text-muted, #9e9e9e);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.td-estado-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.td-estado-badge {
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+}
+
+.td-estado-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.td-estado-btn {
+  font-size: 0.75rem !important;
+  padding: 0 0.6rem !important;
+  height: 28px !important;
+  line-height: 26px !important;
+}
+
+// ── Tabs card ──────────────────────────────────────────────────
+// sc-card contenedor provee fondo blanco, sombra y border-radius.
+// overflow: hidden corta las esquinas del mat-tab-group interno.
+.td-tabs-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.td-tabs {
+  ::ng-deep .mat-mdc-tab-header {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+  }
+
+  ::ng-deep .mat-mdc-tab-body-wrapper {
+    padding-top: 0.25rem;
+  }
+}
+
+.td-tab-content {
+  padding: 1rem;
+}
+
+.td-tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  margin-left: 6px;
+  background: var(--sc-primary, #1976d2);
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 700;
+  border-radius: 9px;
+  vertical-align: middle;
+}
+
+// ── Descripción ────────────────────────────────────────────────
+.td-descripcion {
+  font-size: 0.9rem;
+  line-height: 1.7;
+  color: var(--sc-text-color, #212121);
+  white-space: pre-wrap;
+  margin: 0;
+}
+
+.td-empty-text {
+  font-size: 0.875rem;
+  color: var(--sc-text-muted, #9e9e9e);
+  font-style: italic;
+  margin: 0;
+}
+
+// ── Subtareas ──────────────────────────────────────────────────
+.td-subtareas-header {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 0.75rem;
+}
+
+.td-subtareas-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+// ── Seguidores ─────────────────────────────────────────────────
+.td-followers-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.td-follower {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem;
+  border-radius: var(--sc-radius, 8px);
+  background: var(--sc-surface-ground, #f5f5f5);
+}
+
+.td-follower-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--sc-primary, #1976d2);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+
+.td-follower-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.td-follower-nombre {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--sc-text-color, #212121);
+}
+
+.td-follower-email {
+  font-size: 0.75rem;
+  color: var(--sc-text-muted, #9e9e9e);
+}
+
+// ── Empty state ────────────────────────────────────────────────
+.td-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 2rem 1rem;
+  color: var(--sc-text-muted, #9e9e9e);
+
+  mat-icon {
+    font-size: 2rem;
+    width: 2rem;
+    height: 2rem;
+    opacity: 0.35;
+  }
+
+  span {
+    font-size: 0.875rem;
+  }
+}
+
+// ── Sidebar metadata ───────────────────────────────────────────
+.td-meta-card {
+  padding: 0.75rem 1rem;
+}
+
+.td-meta-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.35rem 0;
+}
+
+.td-meta-label {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--sc-text-muted, #9e9e9e);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+
+  mat-icon {
+    font-size: 0.9rem;
+    width: 0.9rem;
+    height: 0.9rem;
+  }
+
+  &--block {
+    display: flex;
+    margin-bottom: 0.5rem;
+  }
+}
+
+.td-meta-value {
+  font-size: 0.875rem;
+  color: var(--sc-text-color, #212121);
+  font-weight: 500;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  white-space: normal;
+}
+
+.td-meta-muted {
+  color: var(--sc-text-muted, #9e9e9e);
+  font-weight: 400;
+}
+
+.td-meta-link {
+  color: var(--sc-primary, #1976d2);
+  cursor: pointer;
+  text-decoration: underline;
+  font-style: normal;
+
+  &:hover { opacity: 0.8; }
+}
+
+// ── Prioridad ──────────────────────────────────────────────────
+.td-prio-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-weight: 600;
+
+  mat-icon {
+    font-size: 1rem;
+    width: 1rem;
+    height: 1rem;
+  }
+}
+
+// ── Tags ───────────────────────────────────────────────────────
+.td-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.td-tag {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.15rem 0.5rem;
+  border-radius: 10px;
+
+  &--red    { background: #ffcdd2; color: #c62828; }
+  &--orange { background: #ffe0b2; color: #e65100; }
+  &--yellow { background: #fff9c4; color: #f57f17; }
+  &--green  { background: #c8e6c9; color: #2e7d32; }
+  &--blue   { background: #bbdefb; color: #1565c0; }
+  &--purple { background: #e1bee7; color: #6a1b9a; }
+  &--pink   { background: #f8bbd0; color: #c2185b; }
+  &--gray   { background: #e0e0e0; color: #424242; }
+}
+
+// ── Tab icon ───────────────────────────────────────────────────
+.td-tab-icon {
+  font-size: 1rem;
+  width: 1rem;
+  height: 1rem;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+
+// ── Tiempo tab: resumen horas ──────────────────────────────────
+.td-horas-resumen {
+  display: flex;
+  align-items: stretch;
+  gap: 2rem;
+  padding: 0.5rem 0 1rem;
+}
+
+.td-hora-divider {
+  align-self: stretch;
+}
+
+.td-hora-bloque {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  flex: 1;
+}
+
+.td-hora-label {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--sc-text-muted, #9e9e9e);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+
+  mat-icon {
+    font-size: 0.9rem;
+    width: 0.9rem;
+    height: 0.9rem;
+  }
+}
+
+.td-hora-valor {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--sc-text-color, #212121);
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+
+  &.td-hora-muted {
+    font-size: 1.1rem;
+    font-weight: 400;
+    color: var(--sc-text-muted, #9e9e9e);
+  }
+}
+
+.td-timesheet-off {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border-radius: 8px;
+  background: var(--sc-surface-ground, #f5f5f5);
+  color: var(--sc-text-muted, #9e9e9e);
+  font-size: 0.85rem;
+  margin-top: 0.75rem;
+
+  mat-icon {
+    font-size: 1rem;
+    width: 1rem;
+    height: 1rem;
+    flex-shrink: 0;
+  }
+
+  a {
+    color: var(--sc-primary, #1976d2);
+    text-decoration: none;
+    &:hover { text-decoration: underline; }
+  }
+}
+
+// ── Timesheet: horas inline ────────────────────────────────────
+
+.td-horas-editable {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  transition: color 0.15s;
+
+  &:hover {
+    color: var(--sc-primary, #1976d2);
+  }
+}
+
+.td-horas-edit-icon {
+  font-size: 0.9rem;
+  width: 0.9rem;
+  height: 0.9rem;
+  opacity: 0.6;
+}
+
+.td-horas-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.td-horas-input {
+  width: 90px;
+  padding: 0.25rem 0.5rem;
+  border: 1.5px solid var(--sc-primary, #1976d2);
+  border-radius: 4px;
+  font-size: 0.875rem;
+  outline: none;
+
+  &:focus {
+    box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.2);
+  }
+}
+
+.td-horas-hint {
+  font-size: 0.7rem;
+  color: var(--sc-text-muted, #9e9e9e);
+}
+
+// ── Timesheet: cronómetro ──────────────────────────────────────
+
+.td-cronometro-section {
+  padding-top: 0.5rem;
+}
+
+// ── Timesheet desactivado link ─────────────────────────────────
+.td-timesheet-config-link {
+  font-size: 0.75rem;
+  color: var(--sc-text-muted, #9e9e9e);
+  text-decoration: none;
+  font-style: italic;
+
+  &:hover { color: var(--sc-primary, #1976d2); text-decoration: underline; }
+}
+
+// ── Fecha vencida ──────────────────────────────────────────────
+.td-fecha-vencida {
+  color: #e53935;
+  font-weight: 700;
+}
+
+// ── Responsive ────────────────────────────────────────────────
+@media (max-width: 900px) {
+  .td-body {
+    grid-template-columns: 1fr;
+  }
+
+  .td-sidebar {
+    position: static;
+    max-height: none;
+    overflow-y: visible;
+  }
+}

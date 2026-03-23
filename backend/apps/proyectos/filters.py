@@ -56,10 +56,11 @@ class TareaFilter(django_filters.FilterSet):
     sin_responsable     = django_filters.BooleanFilter(method='filter_sin_responsable')
     solo_mis_tareas     = django_filters.BooleanFilter(method='filter_solo_mis_tareas')
 
-    # Proyecto / Fase
+    # Proyecto / Fase / Cliente
     proyecto    = django_filters.UUIDFilter(field_name='proyecto__id')
     fase        = django_filters.UUIDFilter(field_name='fase__id')
     sin_fase    = django_filters.BooleanFilter(method='filter_sin_fase')
+    cliente     = django_filters.UUIDFilter(field_name='cliente__id')
 
     # Jerarquía
     solo_raiz = django_filters.BooleanFilter(method='filter_solo_raiz')
@@ -68,7 +69,7 @@ class TareaFilter(django_filters.FilterSet):
         model = Tarea
         fields = [
             'estado', 'prioridad', 'proyecto', 'fase',
-            'responsable', 'es_recurrente',
+            'responsable', 'cliente', 'es_recurrente',
         ]
 
     def filter_search(self, queryset, name, value):

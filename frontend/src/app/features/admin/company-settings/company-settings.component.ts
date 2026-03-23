@@ -7,7 +7,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { AdminService } from '../services/admin.service';
 import { CompanyLicense, CompanySettings, LICENSE_STATUS_LABELS, MODULE_LABELS } from '../models/admin.models';
 
-const PLAN_LABELS: Record<string, string> = {
+const PLAN_LABELS: Record<string, string | undefined> = {
   starter:      'Starter',
   professional: 'Professional',
   enterprise:   'Enterprise',

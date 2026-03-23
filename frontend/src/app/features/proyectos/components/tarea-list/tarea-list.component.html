@@ -1,0 +1,151 @@
+<div class="sc-page">
+
+  <!-- Header -->
+  <div class="sc-page-header">
+    <h1 class="sc-page-header__title">Tareas</h1>
+    <div class="tl-header-actions">
+      <button mat-stroked-button (click)="irAKanban()" matTooltip="Vista Kanban">
+        <mat-icon>view_kanban</mat-icon>
+        Kanban
+      </button>
+      <button mat-raised-button color="primary" (click)="nuevaTarea()">
+        <mat-icon>add</mat-icon>
+        Nueva tarea
+      </button>
+    </div>
+  </div>
+
+  <!-- Filtros -->
+  <div class="tl-filters-card sc-card">
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="tl-search">
+      <mat-label>Buscar por código o nombre…</mat-label>
+      <input matInput
+        [ngModel]="searchText()"
+        (ngModelChange)="searchText.set($event)"
+        (keyup.enter)="onSearch()" />
+      <button mat-icon-button matSuffix (click)="onSearch()" aria-label="Buscar">
+        <mat-icon>search</mat-icon>
+      </button>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="tl-filter">
+      <mat-label>Estado</mat-label>
+      <mat-select
+        [ngModel]="estadoFilter()"
+        (ngModelChange)="estadoFilter.set($event); onFilterChange()">
+        @for (opt of estadoOptions; track opt.value) {
+          <mat-option [value]="opt.value">{{ opt.label }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="tl-filter">
+      <mat-label>Prioridad</mat-label>
+      <mat-select
+        [ngModel]="prioridadFilter()"
+        (ngModelChange)="prioridadFilter.set($event); onFilterChange()">
+        @for (opt of prioridadOptions; track opt.value) {
+          <mat-option [value]="opt.value">{{ opt.label }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+  </div>
+
+  <!-- Progress bar -->
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate" class="tl-progress" />
+  }
+
+  <!-- Tabla -->
+  <mat-table [dataSource]="tareas()" class="tl-table">
+
+    <ng-container matColumnDef="codigo">
+      <mat-header-cell *matHeaderCellDef>Código</mat-header-cell>
+      <mat-cell *matCellDef="let t">
+        <span class="tl-codigo">{{ t.codigo }}</span>
+      </mat-cell>
+    </ng-container>
+
+    <ng-container matColumnDef="nombre">
+      <mat-header-cell *matHeaderCellDef>Nombre</mat-header-cell>
+      <mat-cell *matCellDef="let t" class="tl-cell-nombre">{{ t.nombre }}</mat-cell>
+    </ng-container>
+
+    <ng-container matColumnDef="responsable">
+      <mat-header-cell *matHeaderCellDef>Responsable</mat-header-cell>
+      <mat-cell *matCellDef="let t">{{ t.responsable_detail?.nombre ?? '—' }}</mat-cell>
+    </ng-container>
+
+    <ng-container matColumnDef="estado">
+      <mat-header-cell *matHeaderCellDef>Estado</mat-header-cell>
+      <mat-cell *matCellDef="let t">
+        <span [class]="estadoClass(t.estado)">{{ ESTADO_LABELS[t.estado] }}</span>
+      </mat-cell>
+    </ng-container>
+
+    <ng-container matColumnDef="prioridad">
+      <mat-header-cell *matHeaderCellDef>Prioridad</mat-header-cell>
+      <mat-cell *matCellDef="let t">
+        <span [class]="prioridadClass(t.prioridad)">{{ PRIORIDAD_LABELS[t.prioridad] }}</span>
+      </mat-cell>
+    </ng-container>
+
+    <ng-container matColumnDef="porcentaje">
+      <mat-header-cell *matHeaderCellDef>Avance</mat-header-cell>
+      <mat-cell *matCellDef="let t">
+        <div class="tl-avance">
+          <mat-progress-bar
+            mode="determinate"
+            [value]="t.porcentaje_completado"
+            class="tl-avance__bar" />
+          <span class="tl-avance__pct">{{ t.porcentaje_completado }}%</span>
+        </div>
+      </mat-cell>
+    </ng-container>
+
+    <ng-container matColumnDef="fecha_limite">
+      <mat-header-cell *matHeaderCellDef>Fecha límite</mat-header-cell>
+      <mat-cell *matCellDef="let t">
+        <span [class.tl-vencida]="t.es_vencida">{{ formatDate(t.fecha_limite) }}</span>
+      </mat-cell>
+    </ng-container>
+
+    <ng-container matColumnDef="acciones">
+      <mat-header-cell *matHeaderCellDef class="tl-col-acciones"></mat-header-cell>
+      <mat-cell *matCellDef="let t" class="tl-col-acciones">
+        <button mat-icon-button matTooltip="Ver detalle" (click)="verDetalle(t.id)">
+          <mat-icon>chevron_right</mat-icon>
+        </button>
+        <button mat-icon-button matTooltip="Editar" (click)="editarTarea(t.id)">
+          <mat-icon>edit</mat-icon>
+        </button>
+        <button mat-icon-button matTooltip="Eliminar" color="warn" (click)="confirmarEliminar(t)">
+          <mat-icon>delete_outline</mat-icon>
+        </button>
+      </mat-cell>
+    </ng-container>
+
+    <mat-header-row *matHeaderRowDef="displayedColumns" />
+    <mat-row *matRowDef="let row; columns: displayedColumns;" class="tl-row" />
+
+  </mat-table>
+
+  <!-- Empty state -->
+  @if (!loading() && tareas().length === 0) {
+    <div class="sc-empty-state tl-empty">
+      <mat-icon>task_alt</mat-icon>
+      <p>No hay tareas que coincidan con los filtros.</p>
+      <button mat-raised-button color="primary" (click)="nuevaTarea()">
+        <mat-icon>add</mat-icon> Nueva tarea
+      </button>
+    </div>
+  }
+
+  <mat-paginator
+    [length]="totalCount()"
+    [pageSize]="pageSize"
+    [pageSizeOptions]="[25, 50, 100]"
+    (page)="onPage($event)"
+    showFirstLastButtons />
+
+</div>

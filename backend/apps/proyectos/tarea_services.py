@@ -1,9 +1,10 @@
 """
-SaiSuite — Proyectos: TareaService
+SaiSuite — Proyectos: TareaService + TimesheetService
 TODA la lógica de negocio de Tareas va aquí. Las views solo orquestan.
 """
 import logging
-from datetime import timedelta
+from datetime import datetime, timedelta
+from decimal import Decimal
 from typing import List, Optional
 
 from django.core.exceptions import ValidationError
@@ -234,7 +235,7 @@ class TareaService:
 
     @staticmethod
     @transaction.atomic
-    def generar_tarea_recurrente(tarea_original: Tarea) -> Optional[Tarea]:
+    def generar_tarea_recurrente(tarea_original: Tarea) -> Optional[Tarea]:  # noqa: E501
         """
         Genera una nueva instancia de una tarea recurrente cuando la original
         es completada.
@@ -288,3 +289,202 @@ class TareaService:
             'nueva_fecha_limite': str(nueva_fecha_limite),
         })
         return nueva_tarea
+
+
+class TimesheetService:
+    """
+    Service para el sistema de timesheet (registro de horas) en tareas.
+    Modo manual y cronómetro con pausas.
+    """
+
+    @staticmethod
+    @transaction.atomic
+    def agregar_horas(tarea: Tarea, horas: Decimal) -> Tarea:
+        """
+        Agrega horas manualmente a las horas_registradas de la tarea.
+        Raises:
+            ValidationError: si las horas son <= 0.
+        """
+        if horas <= 0:
+            raise ValidationError({'horas': 'Las horas deben ser mayores a 0.'})
+
+        tarea.horas_registradas = tarea.horas_registradas + horas
+        tarea.save(update_fields=['horas_registradas'])
+
+        logger.info('Horas agregadas manualmente', extra={
+            'tarea_id': str(tarea.id),
+            'horas': str(horas),
+        })
+        return tarea
+
+    @staticmethod
+    @transaction.atomic
+    def iniciar_sesion(tarea: Tarea, usuario) -> 'SesionTrabajo':
+        """
+        Inicia un cronómetro para la tarea.
+        Solo puede haber una sesión activa por usuario a la vez.
+        Raises:
+            ValidationError: si ya existe una sesión activa o pausada.
+        """
+        from apps.proyectos.models import SesionTrabajo
+
+        sesion_activa = SesionTrabajo.objects.filter(
+            usuario=usuario,
+            estado__in=['activa', 'pausada'],
+        ).first()
+
+        if sesion_activa:
+            raise ValidationError(
+                'Ya tienes una sesión activa. Detén o reanuda la sesión actual antes de iniciar una nueva.'
+            )
+
+        sesion = SesionTrabajo.objects.create(
+            company=tarea.company,
+            tarea=tarea,
+            usuario=usuario,
+            inicio=timezone.now(),
+            estado='activa',
+        )
+
+        logger.info('Sesión de trabajo iniciada', extra={
+            'sesion_id': str(sesion.id),
+            'tarea_id': str(tarea.id),
+            'usuario_id': str(usuario.id),
+        })
+        return sesion
+
+    @staticmethod
+    @transaction.atomic
+    def pausar_sesion(sesion_id: str, usuario) -> 'SesionTrabajo':
+        """
+        Pausa una sesión activa.
+        Raises:
+            ValidationError: si la sesión no existe o no está activa.
+        """
+        from apps.proyectos.models import SesionTrabajo
+
+        try:
+            sesion = SesionTrabajo.objects.get(
+                id=sesion_id, usuario=usuario, estado='activa',
+            )
+        except SesionTrabajo.DoesNotExist:
+            raise ValidationError('Sesión no encontrada o no está activa.')
+
+        pausas = sesion.pausas or []
+        pausas.append({'inicio': timezone.now().isoformat(), 'fin': None})
+        sesion.pausas = pausas
+        sesion.estado = 'pausada'
+        sesion.save(update_fields=['pausas', 'estado'])
+
+        logger.info('Sesión pausada', extra={'sesion_id': str(sesion.id)})
+        return sesion
+
+    @staticmethod
+    @transaction.atomic
+    def reanudar_sesion(sesion_id: str, usuario) -> 'SesionTrabajo':
+        """
+        Reanuda una sesión pausada cerrando el registro de pausa activo.
+        Raises:
+            ValidationError: si la sesión no existe o no está pausada.
+        """
+        from apps.proyectos.models import SesionTrabajo
+
+        try:
+            sesion = SesionTrabajo.objects.get(
+                id=sesion_id, usuario=usuario, estado='pausada',
+            )
+        except SesionTrabajo.DoesNotExist:
+            raise ValidationError('Sesión no encontrada o no está pausada.')
+
+        pausas = sesion.pausas or []
+        if pausas and pausas[-1]['fin'] is None:
+            pausas[-1]['fin'] = timezone.now().isoformat()
+        sesion.pausas = pausas
+        sesion.estado = 'activa'
+        sesion.save(update_fields=['pausas', 'estado'])
+
+        logger.info('Sesión reanudada', extra={'sesion_id': str(sesion.id)})
+        return sesion
+
+    @staticmethod
+    @transaction.atomic
+    def detener_sesion(sesion_id: str, usuario, notas: str = '') -> 'SesionTrabajo':
+        """
+        Detiene la sesión (activa o pausada), calcula la duración neta
+        y suma las horas a tarea.horas_registradas.
+        Raises:
+            ValidationError: si la sesión no existe.
+        """
+        from apps.proyectos.models import SesionTrabajo
+
+        try:
+            sesion = SesionTrabajo.objects.select_related('tarea').get(
+                id=sesion_id,
+                usuario=usuario,
+                estado__in=['activa', 'pausada'],
+            )
+        except SesionTrabajo.DoesNotExist:
+            raise ValidationError('Sesión no encontrada.')
+
+        ahora = timezone.now()
+
+        # Cerrar pausa activa si la sesión estaba pausada
+        if sesion.estado == 'pausada':
+            pausas = sesion.pausas or []
+            if pausas and pausas[-1]['fin'] is None:
+                pausas[-1]['fin'] = ahora.isoformat()
+            sesion.pausas = pausas
+
+        sesion.fin = ahora
+        sesion.estado = 'finalizada'
+        sesion.notas = notas
+        sesion.duracion_segundos = TimesheetService._calcular_duracion_segundos(sesion)
+        sesion.save(update_fields=['fin', 'estado', 'notas', 'duracion_segundos', 'pausas'])
+
+        # Sumar horas a la tarea
+        horas = Decimal(sesion.duracion_segundos) / Decimal(3600)
+        tarea = sesion.tarea
+        tarea.horas_registradas = tarea.horas_registradas + horas
+        tarea.save(update_fields=['horas_registradas'])
+
+        logger.info('Sesión detenida', extra={
+            'sesion_id': str(sesion.id),
+            'duracion_segundos': sesion.duracion_segundos,
+            'tarea_id': str(tarea.id),
+        })
+        return sesion
+
+    @staticmethod
+    def sesion_activa_usuario(usuario) -> Optional['SesionTrabajo']:
+        """
+        Retorna la sesión activa o pausada del usuario, o None si no hay ninguna.
+        Útil para restaurar el estado del cronómetro al recargar la página.
+        """
+        from apps.proyectos.models import SesionTrabajo
+
+        return SesionTrabajo.objects.filter(
+            usuario=usuario,
+            estado__in=['activa', 'pausada'],
+        ).select_related('tarea').first()
+
+    @staticmethod
+    def _calcular_duracion_segundos(sesion: 'SesionTrabajo') -> int:
+        """
+        Calcula la duración neta de la sesión en segundos,
+        restando el tiempo total de pausas.
+        """
+        fin = sesion.fin or timezone.now()
+        duracion_total = (fin - sesion.inicio).total_seconds()
+
+        duracion_pausas = 0.0
+        for pausa in (sesion.pausas or []):
+            inicio_pausa = datetime.fromisoformat(
+                pausa['inicio'].replace('Z', '+00:00')
+            )
+            if pausa.get('fin'):
+                fin_pausa = datetime.fromisoformat(
+                    pausa['fin'].replace('Z', '+00:00')
+                )
+                duracion_pausas += (fin_pausa - inicio_pausa).total_seconds()
+
+        return max(0, int(duracion_total - duracion_pausas))

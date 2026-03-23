@@ -1,0 +1,87 @@
+.crn-container {
+  padding: 0.75rem;
+  border: 1px solid var(--sc-surface-border, rgba(0, 0, 0, 0.12));
+  border-radius: 8px;
+  background-color: var(--sc-surface-ground);
+}
+
+.crn-activo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+// ── Display de tiempo ────────────────────────────────────────
+
+.crn-tiempo-display {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.875rem 1rem;
+  border-radius: 6px;
+  background: var(--sc-surface-card);
+  border: 1px solid var(--sc-surface-border);
+  transition: border-color 0.2s, background 0.2s;
+
+  &.crn-pausado {
+    background: color-mix(in srgb, #ffc107 12%, var(--sc-surface-card));
+    border-color: #ffc107;
+  }
+}
+
+.crn-icon-reloj {
+  font-size: 1.5rem;
+  width: 1.5rem;
+  height: 1.5rem;
+  color: var(--sc-primary, #1976d2);
+
+  .crn-pausado & {
+    color: #f59f00;
+  }
+}
+
+.crn-tiempo {
+  font-size: 1.75rem;
+  font-weight: 700;
+  font-family: 'Courier New', monospace;
+  color: var(--sc-primary, #1976d2);
+  letter-spacing: 0.05em;
+
+  .crn-pausado & {
+    color: #f59f00;
+  }
+}
+
+.crn-pausado-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: #f59f00;
+  background: #fff3cd;
+  padding: 0.1rem 0.35rem;
+  border-radius: 3px;
+}
+
+// ── Acciones ─────────────────────────────────────────────────
+
+.crn-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+// ── Spinner inline ────────────────────────────────────────────
+
+.crn-spinner {
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 4px;
+}
+
+// ── Notas ────────────────────────────────────────────────────
+
+.crn-notas {
+  width: 100%;
+}

@@ -76,8 +76,11 @@ export class SidebarComponent implements OnInit {
           children: [
             { label: 'Lista', icon: 'list', route: '/proyectos' },
             { label: 'Nuevo', icon: 'add', route: '/proyectos/nuevo' },
+            { label: 'Tareas', icon: 'task_alt', route: '/proyectos/tareas' },
+            { label: 'Kanban', icon: 'view_kanban', route: '/proyectos/tareas/kanban' },
+            { label: 'Nueva Tarea', icon: 'playlist_add', route: '/proyectos/tareas/nueva' },
             { label: 'Catálogo de actividades', icon: 'construction', route: '/proyectos/actividades' },
-            { label: 'Configuración', icon: 'tune', route: '/admin/proyectos-config' },
+            { label: 'Configuración', icon: 'tune', route: '/proyectos/configuracion' },
           ],
         },
       ],

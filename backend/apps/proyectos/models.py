@@ -136,6 +136,13 @@ class ConfiguracionModulo(models.Model):
     Configuración del módulo de proyectos por empresa.
     Se crea automáticamente con valores por defecto al primer acceso.
     """
+    MODOS_TIMESHEET = [
+        ('manual',      'Manual — registro de horas'),
+        ('cronometro',  'Cronómetro — tiempo real'),
+        ('ambos',       'Ambos modos disponibles'),
+        ('desactivado', 'Desactivado'),
+    ]
+
     company = models.OneToOneField(
         'companies.Company',
         on_delete=models.CASCADE,
@@ -148,6 +155,12 @@ class ConfiguracionModulo(models.Model):
     dias_alerta_vencimiento = models.PositiveIntegerField(
         default=15,
         help_text='Días antes del vencimiento de fase para mostrar alerta.',
+    )
+    modo_timesheet = models.CharField(
+        max_length=20,
+        choices=MODOS_TIMESHEET,
+        default='ambos',
+        verbose_name='Modo de timesheet',
     )
 
     class Meta:
@@ -454,6 +467,17 @@ class Tarea(BaseModel):
     descripcion = models.TextField(blank=True)
     codigo = models.CharField(max_length=50, blank=True)  # auto: TASK-00001
 
+    # ===== CLIENTE OPCIONAL (DEC-019) =====
+    cliente = models.ForeignKey(
+        'terceros.Tercero',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='tareas',
+        verbose_name='Cliente',
+        help_text='Tercero (cliente) asociado a esta tarea (opcional)',
+    )
+
     # ===== ASIGNACIÓN Y COLABORACIÓN =====
     responsable = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -627,3 +651,56 @@ class Tarea(BaseModel):
                 break
             padre = padre.tarea_padre
         return nivel
+
+
+class SesionTrabajo(BaseModel):
+    """
+    Sesión de trabajo cronometrada sobre una tarea.
+    Soporta pausas; la duración neta se calcula al detener la sesión.
+    """
+    ESTADOS = [
+        ('activa',     'Activa'),
+        ('pausada',    'Pausada'),
+        ('finalizada', 'Finalizada'),
+    ]
+
+    tarea = models.ForeignKey(
+        'Tarea',
+        on_delete=models.CASCADE,
+        related_name='sesiones_trabajo',
+        verbose_name='Tarea',
+    )
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='sesiones_trabajo',
+        verbose_name='Usuario',
+    )
+
+    inicio             = models.DateTimeField(verbose_name='Inicio')
+    fin                = models.DateTimeField(null=True, blank=True, verbose_name='Fin')
+    # [{"inicio": "2026-03-22T10:15:00+00:00", "fin": "2026-03-22T10:30:00+00:00"}]
+    pausas             = models.JSONField(default=list, verbose_name='Pausas')
+    duracion_segundos  = models.IntegerField(default=0, verbose_name='Duración (segundos)')
+    estado             = models.CharField(
+        max_length=20, choices=ESTADOS, default='activa', verbose_name='Estado',
+    )
+    notas              = models.TextField(blank=True, verbose_name='Notas')
+
+    class Meta:
+        db_table            = 'sesiones_trabajo'
+        verbose_name        = 'Sesión de Trabajo'
+        verbose_name_plural = 'Sesiones de Trabajo'
+        ordering            = ['-inicio']
+        indexes             = [
+            models.Index(fields=['tarea', 'usuario']),
+            models.Index(fields=['estado', 'usuario']),
+        ]
+
+    def __str__(self):
+        return f'{self.usuario.get_full_name()} — {self.tarea.codigo} ({self.estado})'
+
+    @property
+    def duracion_horas(self) -> Decimal:
+        """Duración neta en horas decimales (solo lectura)."""
+        return Decimal(self.duracion_segundos) / Decimal(3600)

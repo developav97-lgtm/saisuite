@@ -1,0 +1,427 @@
+<div class="sc-page td-page">
+
+  <!-- Loading -->
+  @if (loading()) {
+    <div class="td-loading">
+      <mat-spinner diameter="48" />
+      <span>Cargando tarea…</span>
+    </div>
+  }
+
+  @if (!loading() && tarea()) {
+    <!-- Header -->
+    <div class="sc-page-header">
+      <div class="td-header-left">
+        <button mat-icon-button (click)="volver()"
+          [matTooltip]="returnTo() === 'kanban' ? 'Volver al Kanban' : 'Volver a la lista'">
+          <mat-icon>arrow_back</mat-icon>
+        </button>
+        <div class="td-header-info">
+          <span class="td-codigo">{{ tarea()!.codigo }}</span>
+          <h1 class="sc-page-header__title">{{ tarea()!.nombre }}</h1>
+        </div>
+      </div>
+      <div class="td-header-actions">
+        <button mat-stroked-button (click)="editar()">
+          <mat-icon>edit</mat-icon>
+          Editar
+        </button>
+        <button mat-stroked-button color="warn" (click)="confirmarEliminar()" [disabled]="deleting()">
+          @if (deleting()) {
+            <mat-spinner diameter="16" class="td-spinner-btn" />
+          } @else {
+            <mat-icon>delete</mat-icon>
+          }
+          Eliminar
+        </button>
+      </div>
+    </div>
+
+    <!-- Progress bar global -->
+    <div class="td-progress-section sc-card">
+      <div class="td-progress-header">
+        <span>Progreso</span>
+        <strong>{{ tarea()!.porcentaje_completado }}%</strong>
+      </div>
+      <mat-progress-bar
+        mode="determinate"
+        [value]="tarea()!.porcentaje_completado"
+        [class.td-progress--completada]="tarea()!.estado === 'completada'" />
+    </div>
+
+    <!-- Body: 2 columnas -->
+    <div class="td-body">
+
+      <!-- Columna principal -->
+      <div class="td-main">
+
+        <!-- Estado rápido -->
+        <div class="sc-card td-estado-card">
+          <span class="td-section-label">Estado actual</span>
+          <div class="td-estado-actions">
+            <span class="td-estado-badge"
+              [style.background]="estadoColor() + '22'"
+              [style.color]="estadoColor()">
+              {{ estadoLabel() }}
+            </span>
+            <div class="td-estado-chips">
+              @for (est of estadosDisponibles; track est) {
+                @if (est !== tarea()!.estado) {
+                  <button mat-stroked-button class="td-estado-btn"
+                    [style.border-color]="estadoColors[est]"
+                    [style.color]="estadoColors[est]"
+                    (click)="cambiarEstado(est)">
+                    {{ estadoLabels[est] }}
+                  </button>
+                }
+              }
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabs — envuelto en sc-card para fondo blanco y borde visible -->
+        <div class="sc-card td-tabs-card">
+        <mat-tab-group animationDuration="200ms" class="td-tabs">
+
+          <!-- Tab: Descripción -->
+          <mat-tab label="Descripción">
+            <div class="td-tab-content">
+              @if (tarea()!.descripcion) {
+                <p class="td-descripcion">{{ tarea()!.descripcion }}</p>
+              } @else {
+                <p class="td-empty-text">Sin descripción.</p>
+              }
+            </div>
+          </mat-tab>
+
+          <!-- Tab: Subtareas -->
+          <mat-tab>
+            <ng-template mat-tab-label>
+              Subtareas
+              @if (tarea()!.subtareas_detail?.length) {
+                <span class="td-tab-badge">{{ tarea()!.subtareas_detail!.length }}</span>
+              }
+            </ng-template>
+            <div class="td-tab-content">
+              <div class="td-subtareas-header">
+                <button mat-stroked-button color="primary" (click)="nuevaSubtarea()">
+                  <mat-icon>add</mat-icon>
+                  Nueva subtarea
+                </button>
+              </div>
+              @if (tarea()!.subtareas_detail?.length) {
+                <div class="td-subtareas-list">
+                  @for (sub of tarea()!.subtareas_detail!; track sub.id) {
+                    <app-tarea-card
+                      [tarea]="sub"
+                      [showActions]="true"
+                      (edit)="editarSubtarea($event)"
+                      (viewDetail)="verSubtarea($event)" />
+                  }
+                </div>
+              } @else {
+                <div class="td-empty-state">
+                  <mat-icon>account_tree</mat-icon>
+                  <span>Esta tarea no tiene subtareas.</span>
+                </div>
+              }
+            </div>
+          </mat-tab>
+
+          <!-- Tab: Seguidores -->
+          <mat-tab>
+            <ng-template mat-tab-label>
+              Seguidores
+              @if (tarea()!.followers_detail?.length) {
+                <span class="td-tab-badge">{{ tarea()!.followers_detail!.length }}</span>
+              }
+            </ng-template>
+            <div class="td-tab-content">
+              @if (tarea()!.followers_detail?.length) {
+                <div class="td-followers-list">
+                  @for (f of tarea()!.followers_detail!; track f.id) {
+                    <div class="td-follower">
+                      <div class="td-follower-avatar">
+                        {{ f.nombre.charAt(0).toUpperCase() }}
+                      </div>
+                      <div class="td-follower-info">
+                        <span class="td-follower-nombre">{{ f.nombre }}</span>
+                        <span class="td-follower-email">{{ f.email }}</span>
+                      </div>
+                    </div>
+                  }
+                </div>
+              } @else {
+                <div class="td-empty-state">
+                  <mat-icon>group</mat-icon>
+                  <span>Sin seguidores asignados.</span>
+                </div>
+              }
+            </div>
+          </mat-tab>
+
+          <!-- Tab: Tiempo -->
+          <mat-tab>
+            <ng-template mat-tab-label>
+              <mat-icon class="td-tab-icon">schedule</mat-icon>
+              Tiempo
+            </ng-template>
+            <div class="td-tab-content">
+
+              <!-- Resumen estimadas vs registradas -->
+              <div class="td-horas-resumen">
+                <div class="td-hora-bloque">
+                  <span class="td-hora-label">
+                    <mat-icon>timer</mat-icon>
+                    Horas estimadas
+                  </span>
+                  <span class="td-hora-valor">{{ tarea()!.horas_estimadas }}h</span>
+                </div>
+
+                <mat-divider [vertical]="true" class="td-hora-divider" />
+
+                <div class="td-hora-bloque">
+                  <span class="td-hora-label">
+                    <mat-icon>history</mat-icon>
+                    Horas registradas
+                  </span>
+
+                  @if (modoTimesheetDesactivado()) {
+                    <span class="td-hora-valor td-hora-muted">
+                      {{ tarea()!.horas_registradas }}h
+                      <a class="td-timesheet-config-link" routerLink="/proyectos/configuracion"
+                        matTooltip="Activar timesheet en Configuración">
+                        (desactivado)
+                      </a>
+                    </span>
+                  } @else if (editandoHoras()) {
+                    <div class="td-horas-edit">
+                      <input
+                        type="number"
+                        [(ngModel)]="horasAdicionales"
+                        (keydown)="onHorasKeydown($event)"
+                        (blur)="guardarHoras()"
+                        min="0.5" step="0.5"
+                        placeholder="ej. 1.5"
+                        class="td-horas-input"
+                        autofocus
+                      />
+                      <span class="td-horas-hint">+ {{ tarea()!.horas_registradas }}h actuales</span>
+                    </div>
+                  } @else {
+                    <span class="td-hora-valor"
+                      [class.td-horas-editable]="modoManualHabilitado()"
+                      (click)="modoManualHabilitado() ? onHorasClick() : null"
+                      [matTooltip]="modoManualHabilitado() ? 'Click para agregar horas' : ''">
+                      {{ tarea()!.horas_registradas }}h
+                      @if (modoManualHabilitado()) {
+                        <mat-icon class="td-horas-edit-icon">add_circle_outline</mat-icon>
+                      }
+                    </span>
+                  }
+                </div>
+              </div>
+
+              <!-- Cronómetro -->
+              @if (modoCronometroHabilitado()) {
+                <mat-divider />
+                <div class="td-cronometro-section">
+                  <span class="td-section-label">Cronómetro</span>
+                  <app-cronometro
+                    [tareaId]="tarea()!.id"
+                    (sesionFinalizada)="onSesionFinalizada($event)" />
+                </div>
+              }
+
+              <!-- Estado desactivado -->
+              @if (modoTimesheetDesactivado()) {
+                <div class="td-timesheet-off">
+                  <mat-icon>block</mat-icon>
+                  <span>El registro de tiempo está desactivado.
+                    <a routerLink="/proyectos/configuracion">Ir a Configuración</a>
+                  </span>
+                </div>
+              }
+
+            </div>
+          </mat-tab>
+
+        </mat-tab-group>
+        </div><!-- /td-tabs-card -->
+      </div>
+
+      <!-- Sidebar de metadata -->
+      <aside class="td-sidebar">
+
+        <!-- Proyecto -->
+        <div class="sc-card td-meta-card">
+          <div class="td-meta-item">
+            <span class="td-meta-label">
+              <mat-icon>work</mat-icon>
+              Proyecto
+            </span>
+            <span class="td-meta-value">
+              {{ tarea()!.proyecto_detail?.nombre ?? '—' }}
+            </span>
+          </div>
+
+          @if (tarea()!.fase_detail) {
+            <mat-divider />
+            <div class="td-meta-item">
+              <span class="td-meta-label">
+                <mat-icon>layers</mat-icon>
+                Fase
+              </span>
+              <span class="td-meta-value">{{ tarea()!.fase_detail!.nombre }}</span>
+            </div>
+          }
+
+          @if (tarea()!.tarea_padre) {
+            <mat-divider />
+            <div class="td-meta-item">
+              <span class="td-meta-label">
+                <mat-icon>account_tree</mat-icon>
+                Tarea padre
+              </span>
+              <span class="td-meta-value td-meta-link"
+                (click)="verTareaPadre()">
+                Ver tarea padre
+              </span>
+            </div>
+          }
+
+          @if (tarea()!.cliente_detail) {
+            <mat-divider />
+            <div class="td-meta-item">
+              <span class="td-meta-label">
+                <mat-icon>business</mat-icon>
+                Cliente
+              </span>
+              <span class="td-meta-value">{{ tarea()!.cliente_detail!.nombre }}</span>
+            </div>
+          }
+        </div>
+
+        <!-- Asignación -->
+        <div class="sc-card td-meta-card">
+          <div class="td-meta-item">
+            <span class="td-meta-label">
+              <mat-icon>person</mat-icon>
+              Responsable
+            </span>
+            @if (tarea()!.responsable_detail) {
+              <span class="td-meta-value">{{ tarea()!.responsable_detail!.nombre }}</span>
+            } @else {
+              <span class="td-meta-value td-meta-muted">Sin asignar</span>
+            }
+          </div>
+          <mat-divider />
+          <div class="td-meta-item">
+            <span class="td-meta-label">
+              <mat-icon>flag</mat-icon>
+              Prioridad
+            </span>
+            <span class="td-meta-value td-prio-badge"
+              [style.color]="prioridadColor()">
+              <mat-icon [style.color]="prioridadColor()">{{ prioridadIcon() }}</mat-icon>
+              {{ prioridadLabel() }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Fechas -->
+        <div class="sc-card td-meta-card">
+          <div class="td-meta-item">
+            <span class="td-meta-label">
+              <mat-icon>event</mat-icon>
+              Fecha inicio
+            </span>
+            <span class="td-meta-value">
+              {{ tarea()!.fecha_inicio ? (tarea()!.fecha_inicio! | date:'dd/MM/yyyy') : '—' }}
+            </span>
+          </div>
+          <mat-divider />
+          <div class="td-meta-item">
+            <span class="td-meta-label">
+              <mat-icon>event_available</mat-icon>
+              Fecha fin
+            </span>
+            <span class="td-meta-value">
+              {{ tarea()!.fecha_fin ? (tarea()!.fecha_fin! | date:'dd/MM/yyyy') : '—' }}
+            </span>
+          </div>
+          <mat-divider />
+          <div class="td-meta-item">
+            <span class="td-meta-label">
+              <mat-icon>schedule</mat-icon>
+              Fecha límite
+            </span>
+            <span class="td-meta-value"
+              [class.td-fecha-vencida]="tarea()!.es_vencida">
+              {{ tarea()!.fecha_limite ? (tarea()!.fecha_limite! | date:'dd/MM/yyyy') : '—' }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Tags -->
+        @if (tarea()!.tags_detail?.length) {
+          <div class="sc-card td-meta-card">
+            <span class="td-meta-label td-meta-label--block">
+              <mat-icon>label</mat-icon>
+              Etiquetas
+            </span>
+            <div class="td-tags">
+              @for (tag of tarea()!.tags_detail!; track tag.id) {
+                <span class="td-tag td-tag--{{ tag.color }}">{{ tag.nombre }}</span>
+              }
+            </div>
+          </div>
+        }
+
+        <!-- Recurrencia -->
+        @if (tarea()!.es_recurrente) {
+          <div class="sc-card td-meta-card">
+            <div class="td-meta-item">
+              <span class="td-meta-label">
+                <mat-icon>repeat</mat-icon>
+                Recurrencia
+              </span>
+              <span class="td-meta-value">{{ tarea()!.frecuencia_recurrencia }}</span>
+            </div>
+            @if (tarea()!.proxima_generacion) {
+              <mat-divider />
+              <div class="td-meta-item">
+                <span class="td-meta-label">
+                  <mat-icon>event_repeat</mat-icon>
+                  Próxima generación
+                </span>
+                <span class="td-meta-value">
+                  {{ tarea()!.proxima_generacion! | date:'dd/MM/yyyy' }}
+                </span>
+              </div>
+            }
+          </div>
+        }
+
+        <!-- Timestamps -->
+        <div class="sc-card td-meta-card">
+          <div class="td-meta-item">
+            <span class="td-meta-label">Creado</span>
+            <span class="td-meta-value td-meta-muted">
+              {{ tarea()!.created_at | date:'dd/MM/yyyy HH:mm' }}
+            </span>
+          </div>
+          <mat-divider />
+          <div class="td-meta-item">
+            <span class="td-meta-label">Actualizado</span>
+            <span class="td-meta-value td-meta-muted">
+              {{ tarea()!.updated_at | date:'dd/MM/yyyy HH:mm' }}
+            </span>
+          </div>
+        </div>
+
+      </aside>
+    </div>
+  }
+
+</div>

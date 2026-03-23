@@ -3,6 +3,9 @@ SaiSuite — Proyectos: Views
 Las views SOLO orquestan: reciben request → llaman service → retornan response.
 """
 import logging
+from decimal import Decimal, InvalidOperation
+
+from django.core.exceptions import ValidationError
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -10,7 +13,10 @@ from rest_framework.filters import SearchFilter, OrderingFilter
 from rest_framework.views import APIView
 from django_filters.rest_framework import DjangoFilterBackend
 
-from apps.proyectos.models import Proyecto, Fase, TerceroProyecto, DocumentoContable, Hito, Actividad, ActividadProyecto, Tarea, TareaTag
+from apps.proyectos.models import (
+    Proyecto, Fase, TerceroProyecto, DocumentoContable, Hito,
+    Actividad, ActividadProyecto, Tarea, TareaTag, SesionTrabajo,
+)
 from apps.proyectos.serializers import (
     ProyectoListSerializer,
     ProyectoDetailSerializer,
@@ -34,6 +40,7 @@ from apps.proyectos.serializers import (
     ConfiguracionModuloSerializer,
     TareaSerializer,
     TareaTagSerializer,
+    SesionTrabajoSerializer,
 )
 from apps.proyectos.services import (
     ProyectoService,
@@ -46,6 +53,7 @@ from apps.proyectos.services import (
     ConfiguracionModuloService,
     ProyectoException,
 )
+from apps.proyectos.tarea_services import TimesheetService
 from apps.proyectos.filters import ProyectoFilter, TareaFilter
 from apps.proyectos.permissions import CanAccessProyectos, CanEditProyecto, TareaPermission
 
@@ -421,7 +429,7 @@ class TareaViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         company = getattr(self.request.user, 'company', None)
         qs = Tarea.all_objects.select_related(
-            'proyecto', 'fase', 'responsable', 'tarea_padre'
+            'proyecto', 'fase', 'responsable', 'tarea_padre', 'cliente'
         ).prefetch_related('followers', 'tags', 'subtareas')
 
         if company:
@@ -531,6 +539,137 @@ class TareaViewSet(viewsets.ModelViewSet):
             'tarea_id': str(tarea.id), 'nuevo_estado': nuevo_estado
         })
         return Response(self.get_serializer(tarea).data)
+
+    # ── Timesheet: modo manual ────────────────────────────────
+
+    @action(detail=True, methods=['post'], url_path='agregar-horas')
+    def agregar_horas(self, request, pk=None):
+        """
+        POST /api/v1/proyectos/tareas/{id}/agregar-horas/
+        Body: {"horas": 2.5}
+        Suma horas trabajadas manualmente a la tarea.
+        """
+        tarea = self.get_object()
+        try:
+            horas = Decimal(str(request.data.get('horas', 0)))
+        except InvalidOperation:
+            return Response(
+                {'detail': 'Formato de horas inválido.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            tarea = TimesheetService.agregar_horas(tarea, horas)
+        except ValidationError as exc:
+            return Response(
+                exc.message_dict if hasattr(exc, 'message_dict') else {'detail': exc.message},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return Response(self.get_serializer(tarea).data)
+
+    # ── Timesheet: cronómetro ─────────────────────────────────
+
+    @action(detail=True, methods=['post'], url_path='sesiones/iniciar')
+    def iniciar_sesion(self, request, pk=None):
+        """
+        POST /api/v1/proyectos/tareas/{id}/sesiones/iniciar/
+        Inicia el cronómetro para la tarea.
+        """
+        tarea = self.get_object()
+        try:
+            sesion = TimesheetService.iniciar_sesion(tarea, request.user)
+        except ValidationError as exc:
+            data = {'detail': exc.message if hasattr(exc, 'message') else str(exc)}
+            # Adjuntar sesión activa existente para que el frontend la restaure
+            sesion_activa = TimesheetService.sesion_activa_usuario(request.user)
+            if sesion_activa:
+                data['sesion_activa'] = SesionTrabajoSerializer(sesion_activa).data
+            return Response(data, status=status.HTTP_400_BAD_REQUEST)
+        return Response(
+            SesionTrabajoSerializer(sesion).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+    @action(
+        detail=True, methods=['post'],
+        url_path=r'sesiones/(?P<sesion_id>[^/.]+)/pausar',
+    )
+    def pausar_sesion(self, request, pk=None, sesion_id=None):
+        """POST /api/v1/proyectos/tareas/{id}/sesiones/{sesion_id}/pausar/"""
+        try:
+            sesion = TimesheetService.pausar_sesion(sesion_id, request.user)
+        except ValidationError as exc:
+            return Response(
+                {'detail': exc.message if hasattr(exc, 'message') else str(exc)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return Response(SesionTrabajoSerializer(sesion).data)
+
+    @action(
+        detail=True, methods=['post'],
+        url_path=r'sesiones/(?P<sesion_id>[^/.]+)/reanudar',
+    )
+    def reanudar_sesion(self, request, pk=None, sesion_id=None):
+        """POST /api/v1/proyectos/tareas/{id}/sesiones/{sesion_id}/reanudar/"""
+        try:
+            sesion = TimesheetService.reanudar_sesion(sesion_id, request.user)
+        except ValidationError as exc:
+            return Response(
+                {'detail': exc.message if hasattr(exc, 'message') else str(exc)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return Response(SesionTrabajoSerializer(sesion).data)
+
+    @action(
+        detail=True, methods=['post'],
+        url_path=r'sesiones/(?P<sesion_id>[^/.]+)/detener',
+    )
+    def detener_sesion(self, request, pk=None, sesion_id=None):
+        """
+        POST /api/v1/proyectos/tareas/{id}/sesiones/{sesion_id}/detener/
+        Body opcional: {"notas": "Descripción del trabajo realizado"}
+        """
+        notas = request.data.get('notas', '')
+        try:
+            sesion = TimesheetService.detener_sesion(sesion_id, request.user, notas)
+        except ValidationError as exc:
+            return Response(
+                {'detail': exc.message if hasattr(exc, 'message') else str(exc)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return Response(SesionTrabajoSerializer(sesion).data)
+
+    @action(detail=True, methods=['get'], url_path='sesiones')
+    def listar_sesiones(self, request, pk=None):
+        """
+        GET /api/v1/proyectos/tareas/{id}/sesiones/
+        Query params: ?estado=activa|pausada|finalizada  ?usuario=<uuid>
+        """
+        tarea = self.get_object()
+        qs = SesionTrabajo.objects.filter(tarea=tarea).select_related('usuario')
+
+        estado = request.query_params.get('estado')
+        if estado:
+            qs = qs.filter(estado=estado)
+
+        usuario_id = request.query_params.get('usuario')
+        if usuario_id:
+            qs = qs.filter(usuario_id=usuario_id)
+
+        return Response(SesionTrabajoSerializer(qs, many=True).data)
+
+    @action(detail=False, methods=['get'], url_path='sesion-activa')
+    def sesion_activa(self, request):
+        """
+        GET /api/v1/proyectos/tareas/sesion-activa/
+        Retorna la sesión activa/pausada del usuario para restaurar el cronómetro.
+        """
+        sesion = TimesheetService.sesion_activa_usuario(request.user)
+        if sesion:
+            return Response(SesionTrabajoSerializer(sesion).data)
+        return Response(
+            {'detail': 'No hay sesión activa.'},
+            status=status.HTTP_404_NOT_FOUND,
+        )
 
 
 class TareaTagViewSet(viewsets.ModelViewSet):
