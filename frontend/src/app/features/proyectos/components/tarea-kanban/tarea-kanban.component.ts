@@ -15,6 +15,8 @@ import { TareaDialogComponent, TareaDialogResult } from '../tarea-dialog/tarea-d
 import { FormsModule } from '@angular/forms';
 import { ProyectoService } from '../../services/proyecto.service';
 import { ProyectoList } from '../../models/proyecto.model';
+import { FaseService } from '../../services/fase.service';
+import { FaseList } from '../../models/fase.model';
 import { AdminService } from '../../../admin/services/admin.service';
 import { AdminUser } from '../../../admin/models/admin.models';
 import { AuthService } from '../../../../core/auth/auth.service';
@@ -65,7 +67,7 @@ interface SelectOption { label: string; value: number | null; }
     MatButtonModule, MatIconModule,
     MatInputModule, MatFormFieldModule, MatSelectModule,
     MatProgressBarModule, MatTooltipModule, MatDividerModule,
-    TareaCardComponent, TareaDialogComponent,
+    TareaCardComponent,
   ],
 })
 export class TareaKanbanComponent implements OnInit {
@@ -76,6 +78,7 @@ export class TareaKanbanComponent implements OnInit {
   private readonly snackBar        = inject(MatSnackBar);
   private readonly cdr             = inject(ChangeDetectorRef);
   private readonly proyectoService = inject(ProyectoService);
+  private readonly faseService     = inject(FaseService);
   private readonly adminService    = inject(AdminService);
   private readonly authService     = inject(AuthService);
 
@@ -87,7 +90,9 @@ export class TareaKanbanComponent implements OnInit {
 
   // Datos para los dropdowns de filtro
   readonly proyectos = signal<ProyectoList[]>([]);
+  readonly fases     = signal<FaseList[]>([]);
   readonly usuarios  = signal<AdminUser[]>([]);
+  readonly faseFilter = signal<string | null>(null);
 
   /** Conservado para compatibilidad con nuevaTarea() */
   private get proyectoId(): string | null { return this.proyectoFilter(); }
@@ -110,7 +115,10 @@ export class TareaKanbanComponent implements OnInit {
   ngOnInit(): void {
     const snap = this.route.snapshot.queryParamMap;
     const pid  = snap.get('proyecto');
-    if (pid) this.proyectoFilter.set(pid);
+    if (pid) {
+      this.proyectoFilter.set(pid);
+      this.loadFasesByProyecto(pid);
+    }
 
     this.loadProyectos();
     this.loadUsuarios();
@@ -137,11 +145,19 @@ export class TareaKanbanComponent implements OnInit {
     });
   }
 
+  private loadFasesByProyecto(proyectoId: string): void {
+    this.faseService.listByProyecto(proyectoId).subscribe({
+      next: (fases) => this.fases.set(fases),
+      error: () => { /* silencioso */ },
+    });
+  }
+
   loadTareas(): void {
     this.loading.set(true);
     const filters: TareaFilters = {};
 
     if (this.proyectoFilter())   filters.proyecto  = this.proyectoFilter()!;
+    if (this.faseFilter())       filters.fase      = this.faseFilter()!;
     if (this.prioridadFilter())  filters.prioridad = this.prioridadFilter() as 1|2|3|4;
     if (this.searchText())       filters.search    = this.searchText();
 
@@ -226,13 +242,15 @@ export class TareaKanbanComponent implements OnInit {
   limpiarFiltros(): void {
     this.searchText.set('');
     this.proyectoFilter.set(null);
+    this.faseFilter.set(null);
+    this.fases.set([]);
     this.responsableFilter.set(null);
     this.prioridadFilter.set(null);
     this.loadTareas();
   }
 
   get hayFiltrosActivos(): boolean {
-    return !!(this.searchText() || this.proyectoFilter() || this.responsableFilter() || this.prioridadFilter());
+    return !!(this.searchText() || this.proyectoFilter() || this.faseFilter() || this.responsableFilter() || this.prioridadFilter());
   }
 
   editarTarea(tarea: Tarea): void {
@@ -341,9 +359,20 @@ export class TareaKanbanComponent implements OnInit {
     this.abrirDialog(tarea.id);
   }
 
-  onSearch(): void                          { this.loadTareas(); }
-  onFilter(): void                          { this.loadTareas(); }
-  onProyectoChange(id: string | null): void { this.proyectoFilter.set(id);   this.loadTareas(); }
+  onSearch(): void    { this.loadTareas(); }
+  onFilter(): void    { this.loadTareas(); }
+  onFaseChange(id: string | null): void     { this.faseFilter.set(id);      this.loadTareas(); }
   onResponsableChange(v: string | null): void { this.responsableFilter.set(v); this.loadTareas(); }
+
+  onProyectoChange(id: string | null): void {
+    this.proyectoFilter.set(id);
+    this.faseFilter.set(null);
+    if (id) {
+      this.loadFasesByProyecto(id);
+    } else {
+      this.fases.set([]);
+    }
+    this.loadTareas();
+  }
   irALista(): void                          { this.router.navigate(['/proyectos/tareas']); }
 }

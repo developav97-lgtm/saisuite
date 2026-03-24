@@ -7,10 +7,11 @@ import {
   Component, OnInit, inject, signal, computed,
 } from '@angular/core';
 import { Router, ActivatedRoute, RouterLink } from '@angular/router';
-import { DatePipe } from '@angular/common';
+import { DatePipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -24,7 +25,9 @@ import { ConfiguracionProyectoService } from '../../services/configuracion-proye
 import { TareaCardComponent } from '../tarea-card/tarea-card.component';
 import { ConfirmDialogComponent } from '../../../../shared/components/confirm-dialog/confirm-dialog.component';
 import { CronometroComponent } from '../../../../shared/components/cronometro/cronometro.component';
+import { ComentariosThreadComponent } from '../../../../shared/components/comentarios-thread/comentarios-thread.component';
 import { Tarea, TareaEstado } from '../../models/tarea.model';
+import type { ModoMedicion } from '../../models/actividad-saiopen.model';
 import { ConfiguracionProyecto } from '../../models/configuracion-proyecto.model';
 import { SesionTrabajo } from '../../models/sesion-trabajo.model';
 
@@ -73,13 +76,14 @@ export const PRIORIDAD_COLORS: Record<string, string | undefined> = {
   styleUrl: './tarea-detail.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    DatePipe, FormsModule, RouterLink,
-    MatButtonModule, MatIconModule,
+    DatePipe, DecimalPipe, FormsModule, RouterLink,
+    MatButtonModule, MatIconModule, MatInputModule,
     MatProgressBarModule, MatProgressSpinnerModule,
     MatTooltipModule, MatTabsModule, MatDividerModule,
     MatChipsModule,
     TareaCardComponent,
     CronometroComponent,
+    ComentariosThreadComponent,
   ],
 })
 export class TareaDetailComponent implements OnInit {
@@ -95,6 +99,49 @@ export class TareaDetailComponent implements OnInit {
   readonly deleting = signal(false);
   readonly tarea    = signal<Tarea | null>(null);
   readonly returnTo = signal<'list' | 'kanban'>('list');
+
+  // ── Modo de medición (DEC-022) ───────────────────────────────
+  readonly modoMedicion = computed<ModoMedicion>(
+    () => this.tarea()?.modo_medicion ?? 'solo_estados',
+  );
+
+  // ── Cantidad inline (modo = 'cantidad') ──────────────────────
+  readonly editandoCantidad = signal(false);
+  cantidadTemporal = 0;
+
+  onCantidadClick(): void {
+    const t = this.tarea();
+    if (!t) return;
+    this.cantidadTemporal = t.cantidad_registrada;
+    this.editandoCantidad.set(true);
+  }
+
+  onCantidadKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Enter')  { this.guardarCantidad(); }
+    if (event.key === 'Escape') { this.cancelarEdicionCantidad(); }
+  }
+
+  guardarCantidad(): void {
+    const t = this.tarea();
+    if (!t || this.cantidadTemporal < 0) { this.cancelarEdicionCantidad(); return; }
+    this.tareaService.update(t.id, { cantidad_registrada: this.cantidadTemporal }).subscribe({
+      next: (actualizada) => {
+        this.tarea.set(actualizada);
+        this.snackBar.open('Cantidad actualizada.', 'Cerrar', { duration: 2500, panelClass: ['snack-success'] });
+        this.cancelarEdicionCantidad();
+        this.cdr.markForCheck();
+      },
+      error: (err: { error?: { detail?: string } }) => {
+        const msg = err.error?.detail ?? 'Error al actualizar cantidad.';
+        this.snackBar.open(msg, 'Cerrar', { duration: 4000, panelClass: ['snack-error'] });
+      },
+    });
+  }
+
+  cancelarEdicionCantidad(): void {
+    this.editandoCantidad.set(false);
+    this.cantidadTemporal = 0;
+  }
 
   // ── Timesheet ────────────────────────────────────────────────
   readonly config        = signal<ConfiguracionProyecto | null>(null);

@@ -16,6 +16,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from apps.proyectos.models import (
     Proyecto, Fase, TerceroProyecto, DocumentoContable, Hito,
     Actividad, ActividadProyecto, Tarea, TareaTag, SesionTrabajo,
+    ActividadSaiopen,
 )
 from apps.proyectos.serializers import (
     ProyectoListSerializer,
@@ -37,6 +38,9 @@ from apps.proyectos.serializers import (
     ActividadCreateUpdateSerializer,
     ActividadProyectoSerializer,
     ActividadProyectoCreateUpdateSerializer,
+    ActividadSaiopenListSerializer,
+    ActividadSaiopenDetailSerializer,
+    ActividadSaiopenCreateUpdateSerializer,
     ConfiguracionModuloSerializer,
     TareaSerializer,
     TareaTagSerializer,
@@ -52,8 +56,10 @@ from apps.proyectos.services import (
     ActividadProyectoService,
     ConfiguracionModuloService,
     ProyectoException,
+    calcular_avance_fase_desde_tareas,
 )
 from apps.proyectos.tarea_services import TimesheetService
+from apps.notifications.services import NotificacionService
 from apps.proyectos.filters import ProyectoFilter, TareaFilter
 from apps.proyectos.permissions import CanAccessProyectos, CanEditProyecto, TareaPermission
 
@@ -176,6 +182,63 @@ class FaseViewSet(viewsets.ModelViewSet):
     def destroy(self, request, *args, **kwargs):
         fase = self.get_object()
         FaseService.soft_delete_fase(fase)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, methods=['post'], url_path='activar')
+    def activar(self, request, pk=None, **kwargs):
+        """POST /api/v1/fases/{id}/activar/"""
+        fase = self.get_object()
+        try:
+            fase_actualizada = FaseService.activar_fase(fase)
+        except ProyectoException as exc:
+            return Response({'error': str(exc.detail)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(FaseDetailSerializer(fase_actualizada).data)
+
+    @action(detail=True, methods=['post'], url_path='completar')
+    def completar(self, request, pk=None, **kwargs):
+        """POST /api/v1/fases/{id}/completar/"""
+        fase = self.get_object()
+        try:
+            fase_actualizada = FaseService.completar_fase(fase)
+        except ProyectoException as exc:
+            return Response({'error': str(exc.detail)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(FaseDetailSerializer(fase_actualizada).data)
+
+
+class ActividadSaiopenViewSet(viewsets.ModelViewSet):
+    """
+    CRUD del catálogo de actividades Saiopen.
+    GET/POST  /api/v1/proyectos/actividades-saiopen/
+    GET/PATCH/PUT/DELETE  /api/v1/proyectos/actividades-saiopen/{id}/
+    """
+    permission_classes = [CanAccessProyectos]
+    filter_backends    = [SearchFilter, OrderingFilter]
+    search_fields      = ['codigo', 'nombre']
+    ordering_fields    = ['codigo', 'nombre', 'unidad_medida', 'created_at']
+    ordering           = ['codigo']
+
+    def get_queryset(self):
+        company = getattr(self.request.user, 'company', None)
+        qs = ActividadSaiopen.all_objects.filter(activo=True)
+        if company:
+            qs = qs.filter(company=company)
+        return qs
+
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return ActividadSaiopenListSerializer
+        if self.action in ('create', 'update', 'partial_update'):
+            return ActividadSaiopenCreateUpdateSerializer
+        return ActividadSaiopenDetailSerializer
+
+    def perform_create(self, serializer):
+        company = getattr(self.request.user, 'company', None)
+        serializer.save(company=company)
+
+    def destroy(self, request, *args, **kwargs):
+        obj = self.get_object()
+        obj.activo = False
+        obj.save(update_fields=['activo', 'updated_at'])
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -429,7 +492,8 @@ class TareaViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         company = getattr(self.request.user, 'company', None)
         qs = Tarea.all_objects.select_related(
-            'proyecto', 'fase', 'responsable', 'tarea_padre', 'cliente'
+            'proyecto', 'fase', 'responsable', 'tarea_padre', 'cliente',
+            'actividad_saiopen', 'actividad_proyecto__actividad',
         ).prefetch_related('followers', 'tags', 'subtareas')
 
         if company:
@@ -448,6 +512,34 @@ class TareaViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         company = getattr(self.request.user, 'company', None)
         serializer.save(company=company)
+
+    def update(self, request, *args, **kwargs):
+        """Override para notificar cuando cambia el responsable."""
+        instance = self.get_object()
+        responsable_anterior_id = instance.responsable_id
+
+        response = super().update(request, *args, **kwargs)
+
+        instance.refresh_from_db()
+        responsable_nuevo = instance.responsable
+        if (
+            responsable_nuevo
+            and responsable_nuevo.id != responsable_anterior_id
+            and responsable_nuevo != request.user
+        ):
+            NotificacionService.crear(
+                usuario=responsable_nuevo,
+                tipo='asignacion',
+                titulo='Nueva tarea asignada',
+                mensaje=(
+                    f'{request.user.full_name or request.user.email} '
+                    f'te asignó la tarea "{instance.nombre}"'
+                ),
+                objeto_relacionado=instance,
+                url_accion=f'/proyectos/tareas/{instance.id}',
+            )
+
+        return response
 
     @action(detail=True, methods=['post'], url_path='agregar-follower')
     def agregar_follower(self, request, pk=None):
@@ -533,11 +625,40 @@ class TareaViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
+        estado_anterior = tarea.estado
         tarea.estado = nuevo_estado
         tarea.save()
         logger.info('tarea_estado_cambiado', extra={
             'tarea_id': str(tarea.id), 'nuevo_estado': nuevo_estado
         })
+
+        # ── Notificaciones ────────────────────────────────────────
+        titulo  = 'Estado de tarea actualizado'
+        mensaje = (
+            f'{request.user.full_name or request.user.email} '
+            f'cambió el estado de "{tarea.nombre}" a {nuevo_estado.replace("_", " ").title()}'
+        )
+        url     = f'/proyectos/tareas/{tarea.id}'
+        meta    = {'estado_anterior': estado_anterior, 'estado_nuevo': nuevo_estado}
+
+        destinatarios = set()
+        if tarea.responsable_id and tarea.responsable != request.user:
+            destinatarios.add(tarea.responsable)
+        for follower in tarea.followers.exclude(id=request.user.id):
+            destinatarios.add(follower)
+
+        for dest in destinatarios:
+            NotificacionService.crear(
+                usuario=dest,
+                tipo='cambio_estado',
+                titulo=titulo,
+                mensaje=mensaje,
+                objeto_relacionado=tarea,
+                url_accion=url,
+                metadata=meta,
+            )
+        # ─────────────────────────────────────────────────────────
+
         return Response(self.get_serializer(tarea).data)
 
     # ── Timesheet: modo manual ────────────────────────────────

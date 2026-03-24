@@ -1,0 +1,213 @@
+<div class="ct-container">
+
+  <!-- ── Cargando ─────────────────────────────────────────────────────────── -->
+  @if (cargando()) {
+    <div class="ct-loading">
+      <mat-spinner diameter="28" />
+    </div>
+  }
+
+  <!-- ── Lista de comentarios ──────────────────────────────────────────────── -->
+  @if (!cargando()) {
+
+    @if (comentarios().length === 0) {
+      <div class="ct-empty">
+        <mat-icon>chat_bubble_outline</mat-icon>
+        <p>Sin comentarios aún. ¡Sé el primero!</p>
+      </div>
+    }
+
+    <div class="ct-list">
+      @for (c of comentarios(); track c.id; let last = $last) {
+        <div class="ct-item" [class.ct-item--last]="last">
+
+          <!-- Avatar -->
+          <div class="ct-avatar ct-avatar--root">{{ getInitial(c.autor) }}</div>
+
+          <!-- Contenido -->
+          <div class="ct-body">
+
+              <!-- Cabecera con acciones inline -->
+            <div class="ct-row-header">
+              <span class="ct-autor">{{ c.autor.full_name || c.autor.email }}</span>
+              <span class="ct-tiempo">{{ formatTiempo(c.created_at) }}</span>
+              @if (c.editado) {
+                <span class="ct-editado">(editado)</span>
+              }
+              <div class="ct-header-actions">
+                <button mat-icon-button class="ct-accion-icon"
+                  matTooltip="Responder"
+                  (click)="replyTo(c.id)">
+                  <mat-icon>reply</mat-icon>
+                </button>
+                @if (esPropio(c.autor)) {
+                  <button mat-icon-button class="ct-accion-icon"
+                    matTooltip="Editar"
+                    (click)="iniciarEdicion(c.id, c.texto)">
+                    <mat-icon>edit</mat-icon>
+                  </button>
+                  <button mat-icon-button class="ct-accion-icon ct-accion-icon--danger"
+                    matTooltip="Eliminar"
+                    (click)="eliminarComentario(c.id, true)">
+                    <mat-icon>delete_outline</mat-icon>
+                  </button>
+                }
+              </div>
+            </div>
+
+            <!-- Texto o modo edición -->
+            @if (editandoId() === c.id) {
+              <div class="ct-edit-box">
+                <textarea
+                  class="ct-textarea"
+                  [(ngModel)]="textoEdicion"
+                  rows="3"
+                  (keydown)="$event.key === 'Escape' && cancelarEdicion()">
+                </textarea>
+                <div class="ct-edit-actions">
+                  <button mat-button (click)="cancelarEdicion()">Cancelar</button>
+                  <button mat-flat-button color="primary"
+                    [disabled]="!textoEdicion.trim()"
+                    (click)="guardarEdicion(c.id, true)">
+                    Guardar
+                  </button>
+                </div>
+              </div>
+            } @else {
+              <p class="ct-texto" [innerHTML]="formatTexto(c.texto)"></p>
+            }
+
+            <!-- ── Respuestas ─────────────────────────────────────────────── -->
+            @if (c.respuestas.length > 0) {
+              <div class="ct-replies">
+                @for (r of c.respuestas; track r.id) {
+                  <div class="ct-reply">
+                    <div class="ct-avatar ct-avatar--reply">{{ getInitial(r.autor) }}</div>
+                    <div class="ct-body">
+                      <div class="ct-row-header">
+                        <span class="ct-autor">{{ r.autor.full_name || r.autor.email }}</span>
+                        <span class="ct-tiempo">{{ formatTiempo(r.created_at) }}</span>
+                        @if (r.editado) {
+                          <span class="ct-editado">(editado)</span>
+                        }
+                        @if (esPropio(r.autor)) {
+                          <div class="ct-header-actions">
+                            <button mat-icon-button class="ct-accion-icon"
+                              matTooltip="Editar"
+                              (click)="iniciarEdicion(r.id, r.texto)">
+                              <mat-icon>edit</mat-icon>
+                            </button>
+                            <button mat-icon-button class="ct-accion-icon ct-accion-icon--danger"
+                              matTooltip="Eliminar"
+                              (click)="eliminarComentario(r.id, false, c.id)">
+                              <mat-icon>delete_outline</mat-icon>
+                            </button>
+                          </div>
+                        }
+                      </div>
+
+                      @if (editandoId() === r.id) {
+                        <div class="ct-edit-box">
+                          <textarea
+                            class="ct-textarea"
+                            [(ngModel)]="textoEdicion"
+                            rows="2"
+                            (keydown)="$event.key === 'Escape' && cancelarEdicion()">
+                          </textarea>
+                          <div class="ct-edit-actions">
+                            <button mat-button (click)="cancelarEdicion()">Cancelar</button>
+                            <button mat-flat-button color="primary"
+                              [disabled]="!textoEdicion.trim()"
+                              (click)="guardarEdicion(r.id, false, c.id)">
+                              Guardar
+                            </button>
+                          </div>
+                        </div>
+                      } @else {
+                        <p class="ct-texto" [innerHTML]="formatTexto(r.texto)"></p>
+                      }
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+
+            <!-- ── Box de respuesta ───────────────────────────────────────── -->
+            @if (respondiendo() === c.id) {
+              <div class="ct-reply-box">
+                <div class="ct-avatar ct-avatar--reply">{{ getInitialUser() }}</div>
+                <div class="ct-reply-input-area">
+                  <textarea
+                    class="ct-textarea"
+                    [(ngModel)]="textoRespuesta"
+                    placeholder="Responder a {{ c.autor.full_name || c.autor.email }}..."
+                    rows="2"
+                    (keydown)="onEnterRespuesta($event, c)">
+                  </textarea>
+                  <div class="ct-edit-actions">
+                    <button mat-button (click)="replyTo(c.id)">Cancelar</button>
+                    <button mat-flat-button color="primary"
+                      [disabled]="!textoRespuesta.trim() || enviando()"
+                      (click)="enviarRespuesta(c)">
+                      Responder
+                    </button>
+                  </div>
+                </div>
+              </div>
+            }
+
+          </div>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- ── Input nuevo comentario ─────────────────────────────────────────────── -->
+  <div class="ct-new-comment">
+    <div class="ct-avatar ct-avatar--root">{{ getInitialUser() }}</div>
+    <div class="ct-new-input-area">
+      <div class="ct-input-wrapper">
+        <textarea
+          class="ct-textarea"
+          [(ngModel)]="textoNuevo"
+          placeholder="Añadir un comentario... (@ para mencionar, Enter para enviar)"
+          rows="2"
+          (input)="onTextareaInput($event, 'nuevo')"
+          (keydown)="onEnterComentario($event)"
+          (blur)="mostrarSugerencias.set(false)">
+        </textarea>
+
+        <!-- Dropdown de menciones -->
+        @if (mostrarSugerencias() && sugerencias().length > 0) {
+          <div class="ct-menciones-dropdown">
+            @for (sug of sugerencias(); track sug.id) {
+              <div class="ct-mencion-item"
+                (mousedown)="$event.preventDefault()"
+                (click)="seleccionarMencion(sug, 'nuevo')">
+                <div class="ct-mencion-avatar">{{ sug.full_name.charAt(0).toUpperCase() }}</div>
+                <div class="ct-mencion-info">
+                  <span class="ct-mencion-nombre">{{ sug.full_name }}</span>
+                  <span class="ct-mencion-email">{{ sug.email }}</span>
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </div>
+
+      <div class="ct-new-actions">
+        <span class="ct-hint">@ mencionar · Shift+Enter nueva línea</span>
+        @if (enviando()) {
+          <mat-spinner diameter="20" />
+        }
+        <button mat-flat-button color="primary"
+          [disabled]="!textoNuevo.trim() || enviando()"
+          (click)="enviarComentario()">
+          <mat-icon>send</mat-icon>
+          <span>Enviar</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+</div>

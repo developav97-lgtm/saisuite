@@ -1,0 +1,166 @@
+<button
+  class="nb-btn"
+  mat-icon-button
+  [matMenuTriggerFor]="menu"
+  (menuOpened)="onMenuOpened()"
+  matTooltip="Notificaciones"
+  aria-label="Notificaciones">
+
+  <mat-icon
+    [matBadge]="sinLeer() > 99 ? '99+' : sinLeer()"
+    [matBadgeHidden]="sinLeer() === 0"
+    matBadgeColor="warn"
+    matBadgeSize="small">
+    {{ sinLeer() > 0 ? 'notifications' : 'notifications_none' }}
+  </mat-icon>
+</button>
+
+<mat-menu #menu="matMenu" class="nb-menu" xPosition="before">
+
+  <!-- ── Header ──────────────────────────────────────────────────────────── -->
+  <div class="nb-header" (click)="$event.stopPropagation()">
+    <span class="nb-title">Notificaciones</span>
+    @if (sinLeer() > 0) {
+      <button class="nb-mark-all" mat-button (click)="marcarTodasLeidas()">
+        Marcar todas leídas
+      </button>
+    }
+  </div>
+
+  <mat-divider />
+
+  <!-- ── Loading ─────────────────────────────────────────────────────────── -->
+  @if (loading()) {
+    <div class="nb-loading">
+      <mat-spinner diameter="28" />
+    </div>
+  }
+
+  <!-- ── Empty state ─────────────────────────────────────────────────────── -->
+  @if (!loading() && items().length === 0) {
+    <div class="nb-empty">
+      <mat-icon class="nb-empty-icon">notifications_off</mat-icon>
+      <p>Sin notificaciones nuevas</p>
+    </div>
+  }
+
+  <!-- ── List ────────────────────────────────────────────────────────────── -->
+  @if (!loading()) {
+    <div class="nb-list">
+      @for (item of items(); track item.tipo === 'grupo' ? item.id : item.notificacion.id) {
+
+        <!-- ── GRUPO ──────────────────────────────────────────────────── -->
+        @if (item.tipo === 'grupo') {
+          <div class="nb-item nb-item--grupo nb-item--no-leida" (click)="onGrupoClick(item)">
+
+            <!-- Ícono grupo -->
+            <div class="nb-item-icon nb-tipo-grupo">
+              <mat-icon>{{ getTipoIcon(item.tipo_notificacion) }}</mat-icon>
+            </div>
+
+            <!-- Cuerpo -->
+            <div class="nb-item-body">
+              <p class="nb-item-titulo">{{ item.titulo }}</p>
+              @if (item.autores.length) {
+                <p class="nb-item-mensaje">{{ item.autores.join(', ') }}</p>
+              }
+              <span class="nb-item-tiempo">{{ formatTiempo(item.created_at) }}</span>
+            </div>
+
+            <!-- Badge cantidad + acciones -->
+            <div class="nb-item-actions" (click)="$event.stopPropagation()">
+              <span class="nb-cantidad-badge">{{ item.cantidad }}</span>
+              <button mat-icon-button class="nb-acciones-btn"
+                [matTooltip]="'Snooze / recordatorio'"
+                (click)="toggleAcciones($event, item.id)">
+                <mat-icon>more_vert</mat-icon>
+              </button>
+            </div>
+
+            <!-- Panel snooze/remind-me del grupo -->
+            @if (accionesId() === item.id) {
+              <div class="nb-acciones-panel" (click)="$event.stopPropagation()">
+                <span class="nb-acciones-label">Posponer grupo</span>
+                @for (opt of snoozeOpts; track opt.minutos) {
+                  <button mat-menu-item class="nb-accion-opt"
+                    (click)="onSnoozeGrupo($event, item, opt.minutos)">
+                    <mat-icon>snooze</mat-icon>{{ opt.label }}
+                  </button>
+                }
+              </div>
+            }
+          </div>
+
+        <!-- ── INDIVIDUAL ─────────────────────────────────────────────── -->
+        } @else {
+          <div
+            class="nb-item"
+            [class.nb-item--no-leida]="!item.notificacion.leida"
+            [class.nb-item--recordatorio]="item.notificacion.tipo === 'recordatorio'"
+            (click)="onIndividualClick(item.notificacion)">
+
+            <!-- Ícono tipo -->
+            <div class="nb-item-icon" [class]="'nb-tipo-' + item.notificacion.tipo">
+              <mat-icon>{{ getTipoIcon(item.notificacion.tipo) }}</mat-icon>
+            </div>
+
+            <!-- Cuerpo -->
+            <div class="nb-item-body">
+              <p class="nb-item-titulo">{{ item.notificacion.titulo }}</p>
+              <p class="nb-item-mensaje">{{ item.notificacion.mensaje }}</p>
+              <span class="nb-item-tiempo">{{ formatTiempo(item.notificacion.created_at) }}</span>
+            </div>
+
+            <!-- Acciones: dot + menú -->
+            <div class="nb-item-actions" (click)="$event.stopPropagation()">
+              @if (!item.notificacion.leida) {
+                <span class="nb-dot" aria-hidden="true"></span>
+              }
+              <button mat-icon-button class="nb-acciones-btn"
+                matTooltip="Snooze / recordatorio"
+                (click)="toggleAcciones($event, item.notificacion.id)">
+                <mat-icon>more_vert</mat-icon>
+              </button>
+            </div>
+
+            <!-- Panel snooze/remind-me individual -->
+            @if (accionesId() === item.notificacion.id) {
+              <div class="nb-acciones-panel" (click)="$event.stopPropagation()">
+                <span class="nb-acciones-label">Posponer</span>
+                @for (opt of snoozeOpts; track opt.minutos) {
+                  <button mat-menu-item class="nb-accion-opt"
+                    (click)="onSnooze($event, item.notificacion.id, opt.minutos)">
+                    <mat-icon>snooze</mat-icon>{{ opt.label }}
+                  </button>
+                }
+                <mat-divider />
+                <span class="nb-acciones-label">Recordarme en</span>
+                @for (opt of snoozeOpts; track opt.minutos) {
+                  <button mat-menu-item class="nb-accion-opt"
+                    (click)="onRemindMe($event, item.notificacion.id, opt.minutos)">
+                    <mat-icon>alarm</mat-icon>{{ opt.label }}
+                  </button>
+                }
+              </div>
+            }
+          </div>
+        }
+      }
+    </div>
+  }
+
+  <!-- ── Footer ──────────────────────────────────────────────────────────── -->
+  @if (!loading()) {
+    <mat-divider />
+    <div class="nb-footer" (click)="$event.stopPropagation()">
+      <button mat-button class="nb-ver-todas" routerLink="/notificaciones">
+        Ver todas
+      </button>
+      <button mat-button class="nb-config-btn" routerLink="/notificaciones/configuracion">
+        <mat-icon>settings</mat-icon>
+        Configurar
+      </button>
+    </div>
+  }
+
+</mat-menu>

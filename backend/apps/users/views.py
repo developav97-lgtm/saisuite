@@ -217,6 +217,37 @@ class SwitchCompanyView(APIView):
 # Recuperación de contraseña
 # ---------------------------------------------------------------------------
 
+class UserMencionesView(APIView):
+    """
+    GET /api/v1/auth/users/menciones/?q=juan
+    Devuelve usuarios de la empresa para autocompletado de @menciones.
+    Accesible a cualquier usuario autenticado (no solo admins).
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        company = getattr(request.user, 'company', None)
+        if not company:
+            return Response([])
+        q = request.query_params.get('q', '').strip()
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        qs = User.objects.filter(company=company, is_active=True).exclude(id=request.user.id)
+        if q:
+            from django.db.models import Q
+            qs = qs.filter(
+                Q(first_name__icontains=q) |
+                Q(last_name__icontains=q) |
+                Q(email__icontains=q)
+            )
+        data = [
+            {'id': str(u.id), 'full_name': u.full_name, 'email': u.email}
+            for u in qs[:10]
+        ]
+        return Response(data)
+
+
 class PasswordResetRequestView(APIView):
     """POST /api/v1/auth/password-reset/ — solicita recuperación de contraseña."""
 

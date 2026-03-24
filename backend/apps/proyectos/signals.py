@@ -42,8 +42,10 @@ def tarea_post_save(sender, instance: Tarea, created: bool, **kwargs):
     - Creación: auto-agrega responsable como follower.
     - Completada + recurrente: genera nueva instancia.
     - Tiene padre: recalcula avance del padre.
+    - Siempre: recalcula avance de la Fase y del Proyecto (DEC-021).
     """
     from apps.proyectos.tarea_services import TareaService
+    from apps.proyectos.services import calcular_avance_fase_desde_tareas, calcular_avance_proyecto
 
     if created:
         # Auto-agregar responsable como follower
@@ -61,6 +63,22 @@ def tarea_post_save(sender, instance: Tarea, created: bool, **kwargs):
                 TareaService.recalcular_avance_tarea_padre(tarea_padre)
             except Tarea.DoesNotExist:
                 pass
+
+    # Cascada Tarea → Fase → Proyecto (DEC-021)
+    if instance.fase_id:
+        calcular_avance_fase_desde_tareas(instance.fase_id)
+        if instance.proyecto_id:
+            calcular_avance_proyecto(instance.proyecto_id)
+
+
+@receiver(post_delete, sender=Tarea)
+def tarea_post_delete(sender, instance: Tarea, **kwargs):
+    """Recalcula avance de la Fase y Proyecto cuando se elimina una Tarea."""
+    from apps.proyectos.services import calcular_avance_fase_desde_tareas, calcular_avance_proyecto
+    if instance.fase_id:
+        calcular_avance_fase_desde_tareas(instance.fase_id)
+        if instance.proyecto_id:
+            calcular_avance_proyecto(instance.proyecto_id)
 
 
 @receiver(m2m_changed, sender=Tarea.followers.through)

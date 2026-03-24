@@ -50,6 +50,22 @@
       </mat-select>
     </mat-form-field>
 
+    <!-- Fase (solo visible cuando hay proyecto seleccionado) -->
+    @if (proyectoFilter() && fases().length > 0) {
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="tk-filter">
+        <mat-label>Fase</mat-label>
+        <mat-icon matPrefix>layers</mat-icon>
+        <mat-select
+          [ngModel]="faseFilter()"
+          (ngModelChange)="onFaseChange($event)">
+          <mat-option [value]="null">Todas las fases</mat-option>
+          @for (f of fases(); track f.id) {
+            <mat-option [value]="f.id">{{ f.nombre }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    }
+
     <!-- Responsable -->
     <mat-form-field appearance="outline" subscriptSizing="dynamic" class="tk-filter">
       <mat-label>Responsable</mat-label>

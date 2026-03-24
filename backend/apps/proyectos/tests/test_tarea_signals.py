@@ -13,19 +13,21 @@ from apps.proyectos.models import Tarea
 @pytest.mark.django_db
 class TestAutoFollowerAlCrear:
 
-    def test_responsable_se_agrega_como_follower(self, proyecto, user):
+    def test_responsable_se_agrega_como_follower(self, proyecto, fase, user):
         tarea = Tarea.objects.create(
             company=proyecto.company,
             proyecto=proyecto,
+            fase=fase,
             nombre='Tarea con responsable',
             responsable=user,
         )
         assert user in tarea.followers.all()
 
-    def test_sin_responsable_no_falla(self, proyecto):
+    def test_sin_responsable_no_falla(self, proyecto, fase):
         tarea = Tarea.objects.create(
             company=proyecto.company,
             proyecto=proyecto,
+            fase=fase,
             nombre='Tarea sin responsable',
         )
         assert tarea.followers.count() == 0
@@ -53,12 +55,13 @@ class TestRecalcularAvancePadreSignal:
         tarea_con_subtareas.refresh_from_db()
         assert tarea_con_subtareas.porcentaje_completado == 100
 
-    def test_no_dispara_al_crear_raiz(self, proyecto):
+    def test_no_dispara_al_crear_raiz(self, proyecto, fase):
         """Crear tarea sin padre no intenta recalcular."""
         # No debe lanzar excepción
         tarea = Tarea.objects.create(
             company=proyecto.company,
             proyecto=proyecto,
+            fase=fase,
             nombre='Raíz sin padre',
         )
         assert tarea.id is not None
@@ -67,11 +70,12 @@ class TestRecalcularAvancePadreSignal:
 @pytest.mark.django_db
 class TestGenerarTareaRecurrenteSignal:
 
-    def test_genera_nueva_tarea_al_completar_recurrente(self, proyecto):
+    def test_genera_nueva_tarea_al_completar_recurrente(self, proyecto, fase):
         hoy = timezone.now().date()
         tarea_original = Tarea.objects.create(
             company=proyecto.company,
             proyecto=proyecto,
+            fase=fase,
             nombre='Tarea recurrente',
             es_recurrente=True,
             frecuencia_recurrencia='diaria',
@@ -100,13 +104,14 @@ class TestGenerarTareaRecurrenteSignal:
 
         assert Tarea.objects.count() == count_inicial
 
-    def test_no_genera_al_crear_recurrente(self, proyecto):
+    def test_no_genera_al_crear_recurrente(self, proyecto, fase):
         """Crear tarea recurrente NO debe generar una nueva instancia."""
         count_inicial = Tarea.objects.count()
 
         Tarea.objects.create(
             company=proyecto.company,
             proyecto=proyecto,
+            fase=fase,
             nombre='Recurrente nueva',
             es_recurrente=True,
             frecuencia_recurrencia='semanal',

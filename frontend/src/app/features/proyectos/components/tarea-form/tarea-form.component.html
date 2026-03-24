@@ -170,9 +170,9 @@
             }
           </mat-form-field>
 
-          <!-- Fase (autocomplete client-side, depende del proyecto) -->
+          <!-- Fase (autocomplete client-side, depende del proyecto) — OBLIGATORIA (DEC-021) -->
           <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
-            <mat-label>Fase</mat-label>
+            <mat-label>Fase *</mat-label>
             <mat-icon matPrefix>layers</mat-icon>
             <input matInput
               [formControl]="faseSearch"
@@ -194,7 +194,51 @@
                 </mat-option>
               }
             </mat-autocomplete>
+            @if (form.controls.fase.invalid && form.controls.fase.touched) {
+              <mat-error>La fase es obligatoria.</mat-error>
+            }
           </mat-form-field>
+
+          <!-- Actividad del proyecto (autocomplete client-side) -->
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
+            <mat-label>Actividad</mat-label>
+            <mat-icon matPrefix>construction</mat-icon>
+            <input matInput
+              [formControl]="actividadSaiopenSearch"
+              [matAutocomplete]="autoActividad"
+              (blur)="onActividadSaiopenBlur()"
+              placeholder="Buscar actividad…" />
+            <mat-autocomplete #autoActividad="matAutocomplete"
+              [displayWith]="displayActividad"
+              (optionSelected)="onActividadSaiopenSelected($event)">
+              @for (a of actividadesFiltradas(); track a.id) {
+                <mat-option [value]="a">
+                  <span class="tf-option-codigo">{{ a.actividad_codigo }}</span>
+                  {{ a.actividad_nombre }}
+                </mat-option>
+              }
+              @if (actividadesFiltradas().length === 0) {
+                <mat-option disabled>Sin actividades disponibles</mat-option>
+              }
+            </mat-autocomplete>
+          </mat-form-field>
+
+          <!-- Cantidad objetivo / registrada — solo cuando modo_medicion = 'cantidad' (DEC-022) -->
+          @if (selectedActividadModo() === 'cantidad') {
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
+              <mat-label>Cantidad objetivo</mat-label>
+              <input matInput type="number" min="0" step="0.01"
+                formControlName="cantidad_objetivo" placeholder="0" />
+            </mat-form-field>
+
+            @if (editMode()) {
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
+                <mat-label>Cantidad registrada</mat-label>
+                <input matInput type="number" min="0" step="0.01"
+                  formControlName="cantidad_registrada" placeholder="0" />
+              </mat-form-field>
+            }
+          }
 
           <!-- Tarea padre (autocomplete client-side, depende del proyecto) -->
           <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">

@@ -8,7 +8,7 @@ from decimal import Decimal
 import pytest
 
 from apps.companies.models import Company, CompanyModule
-from apps.proyectos.models import Proyecto, Tarea
+from apps.proyectos.models import Proyecto, Fase, Tarea
 
 
 # ── Helpers locales ───────────────────────────────────────────────────────────
@@ -71,11 +71,26 @@ def proyecto(company, user):
 
 
 @pytest.fixture
-def tarea_simple(proyecto, user):
+def fase(proyecto):
+    """Fase activa del proyecto de prueba (DEC-021)."""
+    return Fase.all_objects.create(
+        company=proyecto.company,
+        proyecto=proyecto,
+        nombre='Fase General',
+        orden=1,
+        fecha_inicio_planificada=date.today(),
+        fecha_fin_planificada=date.today() + timedelta(days=90),
+        presupuesto_mano_obra=Decimal('1000000'),
+    )
+
+
+@pytest.fixture
+def tarea_simple(proyecto, fase, user):
     """Tarea sin subtareas en estado 'por_hacer'."""
     return Tarea.objects.create(
         company=proyecto.company,
         proyecto=proyecto,
+        fase=fase,
         nombre='Tarea simple',
         responsable=user,
         estado='por_hacer',
@@ -83,7 +98,7 @@ def tarea_simple(proyecto, user):
 
 
 @pytest.fixture
-def tarea_con_subtareas(proyecto, tarea_simple):
+def tarea_con_subtareas(proyecto, fase, tarea_simple):
     """
     Retorna tarea_simple con 3 subtareas en estado 'por_hacer'.
     El fixture se llama 'tarea_con_subtareas' para mayor claridad en los tests.
@@ -92,6 +107,7 @@ def tarea_con_subtareas(proyecto, tarea_simple):
         Tarea.objects.create(
             company=proyecto.company,
             proyecto=proyecto,
+            fase=fase,
             nombre=f'Subtarea {i + 1}',
             tarea_padre=tarea_simple,
             porcentaje_completado=0,

@@ -66,7 +66,10 @@ def make_proyecto(company, gerente, codigo=None):
     )
 
 
-def make_fase(proyecto, orden=1):
+def make_fase(proyecto, orden=None):
+    if orden is None:
+        max_ord = Fase.all_objects.filter(proyecto=proyecto).order_by('-orden').values_list('orden', flat=True).first()
+        orden = (max_ord or 0) + 1
     return Fase.all_objects.create(
         company=proyecto.company,
         proyecto=proyecto,
@@ -79,6 +82,9 @@ def make_fase(proyecto, orden=1):
 
 
 def make_tarea(company, proyecto, **kwargs):
+    # fase es obligatoria desde DEC-021; crear una por defecto si no se provee
+    if 'fase' not in kwargs:
+        kwargs['fase'] = make_fase(proyecto)
     defaults = dict(nombre='Tarea de prueba', estado='por_hacer')
     defaults.update(kwargs)
     return Tarea.all_objects.create(company=company, proyecto=proyecto, **defaults)

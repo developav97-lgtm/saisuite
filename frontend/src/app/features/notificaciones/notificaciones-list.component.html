@@ -1,0 +1,116 @@
+<div class="sc-page nl-page">
+
+  <!-- Header -->
+  <div class="sc-page-header">
+    <div class="nl-header-left">
+      <mat-icon class="nl-header-icon">notifications</mat-icon>
+      <div>
+        <h1 class="sc-page-header__title">Notificaciones</h1>
+        <p class="nl-subtitle">{{ totalCount() }} notificaciones en total</p>
+      </div>
+    </div>
+    <div class="nl-header-actions">
+      <button mat-stroked-button
+        [disabled]="marcando()"
+        (click)="marcarTodasLeidas()">
+        @if (marcando()) {
+          <mat-spinner diameter="16" class="nl-spinner-btn" />
+        } @else {
+          <mat-icon>done_all</mat-icon>
+        }
+        Marcar todas leídas
+      </button>
+    </div>
+  </div>
+
+  <!-- Filtros -->
+  <div class="nl-filtros">
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
+      <mat-label>Estado</mat-label>
+      <mat-select [(ngModel)]="leidaFilter" (ngModelChange)="onFilterChange()">
+        @for (opt of leidaOptions; track opt.label) {
+          <mat-option [value]="opt.value">{{ opt.label }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
+      <mat-label>Tipo</mat-label>
+      <mat-select [(ngModel)]="tipoFilter" (ngModelChange)="onFilterChange()">
+        @for (opt of tipoOptions; track opt.label) {
+          <mat-option [value]="opt.value">{{ opt.label }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+  </div>
+
+  <!-- Loading -->
+  @if (loading()) {
+    <div class="nl-loading">
+      <mat-spinner diameter="48" />
+    </div>
+  }
+
+  <!-- Lista -->
+  @if (!loading()) {
+    @if (notificaciones().length === 0) {
+      <div class="nl-empty">
+        <mat-icon class="nl-empty-icon">notifications_off</mat-icon>
+        <p>No hay notificaciones que coincidan con los filtros.</p>
+      </div>
+    } @else {
+      <div class="nl-list sc-card">
+        @for (n of notificaciones(); track n.id; let last = $last) {
+          <div
+            class="nl-item"
+            [class.nl-item--no-leida]="!n.leida"
+            (click)="onNotificacionClick(n)">
+
+            <!-- Ícono de tipo -->
+            <div class="nl-item-icon" [class]="'nl-tipo-' + n.tipo">
+              <mat-icon>{{ getTipoIcon(n.tipo) }}</mat-icon>
+            </div>
+
+            <!-- Cuerpo -->
+            <div class="nl-item-body">
+              <div class="nl-item-header">
+                <span class="nl-item-titulo">{{ n.titulo }}</span>
+                <span class="nl-item-tipo">{{ TIPO_LABELS[n.tipo] ?? n.tipo }}</span>
+              </div>
+              <p class="nl-item-mensaje">{{ n.mensaje }}</p>
+              <span class="nl-item-tiempo">{{ formatTiempo(n.created_at) }}</span>
+            </div>
+
+            <!-- Acciones -->
+            <div class="nl-item-actions" (click)="$event.stopPropagation()">
+              @if (!n.leida) {
+                <span class="nl-dot" aria-hidden="true"></span>
+                <button mat-icon-button matTooltip="Marcar como leída"
+                  (click)="marcarLeida($event, n)">
+                  <mat-icon>mark_email_read</mat-icon>
+                </button>
+              } @else {
+                <button mat-icon-button matTooltip="Marcar como no leída"
+                  (click)="marcarNoLeida($event, n)">
+                  <mat-icon>mark_email_unread</mat-icon>
+                </button>
+              }
+            </div>
+          </div>
+
+          @if (!last) { <mat-divider /> }
+        }
+      </div>
+
+      <!-- Paginación -->
+      <mat-paginator
+        [length]="totalCount()"
+        [pageSize]="pageSize"
+        [pageIndex]="currentPage()"
+        [pageSizeOptions]="[20]"
+        (page)="onPage($event)"
+        showFirstLastButtons />
+    }
+  }
+
+</div>

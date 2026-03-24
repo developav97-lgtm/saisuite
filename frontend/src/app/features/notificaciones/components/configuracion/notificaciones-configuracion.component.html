@@ -1,0 +1,75 @@
+<div class="nc-page sc-page">
+
+  <div class="sc-page-header">
+    <button mat-icon-button routerLink="/notificaciones">
+      <mat-icon>arrow_back</mat-icon>
+    </button>
+    <h1 class="sc-page-header__title">Configuración de notificaciones</h1>
+  </div>
+
+  @if (cargando()) {
+    <div class="nc-loading">
+      <mat-spinner diameter="40" />
+    </div>
+  } @else {
+    <div class="sc-card nc-card">
+      <p class="nc-card-desc">
+        Controla qué notificaciones recibes y cómo se comportan.
+      </p>
+
+      <div class="nc-table-wrap">
+        <table class="nc-table">
+          <thead>
+            <tr>
+              <th class="nc-col-tipo">Tipo</th>
+              <th class="nc-col-toggle">En la app</th>
+              <th class="nc-col-toggle">Email</th>
+              <th class="nc-col-select">Frecuencia</th>
+              <th class="nc-col-check">Agrupar</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (meta of tiposMeta; track meta.tipo) {
+              <tr class="nc-row">
+                <td>
+                  <div class="nc-tipo-cell">
+                    <mat-icon class="nc-tipo-icon">{{ meta.icon }}</mat-icon>
+                    <span>{{ meta.label }}</span>
+                  </div>
+                </td>
+                <td>
+                  <mat-slide-toggle
+                    [checked]="getPref(meta.tipo)?.habilitado_app ?? true"
+                    (change)="patch(meta.tipo, { habilitado_app: $event.checked })" />
+                </td>
+                <td>
+                  <mat-slide-toggle
+                    [checked]="getPref(meta.tipo)?.habilitado_email ?? true"
+                    (change)="patch(meta.tipo, { habilitado_email: $event.checked })" />
+                </td>
+                <td>
+                  <mat-select
+                    class="nc-select"
+                    [value]="getPref(meta.tipo)?.frecuencia ?? 'inmediata'"
+                    [disabled]="!(getPref(meta.tipo)?.habilitado_app ?? true)"
+                    (selectionChange)="patch(meta.tipo, { frecuencia: $event.value })">
+                    <mat-option value="inmediata">Inmediata</mat-option>
+                    <mat-option value="cada_hora">Cada hora</mat-option>
+                    <mat-option value="diaria">Diaria (9 AM)</mat-option>
+                  </mat-select>
+                </td>
+                <td class="nc-col-check">
+                  <mat-checkbox
+                    [checked]="getPref(meta.tipo)?.agrupar ?? true"
+                    [disabled]="!(getPref(meta.tipo)?.habilitado_app ?? true)"
+                    (change)="patch(meta.tipo, { agrupar: $event.checked })" />
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  }
+
+</div>

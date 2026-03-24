@@ -29,6 +29,12 @@ class AuthService:
             logger.info('login_failed', extra={'email': email})
             raise AuthenticationFailed('Credenciales inválidas.')
 
+        if not getattr(user, 'company_id', None) and not getattr(user, 'is_staff', False):
+            logger.info('login_blocked_sin_company', extra={'user_id': str(user.id), 'email': email})
+            raise AuthenticationFailed(
+                'Tu usuario no está asociado a ninguna empresa. Contacta al administrador.'
+            )
+
         refresh = RefreshToken.for_user(user)
         logger.info('login_success', extra={'user_id': str(user.id)})
         return {

@@ -56,11 +56,11 @@ class TareaFilter(django_filters.FilterSet):
     sin_responsable     = django_filters.BooleanFilter(method='filter_sin_responsable')
     solo_mis_tareas     = django_filters.BooleanFilter(method='filter_solo_mis_tareas')
 
-    # Proyecto / Fase / Cliente
-    proyecto    = django_filters.UUIDFilter(field_name='proyecto__id')
-    fase        = django_filters.UUIDFilter(field_name='fase__id')
-    sin_fase    = django_filters.BooleanFilter(method='filter_sin_fase')
-    cliente     = django_filters.UUIDFilter(field_name='cliente__id')
+    # Proyecto / Fase / Cliente / ActividadSaiopen
+    proyecto           = django_filters.UUIDFilter(field_name='proyecto__id')
+    fase               = django_filters.UUIDFilter(field_name='fase__id')
+    actividad_saiopen  = django_filters.UUIDFilter(field_name='actividad_saiopen__id')
+    cliente            = django_filters.UUIDFilter(field_name='cliente__id')
 
     # Jerarquía
     solo_raiz = django_filters.BooleanFilter(method='filter_solo_raiz')
@@ -68,7 +68,7 @@ class TareaFilter(django_filters.FilterSet):
     class Meta:
         model = Tarea
         fields = [
-            'estado', 'prioridad', 'proyecto', 'fase',
+            'estado', 'prioridad', 'proyecto', 'fase', 'actividad_saiopen',
             'responsable', 'cliente', 'es_recurrente',
         ]
 
@@ -99,11 +99,6 @@ class TareaFilter(django_filters.FilterSet):
                 Q(followers=self.request.user)
             ).distinct()
         return queryset
-
-    def filter_sin_fase(self, queryset, name, value):
-        if value:
-            return queryset.filter(fase__isnull=True)
-        return queryset.filter(fase__isnull=False)
 
     def filter_solo_raiz(self, queryset, name, value):
         if value:

@@ -12,7 +12,7 @@ from rest_framework.exceptions import ValidationError, PermissionDenied
 
 from apps.proyectos.models import (
     Proyecto, Fase, TerceroProyecto, DocumentoContable, Hito,
-    EstadoProyecto, Actividad, ActividadProyecto, ConfiguracionModulo,
+    EstadoProyecto, EstadoFase, Actividad, ActividadProyecto, ConfiguracionModulo,
 )
 
 logger = logging.getLogger(__name__)
@@ -41,6 +41,32 @@ class ProyectoNoEditableException(ProyectoException):
 # ──────────────────────────────────────────────
 # Avance automático
 # ──────────────────────────────────────────────
+
+def calcular_avance_fase_desde_tareas(fase_id) -> Decimal:
+    """
+    Recalcula porcentaje_avance de la fase basándose en el progreso de sus tareas.
+    Fórmula: promedio de progreso_porcentaje de tareas activas (excluye canceladas).
+    Devuelve el porcentaje calculado.
+    """
+    from apps.proyectos.models import Tarea
+    tareas = Tarea.all_objects.filter(
+        fase_id=fase_id,
+    ).exclude(estado='cancelada')
+
+    total = tareas.count()
+    if total == 0:
+        pct = Decimal('0')
+    else:
+        completadas = tareas.filter(estado='completada').count()
+        pct = (Decimal(completadas) / Decimal(total) * Decimal('100')).quantize(Decimal('0.01'))
+
+    Fase.objects.filter(id=fase_id).update(porcentaje_avance=pct)
+    logger.info(
+        'Avance fase recalculado desde tareas',
+        extra={'fase_id': str(fase_id), 'porcentaje': str(pct)},
+    )
+    return pct
+
 
 def calcular_avance_fase(fase_id) -> Decimal:
     """
@@ -541,6 +567,57 @@ class FaseService:
         fase.save()
 
         logger.info('Fase actualizada', extra={'fase_id': str(fase.id)})
+        return fase
+
+    @staticmethod
+    @transaction.atomic
+    def activar_fase(fase: Fase) -> Fase:
+        """
+        Activa una fase (estado → activa).
+        Solo puede haber una fase activa por proyecto a la vez.
+        La fase anterior activa pasa a 'planificada' automáticamente.
+        """
+        if fase.estado == EstadoFase.COMPLETADA:
+            raise ProyectoException('No se puede activar una fase ya completada.')
+        if fase.estado == EstadoFase.CANCELADA:
+            raise ProyectoException('No se puede activar una fase cancelada.')
+
+        # Desactivar cualquier otra fase activa del mismo proyecto
+        Fase.objects.filter(
+            proyecto=fase.proyecto,
+            estado=EstadoFase.ACTIVA,
+        ).exclude(id=fase.id).update(
+            estado=EstadoFase.PLANIFICADA,
+        )
+
+        fase.estado = EstadoFase.ACTIVA
+        if not fase.fecha_inicio_real:
+            from django.utils import timezone
+            fase.fecha_inicio_real = timezone.now().date()
+        fase.save(update_fields=['estado', 'fecha_inicio_real', 'updated_at'])
+
+        logger.info('Fase activada', extra={'fase_id': str(fase.id), 'proyecto_id': str(fase.proyecto_id)})
+        return fase
+
+    @staticmethod
+    @transaction.atomic
+    def completar_fase(fase: Fase) -> Fase:
+        """Marca una fase como completada y registra fecha real de fin."""
+        if fase.estado not in (EstadoFase.ACTIVA, EstadoFase.PLANIFICADA):
+            raise ProyectoException(
+                f'Solo se pueden completar fases activas o planificadas. Estado actual: {fase.estado}.'
+            )
+
+        from django.utils import timezone
+        fase.estado = EstadoFase.COMPLETADA
+        if not fase.fecha_fin_real:
+            fase.fecha_fin_real = timezone.now().date()
+        fase.save(update_fields=['estado', 'fecha_fin_real', 'updated_at'])
+
+        # Recalcular avance del proyecto
+        calcular_avance_proyecto(fase.proyecto_id)
+
+        logger.info('Fase completada', extra={'fase_id': str(fase.id)})
         return fase
 
     @staticmethod

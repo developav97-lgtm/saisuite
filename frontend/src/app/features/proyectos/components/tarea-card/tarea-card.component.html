@@ -63,6 +63,24 @@
       </div>
     }
 
+    <!-- Barra de progreso de horas (solo si hay horas estimadas) -->
+    @if (tarea().horas_estimadas > 0) {
+      <div class="tc-progreso-bar-section">
+        <div class="tc-progreso-bar-header">
+          <span class="tc-progreso-bar-label">Progreso</span>
+          <span class="tc-progreso-bar-valor">{{ progreso | number:'1.0-0' }}%</span>
+        </div>
+        <mat-progress-bar
+          mode="determinate"
+          [value]="progreso"
+          [color]="progresoColor">
+        </mat-progress-bar>
+        <div class="tc-progreso-bar-detalle">
+          {{ tarea().horas_registradas | number:'1.0-1' }}h / {{ tarea().horas_estimadas | number:'1.0-1' }}h
+        </div>
+      </div>
+    }
+
     <!-- Footer: fecha límite + progreso + subtareas -->
     <div class="tc-footer">
       @if (tarea().fecha_limite) {

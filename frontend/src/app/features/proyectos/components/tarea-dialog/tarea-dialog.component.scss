@@ -72,6 +72,12 @@
   margin-bottom: 0.3rem;
 }
 
+.trd-progress-hint {
+  font-size: 0.65rem;
+  margin-left: 0.3rem;
+  opacity: 0.7;
+}
+
 .trd-progress--completada {
   --mdc-linear-progress-active-indicator-color: #43a047;
 }
@@ -194,6 +200,7 @@
   ::ng-deep .mat-mdc-tab-body-wrapper {
     flex: 1;
     overflow: hidden;
+    min-height: 0;
   }
 
   ::ng-deep .mat-mdc-tab-body {
@@ -202,12 +209,22 @@
 
   ::ng-deep .mat-mdc-tab-body-content {
     height: 100%;
-    overflow-y: auto;
+    overflow: hidden; // el componente hijo gestiona su propio scroll
+    display: flex;
+    flex-direction: column;
   }
 }
 
 .trd-tab-content {
   padding: 0.75rem 1rem;
+
+  &--comentarios {
+    height: 100%;
+    overflow: hidden;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+  }
 }
 
 .trd-tab-badge {

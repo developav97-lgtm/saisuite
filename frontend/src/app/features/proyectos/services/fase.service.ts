@@ -32,4 +32,12 @@ export class FaseService {
   delete(faseId: string): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/fases/${faseId}/`);
   }
+
+  activar(faseId: string): Observable<FaseDetail> {
+    return this.http.post<FaseDetail>(`${this.baseUrl}/fases/${faseId}/activar/`, {});
+  }
+
+  completar(faseId: string): Observable<FaseDetail> {
+    return this.http.post<FaseDetail>(`${this.baseUrl}/fases/${faseId}/completar/`, {});
+  }
 }

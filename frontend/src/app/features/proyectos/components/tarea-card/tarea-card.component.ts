@@ -8,6 +8,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { Tarea } from '../../models/tarea.model';
 
 const PRIORIDAD_ICONS: Record<string, string> = {
@@ -35,6 +36,7 @@ const PRIORIDAD_LABELS: Record<string, string> = {
     MatIconModule,
     MatButtonModule,
     MatTooltipModule,
+    MatProgressBarModule,
   ],
 })
 export class TareaCardComponent {
@@ -55,6 +57,16 @@ export class TareaCardComponent {
 
   readonly editandoProgreso = signal(false);
   readonly progresoTemporal = signal(0);
+
+  get progreso(): number {
+    return this.tarea().progreso_porcentaje ?? 0;
+  }
+
+  get progresoColor(): 'primary' | 'accent' | 'warn' {
+    if (this.progreso >= 100) return 'accent';
+    if (this.progreso >= 50)  return 'primary';
+    return 'warn';
+  }
 
   prioridadIconClass(): string {
     return `tc-prio-icon tc-prio--${this.tarea().prioridad}`;

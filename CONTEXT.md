@@ -1,62 +1,207 @@
-# CONTEXT.md - Estado Actual Proyecto Saicloud
+# CONTEXT.md - Estado del Proyecto Saicloud
 
-**Última actualización:** 21 Marzo 2026
+**Última actualización:** 24 Marzo 2026  
+**Sesión:** Refactor Arquitectura Proyectos (Completado)
 
-## Estado Módulo de Proyectos: 90% — Sistema de Tareas Fase 1 COMPLETADA ✅
+---
 
-### ✅ Completado (85%)
-- Planificación completa (Fases 1-3)
-- Infraestructura base (Auth, Shell, Multi-tenant)
-- Fase A: Proyecto + Fase
-- Fase B: TerceroProyecto, DocumentoContable, Hito
-- Actividades (catálogo + asignación)
-- **Grupo 5: Licencias & Seguridad** (8 puntos) ✅
-- **Grupo 4: Fases & Ejecución** (5 puntos) ✅
+## 📊 ESTADO ACTUAL
 
-### ✅ Sistema de Tareas — Fase 1 Backend Core COMPLETA (21 Marzo 2026)
-- `apps/proyectos/tarea_services.py` — TareaService con toda la lógica de negocio
-- `apps/proyectos/signals.py` — Signals de Tarea (auto-followers, recurrencia, avance padre)
-- `apps/proyectos/tests/conftest.py` — Fixtures de pytest para módulo proyectos
-- `apps/proyectos/tests/test_tarea_services.py` — 35 tests de servicios (todos PASSED)
-- `apps/proyectos/tests/test_tarea_signals.py` — 8 tests de signals (todos PASSED)
-- Cobertura: tarea_services 97%, models 99%, signals 94%, views 96%
-- 485 tests totales, todos PASSED
+### Proyecto
+- **Nombre:** Saicloud (SaiSuite)
+- **Stack:** Django 5 + Angular 18 + PostgreSQL 16 + n8n + AWS
+- **Fase:** Desarrollo activo
+- **Último milestone:** Refactor arquitectura Proyectos → Fases → Tareas + Actividades Saiopen
 
-### 🔄 En Proceso (10%)
-- **Grupo 3: Terceros** (5 puntos) - Correcciones en vistas Angular
-  - Arquitectura transversal confirmada (app core)
-  - Modelos implementados
-  - API funcionando
-  - Pendiente: ajustes UX, sincronización Saiopen
+---
 
-### ⏳ Pendiente (5%)
-- **Grupo 6: Usuarios & Permisos** (3 puntos) - CRÍTICO
-- Grupo 1: Consecutivos (6 puntos)
-- Grupo 2: Actividades ajustes (9 puntos)
-- Grupo 7: UI/UX General (5 puntos)
-- Grupo 8: Features Nuevas (2 puntos)
-- Grupo 9: Metodología (2 puntos)
+## ✅ COMPLETADO RECIENTEMENTE (24 Marzo 2026)
 
-## Arquitectura Clave
+### Refactor Arquitectura Proyectos
+**Tiempo:** 2 días (23-24 Marzo)  
+**Complejidad:** XL  
 
-### Apps Transversales (app `core`)
-- ✅ Company, CompanySettings
-- ✅ CompanyLicense, LicensePayment (Grupo 5)
-- ✅ **Tercero, TerceroDireccion** (Grupo 3 - NUEVO)
-- ⏳ ConfiguracionConsecutivo (pendiente)
+**Backend Django:**
+- ✅ Modelo `ActividadSaiopen` (catálogo maestro reutilizable)
+- ✅ Modelo `Fase` actualizado (estado, orden, solo 1 activa)
+- ✅ Modelo `Tarea` refactorizado (sin FK proyecto, con FK actividad_saiopen)
+- ✅ Campos `cantidad_registrada`, `cantidad_objetivo`
+- ✅ Signals progreso automático (Tarea → Fase → Proyecto)
+- ✅ `FaseService.activar_fase()`
+- ✅ 4 migraciones ejecutadas
+- ✅ 19 tests corregidos (services, signals, views)
 
-### Apps Específicas
-- `proyectos`: Proyecto, Fase, Actividad, ActividadProyecto, TerceroProyecto, ConfiguracionModulo
-- `users`: User, UserCompany, ActiveSession
+**Frontend Angular:**
+- ✅ Service `ActividadSaiopenService`
+- ✅ Autocomplete actividades en formulario
+- ✅ **Detalle Tarea con UI Adaptativa** (3 modos):
+  - `solo_estados`: Solo selector estado (sin actividad)
+  - `timesheet`: Cronómetro + horas (actividad en horas)
+  - `cantidad`: Campo clickeable + edición inline (actividad en días/m³/ton)
+- ✅ **Kanban con Filtro de Fase**
+- ✅ **Activar Fase en FaseList** (columna estado + botón)
 
-## Migraciones Pendientes
-1. `apps/companies/0004_*` (licencias)
-2. `apps/proyectos/*` (ConfiguracionModulo, Fase update)
-3. `apps/core/*` (Tercero, TerceroDireccion)
+**Métricas:**
+- Archivos modificados: ~35
+- Líneas de código: ~6,500
+- Tests corregidos: 19
+- Decisiones arquitectónicas: 3 (DEC-020, DEC-021, DEC-022)
 
-## Próximos Pasos Inmediatos
-1. Ejecutar migraciones pendientes
-2. Crear seed data (licencias, config, terceros)
-3. Finalizar correcciones Grupo 3
-4. Validación manual flujos principales
-5. Iniciar Grupo 6 (Permisos)
+---
+
+## 🗂️ ESTRUCTURA ACTUAL
+
+### Backend (Django)
+```
+apps/proyectos/
+├── models/
+│   ├── proyecto.py
+│   ├── fase.py (estado, orden)
+│   ├── tarea.py (sin FK proyecto, con actividad_saiopen)
+│   └── actividad_saiopen.py (NUEVO - catálogo compartido)
+├── services/
+│   ├── proyecto_service.py
+│   ├── fase_service.py (activar_fase)
+│   └── tarea_service.py
+├── serializers/
+│   ├── actividad_saiopen_serializer.py (NUEVO)
+│   └── tarea_serializer.py (actualizado)
+├── views/
+│   ├── fase_viewset.py (endpoint activar)
+│   └── tarea_viewset.py (endpoint actualizar-cantidad)
+└── signals.py (progreso automático)
+```
+
+### Frontend (Angular)
+```
+frontend/src/app/proyectos/
+├── models/
+│   ├── actividad-saiopen.model.ts (NUEVO)
+│   └── tarea.model.ts (actualizado)
+├── services/
+│   ├── actividad-saiopen.service.ts (NUEVO)
+│   ├── fase.service.ts (obtenerFaseActiva, activar)
+│   └── tarea.service.ts (actualizarCantidad)
+├── components/
+│   ├── tarea-form/ (autocomplete actividad)
+│   ├── tarea-detail/ (UI adaptativa 3 modos)
+│   ├── tarea-kanban/ (filtro fase)
+│   └── fase-list/ (columna estado + activar)
+```
+
+---
+
+## 📋 DECISIONES ARQUITECTÓNICAS
+
+### DEC-020: Jerarquía Estricta Proyecto → Fases → Tareas
+- **Estado:** ✅ Activa
+- **Fecha:** 24 Marzo 2026
+- **Cambio principal:** Eliminado FK `tarea.proyecto` (redundante)
+- **Razón:** Modelo más limpio, progreso automático predecible
+- **Consecuencia:** Todas las tareas DEBEN tener fase
+
+### DEC-021: ActividadSaiopen como Catálogo Compartido
+- **Estado:** ✅ Activa
+- **Fecha:** 24 Marzo 2026
+- **Cambio principal:** Actividades reutilizables entre proyectos
+- **Razón:** Compatibilidad con Saiopen (ERP local)
+- **Consecuencia:** Sincronización vía SQS desde Saiopen
+
+### DEC-022: Medición de Progreso según Unidad de Actividad
+- **Estado:** ✅ Activa
+- **Fecha:** 24 Marzo 2026
+- **Cambio principal:** UI adaptativa según `unidad_medida`
+- **Razón:** Cada actividad se mide naturalmente (horas/días/m³)
+- **Consecuencia:** 3 modos de UI en detalle de tarea
+
+**Decisiones previas activas:** DEC-001 a DEC-019 (ver DECISIONS.md)
+
+---
+
+## 🚧 PENDIENTES
+
+### Prioridad Alta
+- [ ] Tabs de Fases en Detalle Proyecto (2-3 horas)
+
+### Prioridad Media
+- [ ] Endpoint Comparación Saiopen (`GET /api/v1/proyectos/{id}/comparacion-saiopen/`)
+- [ ] Sincronización Actividades desde Saiopen (agente + SQS)
+
+### Prioridad Baja
+- [ ] Documentación técnica actualizada
+- [ ] Panel Admin para ActividadSaiopen
+
+---
+
+## 🧪 PRUEBAS PENDIENTES
+
+**Guía completa:** https://www.notion.so/32dee9c3690a810187f7fe510faee8aa
+
+### Casos de Prueba
+1. **Detalle Tarea UI Adaptativa:**
+   - Caso 1: Tarea sin actividad (solo estados)
+   - Caso 2: Tarea con actividad en horas (timesheet)
+   - Caso 3: Tarea con actividad en m³ (edición inline)
+
+2. **Kanban con Filtro de Fase:**
+   - Dropdown aparece al seleccionar proyecto
+   - Filtrado funciona correctamente
+   - Limpiar filtros resetea todo
+
+3. **Activar Fase:**
+   - Columna estado visible
+   - Botón activar solo en planificadas
+   - Confirmación + recarga
+
+---
+
+## 📚 DOCUMENTACIÓN
+
+### Notion
+- **Metodología:** https://www.notion.so/31dee9c3690a81668fc3cd5080240bb7
+- **Decisiones:** https://www.notion.so/323ee9c3690a817e9919cf7f810289fe
+- **Refactor Completado:** https://www.notion.so/32dee9c3690a813a8b9fcd45b0f05c60
+- **Guía de Pruebas:** https://www.notion.so/32dee9c3690a810187f7fe510faee8aa
+
+### Archivos Locales
+- `CLAUDE.md` — Reglas permanentes del proyecto
+- `DECISIONS.md` — Decisiones arquitectónicas (DEC-XXX)
+- `ERRORS.md` — Registro de errores resueltos
+- `CONTEXT.md` — Este archivo (estado sesión a sesión)
+
+### Documentos Base
+- `docs/base-reference/Infraestructura_SaiSuite_v2.docx`
+- `docs/base-reference/Flujo_Feature_SaiSuite_v1.docx`
+- `docs/base-reference/Estandares_Codigo_SaiSuite_v1.docx`
+- `docs/base-reference/Esquema_BD_SaiSuite_v1.docx`
+- `docs/base-reference/AWS_Setup_SaiSuite_v1.docx`
+
+---
+
+## 🎯 PRÓXIMA SESIÓN
+
+**Objetivo sugerido:**
+1. Ejecutar pruebas del refactor (guía en Notion)
+2. Corregir bugs encontrados
+3. Implementar tabs de fases en proyecto-detail
+4. Documentar técnicamente el refactor
+
+**Prerequisitos:**
+- Backend: `python manage.py migrate` + datos de prueba
+- Frontend: `ng serve`
+- Seguir scripts de la guía de pruebas
+
+---
+
+## 📞 CONTACTO & RECURSOS
+
+- **Desarrollador:** Juan David (Fundador, CEO, CTO)
+- **Empresa:** ValMen Tech
+- **Email:** juan@valmentech.com
+- **Repositorio:** (Git local, sin remote por ahora)
+
+---
+
+*Última sesión: 24 Marzo 2026*  
+*Estado: Refactor completado y documentado*  
+*Listo para: Pruebas exhaustivas*

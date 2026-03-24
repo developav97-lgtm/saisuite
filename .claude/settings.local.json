@@ -126,7 +126,12 @@
       "Bash(python3.11 -c \"import django; print\\(django.__version__\\)\" 2>/dev/null && echo \"Found in 3.11\" || echo \"Not in 3.11\"\npython3.12 -c \"import django; print\\(django.__version__\\)\" 2>/dev/null && echo \"Found in 3.12\" || echo \"Not in 3.12\")",
       "Bash(/opt/miniconda3/bin/python -c \"import django; print\\(django.__version__\\)\" 2>/dev/null || echo \"Not in conda base\"\nls /opt/miniconda3/envs/ 2>/dev/null)",
       "Skill(telegram:configure)",
-      "Bash(ls ~/.claude/plugins/ 2>/dev/null\ncat ~/.claude/plugins/plugins.json 2>/dev/null || find ~/.claude/plugins -name \"*.json\" 2>/dev/null | head -10)"
+      "Bash(ls ~/.claude/plugins/ 2>/dev/null\ncat ~/.claude/plugins/plugins.json 2>/dev/null || find ~/.claude/plugins -name \"*.json\" 2>/dev/null | head -10)",
+      "Bash(chmod 600 ~/.claude/channels/telegram/.env)",
+      "Bash(claude --channels plugin:telegram@claude-plugins-official 2>&1)",
+      "Bash(mkdir -p ~/.claude/channels/telegram)",
+      "Read(//Users/juanandrade/.claude/channels/telegram/**)",
+      "Bash(claude channels start 2>&1)"
     ]
   }
 }

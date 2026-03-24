@@ -40,6 +40,7 @@ from apps.proyectos.views import (
     ProyectoViewSet, FaseViewSet,
     TerceroProyectoViewSet, DocumentoContableViewSet, HitoViewSet,
     ActividadViewSet, ActividadProyectoViewSet,
+    ActividadSaiopenViewSet,
     ConfiguracionModuloView,
     TareaViewSet, TareaTagViewSet,
 )
@@ -50,6 +51,7 @@ router.register(r'', ProyectoViewSet, basename='proyecto')
 # SimpleRouter: no genera vista raíz en '' que conflictiría con ProyectoViewSet
 actividad_router = SimpleRouter()
 actividad_router.register(r'actividades', ActividadViewSet, basename='actividad')
+actividad_router.register(r'actividades-saiopen', ActividadSaiopenViewSet, basename='actividadsaiopen')
 
 # Tareas y tags
 tarea_router = SimpleRouter()
@@ -73,6 +75,16 @@ urlpatterns = [
         'fases/<uuid:pk>/',
         FaseViewSet.as_view({'get': 'retrieve', 'patch': 'partial_update', 'delete': 'destroy'}),
         name='fase-detail',
+    ),
+    path(
+        'fases/<uuid:pk>/activar/',
+        FaseViewSet.as_view({'post': 'activar'}),
+        name='fase-activar',
+    ),
+    path(
+        'fases/<uuid:pk>/completar/',
+        FaseViewSet.as_view({'post': 'completar'}),
+        name='fase-completar',
     ),
 
     # ── Terceros ───────────────────────────────────────────────

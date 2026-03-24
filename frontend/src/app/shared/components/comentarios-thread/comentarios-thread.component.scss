@@ -1,0 +1,403 @@
+// ── Host: ocupa toda la altura que le da el padre ─────────────────────────────
+:host {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.ct-container {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  gap: 0;
+}
+
+// ── Loading / empty ───────────────────────────────────────────────────────────
+.ct-loading {
+  display: flex;
+  justify-content: center;
+  padding: 24px;
+}
+
+.ct-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 24px 0 16px;
+  color: var(--sc-text-muted);
+
+  mat-icon {
+    font-size: 2rem;
+    width: 2rem;
+    height: 2rem;
+    opacity: .4;
+  }
+
+  p {
+    margin: 0;
+    font-size: 0.875rem;
+  }
+}
+
+// ── Lista ─────────────────────────────────────────────────────────────────────
+// flex: 1 + overflow-y: auto → crece para llenar el espacio y scrollea
+.ct-list {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+// ── Item raíz ─────────────────────────────────────────────────────────────────
+.ct-item {
+  display: flex;
+  gap: 10px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--sc-surface-border);
+
+  &--last {
+    border-bottom: none;
+  }
+}
+
+// ── Respuesta ─────────────────────────────────────────────────────────────────
+.ct-replies {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-top: 8px;
+  padding-left: 4px;
+  border-left: 2px solid var(--sc-surface-border);
+}
+
+.ct-reply {
+  display: flex;
+  gap: 8px;
+  padding: 5px 0 5px 10px;
+  border-bottom: 1px dashed var(--sc-surface-border);
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+// ── Avatar ────────────────────────────────────────────────────────────────────
+.ct-avatar {
+  border-radius: 50%;
+  background: var(--sc-primary);
+  color: white;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  &--root {
+    width: 34px;
+    height: 34px;
+    font-size: 0.875rem;
+  }
+
+  &--reply {
+    width: 28px;
+    height: 28px;
+    font-size: 0.75rem;
+  }
+}
+
+// ── Body ──────────────────────────────────────────────────────────────────────
+.ct-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.ct-row-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+
+.ct-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  // Ocultos por defecto, visibles al hacer hover en el item
+  opacity: 0;
+  transition: opacity 0.15s;
+
+  .ct-item:hover &,
+  .ct-reply:hover & {
+    opacity: 1;
+  }
+}
+
+.ct-autor {
+  font-weight: 600;
+  font-size: 0.8125rem;
+  color: var(--sc-text-color);
+}
+
+.ct-tiempo {
+  font-size: 0.6875rem;
+  color: var(--sc-text-muted);
+}
+
+.ct-editado {
+  font-size: 0.6875rem;
+  color: var(--sc-text-muted);
+  font-style: italic;
+}
+
+// ── Texto ─────────────────────────────────────────────────────────────────────
+.ct-texto {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--sc-text-color);
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+
+  // Menciones resaltadas (via [innerHTML]) — ::ng-deep necesario para innerHTML dinámico
+  ::ng-deep .ct-mention {
+    display: inline-block;
+    background: color-mix(in srgb, var(--sc-primary) 12%, transparent);
+    color: var(--sc-primary);
+    font-weight: 600;
+    border-radius: 4px;
+    padding: 0 4px;
+    font-size: 0.875em;
+    line-height: 1.4;
+  }
+}
+
+// ── Acciones ──────────────────────────────────────────────────────────────────
+.ct-acciones {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-top: 2px;
+}
+
+.ct-accion-btn {
+  font-size: 0.75rem !important;
+  height: 28px !important;
+  line-height: 28px !important;
+  padding: 0 8px !important;
+  color: var(--sc-text-muted) !important;
+  min-width: unset !important;
+
+  mat-icon {
+    font-size: 0.9rem;
+    width: 0.9rem;
+    height: 0.9rem;
+    margin-right: 4px;
+  }
+
+  &:hover {
+    color: var(--sc-primary) !important;
+  }
+}
+
+.ct-accion-icon {
+  width: 24px !important;
+  height: 24px !important;
+  line-height: 24px !important;
+  color: var(--sc-text-muted) !important;
+
+  mat-icon {
+    font-size: 0.875rem !important;
+    width: 0.875rem !important;
+    height: 0.875rem !important;
+  }
+
+  &:hover {
+    color: var(--sc-primary) !important;
+  }
+
+  &--danger:hover {
+    color: var(--mdc-theme-error, #ef4444) !important;
+  }
+}
+
+// ── Textarea compartido ───────────────────────────────────────────────────────
+.ct-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  border: 1px solid var(--sc-surface-border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 0.875rem;
+  font-family: inherit;
+  color: var(--sc-text-color);
+  background: var(--sc-surface-card);
+  outline: none;
+  transition: border-color 0.15s;
+  line-height: 1.5;
+
+  &:focus {
+    border-color: var(--sc-primary);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--sc-primary) 15%, transparent);
+  }
+
+  &::placeholder {
+    color: var(--sc-text-muted);
+    opacity: .7;
+  }
+}
+
+// ── Edición inline ────────────────────────────────────────────────────────────
+.ct-edit-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.ct-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+// ── Reply box ─────────────────────────────────────────────────────────────────
+.ct-reply-box {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--sc-surface-border);
+}
+
+.ct-reply-input-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+// ── Nuevo comentario ──────────────────────────────────────────────────────────
+// flex-shrink: 0 → nunca se encoge, siempre visible al pie
+.ct-new-comment {
+  flex-shrink: 0;
+  display: flex;
+  gap: 12px;
+  padding-top: 14px;
+  border-top: 1px solid var(--sc-surface-border);
+  margin-top: 4px;
+}
+
+.ct-new-input-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ct-new-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  // Alineación interna del botón Enviar
+  button {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+
+    mat-icon {
+      font-size: 1rem !important;
+      width: 1rem !important;
+      height: 1rem !important;
+      margin: 0 !important;
+      line-height: 1 !important;
+    }
+
+    span {
+      line-height: 1 !important;
+      vertical-align: middle;
+    }
+  }
+}
+
+.ct-hint {
+  font-size: 0.6875rem;
+  color: var(--sc-text-muted);
+  opacity: .7;
+}
+
+// ── Input wrapper con dropdown de menciones ───────────────────────────────────
+.ct-input-wrapper {
+  position: relative;
+}
+
+.ct-menciones-dropdown {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--sc-surface-card);
+  border: 1px solid var(--sc-surface-border);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, .12);
+  z-index: 20;
+}
+
+.ct-mencion-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background 0.12s;
+
+  &:hover {
+    background: var(--sc-surface-ground);
+  }
+}
+
+.ct-mencion-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--sc-primary);
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ct-mencion-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.ct-mencion-nombre {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--sc-text-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ct-mencion-email {
+  font-size: 0.6875rem;
+  color: var(--sc-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

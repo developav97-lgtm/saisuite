@@ -52,6 +52,21 @@ export const routes: Routes = [
                 loadChildren: () =>
                     import('./features/terceros/terceros.routes').then(m => m.TERCEROS_ROUTES),
             },
+            // Notificaciones
+            {
+                path: 'notificaciones',
+                loadComponent: () =>
+                    import('./features/notificaciones/notificaciones-list.component').then(
+                        m => m.NotificacionesListComponent
+                    ),
+            },
+            {
+                path: 'notificaciones/configuracion',
+                loadComponent: () =>
+                    import('./features/notificaciones/components/configuracion/notificaciones-configuracion.component').then(
+                        m => m.NotificacionesConfiguracionComponent
+                    ),
+            },
             // Admin — gestión de empresa, usuarios y módulos
             {
                 path: 'admin',

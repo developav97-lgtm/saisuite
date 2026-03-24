@@ -24,12 +24,17 @@
     <!-- Progress bar -->
     <div class="trd-progress">
       <div class="trd-progress-label">
-        <span>Progreso</span>
-        <strong>{{ tarea()!.porcentaje_completado }}%</strong>
+        <span>
+          Progreso
+          @if (tarea()!.horas_estimadas > 0) {
+            <span class="trd-progress-hint">(por horas)</span>
+          }
+        </span>
+        <strong>{{ (tarea()!.horas_estimadas > 0 ? tarea()!.progreso_porcentaje : tarea()!.porcentaje_completado) | number:'1.0-0' }}%</strong>
       </div>
       <mat-progress-bar
         mode="determinate"
-        [value]="tarea()!.porcentaje_completado"
+        [value]="tarea()!.horas_estimadas > 0 ? tarea()!.progreso_porcentaje : tarea()!.porcentaje_completado"
         [class.trd-progress--completada]="tarea()!.estado === 'completada'" />
     </div>
 
@@ -212,6 +217,20 @@
               </div>
             </div>
 
+            <!-- Barra de progreso de horas -->
+            @if (tarea()!.horas_estimadas > 0) {
+              <div class="trd-horas-progreso">
+                <div class="trd-horas-progreso-header">
+                  <span class="trd-hora-label">Avance por horas</span>
+                  <span class="trd-hora-label">{{ tarea()!.progreso_porcentaje | number:'1.0-0' }}%</span>
+                </div>
+                <mat-progress-bar
+                  mode="determinate"
+                  [value]="tarea()!.progreso_porcentaje"
+                  [color]="tarea()!.progreso_porcentaje >= 100 ? 'accent' : tarea()!.progreso_porcentaje >= 50 ? 'primary' : 'warn'" />
+              </div>
+            }
+
             <!-- Cronómetro -->
             @if (modoCronometroHabilitado()) {
               <mat-divider />
@@ -231,6 +250,19 @@
               </div>
             }
 
+          </div>
+        </mat-tab>
+
+        <!-- Comentarios -->
+        <mat-tab>
+          <ng-template mat-tab-label>
+            <mat-icon class="trd-tab-icon">chat</mat-icon>
+            Comentarios
+          </ng-template>
+          <div class="trd-tab-content trd-tab-content--comentarios">
+            <app-comentarios-thread
+              contentTypeModel="tarea"
+              [objectId]="tarea()!.id" />
           </div>
         </mat-tab>
 

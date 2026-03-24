@@ -15,14 +15,16 @@
   </div>
 
   <!-- ── Filtros ── -->
-  <div class="sc-filters">
-    <mat-form-field appearance="outline" class="sc-filters__search">
+  <div class="tl-filters sc-card">
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="tl-search">
       <mat-label>Buscar por nombre o NIT</mat-label>
-      <mat-icon matPrefix>search</mat-icon>
       <input matInput [value]="searchText()" (input)="searchText.set($any($event.target).value)" (keyup.enter)="onSearch()" />
+      <button mat-icon-button matSuffix (click)="onSearch()" aria-label="Buscar">
+        <mat-icon>search</mat-icon>
+      </button>
     </mat-form-field>
 
-    <mat-form-field appearance="outline">
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="tl-filter">
       <mat-label>Tipo</mat-label>
       <mat-select [value]="tipoFilter()" (selectionChange)="tipoFilter.set($event.value); onFilter()">
         @for (op of tipoTerceroOptions; track op.value) {
@@ -30,10 +32,6 @@
         }
       </mat-select>
     </mat-form-field>
-
-    <button mat-stroked-button (click)="onSearch()">
-      <mat-icon>filter_list</mat-icon> Buscar
-    </button>
   </div>
 
   @if (loading()) {

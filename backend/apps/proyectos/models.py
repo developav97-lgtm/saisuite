@@ -50,6 +50,19 @@ class TipoDocumento(models.TextChoices):
     ACTA_OBRA          = 'acta_obra',           'Acta de obra'
 
 
+class EstadoFase(models.TextChoices):
+    PLANIFICADA = 'planificada', 'Planificada'
+    ACTIVA      = 'activa',      'Activa'
+    COMPLETADA  = 'completada',  'Completada'
+    CANCELADA   = 'cancelada',   'Cancelada'
+
+
+class ModoMedicion(models.TextChoices):
+    SOLO_ESTADOS = 'solo_estados', 'Solo estados'
+    TIMESHEET    = 'timesheet',    'Timesheet (horas)'
+    CANTIDAD     = 'cantidad',     'Cantidad ejecutada'
+
+
 class Proyecto(BaseModel):
     """
     Proyecto de ejecución en Saicloud.
@@ -196,9 +209,16 @@ class Fase(BaseModel):
     presupuesto_equipos      = models.DecimalField(max_digits=15, decimal_places=2, default=0)
     presupuesto_otros        = models.DecimalField(max_digits=15, decimal_places=2, default=0)
 
+    estado = models.CharField(
+        max_length=20,
+        choices=EstadoFase.choices,
+        default=EstadoFase.PLANIFICADA,
+        help_text='Estado operativo de la fase.',
+    )
+
     porcentaje_avance = models.DecimalField(
         max_digits=5, decimal_places=2, default=0,
-        help_text='Porcentaje de avance físico (0-100)'
+        help_text='Porcentaje de avance físico (0-100). Calculado automáticamente desde tareas.'
     )
 
     activo = models.BooleanField(default=True, db_index=True)
@@ -363,6 +383,41 @@ class ActividadProyecto(BaseModel):
         return f'{self.proyecto.codigo} / {self.actividad.codigo}'
 
 
+class ActividadSaiopen(BaseModel):
+    """
+    Catálogo de actividades sincronizadas desde Saiopen.
+    Una misma actividad puede vincularse a múltiples tareas y fases.
+    unidad_medida determina el modo de medición en la UI (DEC-020).
+    """
+    codigo          = models.CharField(max_length=50, db_index=True)
+    nombre          = models.CharField(max_length=255)
+    descripcion     = models.TextField(blank=True)
+    unidad_medida   = models.CharField(
+        max_length=20,
+        choices=ModoMedicion.choices,
+        default=ModoMedicion.SOLO_ESTADOS,
+        help_text='Determina el modo de medición: solo_estados, timesheet o cantidad.',
+    )
+    costo_unitario_base = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text='Costo de referencia. Puede diferir por tarea.',
+    )
+    activo = models.BooleanField(default=True, db_index=True)
+
+    # Sincronización Saiopen (gestionada por el agente)
+    saiopen_actividad_id     = models.CharField(max_length=50, null=True, blank=True)
+    sincronizado_con_saiopen = models.BooleanField(default=False)
+
+    class Meta:
+        verbose_name        = 'Actividad Saiopen'
+        verbose_name_plural = 'Actividades Saiopen'
+        ordering            = ['codigo']
+        unique_together     = [('company', 'codigo')]
+
+    def __str__(self):
+        return f'{self.codigo} — {self.nombre}'
+
+
 class Hito(BaseModel):
     """
     Hito facturable del proyecto.
@@ -440,17 +495,31 @@ class Tarea(BaseModel):
     """
 
     # ===== RELACIONES PRINCIPALES =====
+    # fase es obligatoria (DEC-021): la jerarquía es Proyecto → Fase → Tarea.
+    # proyecto se auto-sincroniza desde fase.proyecto en save() para facilitar
+    # consultas de performance sin romper la API existente.
+    fase = models.ForeignKey(
+        'Fase',
+        on_delete=models.CASCADE,
+        related_name='tareas',
+        help_text='Fase a la que pertenece esta tarea (obligatoria).',
+    )
     proyecto = models.ForeignKey(
         'Proyecto',
         on_delete=models.CASCADE,
-        related_name='tareas'
+        related_name='tareas',
+        editable=False,
+        help_text='Auto-derivado de fase.proyecto. No editar directamente.',
     )
-    fase = models.ForeignKey(
-        'Fase',
+
+    # ===== ACTIVIDAD SAIOPEN (DEC-022) =====
+    actividad_saiopen = models.ForeignKey(
+        'ActividadSaiopen',
+        on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        on_delete=models.SET_NULL,
-        related_name='tareas'
+        related_name='tareas',
+        help_text='Actividad de Saiopen que determina el modo de medición.',
     )
 
     # ===== JERARQUÍA (SUBTAREAS MULTI-NIVEL) =====
@@ -539,6 +608,16 @@ class Tarea(BaseModel):
         default=0
     )
 
+    # ===== MEDICIÓN POR CANTIDAD (DEC-022) =====
+    cantidad_objetivo   = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text='Cantidad objetivo (aplica cuando actividad_saiopen.unidad_medida = cantidad).',
+    )
+    cantidad_registrada = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0,
+        help_text='Cantidad ejecutada registrada.',
+    )
+
     # ===== RECURRENCIA =====
     es_recurrente = models.BooleanField(default=False)
     frecuencia_recurrencia = models.CharField(
@@ -553,17 +632,20 @@ class Tarea(BaseModel):
     )
     proxima_generacion = models.DateField(null=True, blank=True)
 
-    # ===== LEGACY (MIGRACIÓN) =====
-    actividad_proyecto_id = models.UUIDField(
+    # ===== ACTIVIDAD DEL PROYECTO (DEC-022) =====
+    actividad_proyecto = models.ForeignKey(
+        'ActividadProyecto',
+        on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        editable=False,
-        help_text='ID de ActividadProyecto original (solo para migración)'
+        related_name='tareas',
+        help_text='Actividad del proyecto a la que pertenece esta tarea.',
     )
 
     class Meta:
         ordering = ['-prioridad', 'fecha_limite', 'nombre']
         indexes = [
+            models.Index(fields=['fase', 'estado']),
             models.Index(fields=['proyecto', 'estado']),
             models.Index(fields=['responsable']),
             models.Index(fields=['fecha_limite']),
@@ -592,10 +674,12 @@ class Tarea(BaseModel):
             })
 
         # Validar que tarea_padre pertenece al mismo proyecto
-        if self.tarea_padre and self.tarea_padre.proyecto_id != self.proyecto_id:
-            raise ValidationError({
-                'tarea_padre': 'Tarea padre debe pertenecer al mismo proyecto'
-            })
+        if self.tarea_padre:
+            proyecto_id = self.proyecto_id or (self.fase.proyecto_id if self.fase_id and self.fase else None)
+            if proyecto_id and self.tarea_padre.proyecto_id != proyecto_id:
+                raise ValidationError({
+                    'tarea_padre': 'Tarea padre debe pertenecer al mismo proyecto'
+                })
 
         # Validar nivel máximo de jerarquía (5 niveles)
         if self.tarea_padre and self.nivel_jerarquia >= 5:
@@ -604,13 +688,17 @@ class Tarea(BaseModel):
             })
 
     def save(self, *args, **kwargs):
+        # Mantener proyecto sincronizado con fase.proyecto (DEC-021)
+        if self.fase_id and not self.proyecto_id:
+            self.proyecto_id = self.fase.proyecto_id
+
         # Generar código automáticamente
         if not self.codigo:
             from django.db.models import Max
             from django.db.models.functions import Cast, Substr
 
             ultimo_numero = Tarea.all_objects.filter(
-                proyecto=self.proyecto
+                proyecto_id=self.proyecto_id
             ).aggregate(
                 max_num=Max(
                     Cast(
@@ -623,6 +711,34 @@ class Tarea(BaseModel):
             self.codigo = f"TASK-{ultimo_numero + 1:05d}"
 
         super().save(*args, **kwargs)
+
+    @property
+    def modo_medicion(self) -> str:
+        """Modo de medición determinado por la actividad asociada."""
+        if self.actividad_saiopen_id and self.actividad_saiopen:
+            return self.actividad_saiopen.unidad_medida
+        if self.actividad_proyecto_id and self.actividad_proyecto_id:
+            try:
+                um = (self.actividad_proyecto.actividad.unidad_medida or '').lower().strip()
+                if um == 'hora':
+                    return ModoMedicion.TIMESHEET
+                if um:
+                    return ModoMedicion.CANTIDAD
+            except Exception:
+                pass
+        return ModoMedicion.SOLO_ESTADOS
+
+    @property
+    def progreso_porcentaje(self) -> float:
+        """Progreso calculado según el modo de medición de la actividad."""
+        modo = self.modo_medicion
+        if modo == ModoMedicion.TIMESHEET:
+            if self.horas_estimadas and self.horas_estimadas > 0:
+                return min(float(self.horas_registradas) / float(self.horas_estimadas) * 100, 100.0)
+        elif modo == ModoMedicion.CANTIDAD:
+            if self.cantidad_objetivo and self.cantidad_objetivo > 0:
+                return min(float(self.cantidad_registrada) / float(self.cantidad_objetivo) * 100, 100.0)
+        return float(self.porcentaje_completado)
 
     @property
     def es_vencida(self):

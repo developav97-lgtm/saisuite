@@ -40,12 +40,17 @@
     <!-- Progress bar global -->
     <div class="td-progress-section sc-card">
       <div class="td-progress-header">
-        <span>Progreso</span>
-        <strong>{{ tarea()!.porcentaje_completado }}%</strong>
+        <span>
+          Progreso
+          @if (tarea()!.horas_estimadas > 0) {
+            <span class="td-progress-hint">(por horas)</span>
+          }
+        </span>
+        <strong>{{ (tarea()!.horas_estimadas > 0 ? tarea()!.progreso_porcentaje : tarea()!.porcentaje_completado) | number:'1.0-0' }}%</strong>
       </div>
       <mat-progress-bar
         mode="determinate"
-        [value]="tarea()!.porcentaje_completado"
+        [value]="tarea()!.horas_estimadas > 0 ? tarea()!.progreso_porcentaje : tarea()!.porcentaje_completado"
         [class.td-progress--completada]="tarea()!.estado === 'completada'" />
     </div>
 
@@ -160,89 +165,191 @@
             </div>
           </mat-tab>
 
-          <!-- Tab: Tiempo -->
+          <!-- Tab: Tiempo / Medición -->
           <mat-tab>
             <ng-template mat-tab-label>
-              <mat-icon class="td-tab-icon">schedule</mat-icon>
-              Tiempo
+              @if (modoMedicion() === 'cantidad') {
+                <mat-icon class="td-tab-icon">assessment</mat-icon>
+                Medición
+              } @else {
+                <mat-icon class="td-tab-icon">schedule</mat-icon>
+                Tiempo
+              }
             </ng-template>
             <div class="td-tab-content">
 
-              <!-- Resumen estimadas vs registradas -->
-              <div class="td-horas-resumen">
-                <div class="td-hora-bloque">
-                  <span class="td-hora-label">
-                    <mat-icon>timer</mat-icon>
-                    Horas estimadas
-                  </span>
-                  <span class="td-hora-valor">{{ tarea()!.horas_estimadas }}h</span>
+              <!-- ── MODO: solo_estados ── -->
+              @if (modoMedicion() === 'solo_estados') {
+                <div class="td-modo-info">
+                  <mat-icon>info_outline</mat-icon>
+                  <span>Esta tarea no tiene actividad asociada. El avance se gestiona únicamente mediante el cambio de estado.</span>
+                </div>
+                <!-- Horas estimadas → solo lectura -->
+                @if (tarea()!.horas_estimadas > 0) {
+                  <div class="td-horas-resumen">
+                    <div class="td-hora-bloque">
+                      <span class="td-hora-label"><mat-icon>timer</mat-icon>Horas estimadas</span>
+                      <span class="td-hora-valor">{{ tarea()!.horas_estimadas }}h</span>
+                    </div>
+                  </div>
+                }
+              }
+
+              <!-- ── MODO: timesheet ── -->
+              @if (modoMedicion() === 'timesheet') {
+                <!-- Resumen estimadas vs registradas -->
+                <div class="td-horas-resumen">
+                  <div class="td-hora-bloque">
+                    <span class="td-hora-label">
+                      <mat-icon>timer</mat-icon>
+                      Horas estimadas
+                    </span>
+                    <span class="td-hora-valor">{{ tarea()!.horas_estimadas }}h</span>
+                  </div>
+
+                  <mat-divider [vertical]="true" class="td-hora-divider" />
+
+                  <div class="td-hora-bloque">
+                    <span class="td-hora-label">
+                      <mat-icon>history</mat-icon>
+                      Horas registradas
+                    </span>
+
+                    @if (modoTimesheetDesactivado()) {
+                      <span class="td-hora-valor td-hora-muted">
+                        {{ tarea()!.horas_registradas }}h
+                        <a class="td-timesheet-config-link" routerLink="/proyectos/configuracion"
+                          matTooltip="Activar timesheet en Configuración">
+                          (desactivado)
+                        </a>
+                      </span>
+                    } @else if (editandoHoras()) {
+                      <div class="td-horas-edit">
+                        <input
+                          type="number"
+                          [(ngModel)]="horasAdicionales"
+                          (keydown)="onHorasKeydown($event)"
+                          (blur)="guardarHoras()"
+                          min="0.5" step="0.5"
+                          placeholder="ej. 1.5"
+                          class="td-horas-input"
+                          autofocus
+                        />
+                        <span class="td-horas-hint">+ {{ tarea()!.horas_registradas }}h actuales</span>
+                      </div>
+                    } @else {
+                      <span class="td-hora-valor"
+                        [class.td-horas-editable]="modoManualHabilitado()"
+                        (click)="modoManualHabilitado() ? onHorasClick() : null"
+                        [matTooltip]="modoManualHabilitado() ? 'Click para agregar horas' : ''">
+                        {{ tarea()!.horas_registradas }}h
+                        @if (modoManualHabilitado()) {
+                          <mat-icon class="td-horas-edit-icon">add_circle_outline</mat-icon>
+                        }
+                      </span>
+                    }
+                  </div>
                 </div>
 
-                <mat-divider [vertical]="true" class="td-hora-divider" />
-
-                <div class="td-hora-bloque">
-                  <span class="td-hora-label">
-                    <mat-icon>history</mat-icon>
-                    Horas registradas
-                  </span>
-
-                  @if (modoTimesheetDesactivado()) {
-                    <span class="td-hora-valor td-hora-muted">
-                      {{ tarea()!.horas_registradas }}h
-                      <a class="td-timesheet-config-link" routerLink="/proyectos/configuracion"
-                        matTooltip="Activar timesheet en Configuración">
-                        (desactivado)
-                      </a>
-                    </span>
-                  } @else if (editandoHoras()) {
-                    <div class="td-horas-edit">
-                      <input
-                        type="number"
-                        [(ngModel)]="horasAdicionales"
-                        (keydown)="onHorasKeydown($event)"
-                        (blur)="guardarHoras()"
-                        min="0.5" step="0.5"
-                        placeholder="ej. 1.5"
-                        class="td-horas-input"
-                        autofocus
-                      />
-                      <span class="td-horas-hint">+ {{ tarea()!.horas_registradas }}h actuales</span>
+                <!-- Barra de progreso de horas -->
+                @if (tarea()!.horas_estimadas > 0) {
+                  <div class="td-horas-progreso">
+                    <div class="td-horas-progreso-header">
+                      <span class="td-hora-label">Avance por horas</span>
+                      <span class="td-hora-label">{{ tarea()!.progreso_porcentaje | number:'1.0-0' }}%</span>
                     </div>
-                  } @else {
-                    <span class="td-hora-valor"
-                      [class.td-horas-editable]="modoManualHabilitado()"
-                      (click)="modoManualHabilitado() ? onHorasClick() : null"
-                      [matTooltip]="modoManualHabilitado() ? 'Click para agregar horas' : ''">
-                      {{ tarea()!.horas_registradas }}h
-                      @if (modoManualHabilitado()) {
-                        <mat-icon class="td-horas-edit-icon">add_circle_outline</mat-icon>
-                      }
+                    <mat-progress-bar
+                      mode="determinate"
+                      [value]="tarea()!.progreso_porcentaje"
+                      [color]="tarea()!.progreso_porcentaje >= 100 ? 'accent' : tarea()!.progreso_porcentaje >= 50 ? 'primary' : 'warn'" />
+                  </div>
+                }
+
+                <!-- Cronómetro -->
+                @if (modoCronometroHabilitado()) {
+                  <mat-divider />
+                  <div class="td-cronometro-section">
+                    <span class="td-section-label">Cronómetro</span>
+                    <app-cronometro
+                      [tareaId]="tarea()!.id"
+                      (sesionFinalizada)="onSesionFinalizada($event)" />
+                  </div>
+                }
+
+                <!-- Estado desactivado -->
+                @if (modoTimesheetDesactivado()) {
+                  <div class="td-timesheet-off">
+                    <mat-icon>block</mat-icon>
+                    <span>El registro de tiempo está desactivado.
+                      <a routerLink="/proyectos/configuracion">Ir a Configuración</a>
                     </span>
+                  </div>
+                }
+              }
+
+              <!-- ── MODO: cantidad ── -->
+              @if (modoMedicion() === 'cantidad') {
+                <!-- Cantidad registrada (clickeable inline) -->
+                <div class="td-cantidad-display"
+                  [class.td-cantidad-display--editing]="editandoCantidad()"
+                  (click)="!editandoCantidad() ? onCantidadClick() : null"
+                  [matTooltip]="editandoCantidad() ? '' : 'Click para registrar cantidad'">
+                  @if (editandoCantidad()) {
+                    <input
+                      matInput
+                      type="number"
+                      [(ngModel)]="cantidadTemporal"
+                      (keydown)="onCantidadKeydown($event)"
+                      (blur)="guardarCantidad()"
+                      min="0" step="0.01"
+                      class="td-cantidad-input"
+                      autofocus
+                    />
+                    <span class="td-cantidad-unidad">{{ tarea()!.actividad_proyecto_detail?.actividad_unidad_medida }}</span>
+                  } @else {
+                    <mat-icon class="td-cantidad-icon">assignment_turned_in</mat-icon>
+                    <span class="td-cantidad-valor">{{ tarea()!.cantidad_registrada }}</span>
+                    <span class="td-cantidad-unidad">{{ tarea()!.actividad_proyecto_detail?.actividad_unidad_medida }} registrados</span>
+                    <mat-icon class="td-cantidad-edit-hint">edit</mat-icon>
                   }
                 </div>
-              </div>
 
-              <!-- Cronómetro -->
-              @if (modoCronometroHabilitado()) {
-                <mat-divider />
-                <div class="td-cronometro-section">
-                  <span class="td-section-label">Cronómetro</span>
-                  <app-cronometro
-                    [tareaId]="tarea()!.id"
-                    (sesionFinalizada)="onSesionFinalizada($event)" />
-                </div>
+                <!-- Objetivo + barra de progreso -->
+                @if (tarea()!.cantidad_objetivo > 0) {
+                  <div class="td-horas-progreso">
+                    <div class="td-horas-progreso-header">
+                      <span class="td-hora-label">
+                        {{ tarea()!.cantidad_registrada }} / {{ tarea()!.cantidad_objetivo }}
+                        {{ tarea()!.actividad_proyecto_detail?.actividad_unidad_medida }}
+                      </span>
+                      <span class="td-hora-label">{{ tarea()!.progreso_porcentaje | number:'1.0-0' }}%</span>
+                    </div>
+                    <mat-progress-bar
+                      mode="determinate"
+                      [value]="tarea()!.progreso_porcentaje"
+                      [color]="tarea()!.progreso_porcentaje >= 100 ? 'accent' : 'primary'" />
+                  </div>
+                } @else {
+                  <p class="td-cantidad-hint">
+                    <mat-icon>info_outline</mat-icon>
+                    Define una cantidad objetivo en la edición de la tarea para ver el progreso.
+                  </p>
+                }
               }
 
-              <!-- Estado desactivado -->
-              @if (modoTimesheetDesactivado()) {
-                <div class="td-timesheet-off">
-                  <mat-icon>block</mat-icon>
-                  <span>El registro de tiempo está desactivado.
-                    <a routerLink="/proyectos/configuracion">Ir a Configuración</a>
-                  </span>
-                </div>
-              }
+            </div>
+          </mat-tab>
 
+          <!-- Tab: Comentarios -->
+          <mat-tab>
+            <ng-template mat-tab-label>
+              <mat-icon class="td-tab-icon">chat</mat-icon>
+              Comentarios
+            </ng-template>
+            <div class="td-tab-content td-tab-content--scroll">
+              <app-comentarios-thread
+                contentTypeModel="tarea"
+                [objectId]="tarea()!.id" />
             </div>
           </mat-tab>
 
@@ -273,6 +380,20 @@
                 Fase
               </span>
               <span class="td-meta-value">{{ tarea()!.fase_detail!.nombre }}</span>
+            </div>
+          }
+
+          @if (tarea()!.actividad_proyecto_detail) {
+            <mat-divider />
+            <div class="td-meta-item">
+              <span class="td-meta-label">
+                <mat-icon>construction</mat-icon>
+                Actividad
+              </span>
+              <span class="td-meta-value">
+                <span class="td-codigo">{{ tarea()!.actividad_proyecto_detail!.actividad_codigo }}</span>
+                {{ tarea()!.actividad_proyecto_detail!.actividad_nombre }}
+              </span>
             </div>
           }
 

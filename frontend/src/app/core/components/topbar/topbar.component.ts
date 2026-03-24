@@ -5,11 +5,12 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { ThemeService } from '../../services/theme.service';
 import { AuthService } from '../../auth/auth.service';
+import { NotificationBellComponent } from '../notification-bell/notification-bell.component';
 
 @Component({
   selector: 'app-topbar',
   standalone: true,
-  imports: [RouterModule, MatIconModule, MatButtonModule, MatTooltipModule],
+  imports: [RouterModule, MatIconModule, MatButtonModule, MatTooltipModule, NotificationBellComponent],
   templateUrl: './topbar.component.html',
   styleUrls: ['./topbar.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,

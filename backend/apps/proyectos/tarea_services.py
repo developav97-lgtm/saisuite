@@ -52,6 +52,16 @@ class TareaService:
                     'tarea_padre': 'Máximo 5 niveles de jerarquía (0-4). La tarea padre ya está en el nivel máximo.'
                 })
 
+        # Auto-asignar fase: si no se provee, buscar la fase activa o la primera del proyecto (DEC-021)
+        if 'fase' not in kwargs:
+            from apps.proyectos.models import Fase, EstadoFase
+            fase = (
+                Fase.all_objects.filter(proyecto=proyecto, estado=EstadoFase.ACTIVA, activo=True).first()
+                or Fase.all_objects.filter(proyecto=proyecto, activo=True).order_by('orden').first()
+            )
+            if fase:
+                kwargs['fase'] = fase
+
         tarea = Tarea.objects.create(
             proyecto=proyecto,
             company=proyecto.company,
@@ -302,6 +312,7 @@ class TimesheetService:
     def agregar_horas(tarea: Tarea, horas: Decimal) -> Tarea:
         """
         Agrega horas manualmente a las horas_registradas de la tarea.
+        Sincroniza porcentaje_completado con el progreso calculado por horas.
         Raises:
             ValidationError: si las horas son <= 0.
         """
@@ -309,11 +320,23 @@ class TimesheetService:
             raise ValidationError({'horas': 'Las horas deben ser mayores a 0.'})
 
         tarea.horas_registradas = tarea.horas_registradas + horas
-        tarea.save(update_fields=['horas_registradas'])
+
+        # Sincronizar porcentaje_completado con progreso calculado por horas
+        update_fields = ['horas_registradas']
+        if tarea.horas_estimadas and tarea.horas_estimadas > 0:
+            nuevo_porcentaje = min(
+                int(float(tarea.horas_registradas) / float(tarea.horas_estimadas) * 100),
+                100,
+            )
+            tarea.porcentaje_completado = nuevo_porcentaje
+            update_fields.append('porcentaje_completado')
+
+        tarea.save(update_fields=update_fields)
 
         logger.info('Horas agregadas manualmente', extra={
             'tarea_id': str(tarea.id),
             'horas': str(horas),
+            'porcentaje_completado': tarea.porcentaje_completado,
         })
         return tarea
 
@@ -441,16 +464,27 @@ class TimesheetService:
         sesion.duracion_segundos = TimesheetService._calcular_duracion_segundos(sesion)
         sesion.save(update_fields=['fin', 'estado', 'notas', 'duracion_segundos', 'pausas'])
 
-        # Sumar horas a la tarea
+        # Sumar horas a la tarea y sincronizar porcentaje_completado
         horas = Decimal(sesion.duracion_segundos) / Decimal(3600)
         tarea = sesion.tarea
         tarea.horas_registradas = tarea.horas_registradas + horas
-        tarea.save(update_fields=['horas_registradas'])
+
+        update_fields = ['horas_registradas']
+        if tarea.horas_estimadas and tarea.horas_estimadas > 0:
+            nuevo_porcentaje = min(
+                int(float(tarea.horas_registradas) / float(tarea.horas_estimadas) * 100),
+                100,
+            )
+            tarea.porcentaje_completado = nuevo_porcentaje
+            update_fields.append('porcentaje_completado')
+
+        tarea.save(update_fields=update_fields)
 
         logger.info('Sesión detenida', extra={
             'sesion_id': str(sesion.id),
             'duracion_segundos': sesion.duracion_segundos,
             'tarea_id': str(tarea.id),
+            'porcentaje_completado': tarea.porcentaje_completado,
         })
         return sesion
 

@@ -7,7 +7,7 @@ import {
   ChangeDetectionStrategy, ChangeDetectorRef,
   Component, OnInit, inject, signal, computed,
 } from '@angular/core';
-import { DatePipe } from '@angular/common';
+import { DatePipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -26,6 +26,7 @@ import { TareaService } from '../../services/tarea.service';
 import { ConfiguracionProyectoService } from '../../services/configuracion-proyecto.service';
 import { TareaCardComponent } from '../tarea-card/tarea-card.component';
 import { CronometroComponent } from '../../../../shared/components/cronometro/cronometro.component';
+import { ComentariosThreadComponent } from '../../../../shared/components/comentarios-thread/comentarios-thread.component';
 import { Tarea, TareaEstado } from '../../models/tarea.model';
 import { ConfiguracionProyecto } from '../../models/configuracion-proyecto.model';
 import { SesionTrabajo } from '../../models/sesion-trabajo.model';
@@ -87,12 +88,12 @@ const PRIORIDAD_ICONS: Record<string, string | undefined> = {
   styleUrl: './tarea-dialog.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    DatePipe, FormsModule,
+    DatePipe, DecimalPipe, FormsModule,
     MatButtonModule, MatIconModule,
     MatProgressBarModule, MatProgressSpinnerModule,
     MatTabsModule, MatDividerModule, MatTooltipModule,
     MatDialogModule,
-    TareaCardComponent, CronometroComponent,
+    TareaCardComponent, CronometroComponent, ComentariosThreadComponent,
   ],
 })
 export class TareaDialogComponent implements OnInit {

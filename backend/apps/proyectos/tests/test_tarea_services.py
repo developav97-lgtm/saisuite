@@ -15,7 +15,7 @@ from apps.proyectos.tarea_services import TareaService
 @pytest.mark.django_db
 class TestCrearTareaConValidaciones:
 
-    def test_crear_tarea_ok(self, proyecto, user):
+    def test_crear_tarea_ok(self, proyecto, fase, user):
         tarea = TareaService.crear_tarea_con_validaciones(
             proyecto=proyecto,
             nombre='Tarea de prueba',
@@ -57,9 +57,10 @@ class TestCrearTareaConValidaciones:
         assert subtarea.tarea_padre == tarea_simple
         assert subtarea.nivel_jerarquia == 1
 
-    def test_crear_subtarea_padre_otro_proyecto_falla(self, proyecto, user):
+    def test_crear_subtarea_padre_otro_proyecto_falla(self, proyecto, fase, user):
         from decimal import Decimal
         from datetime import date
+        from apps.proyectos.models import Fase as FaseModel
         otro_proyecto = type(proyecto).all_objects.create(
             company=proyecto.company,
             gerente=user,
@@ -73,9 +74,18 @@ class TestCrearTareaConValidaciones:
             fecha_fin_planificada=date.today() + timedelta(days=90),
             presupuesto_total=Decimal('5000000.00'),
         )
+        fase_otro = FaseModel.all_objects.create(
+            company=otro_proyecto.company,
+            proyecto=otro_proyecto,
+            nombre='Fase Otro',
+            orden=1,
+            fecha_inicio_planificada=date.today(),
+            fecha_fin_planificada=date.today() + timedelta(days=90),
+        )
         tarea_otro = Tarea.objects.create(
             company=proyecto.company,
             proyecto=otro_proyecto,
+            fase=fase_otro,
             nombre='Tarea en otro proyecto',
         )
 
@@ -87,10 +97,10 @@ class TestCrearTareaConValidaciones:
             )
         assert 'tarea_padre' in exc.value.message_dict
 
-    def test_crear_subtarea_nivel_maximo_falla(self, proyecto):
+    def test_crear_subtarea_nivel_maximo_falla(self, proyecto, fase):
         """No se puede crear subtarea si la padre está en nivel 4."""
         def crear(nombre, padre=None):
-            kwargs = {'nombre': nombre}
+            kwargs = {'nombre': nombre, 'fase': fase}
             if padre:
                 kwargs['tarea_padre'] = padre
             return Tarea.objects.create(
@@ -249,10 +259,11 @@ class TestEliminarTareaConSubtareas:
 @pytest.mark.django_db
 class TestObtenerTareasVencidas:
 
-    def test_retorna_tareas_vencidas(self, proyecto):
+    def test_retorna_tareas_vencidas(self, proyecto, fase):
         vencida = Tarea.objects.create(
             company=proyecto.company,
             proyecto=proyecto,
+            fase=fase,
             nombre='Vencida',
             fecha_limite=timezone.now().date() - timedelta(days=1),
             estado='por_hacer',
@@ -260,6 +271,7 @@ class TestObtenerTareasVencidas:
         Tarea.objects.create(
             company=proyecto.company,
             proyecto=proyecto,
+            fase=fase,
             nombre='No vencida',
             fecha_limite=timezone.now().date() + timedelta(days=5),
             estado='por_hacer',
@@ -270,10 +282,11 @@ class TestObtenerTareasVencidas:
         assert len(tareas) == 1
         assert tareas[0].id == vencida.id
 
-    def test_excluye_completadas_y_canceladas(self, proyecto):
+    def test_excluye_completadas_y_canceladas(self, proyecto, fase):
         Tarea.objects.create(
             company=proyecto.company,
             proyecto=proyecto,
+            fase=fase,
             nombre='Completada vencida',
             fecha_limite=timezone.now().date() - timedelta(days=1),
             estado='completada',
@@ -281,6 +294,7 @@ class TestObtenerTareasVencidas:
         Tarea.objects.create(
             company=proyecto.company,
             proyecto=proyecto,
+            fase=fase,
             nombre='Cancelada vencida',
             fecha_limite=timezone.now().date() - timedelta(days=1),
             estado='cancelada',
@@ -289,10 +303,11 @@ class TestObtenerTareasVencidas:
         tareas = TareaService.obtener_tareas_vencidas(proyecto)
         assert len(tareas) == 0
 
-    def test_sin_proyecto_retorna_todas(self, proyecto):
+    def test_sin_proyecto_retorna_todas(self, proyecto, fase):
         Tarea.objects.create(
             company=proyecto.company,
             proyecto=proyecto,
+            fase=fase,
             nombre='Vencida global',
             fecha_limite=timezone.now().date() - timedelta(days=2),
             estado='en_progreso',
@@ -304,10 +319,11 @@ class TestObtenerTareasVencidas:
 @pytest.mark.django_db
 class TestObtenerTareasProximasVencer:
 
-    def test_retorna_tarea_que_vence_manana(self, proyecto):
+    def test_retorna_tarea_que_vence_manana(self, proyecto, fase):
         manana = Tarea.objects.create(
             company=proyecto.company,
             proyecto=proyecto,
+            fase=fase,
             nombre='Vence mañana',
             fecha_limite=timezone.now().date() + timedelta(days=1),
             estado='por_hacer',
@@ -315,6 +331,7 @@ class TestObtenerTareasProximasVencer:
         Tarea.objects.create(
             company=proyecto.company,
             proyecto=proyecto,
+            fase=fase,
             nombre='Vence en 5 días',
             fecha_limite=timezone.now().date() + timedelta(days=5),
             estado='por_hacer',
@@ -325,10 +342,11 @@ class TestObtenerTareasProximasVencer:
         assert len(tareas) == 1
         assert tareas[0].id == manana.id
 
-    def test_excluye_completadas(self, proyecto):
+    def test_excluye_completadas(self, proyecto, fase):
         Tarea.objects.create(
             company=proyecto.company,
             proyecto=proyecto,
+            fase=fase,
             nombre='Completada próxima',
             fecha_limite=timezone.now().date() + timedelta(days=1),
             estado='completada',
@@ -337,10 +355,11 @@ class TestObtenerTareasProximasVencer:
         tareas = TareaService.obtener_tareas_proximas_vencer(dias=1, proyecto=proyecto)
         assert len(tareas) == 0
 
-    def test_incluye_hoy(self, proyecto):
+    def test_incluye_hoy(self, proyecto, fase):
         hoy = Tarea.objects.create(
             company=proyecto.company,
             proyecto=proyecto,
+            fase=fase,
             nombre='Vence hoy',
             fecha_limite=timezone.now().date(),
             estado='por_hacer',
@@ -353,11 +372,12 @@ class TestObtenerTareasProximasVencer:
 @pytest.mark.django_db
 class TestGenerarTareaRecurrente:
 
-    def test_genera_tarea_semanal(self, proyecto):
+    def test_genera_tarea_semanal(self, proyecto, fase):
         hoy = timezone.now().date()
         original = Tarea.objects.create(
             company=proyecto.company,
             proyecto=proyecto,
+            fase=fase,
             nombre='Revisión semanal',
             es_recurrente=True,
             frecuencia_recurrencia='semanal',
@@ -373,11 +393,12 @@ class TestGenerarTareaRecurrente:
         assert nueva.estado == 'por_hacer'
         assert nueva.es_recurrente is True
 
-    def test_genera_tarea_diaria(self, proyecto):
+    def test_genera_tarea_diaria(self, proyecto, fase):
         hoy = timezone.now().date()
         original = Tarea.objects.create(
             company=proyecto.company,
             proyecto=proyecto,
+            fase=fase,
             nombre='Tarea diaria',
             es_recurrente=True,
             frecuencia_recurrencia='diaria',
@@ -388,11 +409,12 @@ class TestGenerarTareaRecurrente:
 
         assert nueva.fecha_limite == hoy + timedelta(days=1)
 
-    def test_genera_tarea_mensual(self, proyecto):
+    def test_genera_tarea_mensual(self, proyecto, fase):
         hoy = timezone.now().date()
         original = Tarea.objects.create(
             company=proyecto.company,
             proyecto=proyecto,
+            fase=fase,
             nombre='Tarea mensual',
             es_recurrente=True,
             frecuencia_recurrencia='mensual',
@@ -407,10 +429,11 @@ class TestGenerarTareaRecurrente:
         resultado = TareaService.generar_tarea_recurrente(tarea_simple)
         assert resultado is None
 
-    def test_recurrente_sin_frecuencia_retorna_none(self, proyecto):
+    def test_recurrente_sin_frecuencia_retorna_none(self, proyecto, fase):
         original = Tarea.objects.create(
             company=proyecto.company,
             proyecto=proyecto,
+            fase=fase,
             nombre='Sin frecuencia',
             es_recurrente=True,
             frecuencia_recurrencia=None,
@@ -418,13 +441,14 @@ class TestGenerarTareaRecurrente:
         resultado = TareaService.generar_tarea_recurrente(original)
         assert resultado is None
 
-    def test_copia_tags_y_followers(self, proyecto, user):
+    def test_copia_tags_y_followers(self, proyecto, fase, user):
         from apps.proyectos.models import TareaTag
         tag = TareaTag.objects.create(company=proyecto.company, nombre='urgente', color='red')
         hoy = timezone.now().date()
         original = Tarea.objects.create(
             company=proyecto.company,
             proyecto=proyecto,
+            fase=fase,
             nombre='Con tags',
             es_recurrente=True,
             frecuencia_recurrencia='semanal',
@@ -438,11 +462,12 @@ class TestGenerarTareaRecurrente:
         assert tag in nueva.tags.all()
         assert user in nueva.followers.all()
 
-    def test_actualiza_proxima_generacion_en_original(self, proyecto):
+    def test_actualiza_proxima_generacion_en_original(self, proyecto, fase):
         hoy = timezone.now().date()
         original = Tarea.objects.create(
             company=proyecto.company,
             proyecto=proyecto,
+            fase=fase,
             nombre='Con próxima',
             es_recurrente=True,
             frecuencia_recurrencia='semanal',

@@ -34,12 +34,14 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { TareaService } from '../../services/tarea.service';
 import { ProyectoService } from '../../services/proyecto.service';
 import { FaseService } from '../../services/fase.service';
+import { ActividadProyectoService } from '../../services/actividad-proyecto.service';
 import { AdminService } from '../../../admin/services/admin.service';
 import { AdminUser } from '../../../admin/models/admin.models';
 import { TerceroService } from '../../../../core/services/tercero.service';
 import { TerceroList } from '../../../../core/models/tercero.model';
 import { ProyectoList } from '../../models/proyecto.model';
 import { FaseList } from '../../models/fase.model';
+import { ActividadProyecto } from '../../models/actividad.model';
 import {
   Tarea, TareaEstado, TareaFrecuencia, TareaPrioridad,
   TareaCreateDTO, TareaUpdateDTO,
@@ -63,51 +65,58 @@ interface SelectOption<T> { label: string; value: T; }
   ],
 })
 export class TareaFormComponent implements OnInit {
-  private readonly route           = inject(ActivatedRoute);
-  private readonly router          = inject(Router);
-  private readonly tareaService    = inject(TareaService);
-  private readonly proyectoService = inject(ProyectoService);
-  private readonly faseService     = inject(FaseService);
-  private readonly adminService    = inject(AdminService);
-  private readonly terceroService  = inject(TerceroService);
-  private readonly fb              = inject(FormBuilder);
-  private readonly snackBar        = inject(MatSnackBar);
-  private readonly cdr             = inject(ChangeDetectorRef);
-  // DestroyRef inyectado en clase para poder usarlo en takeUntilDestroyed()
-  private readonly destroyRef      = inject(DestroyRef);
+  private readonly route                  = inject(ActivatedRoute);
+  private readonly router                 = inject(Router);
+  private readonly tareaService           = inject(TareaService);
+  private readonly proyectoService        = inject(ProyectoService);
+  private readonly faseService            = inject(FaseService);
+  private readonly actividadProyectoService = inject(ActividadProyectoService);
+  private readonly adminService           = inject(AdminService);
+  private readonly terceroService         = inject(TerceroService);
+  private readonly fb                     = inject(FormBuilder);
+  private readonly snackBar               = inject(MatSnackBar);
+  private readonly cdr                    = inject(ChangeDetectorRef);
+  private readonly destroyRef             = inject(DestroyRef);
 
-  readonly editMode     = signal(false);
-  readonly tareaId      = signal<string | null>(null);
-  readonly saving       = signal(false);
-  readonly esRecurrente = signal(false);
-  readonly loadingFases = signal(false);
+  readonly editMode              = signal(false);
+  readonly tareaId               = signal<string | null>(null);
+  readonly saving                = signal(false);
+  readonly esRecurrente          = signal(false);
+  readonly loadingFases          = signal(false);
+  readonly selectedActividadModo = signal<string | null>(null);
 
   // ── Controles de búsqueda (NO parte del form group) ────────
-  readonly proyectoSearch    = new FormControl('');
-  readonly faseSearch        = new FormControl('');
-  readonly tareaPadreSearch  = new FormControl('');
-  readonly responsableSearch = new FormControl('');
-  readonly clienteSearch     = new FormControl('');
+  readonly proyectoSearch          = new FormControl('');
+  readonly faseSearch              = new FormControl('');
+  readonly actividadSaiopenSearch  = new FormControl('');
+  readonly tareaPadreSearch        = new FormControl('');
+  readonly responsableSearch       = new FormControl('');
+  readonly clienteSearch           = new FormControl('');
 
   // ── Opciones de autocomplete (señales mutables) ─────────────
-  readonly proyectoOptions      = signal<ProyectoList[]>([]);
-  readonly fasesFiltradas       = signal<FaseList[]>([]);
-  readonly tareasPadreFiltradas = signal<Tarea[]>([]);
-  readonly responsablesFiltrados = signal<AdminUser[]>([]);
-  readonly clientesFiltrados    = signal<TerceroList[]>([]);
+  readonly proyectoOptions          = signal<ProyectoList[]>([]);
+  readonly fasesFiltradas           = signal<FaseList[]>([]);
+  readonly actividadesFiltradas     = signal<ActividadProyecto[]>([]);
+  readonly tareasPadreFiltradas     = signal<Tarea[]>([]);
+  readonly responsablesFiltrados    = signal<AdminUser[]>([]);
+  readonly clientesFiltrados        = signal<TerceroList[]>([]);
 
   // Catálogos completos (para filtrado client-side)
-  private allFases:     FaseList[]    = [];
-  private allTareasPadre: Tarea[]     = [];
-  private allUsuarios:  AdminUser[]   = [];
-  private allClientes:  TerceroList[] = [];
+  private allFases:          FaseList[]          = [];
+  private allActividades:    ActividadProyecto[]  = [];
+  private allTareasPadre:    Tarea[]              = [];
+  private allUsuarios:       AdminUser[]          = [];
+  private allClientes:       TerceroList[]        = [];
 
   // ── Form group (guarda UUIDs) ───────────────────────────────
   readonly form = this.fb.group({
     nombre:                 ['', [Validators.required, Validators.maxLength(200)]],
     descripcion:            [''],
-    proyecto:               ['', Validators.required],
-    fase:                   [null as string | null],
+    proyecto:               [''],           // read-only, derivado de fase
+    fase:                   ['', Validators.required],   // obligatoria (DEC-021)
+    actividad_proyecto:     [null as string | null],     // catálogo interno
+    cantidad_objetivo:      [0],
+    cantidad_registrada:    [0],
     tarea_padre:            [null as string | null],
     cliente:                [null as string | null],
     responsable:            [null as string | null],
@@ -146,6 +155,7 @@ export class TareaFormComponent implements OnInit {
     this.initRecurrenciaListener();
     this.initProyectoSearch();
     this.initFaseFilter();
+    this.initActividadSaiopenFilter();
     this.initTareaPadreFilter();
     this.initResponsableFilter();
     this.initClienteFilter();
@@ -158,9 +168,11 @@ export class TareaFormComponent implements OnInit {
       this.tareaId.set(id);
       this.loadTarea(id);
     } else {
+      const fid   = this.route.snapshot.queryParamMap.get('fase');
       const pid   = this.route.snapshot.queryParamMap.get('proyecto');
       const padre = this.route.snapshot.queryParamMap.get('padre');
-      if (pid)   this.setProyectoById(pid);
+      if (fid)   this.setFaseById(fid);
+      else if (pid) this.setProyectoById(pid);
       if (padre) this.setTareaPadreById(padre);
     }
   }
@@ -206,7 +218,7 @@ export class TareaFormComponent implements OnInit {
       startWith(''),
       takeUntilDestroyed(this.destroyRef),
     ).subscribe(texto => {
-      const q = (texto ?? '').toLowerCase();
+      const q = typeof texto === 'string' ? texto.toLowerCase() : '';
       this.fasesFiltradas.set(
         q ? this.allFases.filter(f => f.nombre.toLowerCase().includes(q)) : this.allFases
       );
@@ -219,7 +231,7 @@ export class TareaFormComponent implements OnInit {
       startWith(''),
       takeUntilDestroyed(this.destroyRef),
     ).subscribe(texto => {
-      const q = (texto ?? '').toLowerCase();
+      const q = typeof texto === 'string' ? texto.toLowerCase() : '';
       this.tareasPadreFiltradas.set(
         q
           ? this.allTareasPadre.filter(t =>
@@ -236,7 +248,7 @@ export class TareaFormComponent implements OnInit {
       startWith(''),
       takeUntilDestroyed(this.destroyRef),
     ).subscribe(texto => {
-      const q = (texto ?? '').toLowerCase();
+      const q = typeof texto === 'string' ? texto.toLowerCase() : '';
       this.responsablesFiltrados.set(
         q
           ? this.allUsuarios.filter(u =>
@@ -256,12 +268,43 @@ export class TareaFormComponent implements OnInit {
     });
   }
 
+  private initActividadSaiopenFilter(): void {
+    this.actividadSaiopenSearch.valueChanges.pipe(
+      startWith(''),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe(texto => {
+      const q = typeof texto === 'string' ? texto.toLowerCase() : '';
+      this.actividadesFiltradas.set(
+        q
+          ? this.allActividades.filter(a =>
+              a.actividad_nombre.toLowerCase().includes(q) ||
+              a.actividad_codigo.toLowerCase().includes(q)
+            )
+          : this.allActividades
+      );
+      this.cdr.markForCheck();
+    });
+  }
+
+  private loadActividadesProyecto(proyectoId: string): void {
+    this.actividadProyectoService.listByProyecto(proyectoId).subscribe({
+      next: (acts) => {
+        this.allActividades = acts;
+        this.actividadesFiltradas.set(acts);
+        this.cdr.markForCheck();
+      },
+      error: () => this.snackBar.open('No se pudieron cargar las actividades.', 'Cerrar', {
+        duration: 4000, panelClass: ['snack-error'],
+      }),
+    });
+  }
+
   private initClienteFilter(): void {
     this.clienteSearch.valueChanges.pipe(
       startWith(''),
       takeUntilDestroyed(this.destroyRef),
     ).subscribe(texto => {
-      const q = (texto ?? '').toLowerCase();
+      const q = typeof texto === 'string' ? texto.toLowerCase() : '';
       this.clientesFiltrados.set(
         q
           ? this.allClientes.filter(c =>
@@ -284,6 +327,19 @@ export class TareaFormComponent implements OnInit {
 
   // ── Helpers para query params en modo crear ─────────────────
 
+  private setFaseById(faseId: string): void {
+    this.faseService.getById(faseId).subscribe(f => {
+      this.form.controls.fase.setValue(f.id);
+      this.form.controls.proyecto.setValue(f.proyecto);
+      this.faseSearch.setValue(f.nombre);
+      this.faseSearch.disable();
+      this.form.controls.fase.disable();
+      this.loadFasesYTareas(f.proyecto);
+      this.loadActividadesProyecto(f.proyecto);
+      this.cdr.markForCheck();
+    });
+  }
+
   private setProyectoById(proyectoId: string): void {
     this.proyectoService.getById(proyectoId).subscribe(p => {
       this.form.controls.proyecto.setValue(p.id);
@@ -291,6 +347,7 @@ export class TareaFormComponent implements OnInit {
       this.proyectoSearch.setValue(`${p.codigo} — ${p.nombre}`);
       this.proyectoSearch.disable();
       this.loadFasesYTareas(p.id);
+      this.loadActividadesProyecto(p.id);
       this.cdr.markForCheck();
     });
   }
@@ -313,6 +370,9 @@ export class TareaFormComponent implements OnInit {
           descripcion:           t.descripcion,
           proyecto:              t.proyecto,
           fase:                  t.fase,
+          actividad_proyecto:    t.actividad_proyecto,
+          cantidad_objetivo:     t.cantidad_objetivo,
+          cantidad_registrada:   t.cantidad_registrada,
           tarea_padre:           t.tarea_padre,
           cliente:               t.cliente,
           responsable:           t.responsable,
@@ -333,9 +393,16 @@ export class TareaFormComponent implements OnInit {
           this.proyectoSearch.setValue(`${t.proyecto_detail.codigo} — ${t.proyecto_detail.nombre}`);
           this.proyectoSearch.disable();
           this.loadFasesYTareas(t.proyecto);
+          this.loadActividadesProyecto(t.proyecto);
         }
         if (t.fase_detail) {
           this.faseSearch.setValue(t.fase_detail.nombre);
+        }
+        if (t.actividad_proyecto_detail) {
+          this.actividadSaiopenSearch.setValue(
+            `${t.actividad_proyecto_detail.actividad_codigo} — ${t.actividad_proyecto_detail.actividad_nombre}`
+          );
+          this.selectedActividadModo.set(t.actividad_proyecto_detail.actividad_unidad_medida);
         }
         if (t.responsable_detail) {
           this.responsableSearch.setValue(
@@ -383,21 +450,44 @@ export class TareaFormComponent implements OnInit {
   onProyectoSelected(event: MatAutocompleteSelectedEvent): void {
     const proyecto = event.option.value as ProyectoList;
     this.form.controls.proyecto.setValue(proyecto.id);
-    // Al cambiar proyecto, limpiar fase y tarea_padre dependientes
+    // Al cambiar proyecto, limpiar dependientes
     this.form.controls.fase.setValue(null);
     this.form.controls.tarea_padre.setValue(null);
+    this.form.controls.actividad_proyecto.setValue(null);
     this.faseSearch.setValue('');
     this.tareaPadreSearch.setValue('');
+    this.actividadSaiopenSearch.setValue('');
     this.allFases = [];
     this.allTareasPadre = [];
+    this.allActividades = [];
     this.fasesFiltradas.set([]);
     this.tareasPadreFiltradas.set([]);
+    this.actividadesFiltradas.set([]);
+    this.selectedActividadModo.set(null);
     this.loadFasesYTareas(proyecto.id);
+    this.loadActividadesProyecto(proyecto.id);
   }
 
   onFaseSelected(event: MatAutocompleteSelectedEvent): void {
     const fase = event.option.value as FaseList;
     this.form.controls.fase.setValue(fase.id);
+    // Cuando cambia la fase, cargar sus tareas hermanas para tarea_padre
+    const proyectoId = this.form.controls.proyecto.value;
+    if (proyectoId) this.loadFasesYTareas(proyectoId);
+  }
+
+  onActividadSaiopenSelected(event: MatAutocompleteSelectedEvent): void {
+    const act = event.option.value as ActividadProyecto;
+    this.form.controls.actividad_proyecto.setValue(act.id);
+    this.selectedActividadModo.set(act.actividad_unidad_medida);
+  }
+
+  onActividadSaiopenBlur(): void {
+    const v = this.actividadSaiopenSearch.value;
+    if (typeof v === 'string' && !v.trim()) {
+      this.form.controls.actividad_proyecto.setValue(null);
+      this.selectedActividadModo.set(null);
+    }
   }
 
   onTareaPadreSelected(event: MatAutocompleteSelectedEvent): void {
@@ -446,20 +536,41 @@ export class TareaFormComponent implements OnInit {
 
   // ── displayWith para mat-autocomplete ──────────────────────
 
-  displayProyecto = (p: ProyectoList | null): string =>
-    p ? `${p.codigo} — ${p.nombre}` : '';
+  displayProyecto = (p: ProyectoList | string | null): string => {
+    if (!p) return '';
+    if (typeof p === 'string') return p;
+    return `${p.codigo} — ${p.nombre}`;
+  };
 
-  displayFase = (f: FaseList | null): string =>
-    f ? f.nombre : '';
+  displayFase = (f: FaseList | string | null): string => {
+    if (!f) return '';
+    if (typeof f === 'string') return f;
+    return f.nombre;
+  };
 
-  displayTarea = (t: Tarea | null): string =>
-    t ? `${t.codigo} — ${t.nombre}` : '';
+  displayTarea = (t: Tarea | string | null): string => {
+    if (!t) return '';
+    if (typeof t === 'string') return t;
+    return `${t.codigo} — ${t.nombre}`;
+  };
 
-  displayUsuario = (u: AdminUser | null): string =>
-    u ? `${u.full_name} (${u.email})` : '';
+  displayUsuario = (u: AdminUser | string | null): string => {
+    if (!u) return '';
+    if (typeof u === 'string') return u;
+    return `${u.full_name} (${u.email})`;
+  };
 
-  displayCliente = (c: TerceroList | null): string =>
-    c ? c.nombre_completo : '';
+  displayCliente = (c: TerceroList | string | null): string => {
+    if (!c) return '';
+    if (typeof c === 'string') return c;
+    return c.nombre_completo;
+  };
+
+  displayActividad = (a: ActividadProyecto | string | null): string => {
+    if (!a) return '';
+    if (typeof a === 'string') return a;
+    return `${a.actividad_codigo} — ${a.actividad_nombre}`;
+  };
 
   // ── Guardar ─────────────────────────────────────────────────
 
@@ -468,16 +579,18 @@ export class TareaFormComponent implements OnInit {
     this.saving.set(true);
     const val = this.form.getRawValue();
 
-    const payload = {
+    const payload: TareaCreateDTO = {
       nombre:                val.nombre!,
       descripcion:           val.descripcion ?? '',
-      proyecto:              val.proyecto!,
-      fase:                  val.fase || null,
+      fase:                  val.fase!,            // obligatoria (DEC-021)
+      actividad_proyecto:    val.actividad_proyecto || null,
+      cantidad_objetivo:     val.cantidad_objetivo ?? 0,
+      cantidad_registrada:   val.cantidad_registrada ?? 0,
       tarea_padre:           val.tarea_padre || null,
       cliente:               val.cliente || null,
       responsable:           val.responsable || null,
       prioridad:             val.prioridad as TareaPrioridad,
-      estado:                val.estado as TareaEstado,
+      estado:                val.estado as Exclude<TareaEstado, 'completada' | 'cancelada'>,
       horas_estimadas:       val.horas_estimadas ?? 0,
       porcentaje_completado: val.porcentaje_completado ?? 0,
       es_recurrente:         val.es_recurrente ?? false,
@@ -490,7 +603,7 @@ export class TareaFormComponent implements OnInit {
     const id = this.tareaId();
     const obs = id
       ? this.tareaService.update(id, payload as TareaUpdateDTO)
-      : this.tareaService.create(payload as TareaCreateDTO);
+      : this.tareaService.create(payload);
 
     obs.subscribe({
       next: (t) => {

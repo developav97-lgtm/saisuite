@@ -72,19 +72,21 @@ def make_proyecto(company, gerente):
     )
 
 
-def make_fase(company, proyecto):
+def make_fase(company, proyecto, orden=1):
     return Fase.all_objects.create(
         company=company, proyecto=proyecto,
-        nombre='Fase 1', orden=1,
+        nombre=f'Fase {orden}', orden=orden,
         fecha_inicio_planificada=date.today(),
         fecha_fin_planificada=date.today() + timedelta(days=60),
         presupuesto_mano_obra=Decimal('500000'),
     )
 
 
-def make_tarea(company, proyecto, **kwargs):
+def make_tarea(company, proyecto, fase=None, **kwargs):
     defaults = dict(nombre='Tarea Test', estado='por_hacer')
     defaults.update(kwargs)
+    if fase is not None:
+        defaults['fase'] = fase
     return Tarea.all_objects.create(company=company, proyecto=proyecto, **defaults)
 
 
@@ -95,12 +97,13 @@ def make_tag(company, nombre='bug', color='red'):
 # ── Base test case ────────────────────────────────────────────────────────────
 
 class TareaBaseTest(APITestCase):
-    """Configura empresa, usuario, proyecto y JWT."""
+    """Configura empresa, usuario, proyecto, fase y JWT."""
 
     def setUp(self):
         self.company  = make_company()
         self.user     = make_user(self.company, role='company_admin')
         self.proyecto = make_proyecto(self.company, self.user)
+        self.fase     = make_fase(self.company, self.proyecto)
         token = RefreshToken.for_user(self.user)
         self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token.access_token}')
 
@@ -156,35 +159,33 @@ class TestTareaListCreate(TareaBaseTest):
         self.assertEqual(len(get_results(resp)), 0)
 
     def test_crear_tarea_minima(self):
-        data = {'nombre': 'Nueva Tarea', 'proyecto': str(self.proyecto.id)}
+        data = {'nombre': 'Nueva Tarea', 'fase': str(self.fase.id)}
         resp = self.client.post('/api/v1/proyectos/tareas/', data)
         self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
         self.assertEqual(resp.data['nombre'], 'Nueva Tarea')
         self.assertTrue(resp.data['codigo'].startswith('TASK-'))
 
     def test_crear_tarea_auto_agrega_creador_como_follower(self):
-        data = {'nombre': 'Tarea Follower', 'proyecto': str(self.proyecto.id)}
+        data = {'nombre': 'Tarea Follower', 'fase': str(self.fase.id)}
         resp = self.client.post('/api/v1/proyectos/tareas/', data)
         self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
         follower_ids = [f['id'] for f in resp.data['followers_detail']]
         self.assertIn(str(self.user.id), follower_ids)
 
     def test_crear_tarea_con_fase(self):
-        fase = make_fase(self.company, self.proyecto)
         data = {
             'nombre': 'Con Fase',
-            'proyecto': str(self.proyecto.id),
-            'fase': str(fase.id),
+            'fase': str(self.fase.id),
         }
         resp = self.client.post('/api/v1/proyectos/tareas/', data)
         self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(str(resp.data['fase']), str(fase.id))
+        self.assertEqual(str(resp.data['fase']), str(self.fase.id))
 
     def test_crear_tarea_con_responsable_lo_agrega_como_follower(self):
         responsable = make_user(self.company)
         data = {
             'nombre': 'Con Responsable',
-            'proyecto': str(self.proyecto.id),
+            'fase': str(self.fase.id),
             'responsable': str(responsable.id),
         }
         resp = self.client.post('/api/v1/proyectos/tareas/', data)
@@ -195,7 +196,7 @@ class TestTareaListCreate(TareaBaseTest):
     def test_crear_tarea_valida_fecha_fin_anterior_inicio(self):
         data = {
             'nombre': 'Fechas Inválidas',
-            'proyecto': str(self.proyecto.id),
+            'fase': str(self.fase.id),
             'fecha_inicio': str(date.today()),
             'fecha_fin': str(date.today() - timedelta(days=1)),
         }
@@ -204,11 +205,12 @@ class TestTareaListCreate(TareaBaseTest):
         self.assertIn('fecha_fin', resp.data)
 
     def test_listar_solo_tareas_de_empresa(self):
-        make_tarea(self.company, self.proyecto, nombre='Mi Tarea')
+        make_tarea(self.company, self.proyecto, fase=self.fase, nombre='Mi Tarea')
         otra_empresa  = make_company('Otra Co 2')
         otro_gerente  = make_user(otra_empresa)
         otro_proyecto = make_proyecto(otra_empresa, otro_gerente)
-        make_tarea(otra_empresa, otro_proyecto, nombre='Tarea Ajena')
+        otra_fase     = make_fase(otra_empresa, otro_proyecto)
+        make_tarea(otra_empresa, otro_proyecto, fase=otra_fase, nombre='Tarea Ajena')
 
         resp = self.client.get('/api/v1/proyectos/tareas/')
         nombres = [t['nombre'] for t in get_results(resp)]
@@ -227,7 +229,7 @@ class TestTareaDetail(TareaBaseTest):
 
     def setUp(self):
         super().setUp()
-        self.tarea = make_tarea(self.company, self.proyecto, nombre='Tarea Detalle')
+        self.tarea = make_tarea(self.company, self.proyecto, fase=self.fase, nombre='Tarea Detalle')
 
     def test_retrieve_tarea(self):
         resp = self.client.get(f'/api/v1/proyectos/tareas/{self.tarea.id}/')
@@ -283,7 +285,7 @@ class TestAgregarFollower(TareaBaseTest):
 
     def setUp(self):
         super().setUp()
-        self.tarea = make_tarea(self.company, self.proyecto)
+        self.tarea = make_tarea(self.company, self.proyecto, fase=self.fase)
 
     def test_agregar_follower_ok(self):
         nuevo = make_user(self.company)
@@ -313,7 +315,7 @@ class TestQuitarFollower(TareaBaseTest):
 
     def setUp(self):
         super().setUp()
-        self.tarea    = make_tarea(self.company, self.proyecto)
+        self.tarea    = make_tarea(self.company, self.proyecto, fase=self.fase)
         self.follower = make_user(self.company)
         self.tarea.followers.add(self.follower)
 
@@ -336,7 +338,7 @@ class TestCambiarEstado(TareaBaseTest):
 
     def setUp(self):
         super().setUp()
-        self.tarea = make_tarea(self.company, self.proyecto)
+        self.tarea = make_tarea(self.company, self.proyecto, fase=self.fase)
 
     def test_cambiar_estado_ok(self):
         url  = f'/api/v1/proyectos/tareas/{self.tarea.id}/cambiar-estado/'
@@ -355,7 +357,7 @@ class TestCambiarEstado(TareaBaseTest):
         self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_no_completar_con_subtareas_pendientes(self):
-        make_tarea(self.company, self.proyecto,
+        make_tarea(self.company, self.proyecto, fase=self.fase,
                    nombre='Subtarea Pendiente', tarea_padre=self.tarea,
                    estado='por_hacer')
         url  = f'/api/v1/proyectos/tareas/{self.tarea.id}/cambiar-estado/'
@@ -364,7 +366,7 @@ class TestCambiarEstado(TareaBaseTest):
         self.assertIn('subtareas pendientes', resp.data['error'])
 
     def test_completar_cuando_subtareas_completas(self):
-        make_tarea(self.company, self.proyecto,
+        make_tarea(self.company, self.proyecto, fase=self.fase,
                    nombre='Subtarea OK', tarea_padre=self.tarea,
                    estado='completada')
         url  = f'/api/v1/proyectos/tareas/{self.tarea.id}/cambiar-estado/'
@@ -384,15 +386,13 @@ class TestTareaFiltros(TareaBaseTest):
 
     def setUp(self):
         super().setUp()
-        self.fase        = make_fase(self.company, self.proyecto)
         self.responsable = make_user(self.company)
-        self.t1 = make_tarea(self.company, self.proyecto,
+        self.t1 = make_tarea(self.company, self.proyecto, fase=self.fase,
                              nombre='Tarea Alta', prioridad=3, estado='en_progreso',
                              responsable=self.responsable)
-        self.t2 = make_tarea(self.company, self.proyecto,
-                             nombre='Tarea Baja', prioridad=1, estado='por_hacer',
-                             fase=self.fase)
-        self.t3 = make_tarea(self.company, self.proyecto,
+        self.t2 = make_tarea(self.company, self.proyecto, fase=self.fase,
+                             nombre='Tarea Baja', prioridad=1, estado='por_hacer')
+        self.t3 = make_tarea(self.company, self.proyecto, fase=self.fase,
                              nombre='Tarea Vencida', estado='en_progreso',
                              fecha_limite=date.today() - timedelta(days=1))
 
@@ -427,15 +427,17 @@ class TestTareaFiltros(TareaBaseTest):
         self.assertNotIn('Tarea Baja', nombres)
 
     def test_filtro_solo_raiz(self):
-        make_tarea(self.company, self.proyecto, nombre='Subtarea', tarea_padre=self.t1)
+        make_tarea(self.company, self.proyecto, fase=self.fase,
+                   nombre='Subtarea', tarea_padre=self.t1)
         resp = self.client.get('/api/v1/proyectos/tareas/?solo_raiz=true')
         for t in get_results(resp):
             self.assertIsNone(t['tarea_padre'])
 
-    def test_filtro_sin_fase(self):
-        resp = self.client.get('/api/v1/proyectos/tareas/?sin_fase=true')
+    def test_todas_tareas_tienen_fase(self):
+        """Fase es requerida: todas las tareas deben tener fase asignada."""
+        resp = self.client.get('/api/v1/proyectos/tareas/')
         for t in get_results(resp):
-            self.assertIsNone(t['fase'])
+            self.assertIsNotNone(t['fase'])
 
     def test_filtro_proyecto_id(self):
         resp = self.client.get(f'/api/v1/proyectos/tareas/?proyecto_id={self.proyecto.id}')
@@ -448,8 +450,8 @@ class TestTareaFiltros(TareaBaseTest):
 class TestTareaSerializerNested(TareaBaseTest):
 
     def test_subtareas_detail_incluidas(self):
-        padre = make_tarea(self.company, self.proyecto, nombre='Padre')
-        make_tarea(self.company, self.proyecto, nombre='Hijo', tarea_padre=padre)
+        padre = make_tarea(self.company, self.proyecto, fase=self.fase, nombre='Padre')
+        make_tarea(self.company, self.proyecto, fase=self.fase, nombre='Hijo', tarea_padre=padre)
         resp = self.client.get(f'/api/v1/proyectos/tareas/{padre.id}/')
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         self.assertEqual(len(resp.data['subtareas_detail']), 1)
@@ -457,9 +459,9 @@ class TestTareaSerializerNested(TareaBaseTest):
 
     def test_subtareas_detail_vacio_nivel_2(self):
         """En nivel >= 2 el serializer retorna [] para evitar N+1 queries."""
-        abuelo = make_tarea(self.company, self.proyecto, nombre='Abuelo')
-        padre  = make_tarea(self.company, self.proyecto, nombre='Padre', tarea_padre=abuelo)
-        make_tarea(self.company, self.proyecto, nombre='Nieto', tarea_padre=padre)
+        abuelo = make_tarea(self.company, self.proyecto, fase=self.fase, nombre='Abuelo')
+        padre  = make_tarea(self.company, self.proyecto, fase=self.fase, nombre='Padre', tarea_padre=abuelo)
+        make_tarea(self.company, self.proyecto, fase=self.fase, nombre='Nieto', tarea_padre=padre)
         # padre está en nivel 1, nieto en nivel 2
         resp = self.client.get(f'/api/v1/proyectos/tareas/{padre.id}/')
         self.assertEqual(len(resp.data['subtareas_detail']), 1)
@@ -467,7 +469,7 @@ class TestTareaSerializerNested(TareaBaseTest):
         self.assertEqual(nieto_data['subtareas_detail'], [])
 
     def test_tags_detail_incluidos(self):
-        tarea = make_tarea(self.company, self.proyecto, nombre='Con Tags')
+        tarea = make_tarea(self.company, self.proyecto, fase=self.fase, nombre='Con Tags')
         tag   = make_tag(self.company, nombre='importante')
         tarea.tags.add(tag)
         resp = self.client.get(f'/api/v1/proyectos/tareas/{tarea.id}/')
@@ -475,7 +477,7 @@ class TestTareaSerializerNested(TareaBaseTest):
         self.assertIn('importante', tag_nombres)
 
     def test_proyecto_detail_incluido(self):
-        tarea = make_tarea(self.company, self.proyecto)
+        tarea = make_tarea(self.company, self.proyecto, fase=self.fase)
         resp = self.client.get(f'/api/v1/proyectos/tareas/{tarea.id}/')
         self.assertIn('codigo', resp.data['proyecto_detail'])
         self.assertEqual(resp.data['proyecto_detail']['id'], str(self.proyecto.id))

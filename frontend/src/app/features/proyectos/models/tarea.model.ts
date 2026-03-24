@@ -1,7 +1,10 @@
 /**
  * SaiSuite — Modelos de Tarea
  * Espeja TareaSerializer, TareaTagSerializer y DTOs de la API.
+ * DEC-021: Tarea pertenece a Fase (proyecto es read-only derivado).
+ * DEC-022: actividad_saiopen determina modo_medicion (solo_estados|timesheet|cantidad).
  */
+import type { ModoMedicion } from './actividad-saiopen.model';
 
 export type TareaEstado =
   | 'por_hacer'
@@ -52,18 +55,43 @@ export interface TareaUserDetail {
   email: string;
 }
 
+export interface TareaActividadSaiopenDetail {
+  id: string;
+  codigo: string;
+  nombre: string;
+  unidad_medida: ModoMedicion;
+}
+
+export interface TareaActividadProyectoDetail {
+  id: string;
+  actividad_id: string;
+  actividad_codigo: string;
+  actividad_nombre: string;
+  actividad_unidad_medida: string;
+}
+
 export interface Tarea {
   id: string;
   codigo: string;
   nombre: string;
   descripcion: string;
 
-  // Relaciones
+  // Relaciones (DEC-021: proyecto es read-only derivado de fase)
   proyecto: string;
   proyecto_detail?: TareaProyectoDetail;
-  fase: string | null;
+  fase: string;                        // obligatoria
   fase_detail?: TareaFaseDetail | null;
   tarea_padre: string | null;
+
+  // Actividad Saiopen (DEC-022)
+  actividad_saiopen: string | null;
+  actividad_saiopen_detail?: TareaActividadSaiopenDetail | null;
+  // Actividad del Proyecto (catálogo interno)
+  actividad_proyecto: string | null;
+  actividad_proyecto_detail?: TareaActividadProyectoDetail | null;
+  cantidad_objetivo: number;
+  cantidad_registrada: number;
+  modo_medicion: ModoMedicion;
 
   // Cliente opcional (DEC-019)
   cliente: string | null;
@@ -106,6 +134,7 @@ export interface Tarea {
   es_vencida: boolean;
   tiene_subtareas: boolean;
   nivel_jerarquia: number;
+  progreso_porcentaje: number;
 
   // Subtareas anidadas (solo en detalle)
   subtareas_detail?: Tarea[];
@@ -118,9 +147,12 @@ export interface Tarea {
 export interface TareaCreateDTO {
   nombre: string;
   descripcion?: string;
-  proyecto: string;
-  fase?: string | null;
+  fase: string;                        // obligatoria (DEC-021)
   tarea_padre?: string | null;
+  actividad_saiopen?: string | null;   // DEC-022
+  actividad_proyecto?: string | null;  // catálogo interno
+  cantidad_objetivo?: number;
+  cantidad_registrada?: number;
   cliente?: string | null;
   responsable?: string | null;
   followers?: string[];
@@ -140,17 +172,17 @@ export type TareaUpdateDTO = Partial<TareaCreateDTO>;
 
 export interface TareaFilters {
   proyecto?: string;
+  fase?: string;
+  actividad_saiopen?: string;          // DEC-022
   estado?: TareaEstado;
   responsable?: string;
   prioridad?: TareaPrioridad;
   prioridad_min?: number;
   tags?: string;
-  fase?: string;
   search?: string;
   solo_mis_tareas?: boolean;
   vencidas?: boolean;
   sin_responsable?: boolean;
-  sin_fase?: boolean;
   solo_raiz?: boolean;
   tarea_padre?: string;
   fecha_limite_desde?: string;

@@ -9,7 +9,7 @@ from apps.proyectos.models import (
     Proyecto, Fase, TerceroProyecto, DocumentoContable, Hito,
     TipoProyecto, EstadoProyecto, RolTercero, TipoDocumento,
     Actividad, ActividadProyecto, TipoActividad, ConfiguracionModulo,
-    Tarea, TareaTag, SesionTrabajo,
+    Tarea, TareaTag, SesionTrabajo, ActividadSaiopen,
 )
 
 logger = logging.getLogger(__name__)
@@ -29,7 +29,7 @@ class FaseListSerializer(serializers.ModelSerializer):
     class Meta:
         model  = Fase
         fields = [
-            'id', 'nombre', 'orden', 'porcentaje_avance',
+            'id', 'nombre', 'orden', 'estado', 'porcentaje_avance',
             'presupuesto_total', 'activo', 'created_at',
         ]
         read_only_fields = ['id', 'created_at']
@@ -52,7 +52,7 @@ class FaseDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model  = Fase
         fields = [
-            'id', 'proyecto', 'nombre', 'descripcion', 'orden',
+            'id', 'proyecto', 'nombre', 'descripcion', 'orden', 'estado',
             'fecha_inicio_planificada', 'fecha_fin_planificada',
             'fecha_inicio_real', 'fecha_fin_real',
             'presupuesto_mano_obra', 'presupuesto_materiales',
@@ -497,6 +497,56 @@ class ConfiguracionModuloSerializer(serializers.ModelSerializer):
 
 
 # ──────────────────────────────────────────────
+# ActividadSaiopen — catálogo
+# ──────────────────────────────────────────────
+
+class ActividadSaiopenListSerializer(serializers.ModelSerializer):
+    """Serializer de listado de ActividadSaiopen — campos mínimos para autocomplete."""
+    unidad_medida_display = serializers.CharField(source='get_unidad_medida_display', read_only=True)
+
+    class Meta:
+        model  = ActividadSaiopen
+        fields = [
+            'id', 'codigo', 'nombre', 'unidad_medida', 'unidad_medida_display',
+            'costo_unitario_base', 'activo',
+        ]
+        read_only_fields = ['id']
+
+
+class ActividadSaiopenDetailSerializer(serializers.ModelSerializer):
+    """Serializer de detalle de ActividadSaiopen — todos los campos."""
+    unidad_medida_display = serializers.CharField(source='get_unidad_medida_display', read_only=True)
+
+    class Meta:
+        model  = ActividadSaiopen
+        fields = [
+            'id', 'codigo', 'nombre', 'descripcion',
+            'unidad_medida', 'unidad_medida_display',
+            'costo_unitario_base', 'activo',
+            'saiopen_actividad_id', 'sincronizado_con_saiopen',
+            'created_at', 'updated_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+
+class ActividadSaiopenCreateUpdateSerializer(serializers.ModelSerializer):
+    """Serializer de escritura para ActividadSaiopen."""
+    codigo = serializers.CharField(max_length=50, required=False, allow_blank=True)
+
+    class Meta:
+        model  = ActividadSaiopen
+        fields = [
+            'codigo', 'nombre', 'descripcion',
+            'unidad_medida', 'costo_unitario_base',
+        ]
+
+    def validate_costo_unitario_base(self, value):
+        if value < Decimal('0'):
+            raise serializers.ValidationError('El costo unitario no puede ser negativo.')
+        return value
+
+
+# ──────────────────────────────────────────────
 # Sistema de Tareas
 # ──────────────────────────────────────────────
 
@@ -515,18 +565,22 @@ class TareaSerializer(serializers.ModelSerializer):
     """
 
     # Campos calculados (read-only)
-    es_vencida      = serializers.BooleanField(read_only=True)
-    tiene_subtareas = serializers.BooleanField(read_only=True)
-    nivel_jerarquia = serializers.IntegerField(read_only=True)
+    es_vencida          = serializers.BooleanField(read_only=True)
+    tiene_subtareas     = serializers.BooleanField(read_only=True)
+    nivel_jerarquia     = serializers.IntegerField(read_only=True)
+    progreso_porcentaje = serializers.ReadOnlyField()
 
     # Nested serializers para lectura
-    responsable_detail  = serializers.SerializerMethodField()
-    proyecto_detail     = serializers.SerializerMethodField()
-    fase_detail         = serializers.SerializerMethodField()
-    cliente_detail      = serializers.SerializerMethodField()
-    tags_detail         = TareaTagSerializer(source='tags', many=True, read_only=True)
-    subtareas_detail    = serializers.SerializerMethodField()
-    followers_detail    = serializers.SerializerMethodField()
+    responsable_detail        = serializers.SerializerMethodField()
+    proyecto_detail           = serializers.SerializerMethodField()
+    fase_detail               = serializers.SerializerMethodField()
+    cliente_detail            = serializers.SerializerMethodField()
+    actividad_saiopen_detail  = serializers.SerializerMethodField()
+    actividad_proyecto_detail = serializers.SerializerMethodField()
+    tags_detail               = TareaTagSerializer(source='tags', many=True, read_only=True)
+    subtareas_detail          = serializers.SerializerMethodField()
+    followers_detail          = serializers.SerializerMethodField()
+    modo_medicion             = serializers.ReadOnlyField()
 
     class Meta:
         model = Tarea
@@ -536,21 +590,52 @@ class TareaSerializer(serializers.ModelSerializer):
             'fase', 'fase_detail',
             'tarea_padre',
             'cliente', 'cliente_detail',
+            'actividad_saiopen', 'actividad_saiopen_detail',
+            'actividad_proyecto', 'actividad_proyecto_detail',
+            'cantidad_objetivo', 'cantidad_registrada',
             'responsable', 'responsable_detail',
             'followers', 'followers_detail',
             'prioridad', 'tags', 'tags_detail',
             'fecha_inicio', 'fecha_fin', 'fecha_limite',
             'estado', 'porcentaje_completado',
-            'horas_estimadas', 'horas_registradas',
+            'horas_estimadas', 'horas_registradas', 'progreso_porcentaje',
+            'modo_medicion',
             'es_recurrente', 'frecuencia_recurrencia', 'proxima_generacion',
             'es_vencida', 'tiene_subtareas', 'nivel_jerarquia',
             'subtareas_detail',
             'created_at', 'updated_at',
         ]
         read_only_fields = [
-            'id', 'codigo', 'es_vencida', 'tiene_subtareas',
-            'nivel_jerarquia', 'created_at', 'updated_at',
+            'id', 'codigo', 'proyecto', 'es_vencida', 'tiene_subtareas',
+            'nivel_jerarquia', 'progreso_porcentaje', 'modo_medicion',
+            'created_at', 'updated_at',
         ]
+
+    def get_actividad_saiopen_detail(self, obj):
+        if obj.actividad_saiopen_id and obj.actividad_saiopen:
+            return {
+                'id': str(obj.actividad_saiopen.id),
+                'codigo': obj.actividad_saiopen.codigo,
+                'nombre': obj.actividad_saiopen.nombre,
+                'unidad_medida': obj.actividad_saiopen.unidad_medida,
+            }
+        return None
+
+    def get_actividad_proyecto_detail(self, obj):
+        if obj.actividad_proyecto_id and obj.actividad_proyecto:
+            ap = obj.actividad_proyecto
+            try:
+                act = ap.actividad
+                return {
+                    'id': str(ap.id),
+                    'actividad_id': str(act.id),
+                    'actividad_codigo': act.codigo,
+                    'actividad_nombre': act.nombre,
+                    'actividad_unidad_medida': act.unidad_medida or '',
+                }
+            except Exception:
+                return {'id': str(ap.id)}
+        return None
 
     def get_cliente_detail(self, obj):
         if obj.cliente:
@@ -612,9 +697,10 @@ class TareaSerializer(serializers.ModelSerializer):
                 'fecha_fin': 'Fecha fin debe ser posterior a fecha inicio'
             })
 
+        # Validar tarea_padre a través de la fase (DEC-021)
         tarea_padre = data.get('tarea_padre')
-        proyecto    = data.get('proyecto')
-        if tarea_padre and proyecto and tarea_padre.proyecto_id != proyecto.id:
+        fase        = data.get('fase')
+        if tarea_padre and fase and tarea_padre.proyecto_id != fase.proyecto_id:
             raise serializers.ValidationError({
                 'tarea_padre': 'Tarea padre debe pertenecer al mismo proyecto'
             })
@@ -629,9 +715,16 @@ class TareaSerializer(serializers.ModelSerializer):
         return data
 
     def create(self, validated_data):
-        """Crear tarea y auto-agregar creador y responsable como followers."""
+        """Crear tarea y auto-agregar creador y responsable como followers.
+        proyecto se auto-deriva de fase.proyecto (DEC-021).
+        """
         followers = validated_data.pop('followers', [])
         tags      = validated_data.pop('tags', [])
+
+        # Auto-derivar proyecto desde la fase
+        fase = validated_data.get('fase')
+        if fase and 'proyecto' not in validated_data:
+            validated_data['proyecto'] = fase.proyecto
 
         tarea = Tarea.all_objects.create(**validated_data)
 

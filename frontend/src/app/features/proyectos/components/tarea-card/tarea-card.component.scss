@@ -142,6 +142,37 @@
   &--gray   { background: #e0e0e0; color: #424242; }
 }
 
+// ── Barra de progreso de horas ─────────────────────────────────
+.tc-progreso-bar-section {
+  margin: 0.5rem 0 0.4rem;
+}
+
+.tc-progreso-bar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.tc-progreso-bar-label {
+  font-size: 0.7rem;
+  color: var(--sc-text-muted, #757575);
+  font-weight: 500;
+}
+
+.tc-progreso-bar-valor {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--sc-text-color, #212121);
+}
+
+.tc-progreso-bar-detalle {
+  margin-top: 3px;
+  font-size: 0.65rem;
+  color: var(--sc-text-muted, #757575);
+  text-align: right;
+}
+
 // ── Footer ────────────────────────────────────────────────────
 .tc-footer {
   display: flex;

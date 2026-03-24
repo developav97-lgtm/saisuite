@@ -2,11 +2,14 @@
  * SaiSuite — Modelos de Fase
  */
 
+export type EstadoFase = 'planificada' | 'activa' | 'completada' | 'cancelada';
+
 /** Fase en listado */
 export interface FaseList {
   id: string;
   nombre: string;
   orden: number;
+  estado: EstadoFase;
   porcentaje_avance: string;
   /** Suma de todos los presupuestos de categoría */
   presupuesto_total: string;

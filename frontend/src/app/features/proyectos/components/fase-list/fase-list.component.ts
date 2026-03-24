@@ -45,7 +45,7 @@ export class FaseListComponent implements OnInit {
   readonly loading      = signal(false);
   readonly editingFase  = signal<FaseDetail | null>(null);
 
-  readonly displayedColumns = ['orden', 'nombre', 'presupuesto', 'avance', 'acciones'];
+  readonly displayedColumns = ['orden', 'nombre', 'estado', 'presupuesto', 'avance', 'acciones'];
 
   readonly budgetCats = [
     { key: 'presupuesto_mano_obra',    label: 'Mano de obra'  },
@@ -190,6 +190,39 @@ export class FaseListComponent implements OnInit {
       presupuesto_otros:        (val.presupuesto_otros        ?? 0).toLocaleString('es-CO'),
     });
   }
+
+  activarFase(fase: FaseList): void {
+    const ref = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        header: 'Activar fase',
+        message: `¿Activar la fase "${fase.nombre}"? Esto desactivará cualquier otra fase activa del proyecto.`,
+        acceptLabel: 'Activar',
+        acceptColor: 'primary',
+      },
+      width: '420px',
+    });
+    ref.afterClosed().subscribe(confirmed => {
+      if (!confirmed) return;
+      this.faseService.activar(fase.id).subscribe({
+        next: () => {
+          this.loadFases();
+          this.snackBar.open('Fase activada correctamente.', 'Cerrar', { duration: 3000, panelClass: ['snack-success'] });
+        },
+        error: (err) => {
+          const e = err as { error?: { detail?: string } };
+          const msg = e.error?.detail ?? 'No se pudo activar la fase.';
+          this.snackBar.open(msg, 'Cerrar', { duration: 4000, panelClass: ['snack-error'] });
+        },
+      });
+    });
+  }
+
+  readonly ESTADO_LABELS: Record<string, string> = {
+    planificada: 'Planificada',
+    activa:      'Activa',
+    completada:  'Completada',
+    cancelada:   'Cancelada',
+  };
 
   confirmarEliminar(fase: FaseList): void {
     const ref = this.dialog.open(ConfirmDialogComponent, {

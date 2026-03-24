@@ -1,9 +1,70 @@
+// ── Filtros ───────────────────────────────────────────────────────────────────
+.tl-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.tl-search {
+  flex: 1;
+  min-width: 220px;
+}
+
+.tl-filter {
+  width: 180px;
+}
+
+@media (max-width: 600px) {
+  .tl-filters { flex-direction: column; align-items: stretch; }
+  .tl-filter   { width: 100%; }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Anchos de columnas
+:host ::ng-deep {
+  // Nombre: flex 3 para que absorba el espacio extra
+  .mat-column-nombre_completo {
+    flex: 3;
+    overflow: visible;
+    white-space: normal;
+    min-width: 180px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+
+  // Identificación: tamaño fijo moderado
+  .mat-column-numero_identificacion {
+    flex: 0 0 180px;
+  }
+
+  // Tipo: compacto, solo el chip
+  .mat-column-tipo_tercero {
+    flex: 0 0 120px;
+  }
+
+  // Contacto: flex 2
+  .mat-column-contacto {
+    flex: 2;
+    min-width: 160px;
+  }
+}
+
 .tc-nombre {
   display: flex;
   flex-direction: column;
+  min-width: 0;
 
-  &__text   { font-weight: 500; }
-  &__codigo { font-size: 0.78rem; color: var(--sc-text-secondary); }
+  &__text {
+    font-weight: 500;
+    white-space: normal;
+    word-break: break-word;
+    line-height: 1.3;
+  }
+  &__codigo { font-size: 0.78rem; color: var(--sc-text-secondary); margin-top: 1px; }
 }
 
 .tc-id-tipo  { font-size: 0.75rem; color: var(--sc-text-secondary); margin-right: 4px; }
