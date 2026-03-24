@@ -12,6 +12,8 @@ import {
   TareaCreateDTO,
   TareaUpdateDTO,
   TareaFilters,
+  TareaDependencia,
+  TipoDependencia,
   FollowerResponse,
 } from '../models/tarea.model';
 
@@ -145,6 +147,34 @@ export class TareaService {
     return this.http.post<Tarea>(
       `${this.baseUrl}/${tareaId}/agregar-cantidad/`,
       { cantidad },
+    );
+  }
+
+  // ── Dependencias ───────────────────────────────────────────────────────────
+
+  /**
+   * POST /api/v1/proyectos/tareas/{id}/crear-dependencia/
+   * La tarea {id} es la sucesora; predecesora_id apunta a la predecesora.
+   */
+  crearDependencia(
+    tareaId: string,
+    predecesoraId: string,
+    tipo: TipoDependencia = 'FS',
+    retrasoDias: number = 0,
+  ): Observable<TareaDependencia> {
+    return this.http.post<TareaDependencia>(
+      `${this.baseUrl}/${tareaId}/crear-dependencia/`,
+      { predecesora_id: predecesoraId, tipo, retraso_dias: retrasoDias },
+    );
+  }
+
+  /**
+   * DELETE /api/v1/proyectos/tareas/{id}/eliminar-dependencia/?dependencia_id=uuid
+   */
+  eliminarDependencia(tareaId: string, dependenciaId: string): Observable<void> {
+    return this.http.delete<void>(
+      `${this.baseUrl}/${tareaId}/eliminar-dependencia/`,
+      { params: { dependencia_id: dependenciaId } },
     );
   }
 }

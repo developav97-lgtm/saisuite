@@ -362,6 +362,85 @@
             </div>
           </mat-tab>
 
+            <!-- Tab: Dependencias -->
+          <mat-tab>
+            <ng-template mat-tab-label>
+              <mat-icon class="td-tab-icon">account_tree</mat-icon>
+              Dependencias
+              @if ((tarea()!.predecesoras_detail?.length ?? 0) + (tarea()!.sucesoras_detail?.length ?? 0); as total) {
+                @if (total > 0) {
+                  <span class="td-tab-badge">{{ total }}</span>
+                }
+              }
+            </ng-template>
+            <div class="td-tab-content">
+
+              <!-- Badge camino crítico -->
+              @if (tarea()!.es_camino_critico) {
+                <div class="td-critico-badge">
+                  <mat-icon>warning</mat-icon>
+                  Tarea en el Camino Crítico
+                </div>
+              }
+
+              <!-- Predecesoras -->
+              <div class="td-dep-section">
+                <h3 class="td-dep-titulo">
+                  <mat-icon>arrow_back</mat-icon>
+                  Predecesoras
+                </h3>
+                @if (tarea()!.predecesoras_detail?.length) {
+                  <mat-chip-set>
+                    @for (dep of tarea()!.predecesoras_detail!; track dep.id) {
+                      <mat-chip>
+                        <mat-icon matChipAvatar>task</mat-icon>
+                        {{ dep.tarea_predecesora_detail.codigo }} — {{ dep.tarea_predecesora_detail.nombre }}
+                        <span class="td-dep-tipo">[{{ dep.tipo_dependencia }}]</span>
+                        @if (dep.retraso_dias !== 0) {
+                          <span class="td-dep-lag">+{{ dep.retraso_dias }}d</span>
+                        }
+                      </mat-chip>
+                    }
+                  </mat-chip-set>
+                } @else {
+                  <p class="td-empty-text">Sin predecesoras.</p>
+                }
+              </div>
+
+              <!-- Sucesoras (solo lectura) -->
+              @if (tarea()!.sucesoras_detail?.length) {
+                <div class="td-dep-section">
+                  <h3 class="td-dep-titulo">
+                    <mat-icon>arrow_forward</mat-icon>
+                    Sucesoras
+                  </h3>
+                  <mat-chip-set>
+                    @for (dep of tarea()!.sucesoras_detail!; track dep.id) {
+                      <mat-chip>
+                        <mat-icon matChipAvatar>task</mat-icon>
+                        {{ dep.tarea_sucesora_detail.codigo }} — {{ dep.tarea_sucesora_detail.nombre }}
+                        <span class="td-dep-tipo">[{{ dep.tipo_dependencia }}]</span>
+                      </mat-chip>
+                    }
+                  </mat-chip-set>
+                </div>
+              }
+
+              <!-- Agregar predecesora -->
+              <div class="td-dep-section">
+                <h3 class="td-dep-titulo">
+                  <mat-icon>add_link</mat-icon>
+                  Agregar predecesora
+                </h3>
+                <sc-selector-dependencias
+                  [tarea]="tarea()!"
+                  (dependenciaAgregada)="onDependenciaAgregada($event)"
+                  (dependenciaEliminada)="onDependenciaEliminada($event)" />
+              </div>
+
+            </div>
+          </mat-tab>
+
           <!-- Tab: Comentarios -->
           <mat-tab>
             <ng-template mat-tab-label>

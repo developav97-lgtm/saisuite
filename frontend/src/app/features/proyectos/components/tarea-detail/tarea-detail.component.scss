@@ -663,6 +663,50 @@
   font-weight: 700;
 }
 
+// ── Dependencias ──────────────────────────────────────────────
+.td-critico-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: #ffebee;
+  color: #c62828;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 16px;
+
+  mat-icon { font-size: 18px; height: 18px; width: 18px; }
+}
+
+.td-dep-section {
+  margin-bottom: 20px;
+}
+
+.td-dep-titulo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--sc-color-text-secondary, #616161);
+  margin: 0 0 8px;
+
+  mat-icon { font-size: 16px; height: 16px; width: 16px; }
+}
+
+.td-dep-tipo {
+  margin-left: 4px;
+  opacity: 0.7;
+  font-size: 11px;
+}
+
+.td-dep-lag {
+  margin-left: 4px;
+  color: var(--sc-color-warning, #fb8c00);
+  font-size: 11px;
+}
+
 // ── Responsive ────────────────────────────────────────────────
 @media (max-width: 900px) {
   .td-body {

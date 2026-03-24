@@ -1,8 +1,9 @@
 """
-SaiSuite — Proyectos: TareaService + TimesheetService
+SaiSuite — Proyectos: TareaService + TimesheetService + DependenciaService
 TODA la lógica de negocio de Tareas va aquí. Las views solo orquestan.
 """
 import logging
+from collections import defaultdict, deque
 from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import List, Optional
@@ -554,3 +555,269 @@ class TimesheetService:
                 duracion_pausas += (fin_pausa - inicio_pausa).total_seconds()
 
         return max(0, int(duracion_total - duracion_pausas))
+
+
+class DependenciaService:
+    """
+    Service para operaciones de dependencias entre tareas.
+    Incluye detección de ciclos (DFS), CPM y reprogramación en cascada.
+    """
+
+    @staticmethod
+    @transaction.atomic
+    def crear_dependencia(
+        predecesora_id: str,
+        sucesora_id: str,
+        company,
+        tipo: str = 'FS',
+        retraso_dias: int = 0,
+    ) -> 'TareaDependencia':
+        """
+        Crea una dependencia entre dos tareas validando que no forme un ciclo.
+
+        Raises:
+            ValidationError: si las tareas no existen, son iguales o forman ciclo.
+        """
+        from apps.proyectos.models import TareaDependencia
+
+        if str(predecesora_id) == str(sucesora_id):
+            raise ValidationError(
+                'Una tarea no puede ser predecesora de sí misma.'
+            )
+
+        try:
+            predecesora = Tarea.objects.get(id=predecesora_id, company=company)
+            sucesora    = Tarea.objects.get(id=sucesora_id, company=company)
+        except Tarea.DoesNotExist:
+            raise ValidationError('Una o ambas tareas no existen.')
+
+        if predecesora.proyecto_id != sucesora.proyecto_id:
+            raise ValidationError(
+                'Ambas tareas deben pertenecer al mismo proyecto.'
+            )
+
+        if DependenciaService._detectar_ciclo(predecesora_id, sucesora_id, company):
+            raise ValidationError(
+                'La dependencia crearía un ciclo entre las tareas.'
+            )
+
+        dependencia, created = TareaDependencia.objects.get_or_create(
+            company=company,
+            tarea_predecesora=predecesora,
+            tarea_sucesora=sucesora,
+            defaults={
+                'tipo_dependencia': tipo,
+                'retraso_dias': retraso_dias,
+            },
+        )
+
+        if not created:
+            raise ValidationError(
+                'Ya existe una dependencia entre estas dos tareas.'
+            )
+
+        logger.info('dependencia_creada', extra={
+            'predecesora_id': str(predecesora_id),
+            'sucesora_id': str(sucesora_id),
+            'tipo': tipo,
+        })
+        return dependencia
+
+    @staticmethod
+    def _detectar_ciclo(pred_id: str, suc_id: str, company) -> bool:
+        """
+        DFS desde suc_id para ver si se puede alcanzar pred_id.
+        Si se puede alcanzar, agregar la arista pred→suc crearía un ciclo.
+        Retorna True si habría ciclo, False si es seguro.
+        """
+        from apps.proyectos.models import TareaDependencia
+
+        # Construir mapa de adyacencia para las tareas de la misma empresa
+        sucesoras_map: dict[str, list[str]] = defaultdict(list)
+        for dep in TareaDependencia.objects.filter(company=company).values(
+            'tarea_predecesora_id', 'tarea_sucesora_id'
+        ):
+            sucesoras_map[str(dep['tarea_predecesora_id'])].append(
+                str(dep['tarea_sucesora_id'])
+            )
+
+        # BFS/DFS desde suc_id
+        visitados: set[str] = set()
+        cola = deque([str(suc_id)])
+        pred_str = str(pred_id)
+
+        while cola:
+            actual = cola.popleft()
+            if actual == pred_str:
+                return True  # ciclo detectado
+            if actual in visitados:
+                continue
+            visitados.add(actual)
+            cola.extend(sucesoras_map.get(actual, []))
+
+        return False
+
+    @staticmethod
+    def calcular_camino_critico(proyecto_id: str, company) -> List[str]:
+        """
+        Calcula el camino crítico del proyecto usando el algoritmo CPM.
+        Retorna lista de IDs de tareas (str) que pertenecen al camino crítico.
+
+        Solo considera tareas con fecha_inicio y fecha_fin definidas.
+        Para tareas sin duración, se usa 1 día por defecto.
+        """
+        from apps.proyectos.models import TareaDependencia
+        from datetime import date
+
+        tareas_qs = Tarea.objects.filter(
+            proyecto_id=proyecto_id,
+            company=company,
+        ).values('id', 'fecha_inicio', 'fecha_fin', 'nombre')
+
+        if not tareas_qs:
+            return []
+
+        tareas_dict = {str(t['id']): t for t in tareas_qs}
+
+        # Duraciones en días
+        def duracion(tarea_id: str) -> int:
+            t = tareas_dict.get(tarea_id)
+            if not t:
+                return 1
+            fi = t['fecha_inicio']
+            ff = t['fecha_fin']
+            if fi and ff:
+                delta = (ff - fi).days
+                return max(1, delta)
+            return 1
+
+        deps_qs = TareaDependencia.objects.filter(
+            company=company,
+            tarea_predecesora__proyecto_id=proyecto_id,
+        ).values('tarea_predecesora_id', 'tarea_sucesora_id', 'retraso_dias')
+
+        # Construir grafo
+        sucesoras_map: dict[str, list[tuple[str, int]]] = defaultdict(list)
+        predecesoras_map: dict[str, list[tuple[str, int]]] = defaultdict(list)
+
+        for dep in deps_qs:
+            pred = str(dep['tarea_predecesora_id'])
+            suc  = str(dep['tarea_sucesora_id'])
+            lag  = dep['retraso_dias']
+            sucesoras_map[pred].append((suc, lag))
+            predecesoras_map[suc].append((pred, lag))
+
+        todos_ids = list(tareas_dict.keys())
+
+        # Early Start (ES) y Early Finish (EF) — forward pass
+        es: dict[str, int] = {tid: 0 for tid in todos_ids}
+        ef: dict[str, int] = {}
+
+        # Orden topológico con Kahn
+        in_degree: dict[str, int] = {tid: 0 for tid in todos_ids}
+        for pred, sucesoras in sucesoras_map.items():
+            for suc, _ in sucesoras:
+                if suc in in_degree:
+                    in_degree[suc] += 1
+
+        orden: list[str] = []
+        queue = deque([tid for tid in todos_ids if in_degree[tid] == 0])
+        while queue:
+            nodo = queue.popleft()
+            orden.append(nodo)
+            for suc, lag in sucesoras_map.get(nodo, []):
+                if suc not in in_degree:
+                    continue
+                in_degree[suc] -= 1
+                # ES de sucesora = max(ES actual, EF de predecesora + lag)
+                ef_pred = es[nodo] + duracion(nodo)
+                es[suc] = max(es[suc], ef_pred + lag)
+                if in_degree[suc] == 0:
+                    queue.append(suc)
+
+        for tid in todos_ids:
+            ef[tid] = es[tid] + duracion(tid)
+
+        # Late Start (LS) y Late Finish (LF) — backward pass
+        duracion_proyecto = max(ef.values()) if ef else 0
+        lf: dict[str, int] = {tid: duracion_proyecto for tid in todos_ids}
+        ls: dict[str, int] = {}
+
+        for nodo in reversed(orden):
+            for suc, lag in sucesoras_map.get(nodo, []):
+                if suc not in lf:
+                    continue
+                lf[nodo] = min(lf[nodo], lf[suc] - duracion(suc) - lag)
+
+        for tid in todos_ids:
+            ls[tid] = lf[tid] - duracion(tid)
+
+        # Holgura total = LS - ES  (0 → camino crítico)
+        criticas = [
+            tid for tid in todos_ids
+            if (ls[tid] - es[tid]) == 0
+        ]
+
+        logger.info('camino_critico_calculado', extra={
+            'proyecto_id': str(proyecto_id),
+            'tareas_criticas': len(criticas),
+        })
+        return criticas
+
+    @staticmethod
+    @transaction.atomic
+    def reprogramar_en_cascada(tarea_id: str, company, _visitados: Optional[set] = None) -> None:
+        """
+        Reprograma automáticamente las tareas sucesoras de tipo FS
+        cuando cambia la fecha_fin de una predecesora.
+        Solo ajusta si la nueva fecha es POSTERIOR a la actual.
+        Recursivo: propaga cambios hacia abajo en la cadena.
+        """
+        from apps.proyectos.models import TareaDependencia
+
+        if _visitados is None:
+            _visitados = set()
+
+        if str(tarea_id) in _visitados:
+            return  # prevenir loops
+        _visitados.add(str(tarea_id))
+
+        try:
+            predecesora = Tarea.objects.get(id=tarea_id, company=company)
+        except Tarea.DoesNotExist:
+            return
+
+        if not predecesora.fecha_fin:
+            return
+
+        deps_fs = TareaDependencia.objects.filter(
+            tarea_predecesora=predecesora,
+            tipo_dependencia='FS',
+            company=company,
+        ).select_related('tarea_sucesora')
+
+        for dep in deps_fs:
+            sucesora = dep.tarea_sucesora
+            nueva_fecha_inicio = predecesora.fecha_fin + timedelta(days=dep.retraso_dias)
+
+            if sucesora.fecha_inicio is None or nueva_fecha_inicio > sucesora.fecha_inicio:
+                # Calcular desplazamiento para mantener duración
+                if sucesora.fecha_inicio and sucesora.fecha_fin:
+                    duracion_dias = (sucesora.fecha_fin - sucesora.fecha_inicio).days
+                else:
+                    duracion_dias = None
+
+                sucesora.fecha_inicio = nueva_fecha_inicio
+                if duracion_dias is not None:
+                    sucesora.fecha_fin = nueva_fecha_inicio + timedelta(days=duracion_dias)
+
+                sucesora.save(update_fields=['fecha_inicio', 'fecha_fin'])
+                logger.info('tarea_reprogramada_cascada', extra={
+                    'sucesora_id': str(sucesora.id),
+                    'nueva_fecha_inicio': str(nueva_fecha_inicio),
+                })
+
+                # Recursión hacia las sucesoras de la sucesora
+                DependenciaService.reprogramar_en_cascada(
+                    str(sucesora.id), company, _visitados
+                )

@@ -70,4 +70,10 @@ export class ProyectoService {
   getEstadoFinanciero(id: string): Observable<EstadoFinanciero> {
     return this.http.get<EstadoFinanciero>(`${this.baseUrl}/${id}/estado-financiero/`);
   }
+
+  getCaminoCritico(id: string): Observable<{ tareas_criticas: string[] }> {
+    return this.http.get<{ tareas_criticas: string[] }>(
+      `${this.baseUrl}/${id}/camino-critico/`,
+    );
+  }
 }

@@ -820,3 +820,56 @@ class SesionTrabajo(BaseModel):
     def duracion_horas(self) -> Decimal:
         """Duración neta en horas decimales (solo lectura)."""
         return Decimal(self.duracion_segundos) / Decimal(3600)
+
+
+class TipoDependencia(models.TextChoices):
+    FINISH_TO_START  = 'FS', 'Finish to Start (FS)'
+    START_TO_START   = 'SS', 'Start to Start (SS)'
+    FINISH_TO_FINISH = 'FF', 'Finish to Finish (FF)'
+
+
+class TareaDependencia(BaseModel):
+    """
+    Relación predecesora-sucesora entre dos tareas del mismo proyecto.
+    Soporta los tipos clásicos de dependencia CPM: FS, SS, FF.
+    """
+    tarea_predecesora = models.ForeignKey(
+        Tarea,
+        on_delete=models.CASCADE,
+        related_name='sucesoras',
+        verbose_name='Tarea predecesora',
+    )
+    tarea_sucesora = models.ForeignKey(
+        Tarea,
+        on_delete=models.CASCADE,
+        related_name='predecesoras',
+        verbose_name='Tarea sucesora',
+    )
+    tipo_dependencia = models.CharField(
+        max_length=2,
+        choices=TipoDependencia.choices,
+        default=TipoDependencia.FINISH_TO_START,
+    )
+    retraso_dias = models.IntegerField(
+        default=0,
+        help_text='Lag time en días (puede ser negativo para adelantar).',
+    )
+
+    class Meta:
+        verbose_name        = 'Dependencia de tarea'
+        verbose_name_plural = 'Dependencias de tareas'
+        unique_together     = [['company', 'tarea_predecesora', 'tarea_sucesora']]
+
+    def __str__(self):
+        return (
+            f'{self.tarea_predecesora.codigo} → {self.tarea_sucesora.codigo} '
+            f'({self.tipo_dependencia})'
+        )
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        if self.tarea_predecesora_id and self.tarea_sucesora_id:
+            if self.tarea_predecesora_id == self.tarea_sucesora_id:
+                raise ValidationError(
+                    'Una tarea no puede ser predecesora de sí misma.'
+                )

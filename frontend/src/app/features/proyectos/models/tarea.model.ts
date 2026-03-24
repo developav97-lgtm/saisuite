@@ -28,6 +28,24 @@ export type TareaTagColor =
   | 'pink'
   | 'gray';
 
+export type TipoDependencia = 'FS' | 'SS' | 'FF';
+
+export interface TareaDependenciaTareaDetail {
+  id: string;
+  nombre: string;
+  codigo: string;
+}
+
+export interface TareaDependencia {
+  id: string;
+  tarea_predecesora: string;
+  tarea_predecesora_detail: TareaDependenciaTareaDetail;
+  tarea_sucesora: string;
+  tarea_sucesora_detail: TareaDependenciaTareaDetail;
+  tipo_dependencia: TipoDependencia;
+  retraso_dias: number;
+}
+
 export interface TareaTag {
   id: string;
   company: string;
@@ -130,11 +148,16 @@ export interface Tarea {
   frecuencia_recurrencia: TareaFrecuencia | null;
   proxima_generacion: string | null;
 
+  // Dependencias (solo en detalle)
+  predecesoras_detail?: TareaDependencia[];
+  sucesoras_detail?: TareaDependencia[];
+
   // Campos calculados (solo lectura)
   es_vencida: boolean;
   tiene_subtareas: boolean;
   nivel_jerarquia: number;
   progreso_porcentaje: number;
+  es_camino_critico: boolean;
 
   // Subtareas anidadas (solo en detalle)
   subtareas_detail?: Tarea[];

@@ -26,7 +26,8 @@ import { TareaCardComponent } from '../tarea-card/tarea-card.component';
 import { ConfirmDialogComponent } from '../../../../shared/components/confirm-dialog/confirm-dialog.component';
 import { CronometroComponent } from '../../../../shared/components/cronometro/cronometro.component';
 import { ComentariosThreadComponent } from '../../../../shared/components/comentarios-thread/comentarios-thread.component';
-import { Tarea, TareaEstado } from '../../models/tarea.model';
+import { SelectorDependenciasComponent } from '../selector-dependencias/selector-dependencias.component';
+import { Tarea, TareaEstado, TareaDependencia } from '../../models/tarea.model';
 import type { ModoMedicion } from '../../models/actividad-saiopen.model';
 import { ConfiguracionProyecto } from '../../models/configuracion-proyecto.model';
 import { SesionTrabajo } from '../../models/sesion-trabajo.model';
@@ -84,6 +85,7 @@ export const PRIORIDAD_COLORS: Record<string, string | undefined> = {
     TareaCardComponent,
     CronometroComponent,
     ComentariosThreadComponent,
+    SelectorDependenciasComponent,
   ],
 })
 export class TareaDetailComponent implements OnInit {
@@ -305,6 +307,28 @@ export class TareaDetailComponent implements OnInit {
   readonly estadosDisponibles: TareaEstado[] = [
     'por_hacer', 'en_progreso', 'en_revision', 'bloqueada', 'completada', 'cancelada',
   ];
+
+  // ── Dependencias ──────────────────────────────────────────────
+
+  onDependenciaAgregada(dep: TareaDependencia): void {
+    const t = this.tarea();
+    if (!t) return;
+    this.tarea.set({
+      ...t,
+      predecesoras_detail: [...(t.predecesoras_detail ?? []), dep],
+    });
+    this.cdr.markForCheck();
+  }
+
+  onDependenciaEliminada(depId: string): void {
+    const t = this.tarea();
+    if (!t) return;
+    this.tarea.set({
+      ...t,
+      predecesoras_detail: (t.predecesoras_detail ?? []).filter(d => d.id !== depId),
+    });
+    this.cdr.markForCheck();
+  }
 
   // ── Timesheet: modo manual ────────────────────────────────────
 

@@ -9,7 +9,7 @@ from apps.proyectos.models import (
     Proyecto, Fase, TerceroProyecto, DocumentoContable, Hito,
     TipoProyecto, EstadoProyecto, RolTercero, TipoDocumento,
     Actividad, ActividadProyecto, TipoActividad, ConfiguracionModulo,
-    Tarea, TareaTag, SesionTrabajo, ActividadSaiopen,
+    Tarea, TareaTag, SesionTrabajo, ActividadSaiopen, TareaDependencia,
 )
 
 logger = logging.getLogger(__name__)
@@ -559,6 +559,34 @@ class TareaTagSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_at', 'updated_at']
 
 
+class TareaDependenciaSerializer(serializers.ModelSerializer):
+    """
+    Serializer para TareaDependencia.
+    Incluye datos básicos de predecesora/sucesora para el frontend.
+    """
+    tarea_predecesora_detail = serializers.SerializerMethodField()
+    tarea_sucesora_detail    = serializers.SerializerMethodField()
+
+    class Meta:
+        model  = TareaDependencia
+        fields = [
+            'id',
+            'tarea_predecesora', 'tarea_predecesora_detail',
+            'tarea_sucesora', 'tarea_sucesora_detail',
+            'tipo_dependencia',
+            'retraso_dias',
+        ]
+        read_only_fields = ['id']
+
+    def get_tarea_predecesora_detail(self, obj: TareaDependencia) -> dict:
+        t = obj.tarea_predecesora
+        return {'id': str(t.id), 'nombre': t.nombre, 'codigo': t.codigo}
+
+    def get_tarea_sucesora_detail(self, obj: TareaDependencia) -> dict:
+        t = obj.tarea_sucesora
+        return {'id': str(t.id), 'nombre': t.nombre, 'codigo': t.codigo}
+
+
 class TareaSerializer(serializers.ModelSerializer):
     """
     Serializer para Tarea con nested subtareas y followers.
@@ -569,6 +597,7 @@ class TareaSerializer(serializers.ModelSerializer):
     tiene_subtareas     = serializers.BooleanField(read_only=True)
     nivel_jerarquia     = serializers.IntegerField(read_only=True)
     progreso_porcentaje = serializers.ReadOnlyField()
+    es_camino_critico   = serializers.SerializerMethodField()
 
     # Nested serializers para lectura
     responsable_detail        = serializers.SerializerMethodField()
@@ -581,6 +610,8 @@ class TareaSerializer(serializers.ModelSerializer):
     subtareas_detail          = serializers.SerializerMethodField()
     followers_detail          = serializers.SerializerMethodField()
     modo_medicion             = serializers.ReadOnlyField()
+    predecesoras_detail       = serializers.SerializerMethodField()
+    sucesoras_detail          = serializers.SerializerMethodField()
 
     class Meta:
         model = Tarea
@@ -602,12 +633,15 @@ class TareaSerializer(serializers.ModelSerializer):
             'modo_medicion',
             'es_recurrente', 'frecuencia_recurrencia', 'proxima_generacion',
             'es_vencida', 'tiene_subtareas', 'nivel_jerarquia',
+            'es_camino_critico',
+            'predecesoras_detail', 'sucesoras_detail',
             'subtareas_detail',
             'created_at', 'updated_at',
         ]
         read_only_fields = [
             'id', 'codigo', 'proyecto', 'es_vencida', 'tiene_subtareas',
             'nivel_jerarquia', 'progreso_porcentaje', 'modo_medicion',
+            'es_camino_critico',
             'created_at', 'updated_at',
         ]
 
@@ -687,6 +721,37 @@ class TareaSerializer(serializers.ModelSerializer):
             return []
         subtareas = obj.subtareas.all()
         return TareaSerializer(subtareas, many=True, context=self.context).data
+
+    def get_predecesoras_detail(self, obj):
+        deps = obj.predecesoras.select_related('tarea_predecesora').all()
+        return TareaDependenciaSerializer(deps, many=True, context=self.context).data
+
+    def get_sucesoras_detail(self, obj):
+        deps = obj.sucesoras.select_related('tarea_sucesora').all()
+        return TareaDependenciaSerializer(deps, many=True, context=self.context).data
+
+    def get_es_camino_critico(self, obj) -> bool:
+        """
+        Calcula si esta tarea está en el camino crítico de su proyecto.
+        Se cachea en el contexto del request para no recalcular por cada tarea.
+        """
+        from apps.proyectos.tarea_services import DependenciaService
+
+        request = self.context.get('request')
+        company = getattr(request.user, 'company', None) if request else None
+        if not company:
+            return False
+
+        cache_key = f'camino_critico_{obj.proyecto_id}'
+        cache = self.context.setdefault('_cache', {})
+
+        if cache_key not in cache:
+            criticas = DependenciaService.calcular_camino_critico(
+                str(obj.proyecto_id), company
+            )
+            cache[cache_key] = set(criticas)
+
+        return str(obj.id) in cache[cache_key]
 
     def validate(self, data):
         """Validaciones de negocio."""

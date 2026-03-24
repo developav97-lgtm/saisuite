@@ -16,7 +16,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from apps.proyectos.models import (
     Proyecto, Fase, TerceroProyecto, DocumentoContable, Hito,
     Actividad, ActividadProyecto, Tarea, TareaTag, SesionTrabajo,
-    ActividadSaiopen,
+    ActividadSaiopen, TareaDependencia,
 )
 from apps.proyectos.serializers import (
     ProyectoListSerializer,
@@ -43,6 +43,7 @@ from apps.proyectos.serializers import (
     ActividadSaiopenCreateUpdateSerializer,
     ConfiguracionModuloSerializer,
     TareaSerializer,
+    TareaDependenciaSerializer,
     TareaTagSerializer,
     SesionTrabajoSerializer,
 )
@@ -58,7 +59,7 @@ from apps.proyectos.services import (
     ProyectoException,
     calcular_avance_fase_desde_tareas,
 )
-from apps.proyectos.tarea_services import TimesheetService
+from apps.proyectos.tarea_services import TimesheetService, DependenciaService
 from apps.notifications.services import NotificacionService
 from apps.proyectos.filters import ProyectoFilter, TareaFilter
 from apps.proyectos.permissions import CanAccessProyectos, CanEditProyecto, TareaPermission
@@ -145,6 +146,19 @@ class ProyectoViewSet(viewsets.ModelViewSet):
         proyecto = self.get_object()
         data     = ProyectoService.get_estado_financiero(proyecto)
         return Response(data, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['get'], url_path='camino-critico')
+    def camino_critico(self, request, pk=None):
+        """
+        GET /api/v1/proyectos/{id}/camino-critico/
+        Retorna lista de IDs de tareas que están en el camino crítico del proyecto.
+        """
+        proyecto = self.get_object()
+        company  = getattr(request.user, 'company', None)
+        criticas = DependenciaService.calcular_camino_critico(
+            str(proyecto.id), company
+        )
+        return Response({'tareas_criticas': criticas}, status=status.HTTP_200_OK)
 
 
 class FaseViewSet(viewsets.ModelViewSet):
@@ -801,6 +815,85 @@ class TareaViewSet(viewsets.ModelViewSet):
             qs = qs.filter(usuario_id=usuario_id)
 
         return Response(SesionTrabajoSerializer(qs, many=True).data)
+
+    # ── Dependencias entre tareas ─────────────────────────────
+
+    @action(detail=True, methods=['post'], url_path='crear-dependencia')
+    def crear_dependencia(self, request, pk=None):
+        """
+        POST /api/v1/proyectos/tareas/{id}/crear-dependencia/
+        Body: {"predecesora_id": "uuid", "tipo": "FS", "retraso_dias": 0}
+        La tarea {id} es la SUCESORA.
+        """
+        tarea = self.get_object()
+        predecesora_id = request.data.get('predecesora_id')
+        tipo           = request.data.get('tipo', 'FS')
+        retraso_dias   = request.data.get('retraso_dias', 0)
+        company        = getattr(request.user, 'company', None)
+
+        if not predecesora_id:
+            return Response(
+                {'detail': 'predecesora_id es requerido.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            retraso_dias = int(retraso_dias)
+        except (TypeError, ValueError):
+            retraso_dias = 0
+
+        try:
+            dependencia = DependenciaService.crear_dependencia(
+                predecesora_id=predecesora_id,
+                sucesora_id=str(tarea.id),
+                company=company,
+                tipo=tipo,
+                retraso_dias=retraso_dias,
+            )
+        except ValidationError as exc:
+            msgs = exc.message_dict if hasattr(exc, 'message_dict') else {'detail': exc.messages}
+            return Response(msgs, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = TareaDependenciaSerializer(dependencia, context={'request': request})
+        logger.info('dependencia_creada_via_api', extra={
+            'tarea_id': str(tarea.id),
+            'predecesora_id': str(predecesora_id),
+        })
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['delete'], url_path='eliminar-dependencia')
+    def eliminar_dependencia(self, request, pk=None):
+        """
+        DELETE /api/v1/proyectos/tareas/{id}/eliminar-dependencia/?dependencia_id=uuid
+        """
+        tarea          = self.get_object()
+        dependencia_id = request.query_params.get('dependencia_id')
+        company        = getattr(request.user, 'company', None)
+
+        if not dependencia_id:
+            return Response(
+                {'detail': 'dependencia_id es requerido como query param.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            dep = TareaDependencia.objects.get(
+                id=dependencia_id,
+                company=company,
+                tarea_sucesora=tarea,
+            )
+        except TareaDependencia.DoesNotExist:
+            return Response(
+                {'detail': 'Dependencia no encontrada.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        dep.delete()
+        logger.info('dependencia_eliminada', extra={
+            'dependencia_id': str(dependencia_id),
+            'tarea_id': str(tarea.id),
+        })
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=False, methods=['get'], url_path='sesion-activa')
     def sesion_activa(self, request):
