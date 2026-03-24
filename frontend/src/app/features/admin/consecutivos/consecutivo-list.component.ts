@@ -15,8 +15,9 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { ConsecutivoService } from '../services/consecutivo.service';
+import { ConsecutivoService, ConsecutivoParams } from '../services/consecutivo.service';
 import {
   ConsecutivoConfig, ConsecutivoCreate, EntidadConsecutivo,
   ENTIDAD_LABELS, FORMATO_OPCIONES, SUBTIPOS_POR_ENTIDAD,
@@ -34,7 +35,7 @@ import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialo
     MatFormFieldModule, MatInputModule, MatSelectModule,
     MatSlideToggleModule,
     MatProgressBarModule, MatProgressSpinnerModule,
-    MatTooltipModule, MatDialogModule,
+    MatTooltipModule, MatDialogModule, MatPaginatorModule,
   ],
 })
 export class ConsecutivoListComponent implements OnInit {
@@ -43,26 +44,25 @@ export class ConsecutivoListComponent implements OnInit {
   private readonly dialog   = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
 
-  readonly allConsecutivos = signal<ConsecutivoConfig[]>([]);
-  readonly searchText      = signal('');
-  readonly consecutivos    = computed(() => {
-    const q = this.searchText().toLowerCase().trim();
-    if (!q) return this.allConsecutivos();
-    return this.allConsecutivos().filter(c =>
-      c.nombre.toLowerCase().includes(q) ||
-      c.prefijo.toLowerCase().includes(q) ||
-      ENTIDAD_LABELS[c.tipo]?.toLowerCase().includes(q),
-    );
-  });
+  readonly consecutivos  = signal<ConsecutivoConfig[]>([]);
+  readonly searchText    = signal('');
+  readonly filtroTipo    = signal<EntidadConsecutivo | ''>('');
+  readonly filtroActivo  = signal<string>('all');
+  readonly totalCount    = signal(0);
+  readonly currentPage   = signal(1);
+  readonly pageSize      = 25;
+
+  readonly hayFiltros = computed(() =>
+    !!this.searchText() || !!this.filtroTipo() || this.filtroActivo() !== 'all',
+  );
 
   readonly loading       = signal(false);
   readonly saving        = signal(false);
   readonly editing       = signal<ConsecutivoConfig | null>(null);
   readonly formatPreview = signal('');
 
-  // Subtipos disponibles según el tipo seleccionado en el formulario
-  readonly selectedTipo    = signal<EntidadConsecutivo | null>(null);
-  readonly subtipOpciones  = computed(() =>
+  readonly selectedTipo   = signal<EntidadConsecutivo | null>(null);
+  readonly subtipOpciones = computed(() =>
     this.selectedTipo() ? (SUBTIPOS_POR_ENTIDAD[this.selectedTipo()!] ?? []) : [],
   );
 
@@ -72,6 +72,12 @@ export class ConsecutivoListComponent implements OnInit {
     { value: 'proyecto',  label: 'Proyecto'  },
     { value: 'actividad', label: 'Actividad' },
     { value: 'factura',   label: 'Factura'   },
+  ];
+
+  readonly estadoOpciones = [
+    { value: 'all',   label: 'Todos'    },
+    { value: 'true',  label: 'Activo'   },
+    { value: 'false', label: 'Inactivo' },
   ];
 
   readonly formatoOpciones = FORMATO_OPCIONES;
@@ -102,13 +108,47 @@ export class ConsecutivoListComponent implements OnInit {
 
   loadConsecutivos(): void {
     this.loading.set(true);
-    this.service.list().subscribe({
-      next: (data) => { this.allConsecutivos.set(data); this.loading.set(false); },
+    const params: ConsecutivoParams = {
+      page:      this.currentPage(),
+      page_size: this.pageSize,
+      search:    this.searchText() || undefined,
+      tipo:      this.filtroTipo() || undefined,
+      activo:    this.filtroActivo() !== 'all' ? this.filtroActivo() : undefined,
+    };
+    this.service.list(params).subscribe({
+      next: (data) => {
+        this.consecutivos.set(data.results ?? []);
+        this.totalCount.set(data.count ?? 0);
+        this.loading.set(false);
+      },
       error: () => {
         this.snackBar.open('No se pudieron cargar los consecutivos.', 'Cerrar', { duration: 4000, panelClass: ['snack-error'] });
         this.loading.set(false);
       },
     });
+  }
+
+  onSearch(): void {
+    this.currentPage.set(1);
+    this.loadConsecutivos();
+  }
+
+  aplicarFiltros(): void {
+    this.currentPage.set(1);
+    this.loadConsecutivos();
+  }
+
+  limpiarFiltros(): void {
+    this.searchText.set('');
+    this.filtroTipo.set('');
+    this.filtroActivo.set('all');
+    this.currentPage.set(1);
+    this.loadConsecutivos();
+  }
+
+  onPageChange(event: PageEvent): void {
+    this.currentPage.set(event.pageIndex + 1);
+    this.loadConsecutivos();
   }
 
   updatePreview(): void {

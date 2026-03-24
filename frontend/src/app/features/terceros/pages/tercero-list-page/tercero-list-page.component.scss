@@ -17,6 +17,19 @@
   width: 180px;
 }
 
+.tl-progress {
+  margin-bottom: -4px;
+  border-radius: var(--sc-radius) var(--sc-radius) 0 0;
+}
+
+.tl-table { width: 100%; border-radius: var(--sc-radius); }
+
+.tl-empty {
+  border: 1px solid var(--sc-surface-border);
+  border-top: none;
+  border-radius: 0 0 var(--sc-radius) var(--sc-radius);
+}
+
 @media (max-width: 600px) {
   .tl-filters { flex-direction: column; align-items: stretch; }
   .tl-filter   { width: 100%; }

@@ -54,6 +54,11 @@ export interface FormatoOpcion {
   ejemplo: string;
 }
 
+export interface PagedResponse<T> {
+  count:   number;
+  results: T[];
+}
+
 export const FORMATO_OPCIONES: FormatoOpcion[] = [
   { value: '{prefijo}-{numero:04d}', label: 'Guión + 4 dígitos',    ejemplo: 'PRY-0001' },
   { value: '{prefijo}-{numero:03d}', label: 'Guión + 3 dígitos',    ejemplo: 'PRY-001'  },

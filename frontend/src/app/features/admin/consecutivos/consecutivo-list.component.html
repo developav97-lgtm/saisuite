@@ -2,18 +2,43 @@
 
   <!-- Header -->
   <div class="sc-page-header">
-    <h1 class="sc-page-header__title">Consecutivos configurables</h1>
+    <h1 class="sc-page-header__title">Consecutivos</h1>
     <button mat-raised-button color="primary" (click)="abrirDialogNuevo()">
       <mat-icon>add</mat-icon> Nuevo consecutivo
     </button>
   </div>
 
-  <!-- Buscador -->
-  <div class="cl-search-bar sc-card">
+  <!-- Filtros -->
+  <div class="cl-filters-card sc-card">
     <mat-form-field appearance="outline" subscriptSizing="dynamic" class="cl-search-field">
-      <mat-label>Buscar por nombre, prefijo o tipo…</mat-label>
-      <input matInput [ngModel]="searchText()" (ngModelChange)="searchText.set($event)" />
-      <mat-icon matSuffix>search</mat-icon>
+      <mat-label>Buscar por nombre o prefijo…</mat-label>
+      <input
+        matInput
+        [ngModel]="searchText()"
+        (ngModelChange)="searchText.set($event)"
+        (keyup.enter)="onSearch()" />
+      <button mat-icon-button matSuffix (click)="onSearch()">
+        <mat-icon>search</mat-icon>
+      </button>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="cl-filter">
+      <mat-label>Tipo</mat-label>
+      <mat-select [ngModel]="filtroTipo()" (ngModelChange)="filtroTipo.set($event); aplicarFiltros()">
+        <mat-option value="">Todos los tipos</mat-option>
+        @for (op of entidadOpciones; track op.value) {
+          <mat-option [value]="op.value">{{ op.label }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="cl-filter">
+      <mat-label>Estado</mat-label>
+      <mat-select [ngModel]="filtroActivo()" (ngModelChange)="filtroActivo.set($event); aplicarFiltros()">
+        @for (op of estadoOpciones; track op.value) {
+          <mat-option [value]="op.value">{{ op.label }}</mat-option>
+        }
+      </mat-select>
     </mat-form-field>
   </div>
 
@@ -96,8 +121,9 @@
   @if (!loading() && consecutivos().length === 0) {
     <div class="sc-empty-state cl-empty">
       <mat-icon>tag</mat-icon>
-      @if (searchText()) {
-        <p>Sin resultados para "{{ searchText() }}".</p>
+      @if (hayFiltros()) {
+        <p>Sin resultados para los filtros aplicados.</p>
+        <button mat-stroked-button (click)="limpiarFiltros()">Limpiar filtros</button>
       } @else {
         <p>No hay consecutivos configurados.</p>
         <button mat-raised-button color="primary" (click)="abrirDialogNuevo()">
@@ -106,6 +132,15 @@
       }
     </div>
   }
+
+  <!-- Paginador -->
+  <mat-paginator
+    [length]="totalCount()"
+    [pageSize]="pageSize"
+    [pageSizeOptions]="[25, 50, 100]"
+    [pageIndex]="currentPage() - 1"
+    (page)="onPageChange($event)"
+    showFirstLastButtons />
 
 </div>
 

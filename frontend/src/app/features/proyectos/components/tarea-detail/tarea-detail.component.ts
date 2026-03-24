@@ -110,9 +110,7 @@ export class TareaDetailComponent implements OnInit {
   cantidadTemporal = 0;
 
   onCantidadClick(): void {
-    const t = this.tarea();
-    if (!t) return;
-    this.cantidadTemporal = t.cantidad_registrada;
+    this.cantidadTemporal = 0;
     this.editandoCantidad.set(true);
   }
 
@@ -123,16 +121,19 @@ export class TareaDetailComponent implements OnInit {
 
   guardarCantidad(): void {
     const t = this.tarea();
-    if (!t || this.cantidadTemporal < 0) { this.cancelarEdicionCantidad(); return; }
-    this.tareaService.update(t.id, { cantidad_registrada: this.cantidadTemporal }).subscribe({
+    if (!t || this.cantidadTemporal <= 0) { this.cancelarEdicionCantidad(); return; }
+    this.tareaService.agregarCantidad(t.id, this.cantidadTemporal).subscribe({
       next: (actualizada) => {
         this.tarea.set(actualizada);
-        this.snackBar.open('Cantidad actualizada.', 'Cerrar', { duration: 2500, panelClass: ['snack-success'] });
+        const unidad = t.actividad_proyecto_detail?.actividad_unidad_medida ?? '';
+        this.snackBar.open(`${this.cantidadTemporal} ${unidad} agregados.`, 'Cerrar', {
+          duration: 2500, panelClass: ['snack-success'],
+        });
         this.cancelarEdicionCantidad();
         this.cdr.markForCheck();
       },
       error: (err: { error?: { detail?: string } }) => {
-        const msg = err.error?.detail ?? 'Error al actualizar cantidad.';
+        const msg = err.error?.detail ?? 'Error al agregar cantidad.';
         this.snackBar.open(msg, 'Cerrar', { duration: 4000, panelClass: ['snack-error'] });
       },
     });

@@ -469,6 +469,13 @@
   align-items: center;
   gap: 0.25rem;
 
+  small {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--sc-text-color, #424242);
+    opacity: 0.75;
+  }
+
   &.td-hora-muted {
     font-size: 1.1rem;
     font-weight: 400;
@@ -615,7 +622,8 @@
 
 .td-cantidad-unidad {
   font-size: 0.875rem;
-  color: var(--sc-text-muted, #757575);
+  color: var(--sc-text-color, #424242);
+  opacity: 0.65;
 }
 
 .td-cantidad-edit-hint {

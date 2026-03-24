@@ -64,7 +64,10 @@ def tarea_post_save(sender, instance: Tarea, created: bool, **kwargs):
             except Tarea.DoesNotExist:
                 pass
 
-    # Cascada Tarea → Fase → Proyecto (DEC-021)
+    # Cascada Tarea → ActividadProyecto → Fase → Proyecto (DEC-021)
+    if instance.actividad_proyecto_id:
+        from apps.proyectos.services import recalcular_cantidad_ejecutada_ap
+        recalcular_cantidad_ejecutada_ap(instance.actividad_proyecto_id)
     if instance.fase_id:
         calcular_avance_fase_desde_tareas(instance.fase_id)
         if instance.proyecto_id:
@@ -74,7 +77,9 @@ def tarea_post_save(sender, instance: Tarea, created: bool, **kwargs):
 @receiver(post_delete, sender=Tarea)
 def tarea_post_delete(sender, instance: Tarea, **kwargs):
     """Recalcula avance de la Fase y Proyecto cuando se elimina una Tarea."""
-    from apps.proyectos.services import calcular_avance_fase_desde_tareas, calcular_avance_proyecto
+    from apps.proyectos.services import calcular_avance_fase_desde_tareas, calcular_avance_proyecto, recalcular_cantidad_ejecutada_ap
+    if instance.actividad_proyecto_id:
+        recalcular_cantidad_ejecutada_ap(instance.actividad_proyecto_id)
     if instance.fase_id:
         calcular_avance_fase_desde_tareas(instance.fase_id)
         if instance.proyecto_id:

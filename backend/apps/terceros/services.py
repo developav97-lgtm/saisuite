@@ -13,15 +13,18 @@ logger = logging.getLogger(__name__)
 class TerceroService:
 
     @staticmethod
-    def list(company, *, search: str = '', tipo_tercero: str = '', activo: bool | None = None):
+    def list(company, *, search: str = '', tipo_tercero: str = '', tipo_identificacion: str = '', activo: bool | None = None):
         qs = Tercero.objects.filter(company=company)
         if search:
             qs = qs.filter(
                 Q(nombre_completo__icontains=search) |
-                Q(numero_identificacion__icontains=search)
+                Q(numero_identificacion__icontains=search) |
+                Q(codigo__icontains=search)
             )
         if tipo_tercero:
             qs = qs.filter(tipo_tercero=tipo_tercero)
+        if tipo_identificacion:
+            qs = qs.filter(tipo_identificacion=tipo_identificacion)
         if activo is not None:
             qs = qs.filter(activo=activo)
         return qs.order_by('nombre_completo')

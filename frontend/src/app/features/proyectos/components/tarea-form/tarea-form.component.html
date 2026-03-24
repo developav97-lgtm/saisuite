@@ -223,23 +223,6 @@
             </mat-autocomplete>
           </mat-form-field>
 
-          <!-- Cantidad objetivo / registrada — solo cuando modo_medicion = 'cantidad' (DEC-022) -->
-          @if (selectedActividadModo() === 'cantidad') {
-            <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
-              <mat-label>Cantidad objetivo</mat-label>
-              <input matInput type="number" min="0" step="0.01"
-                formControlName="cantidad_objetivo" placeholder="0" />
-            </mat-form-field>
-
-            @if (editMode()) {
-              <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
-                <mat-label>Cantidad registrada</mat-label>
-                <input matInput type="number" min="0" step="0.01"
-                  formControlName="cantidad_registrada" placeholder="0" />
-              </mat-form-field>
-            }
-          }
-
           <!-- Tarea padre (autocomplete client-side, depende del proyecto) -->
           <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
             <mat-label>Tarea padre</mat-label>
@@ -359,32 +342,60 @@
         </div>
       </div>
 
-      <!-- Timesheet -->
+      <!-- Medición (Timesheet / Cantidad / Solo estados) — solo visible cuando hay actividad seleccionada -->
+      @if (selectedActividadModo() !== null) {
       <div class="sc-card">
         <div class="sc-card__header">
-          <mat-icon>schedule</mat-icon>
-          <span class="sc-card__title">Timesheet</span>
+          @if (selectedActividadModo() === 'cantidad') {
+            <mat-icon>straighten</mat-icon>
+            <span class="sc-card__title">Medición — {{ selectedActividadUnidad() }}</span>
+          } @else {
+            <mat-icon>schedule</mat-icon>
+            <span class="sc-card__title">Timesheet</span>
+          }
         </div>
         <div class="sc-card__body sc-card__body--gap">
 
-          <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
-            <mat-label>Horas estimadas</mat-label>
-            <input matInput type="number" min="0" step="0.5"
-              formControlName="horas_estimadas" placeholder="0" />
-            <span matTextSuffix>h</span>
-          </mat-form-field>
-
-          @if (editMode()) {
+          @if (selectedActividadModo() === 'cantidad') {
+            <!-- Modo cantidad: objetivo y (en edición) registrado -->
             <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
-              <mat-label>% Completado</mat-label>
-              <input matInput type="number" min="0" max="100"
-                formControlName="porcentaje_completado" placeholder="0" />
-              <span matTextSuffix>%</span>
+              <mat-label>{{ selectedActividadUnidad() || 'Unidades' }} esperados (objetivo)</mat-label>
+              <input matInput type="number" min="0" step="0.01"
+                formControlName="cantidad_objetivo" placeholder="0" />
+              <span matTextSuffix>{{ selectedActividadUnidad() }}</span>
             </mat-form-field>
+
+            @if (editMode()) {
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
+                <mat-label>{{ selectedActividadUnidad() || 'Unidades' }} registrados</mat-label>
+                <input matInput type="number"
+                  formControlName="cantidad_registrada" readonly />
+                <span matTextSuffix>{{ selectedActividadUnidad() }}</span>
+                <mat-hint>Usa el detalle de la tarea para agregar {{ selectedActividadUnidad() }}</mat-hint>
+              </mat-form-field>
+            }
+          } @else {
+            <!-- Modo timesheet (o sin actividad): horas y % completado -->
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
+              <mat-label>Horas estimadas</mat-label>
+              <input matInput type="number" min="0" step="0.5"
+                formControlName="horas_estimadas" placeholder="0" />
+              <span matTextSuffix>h</span>
+            </mat-form-field>
+
+            @if (editMode()) {
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
+                <mat-label>% Completado</mat-label>
+                <input matInput type="number" min="0" max="100"
+                  formControlName="porcentaje_completado" placeholder="0" />
+                <span matTextSuffix>%</span>
+              </mat-form-field>
+            }
           }
 
         </div>
       </div>
+      } <!-- /@if selectedActividadModo -->
 
     </div>
 

@@ -388,6 +388,13 @@
     color: var(--sc-text-muted, #9e9e9e);
   }
 
+  .trd-hora-unidad {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--sc-text-secondary, var(--sc-text-color, #424242));
+    opacity: 0.85;
+  }
+
   &.trd-hora-muted {
     color: var(--sc-text-muted, #9e9e9e);
     font-weight: 400;

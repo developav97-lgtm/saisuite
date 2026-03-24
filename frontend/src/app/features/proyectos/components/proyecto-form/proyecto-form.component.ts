@@ -152,7 +152,7 @@ export class ProyectoFormComponent implements OnInit {
     });
 
     // Cargar todos los consecutivos activos; el filtro por tipo se aplica via computed
-    this.consecutivoService.list().subscribe({
+    this.consecutivoService.listAll().subscribe({
       next: (list) => this.allConsecutivos.set(list),
       error: () => { /* silencioso */ },
     });

@@ -26,15 +26,17 @@
       <div class="trd-progress-label">
         <span>
           Progreso
-          @if (tarea()!.horas_estimadas > 0) {
+          @if (modoMedicion() === 'timesheet' && tarea()!.horas_estimadas > 0) {
             <span class="trd-progress-hint">(por horas)</span>
+          } @else if (modoMedicion() === 'cantidad' && tarea()!.cantidad_objetivo > 0) {
+            <span class="trd-progress-hint">({{ unidadMedida() }})</span>
           }
         </span>
-        <strong>{{ (tarea()!.horas_estimadas > 0 ? tarea()!.progreso_porcentaje : tarea()!.porcentaje_completado) | number:'1.0-0' }}%</strong>
+        <strong>{{ progreso() | number:'1.0-0' }}%</strong>
       </div>
       <mat-progress-bar
         mode="determinate"
-        [value]="tarea()!.horas_estimadas > 0 ? tarea()!.progreso_porcentaje : tarea()!.porcentaje_completado"
+        [value]="progreso()"
         [class.trd-progress--completada]="tarea()!.estado === 'completada'" />
     </div>
 
@@ -166,87 +168,155 @@
           </div>
         </mat-tab>
 
-        <!-- Tiempo (Timesheet) -->
+        <!-- Tiempo / Medición (adaptativo según modo_medicion) -->
         <mat-tab>
           <ng-template mat-tab-label>
-            <mat-icon class="trd-tab-icon">schedule</mat-icon>
-            Tiempo
+            @if (modoMedicion() === 'cantidad') {
+              <mat-icon class="trd-tab-icon">straighten</mat-icon>
+              Medición
+            } @else {
+              <mat-icon class="trd-tab-icon">schedule</mat-icon>
+              Tiempo
+            }
           </ng-template>
           <div class="trd-tab-content">
 
-            <!-- Horas estimadas vs registradas -->
-            <div class="trd-horas-resumen">
-              <div class="trd-hora-item">
-                <span class="trd-hora-label">Estimadas</span>
-                <span class="trd-hora-valor">{{ tarea()!.horas_estimadas }}h</span>
-              </div>
-              <mat-divider [vertical]="true" />
-              <div class="trd-hora-item">
-                <span class="trd-hora-label">Registradas</span>
-
-                @if (modoTimesheetDesactivado()) {
-                  <span class="trd-hora-valor trd-hora-muted">
-                    {{ tarea()!.horas_registradas }}h
-                    <small>(desactivado)</small>
+            <!-- ── Modo CANTIDAD ────────────────────────────────────── -->
+            @if (modoMedicion() === 'cantidad') {
+              <div class="trd-horas-resumen">
+                <div class="trd-hora-item">
+                  <span class="trd-hora-label">Objetivo</span>
+                  <span class="trd-hora-valor">
+                    {{ tarea()!.cantidad_objetivo }}
+                    <span class="trd-hora-unidad">{{ unidadMedida() }}</span>
                   </span>
-                } @else if (editandoHoras()) {
-                  <div class="trd-horas-edit">
-                    <input
-                      type="number"
-                      [(ngModel)]="horasAdicionales"
-                      (keydown)="onHorasKeydown($event)"
-                      (blur)="guardarHoras()"
-                      min="0.5" step="0.5"
-                      placeholder="ej. 1.5"
-                      class="trd-horas-input"
-                      autofocus
-                    />
-                    <span class="trd-horas-hint">+ {{ tarea()!.horas_registradas }}h actuales</span>
-                  </div>
-                } @else {
-                  <span class="trd-hora-valor"
-                    [class.trd-hora-editable]="modoManualHabilitado()"
-                    (click)="modoManualHabilitado() ? onHorasClick() : null"
-                    [matTooltip]="modoManualHabilitado() ? 'Click para agregar horas' : ''">
-                    {{ tarea()!.horas_registradas }}h
-                    @if (modoManualHabilitado()) {
-                      <mat-icon class="trd-horas-edit-icon">add_circle_outline</mat-icon>
-                    }
-                  </span>
-                }
-              </div>
-            </div>
-
-            <!-- Barra de progreso de horas -->
-            @if (tarea()!.horas_estimadas > 0) {
-              <div class="trd-horas-progreso">
-                <div class="trd-horas-progreso-header">
-                  <span class="trd-hora-label">Avance por horas</span>
-                  <span class="trd-hora-label">{{ tarea()!.progreso_porcentaje | number:'1.0-0' }}%</span>
                 </div>
-                <mat-progress-bar
-                  mode="determinate"
-                  [value]="tarea()!.progreso_porcentaje"
-                  [color]="tarea()!.progreso_porcentaje >= 100 ? 'accent' : tarea()!.progreso_porcentaje >= 50 ? 'primary' : 'warn'" />
-              </div>
-            }
+                <mat-divider [vertical]="true" />
+                <div class="trd-hora-item">
+                  <span class="trd-hora-label">Registrado</span>
 
-            <!-- Cronómetro -->
-            @if (modoCronometroHabilitado()) {
-              <mat-divider />
-              <div class="trd-cronometro-section">
-                <span class="trd-section-label">Cronómetro</span>
-                <app-cronometro
-                  [tareaId]="tarea()!.id"
-                  (sesionFinalizada)="onSesionFinalizada($event)" />
+                  @if (editandoCantidad()) {
+                    <div class="trd-horas-edit">
+                      <input
+                        type="number"
+                        [(ngModel)]="cantidadAdicional"
+                        (keydown)="onCantidadKeydown($event)"
+                        (blur)="guardarCantidad()"
+                        min="0.01" step="0.01"
+                        [placeholder]="'ej. 1.5 ' + unidadMedida()"
+                        class="trd-horas-input"
+                        autofocus
+                      />
+                      <span class="trd-horas-hint">+ {{ tarea()!.cantidad_registrada }} {{ unidadMedida() }} actuales</span>
+                    </div>
+                  } @else {
+                    <span class="trd-hora-valor trd-hora-editable"
+                      (click)="onCantidadClick()"
+                      matTooltip="Click para agregar {{ unidadMedida() }}">
+                      {{ tarea()!.cantidad_registrada }}
+                      <span class="trd-hora-unidad">{{ unidadMedida() }}</span>
+                      <mat-icon class="trd-horas-edit-icon">add_circle_outline</mat-icon>
+                    </span>
+                  }
+                </div>
               </div>
-            }
 
-            <!-- Estado desactivado -->
-            @if (modoTimesheetDesactivado()) {
-              <div class="trd-timesheet-off">
-                <mat-icon>block</mat-icon>
-                <span>El registro de tiempo está desactivado en la configuración del módulo.</span>
+              @if (tarea()!.cantidad_objetivo > 0) {
+                <div class="trd-horas-progreso">
+                  <div class="trd-horas-progreso-header">
+                    <span class="trd-hora-label">
+                      {{ tarea()!.cantidad_registrada }} / {{ tarea()!.cantidad_objetivo }} {{ unidadMedida() }}
+                    </span>
+                    <span class="trd-hora-label">{{ tarea()!.progreso_porcentaje | number:'1.0-0' }}%</span>
+                  </div>
+                  <mat-progress-bar
+                    mode="determinate"
+                    [value]="tarea()!.progreso_porcentaje"
+                    [color]="tarea()!.progreso_porcentaje >= 100 ? 'accent' : tarea()!.progreso_porcentaje >= 50 ? 'primary' : 'warn'" />
+                </div>
+              }
+
+            <!-- ── Modo TIMESHEET ───────────────────────────────────── -->
+            } @else if (modoMedicion() === 'timesheet') {
+
+              <!-- Horas estimadas vs registradas -->
+              <div class="trd-horas-resumen">
+                <div class="trd-hora-item">
+                  <span class="trd-hora-label">Estimadas</span>
+                  <span class="trd-hora-valor">{{ tarea()!.horas_estimadas }}h</span>
+                </div>
+                <mat-divider [vertical]="true" />
+                <div class="trd-hora-item">
+                  <span class="trd-hora-label">Registradas</span>
+
+                  @if (modoTimesheetDesactivado()) {
+                    <span class="trd-hora-valor trd-hora-muted">
+                      {{ tarea()!.horas_registradas }}h
+                      <small>(desactivado)</small>
+                    </span>
+                  } @else if (editandoHoras()) {
+                    <div class="trd-horas-edit">
+                      <input
+                        type="number"
+                        [(ngModel)]="horasAdicionales"
+                        (keydown)="onHorasKeydown($event)"
+                        (blur)="guardarHoras()"
+                        min="0.5" step="0.5"
+                        placeholder="ej. 1.5"
+                        class="trd-horas-input"
+                        autofocus
+                      />
+                      <span class="trd-horas-hint">+ {{ tarea()!.horas_registradas }}h actuales</span>
+                    </div>
+                  } @else {
+                    <span class="trd-hora-valor"
+                      [class.trd-hora-editable]="modoManualHabilitado()"
+                      (click)="modoManualHabilitado() ? onHorasClick() : null"
+                      [matTooltip]="modoManualHabilitado() ? 'Click para agregar horas' : ''">
+                      {{ tarea()!.horas_registradas }}h
+                      @if (modoManualHabilitado()) {
+                        <mat-icon class="trd-horas-edit-icon">add_circle_outline</mat-icon>
+                      }
+                    </span>
+                  }
+                </div>
+              </div>
+
+              @if (tarea()!.horas_estimadas > 0) {
+                <div class="trd-horas-progreso">
+                  <div class="trd-horas-progreso-header">
+                    <span class="trd-hora-label">Avance por horas</span>
+                    <span class="trd-hora-label">{{ tarea()!.progreso_porcentaje | number:'1.0-0' }}%</span>
+                  </div>
+                  <mat-progress-bar
+                    mode="determinate"
+                    [value]="tarea()!.progreso_porcentaje"
+                    [color]="tarea()!.progreso_porcentaje >= 100 ? 'accent' : tarea()!.progreso_porcentaje >= 50 ? 'primary' : 'warn'" />
+                </div>
+              }
+
+              @if (modoCronometroHabilitado()) {
+                <mat-divider />
+                <div class="trd-cronometro-section">
+                  <span class="trd-section-label">Cronómetro</span>
+                  <app-cronometro
+                    [tareaId]="tarea()!.id"
+                    (sesionFinalizada)="onSesionFinalizada($event)" />
+                </div>
+              }
+
+              @if (modoTimesheetDesactivado()) {
+                <div class="trd-timesheet-off">
+                  <mat-icon>block</mat-icon>
+                  <span>El registro de tiempo está desactivado en la configuración del módulo.</span>
+                </div>
+              }
+
+            <!-- ── Modo SOLO_ESTADOS ────────────────────────────────── -->
+            } @else {
+              <div class="trd-empty-state">
+                <mat-icon>check_circle_outline</mat-icon>
+                <span>Esta tarea se gestiona por estados. Usa los botones de arriba para avanzar.</span>
               </div>
             }
 

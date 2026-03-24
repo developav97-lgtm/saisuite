@@ -289,37 +289,59 @@
 
               <!-- ── MODO: cantidad ── -->
               @if (modoMedicion() === 'cantidad') {
-                <!-- Cantidad registrada (clickeable inline) -->
-                <div class="td-cantidad-display"
-                  [class.td-cantidad-display--editing]="editandoCantidad()"
-                  (click)="!editandoCantidad() ? onCantidadClick() : null"
-                  [matTooltip]="editandoCantidad() ? '' : 'Click para registrar cantidad'">
-                  @if (editandoCantidad()) {
-                    <input
-                      matInput
-                      type="number"
-                      [(ngModel)]="cantidadTemporal"
-                      (keydown)="onCantidadKeydown($event)"
-                      (blur)="guardarCantidad()"
-                      min="0" step="0.01"
-                      class="td-cantidad-input"
-                      autofocus
-                    />
-                    <span class="td-cantidad-unidad">{{ tarea()!.actividad_proyecto_detail?.actividad_unidad_medida }}</span>
-                  } @else {
-                    <mat-icon class="td-cantidad-icon">assignment_turned_in</mat-icon>
-                    <span class="td-cantidad-valor">{{ tarea()!.cantidad_registrada }}</span>
-                    <span class="td-cantidad-unidad">{{ tarea()!.actividad_proyecto_detail?.actividad_unidad_medida }} registrados</span>
-                    <mat-icon class="td-cantidad-edit-hint">edit</mat-icon>
-                  }
+                <div class="td-horas-resumen">
+
+                  <!-- Objetivo -->
+                  <div class="td-hora-bloque">
+                    <span class="td-hora-label">Objetivo</span>
+                    <span class="td-hora-valor">
+                      {{ tarea()!.cantidad_objetivo | number:'1.0-2' }}
+                      <small>{{ tarea()!.actividad_proyecto_detail?.actividad_unidad_medida }}</small>
+                    </span>
+                  </div>
+
+                  <mat-divider [vertical]="true" class="td-hora-divider" />
+
+                  <!-- Registrado (clickeable para agregar) -->
+                  <div class="td-hora-bloque">
+                    <span class="td-hora-label">Registrado</span>
+
+                    @if (editandoCantidad()) {
+                      <div class="td-horas-edit">
+                        <input
+                          type="number"
+                          [(ngModel)]="cantidadTemporal"
+                          (keydown)="onCantidadKeydown($event)"
+                          (blur)="guardarCantidad()"
+                          min="0.01" step="0.01"
+                          [placeholder]="'ej. 1.5 ' + (tarea()!.actividad_proyecto_detail?.actividad_unidad_medida ?? '')"
+                          class="td-horas-input"
+                          autofocus
+                        />
+                        <span class="td-horas-hint">
+                          + {{ tarea()!.cantidad_registrada | number:'1.0-2' }}
+                          {{ tarea()!.actividad_proyecto_detail?.actividad_unidad_medida }} actuales
+                        </span>
+                      </div>
+                    } @else {
+                      <span class="td-hora-valor td-horas-editable"
+                        (click)="onCantidadClick()"
+                        [matTooltip]="'Click para agregar ' + (tarea()!.actividad_proyecto_detail?.actividad_unidad_medida ?? '')">
+                        {{ tarea()!.cantidad_registrada | number:'1.0-2' }}
+                        <small>{{ tarea()!.actividad_proyecto_detail?.actividad_unidad_medida }}</small>
+                        <mat-icon class="td-horas-edit-icon">add_circle_outline</mat-icon>
+                      </span>
+                    }
+                  </div>
                 </div>
 
-                <!-- Objetivo + barra de progreso -->
+                <!-- Barra de progreso -->
                 @if (tarea()!.cantidad_objetivo > 0) {
                   <div class="td-horas-progreso">
                     <div class="td-horas-progreso-header">
                       <span class="td-hora-label">
-                        {{ tarea()!.cantidad_registrada }} / {{ tarea()!.cantidad_objetivo }}
+                        {{ tarea()!.cantidad_registrada | number:'1.0-2' }} /
+                        {{ tarea()!.cantidad_objetivo | number:'1.0-2' }}
                         {{ tarea()!.actividad_proyecto_detail?.actividad_unidad_medida }}
                       </span>
                       <span class="td-hora-label">{{ tarea()!.progreso_porcentaje | number:'1.0-0' }}%</span>

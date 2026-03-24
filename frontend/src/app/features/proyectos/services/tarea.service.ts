@@ -136,4 +136,15 @@ export class TareaService {
       { horas },
     );
   }
+
+  /**
+   * POST /api/v1/proyectos/tareas/{id}/agregar-cantidad/
+   * Suma cantidad ejecutada manualmente a cantidad_registrada.
+   */
+  agregarCantidad(tareaId: string, cantidad: number): Observable<Tarea> {
+    return this.http.post<Tarea>(
+      `${this.baseUrl}/${tareaId}/agregar-cantidad/`,
+      { cantidad },
+    );
+  }
 }

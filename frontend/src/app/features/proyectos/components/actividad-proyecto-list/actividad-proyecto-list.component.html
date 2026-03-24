@@ -90,7 +90,10 @@
         <button mat-icon-button (click)="abrirDialogEditar(row)" matTooltip="Editar">
           <mat-icon>edit</mat-icon>
         </button>
-        <button mat-icon-button color="warn" (click)="confirmarDesasignar(row)" matTooltip="Quitar del proyecto">
+        <button mat-icon-button color="warn"
+          [disabled]="!puedeEliminar()"
+          [matTooltip]="puedeEliminar() ? 'Quitar del proyecto' : 'No se puede eliminar en estado ' + proyectoEstado()"
+          (click)="confirmarDesasignar(row)">
           <mat-icon>remove_circle_outline</mat-icon>
         </button>
       </td>
@@ -146,8 +149,7 @@
         </mat-form-field>
 
         <mat-form-field appearance="outline" class="apl-field-half"
-          [matTooltip]="!puedeEjecutar() ? 'Solo editable cuando el proyecto está en ejecución' : ''"
-        >
+          matTooltip="Se calcula automáticamente desde las tareas">
           <mat-label>Cantidad ejecutada</mat-label>
           <input matInput type="number" formControlName="cantidad_ejecutada" min="0" />
         </mat-form-field>
@@ -157,8 +159,13 @@
         <mat-form-field appearance="outline" class="apl-field-half">
           <mat-label>Costo unitario</mat-label>
           <span matTextPrefix>$&nbsp;</span>
-          <input matInput type="number" formControlName="costo_unitario" min="0" />
-          <mat-hint>Deja vacío para usar el costo base del catálogo</mat-hint>
+          <input matInput
+            [value]="costoDisplay()"
+            (input)="onCostoInput($event)"
+            (focus)="onCostoFocus()"
+            (blur)="onCostoBlur()"
+            placeholder="0" />
+          <mat-hint>Se llena automáticamente del catálogo al seleccionar actividad</mat-hint>
         </mat-form-field>
       </div>
 

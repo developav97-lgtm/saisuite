@@ -1,23 +1,17 @@
 <div class="sc-page">
 
-  <!-- ── Header ── -->
+  <!-- Header -->
   <div class="sc-page-header">
-    <div class="sc-page-header__left">
-      <h1 class="sc-page-title">
-        <mat-icon>people</mat-icon>
-        Terceros
-      </h1>
-      <span class="sc-page-subtitle">Catálogo transversal de personas naturales y jurídicas</span>
-    </div>
+    <h1 class="sc-page-header__title">Terceros</h1>
     <button mat-raised-button color="primary" (click)="nuevo()">
       <mat-icon>person_add</mat-icon> Nuevo tercero
     </button>
   </div>
 
-  <!-- ── Filtros ── -->
+  <!-- Filtros -->
   <div class="tl-filters sc-card">
     <mat-form-field appearance="outline" subscriptSizing="dynamic" class="tl-search">
-      <mat-label>Buscar por nombre o NIT</mat-label>
+      <mat-label>Buscar por nombre, NIT o código…</mat-label>
       <input matInput [value]="searchText()" (input)="searchText.set($any($event.target).value)" (keyup.enter)="onSearch()" />
       <button mat-icon-button matSuffix (click)="onSearch()" aria-label="Buscar">
         <mat-icon>search</mat-icon>
@@ -25,9 +19,18 @@
     </mat-form-field>
 
     <mat-form-field appearance="outline" subscriptSizing="dynamic" class="tl-filter">
-      <mat-label>Tipo</mat-label>
-      <mat-select [value]="tipoFilter()" (selectionChange)="tipoFilter.set($event.value); onFilter()">
+      <mat-label>Tipo tercero</mat-label>
+      <mat-select [value]="tipoFilter()" (selectionChange)="tipoFilter.set($event.value); aplicarFiltros()">
         @for (op of tipoTerceroOptions; track op.value) {
+          <mat-option [value]="op.value">{{ op.label }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="tl-filter">
+      <mat-label>Identificación</mat-label>
+      <mat-select [value]="tipoIdFilter()" (selectionChange)="tipoIdFilter.set($event.value); aplicarFiltros()">
+        @for (op of tipoIdentificacionOptions; track op.value) {
           <mat-option [value]="op.value">{{ op.label }}</mat-option>
         }
       </mat-select>
@@ -35,72 +38,89 @@
   </div>
 
   @if (loading()) {
-    <mat-progress-bar mode="indeterminate" />
+    <mat-progress-bar mode="indeterminate" class="tl-progress" />
   }
+
+  <mat-table [dataSource]="terceros()" class="tl-table">
+
+    <ng-container matColumnDef="nombre_completo">
+      <mat-header-cell *matHeaderCellDef>Nombre / Razón social</mat-header-cell>
+      <mat-cell *matCellDef="let t">
+        <div class="tc-nombre">
+          <span class="tc-nombre__text">{{ t.nombre_completo }}</span>
+          <small class="tc-nombre__codigo">{{ t.codigo }}</small>
+        </div>
+      </mat-cell>
+    </ng-container>
+
+    <ng-container matColumnDef="numero_identificacion">
+      <mat-header-cell *matHeaderCellDef>Identificación</mat-header-cell>
+      <mat-cell *matCellDef="let t">
+        <span class="tc-id-tipo">{{ getTipoIdentificacionLabel(t.tipo_identificacion) }}</span>
+        <span class="tc-id-numero">{{ t.numero_identificacion }}</span>
+      </mat-cell>
+    </ng-container>
+
+    <ng-container matColumnDef="tipo_tercero">
+      <mat-header-cell *matHeaderCellDef>Tipo</mat-header-cell>
+      <mat-cell *matCellDef="let t">
+        @if (t.tipo_tercero) {
+          <span [class]="'tc-tipo-chip tc-tipo-chip--' + t.tipo_tercero">
+            {{ getTipoTerceroLabel(t.tipo_tercero) }}
+          </span>
+        } @else {
+          <span class="tc-tipo-chip tc-tipo-chip--vacio">—</span>
+        }
+      </mat-cell>
+    </ng-container>
+
+    <ng-container matColumnDef="contacto">
+      <mat-header-cell *matHeaderCellDef>Contacto</mat-header-cell>
+      <mat-cell *matCellDef="let t">
+        <div class="tc-contacto">
+          @if (t.email) { <span>{{ t.email }}</span> }
+          @if (t.telefono) { <small>{{ t.telefono }}</small> }
+        </div>
+      </mat-cell>
+    </ng-container>
+
+    <ng-container matColumnDef="acciones">
+      <mat-header-cell *matHeaderCellDef class="tc-col-acciones"></mat-header-cell>
+      <mat-cell *matCellDef="let t" class="tc-col-acciones">
+        <button mat-icon-button matTooltip="Editar" (click)="editar(t)">
+          <mat-icon>edit</mat-icon>
+        </button>
+        <button mat-icon-button matTooltip="Eliminar" color="warn" (click)="confirmarEliminar(t)">
+          <mat-icon>delete_outline</mat-icon>
+        </button>
+      </mat-cell>
+    </ng-container>
+
+    <mat-header-row *matHeaderRowDef="displayedColumns" />
+    <mat-row *matRowDef="let row; columns: displayedColumns;" />
+  </mat-table>
 
   @if (!loading() && terceros().length === 0) {
-    <div class="sc-empty-state">
+    <div class="sc-empty-state tl-empty">
       <mat-icon>people_outline</mat-icon>
-      <p>No hay terceros registrados. Crea el primero con el botón de arriba.</p>
+      @if (hayFiltros()) {
+        <p>Sin resultados para los filtros aplicados.</p>
+        <button mat-stroked-button (click)="limpiarFiltros()">Limpiar filtros</button>
+      } @else {
+        <p>No hay terceros registrados aún.</p>
+        <button mat-raised-button color="primary" (click)="nuevo()">
+          <mat-icon>person_add</mat-icon> Nuevo tercero
+        </button>
+      }
     </div>
-  } @else if (terceros().length > 0) {
-    <mat-table [dataSource]="terceros()" class="sc-table">
-
-      <ng-container matColumnDef="nombre_completo">
-        <mat-header-cell *matHeaderCellDef>Nombre / Razón social</mat-header-cell>
-        <mat-cell *matCellDef="let t">
-          <div class="tc-nombre">
-            <span class="tc-nombre__text">{{ t.nombre_completo }}</span>
-            <small class="tc-nombre__codigo">{{ t.codigo }}</small>
-          </div>
-        </mat-cell>
-      </ng-container>
-
-      <ng-container matColumnDef="numero_identificacion">
-        <mat-header-cell *matHeaderCellDef>Identificación</mat-header-cell>
-        <mat-cell *matCellDef="let t">
-          <span class="tc-id-tipo">{{ getTipoIdentificacionLabel(t.tipo_identificacion) }}</span>
-          <span class="tc-id-numero">{{ t.numero_identificacion }}</span>
-        </mat-cell>
-      </ng-container>
-
-      <ng-container matColumnDef="tipo_tercero">
-        <mat-header-cell *matHeaderCellDef>Tipo</mat-header-cell>
-        <mat-cell *matCellDef="let t">
-          @if (t.tipo_tercero) {
-            <span [class]="'tc-tipo-chip tc-tipo-chip--' + t.tipo_tercero">
-              {{ getTipoTerceroLabel(t.tipo_tercero) }}
-            </span>
-          } @else {
-            <span class="tc-tipo-chip tc-tipo-chip--vacio">—</span>
-          }
-        </mat-cell>
-      </ng-container>
-
-      <ng-container matColumnDef="contacto">
-        <mat-header-cell *matHeaderCellDef>Contacto</mat-header-cell>
-        <mat-cell *matCellDef="let t">
-          <div class="tc-contacto">
-            @if (t.email) { <span>{{ t.email }}</span> }
-            @if (t.telefono) { <small>{{ t.telefono }}</small> }
-          </div>
-        </mat-cell>
-      </ng-container>
-
-      <ng-container matColumnDef="acciones">
-        <mat-header-cell *matHeaderCellDef class="tc-col-acciones">Acciones</mat-header-cell>
-        <mat-cell *matCellDef="let t" class="tc-col-acciones">
-          <button mat-icon-button matTooltip="Editar" (click)="editar(t)">
-            <mat-icon>edit</mat-icon>
-          </button>
-          <button mat-icon-button matTooltip="Eliminar" color="warn" (click)="confirmarEliminar(t)">
-            <mat-icon>delete</mat-icon>
-          </button>
-        </mat-cell>
-      </ng-container>
-
-      <mat-header-row *matHeaderRowDef="displayedColumns"></mat-header-row>
-      <mat-row *matRowDef="let row; columns: displayedColumns;"></mat-row>
-    </mat-table>
   }
+
+  <mat-paginator
+    [length]="totalCount()"
+    [pageSize]="pageSize"
+    [pageSizeOptions]="[25, 50, 100]"
+    [pageIndex]="currentPage() - 1"
+    (page)="onPageChange($event)"
+    showFirstLastButtons />
+
 </div>

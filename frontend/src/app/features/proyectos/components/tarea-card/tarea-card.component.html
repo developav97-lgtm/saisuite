@@ -63,11 +63,11 @@
       </div>
     }
 
-    <!-- Barra de progreso de horas (solo si hay horas estimadas) -->
-    @if (tarea().horas_estimadas > 0) {
+    <!-- Barra de progreso por horas -->
+    @if (esModoHoras && tarea().horas_estimadas > 0) {
       <div class="tc-progreso-bar-section">
         <div class="tc-progreso-bar-header">
-          <span class="tc-progreso-bar-label">Progreso</span>
+          <span class="tc-progreso-bar-label">Progreso (horas)</span>
           <span class="tc-progreso-bar-valor">{{ progreso | number:'1.0-0' }}%</span>
         </div>
         <mat-progress-bar
@@ -77,6 +77,25 @@
         </mat-progress-bar>
         <div class="tc-progreso-bar-detalle">
           {{ tarea().horas_registradas | number:'1.0-1' }}h / {{ tarea().horas_estimadas | number:'1.0-1' }}h
+        </div>
+      </div>
+    }
+
+    <!-- Barra de progreso por cantidad (m3, m2, kg, etc.) -->
+    @if (!esModoHoras && tarea().cantidad_objetivo > 0) {
+      <div class="tc-progreso-bar-section">
+        <div class="tc-progreso-bar-header">
+          <span class="tc-progreso-bar-label">Progreso ({{ unidadMedida }})</span>
+          <span class="tc-progreso-bar-valor">{{ progreso | number:'1.0-0' }}%</span>
+        </div>
+        <mat-progress-bar
+          mode="determinate"
+          [value]="progreso"
+          [color]="progresoColor">
+        </mat-progress-bar>
+        <div class="tc-progreso-bar-detalle">
+          {{ tarea().cantidad_registrada | number:'1.0-2' }} {{ unidadMedida }} /
+          {{ tarea().cantidad_objetivo | number:'1.0-2' }} {{ unidadMedida }}
         </div>
       </div>
     }

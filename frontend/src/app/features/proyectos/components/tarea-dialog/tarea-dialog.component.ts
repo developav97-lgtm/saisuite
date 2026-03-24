@@ -109,10 +109,12 @@ export class TareaDialogComponent implements OnInit {
   readonly tarea    = signal<Tarea | null>(null);
 
   // ── Timesheet ────────────────────────────────────────────────
-  readonly config        = signal<ConfiguracionProyecto | null>(null);
-  readonly editandoHoras = signal(false);
-  /** Propiedad plana para [(ngModel)] — signals no son compatibles con ngModel */
-  horasAdicionales = 0;
+  readonly config           = signal<ConfiguracionProyecto | null>(null);
+  readonly editandoHoras    = signal(false);
+  readonly editandoCantidad = signal(false);
+  /** Propiedades planas para [(ngModel)] — signals no son compatibles con ngModel */
+  horasAdicionales    = 0;
+  cantidadAdicional   = 0;
 
   readonly modoManualHabilitado = computed(() => {
     const m = this.config()?.modo_timesheet;
@@ -131,6 +133,18 @@ export class TareaDialogComponent implements OnInit {
   readonly prioridadLabel = computed(() => PRIORIDAD_LABELS[String(this.tarea()?.prioridad ?? '')] ?? '—');
   readonly prioridadColor = computed(() => PRIORIDAD_COLORS[String(this.tarea()?.prioridad ?? '')] ?? '#9e9e9e');
   readonly prioridadIcon  = computed(() => PRIORIDAD_ICONS[String(this.tarea()?.prioridad ?? '')] ?? 'remove');
+
+  readonly modoMedicion  = computed(() => this.tarea()?.modo_medicion ?? 'solo_estados');
+  readonly unidadMedida  = computed(() =>
+    this.tarea()?.actividad_proyecto_detail?.actividad_unidad_medida ?? ''
+  );
+  readonly progreso = computed(() => {
+    const t = this.tarea();
+    if (!t) return 0;
+    if (this.modoMedicion() === 'timesheet' && t.horas_estimadas > 0) return t.progreso_porcentaje;
+    if (this.modoMedicion() === 'cantidad' && t.cantidad_objetivo > 0) return t.progreso_porcentaje;
+    return t.porcentaje_completado;
+  });
 
   readonly estadoLabels  = ESTADO_LABELS;
   readonly estadoColors  = ESTADO_COLORS;
@@ -251,6 +265,45 @@ export class TareaDialogComponent implements OnInit {
   cancelarEdicionHoras(): void {
     this.editandoHoras.set(false);
     this.horasAdicionales = 0;
+  }
+
+  // ── Cantidad: modo manual ─────────────────────────────────
+
+  onCantidadClick(): void {
+    this.cantidadAdicional = 0;
+    this.editandoCantidad.set(true);
+  }
+
+  onCantidadKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Enter')  { this.guardarCantidad(); }
+    if (event.key === 'Escape') { this.cancelarEdicionCantidad(); }
+  }
+
+  guardarCantidad(): void {
+    const cantidad = this.cantidadAdicional;
+    const tarea = this.tarea();
+    if (!tarea || cantidad <= 0) { this.cancelarEdicionCantidad(); return; }
+
+    this.tareaService.agregarCantidad(tarea.id, cantidad).subscribe({
+      next: (actualizada) => {
+        this.tarea.set(actualizada);
+        const unidad = this.unidadMedida();
+        this.snackBar.open(`${cantidad} ${unidad} agregados correctamente.`, 'Cerrar', {
+          duration: 2500, panelClass: ['snack-success'],
+        });
+        this.cancelarEdicionCantidad();
+        this.cdr.markForCheck();
+      },
+      error: (err: { error?: { detail?: string } }) => {
+        const msg = err.error?.detail ?? 'Error al agregar cantidad.';
+        this.snackBar.open(msg, 'Cerrar', { duration: 4000, panelClass: ['snack-error'] });
+      },
+    });
+  }
+
+  cancelarEdicionCantidad(): void {
+    this.editandoCantidad.set(false);
+    this.cantidadAdicional = 0;
   }
 
   // ── Timesheet: cronómetro ─────────────────────────────────────

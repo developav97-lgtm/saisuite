@@ -62,6 +62,17 @@ export class TareaCardComponent {
     return this.tarea().progreso_porcentaje ?? 0;
   }
 
+  get unidadMedida(): string {
+    const um = this.tarea().actividad_proyecto_detail?.actividad_unidad_medida?.toLowerCase().trim();
+    if (!um || um === 'hora' || um === 'horas') return 'h';
+    return um;
+  }
+
+  get esModoHoras(): boolean {
+    const um = this.tarea().actividad_proyecto_detail?.actividad_unidad_medida?.toLowerCase().trim();
+    return !um || um === 'hora' || um === 'horas';
+  }
+
   get progresoColor(): 'primary' | 'accent' | 'warn' {
     if (this.progreso >= 100) return 'accent';
     if (this.progreso >= 50)  return 'primary';

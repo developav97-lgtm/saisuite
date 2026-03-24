@@ -1,9 +1,10 @@
 import {
   ChangeDetectionStrategy, Component, OnInit, TemplateRef, ViewChild,
-  computed, inject, input, signal,
+  computed, inject, input, signal, OnDestroy,
 } from '@angular/core';
+import { Subscription } from 'rxjs';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
+import { ReactiveFormsModule, FormBuilder, Validators, FormsModule } from '@angular/forms';
 import { MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -27,14 +28,14 @@ import { ConfirmDialogComponent } from '../../../../shared/components/confirm-di
   styleUrl: './actividad-proyecto-list.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    CommonModule, ReactiveFormsModule,
+    CommonModule, ReactiveFormsModule, FormsModule,
     MatTableModule, MatButtonModule, MatIconModule,
     MatFormFieldModule, MatInputModule, MatSelectModule,
     MatCardModule, MatProgressSpinnerModule, MatProgressBarModule,
     MatTooltipModule, MatDialogModule,
   ],
 })
-export class ActividadProyectoListComponent implements OnInit {
+export class ActividadProyectoListComponent implements OnInit, OnDestroy {
   private readonly apService       = inject(ActividadProyectoService);
   private readonly actividadService = inject(ActividadService);
   private readonly fb              = inject(FormBuilder);
@@ -49,11 +50,19 @@ export class ActividadProyectoListComponent implements OnInit {
   readonly loading          = signal(false);
   readonly saving           = signal(false);
   readonly editingAp        = signal<ActividadProyecto | null>(null);
+  readonly costoDisplay     = signal('');
 
-  /** Cantidad ejecutada solo es editable si el proyecto está en ejecución o suspendido. */
+  /** Cantidad ejecutada siempre deshabilitada — se calcula automáticamente desde tareas. */
   readonly puedeEjecutar = computed(() =>
     ['en_ejecucion', 'suspendido'].includes(this.proyectoEstado())
   );
+
+  /** Eliminar actividades solo permitido en estado borrador. */
+  readonly puedeEliminar = computed(() =>
+    !['planificado', 'en_ejecucion'].includes(this.proyectoEstado())
+  );
+
+  private actividadSub?: Subscription;
 
   readonly displayedColumns = ['actividad', 'tipo', 'unidad', 'cantidad', 'costo', 'presupuesto', 'avance', 'acciones'];
   readonly TIPO_LABELS = TIPO_ACTIVIDAD_LABELS;
@@ -72,6 +81,20 @@ export class ActividadProyectoListComponent implements OnInit {
   ngOnInit(): void {
     this.loadAsignaciones();
     this.loadCatalogo();
+    // Auto-fill costo_unitario al seleccionar actividad (P1)
+    this.actividadSub = this.form.get('actividad')!.valueChanges.subscribe(actId => {
+      if (!actId || this.editingAp()) return;
+      const act = this.catalogo().find(a => a.id === actId);
+      if (act) {
+        const costo = parseFloat(act.costo_unitario_base || '0');
+        this.form.get('costo_unitario')!.setValue(costo, { emitEvent: false });
+        this.costoDisplay.set(costo > 0 ? costo.toLocaleString('es-CO') : '');
+      }
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.actividadSub?.unsubscribe();
   }
 
   loadAsignaciones(): void {
@@ -90,12 +113,10 @@ export class ActividadProyectoListComponent implements OnInit {
 
   abrirDialogAsignar(): void {
     this.editingAp.set(null);
+    this.costoDisplay.set('');
     this.form.reset({ cantidad_ejecutada: 0 });
-    if (!this.puedeEjecutar()) {
-      this.form.get('cantidad_ejecutada')?.disable();
-    } else {
-      this.form.get('cantidad_ejecutada')?.enable();
-    }
+    // cantidad_ejecutada siempre calculada automáticamente desde tareas (P3)
+    this.form.get('cantidad_ejecutada')?.disable();
     this.dialogRef = this.dialog.open(this.apFormTemplate, {
       width: 'min(580px, 95vw)', maxHeight: '90vh',
     });
@@ -103,19 +124,17 @@ export class ActividadProyectoListComponent implements OnInit {
 
   abrirDialogEditar(ap: ActividadProyecto): void {
     this.editingAp.set(ap);
+    const costo = parseFloat(ap.costo_unitario || '0');
     this.form.patchValue({
       actividad:            ap.actividad,
       cantidad_planificada: parseFloat(ap.cantidad_planificada || '0'),
       cantidad_ejecutada:   parseFloat(ap.cantidad_ejecutada || '0'),
-      costo_unitario:       parseFloat(ap.costo_unitario || '0'),
+      costo_unitario:       costo,
     });
-    // actividad no editable en modo edición
+    this.costoDisplay.set(costo > 0 ? costo.toLocaleString('es-CO') : '');
+    // actividad y cantidad_ejecutada no editables en modo edición (P3)
     this.form.get('actividad')?.disable();
-    if (!this.puedeEjecutar()) {
-      this.form.get('cantidad_ejecutada')?.disable();
-    } else {
-      this.form.get('cantidad_ejecutada')?.enable();
-    }
+    this.form.get('cantidad_ejecutada')?.disable();
     this.dialogRef = this.dialog.open(this.apFormTemplate, {
       width: 'min(580px, 95vw)', maxHeight: '90vh',
     });
@@ -142,7 +161,6 @@ export class ActividadProyectoListComponent implements OnInit {
       next: () => {
         this.saving.set(false);
         this.form.get('actividad')?.enable();
-        this.form.get('cantidad_ejecutada')?.enable();
         this.dialogRef?.close();
         this.loadAsignaciones();
         this.snackBar.open(
@@ -154,7 +172,6 @@ export class ActividadProyectoListComponent implements OnInit {
       error: (err) => {
         this.saving.set(false);
         this.form.get('actividad')?.enable();
-        this.form.get('cantidad_ejecutada')?.enable();
         const e = err as { error?: Record<string, string[]> };
         const firstError = e.error ? Object.values(e.error).flat()[0] : null;
         this.snackBar.open(firstError ?? 'Error al guardar.', 'Cerrar', { duration: 5000, panelClass: ['snack-error'] });
@@ -164,8 +181,26 @@ export class ActividadProyectoListComponent implements OnInit {
 
   onCancelar(): void {
     this.form.get('actividad')?.enable();
-    this.form.get('cantidad_ejecutada')?.enable();
     this.dialogRef?.close();
+  }
+
+  // ── Formato costo unitario (P2) ─────────────────────────────
+  onCostoInput(event: Event): void {
+    const raw    = (event.target as HTMLInputElement).value;
+    const digits = raw.replace(/[^0-9]/g, '');
+    const num    = digits ? parseInt(digits, 10) : 0;
+    this.form.get('costo_unitario')!.setValue(num, { emitEvent: false });
+    this.costoDisplay.set(digits ? num.toLocaleString('es-CO') : '');
+  }
+
+  onCostoFocus(): void {
+    const val = this.form.get('costo_unitario')?.value ?? 0;
+    this.costoDisplay.set(val > 0 ? String(val) : '');
+  }
+
+  onCostoBlur(): void {
+    const val = this.form.get('costo_unitario')?.value ?? 0;
+    this.costoDisplay.set(val > 0 ? (val as number).toLocaleString('es-CO') : '');
   }
 
   confirmarDesasignar(ap: ActividadProyecto): void {

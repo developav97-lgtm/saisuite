@@ -5,9 +5,16 @@ Views solo orquestan: reciben request → llaman service → retornan response.
 import logging
 from rest_framework import status
 from rest_framework.decorators import action
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import ViewSet
+
+
+class TerceroPagination(PageNumberPagination):
+    page_size             = 25
+    page_size_query_param = 'page_size'
+    max_page_size         = 100
 from .models import Tercero, TerceroDireccion
 from .serializers import (
     TerceroListSerializer,
@@ -24,17 +31,24 @@ class TerceroViewSet(ViewSet):
     permission_classes = [IsAuthenticated]
 
     def list(self, request):
-        search      = request.query_params.get('search', '')
-        tipo_tercero = request.query_params.get('tipo_tercero', '')
-        activo_raw  = request.query_params.get('activo', None)
-        activo      = None if activo_raw is None else activo_raw.lower() == 'true'
+        search             = request.query_params.get('search', '')
+        tipo_tercero       = request.query_params.get('tipo_tercero', '')
+        tipo_identificacion = request.query_params.get('tipo_identificacion', '')
+        activo_raw         = request.query_params.get('activo', None)
+        activo             = None if activo_raw is None else activo_raw.lower() == 'true'
 
         qs = TerceroService.list(
             request.user.company,
             search=search,
             tipo_tercero=tipo_tercero,
+            tipo_identificacion=tipo_identificacion,
             activo=activo,
         )
+        paginator = TerceroPagination()
+        page = paginator.paginate_queryset(qs, request)
+        if page is not None:
+            serializer = TerceroListSerializer(page, many=True)
+            return paginator.get_paginated_response(serializer.data)
         serializer = TerceroListSerializer(qs, many=True)
         return Response(serializer.data)
 

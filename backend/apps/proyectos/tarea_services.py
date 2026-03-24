@@ -342,6 +342,38 @@ class TimesheetService:
 
     @staticmethod
     @transaction.atomic
+    def agregar_cantidad(tarea: Tarea, cantidad: Decimal) -> Tarea:
+        """
+        Agrega cantidad ejecutada manualmente a cantidad_registrada.
+        Sincroniza porcentaje_completado con el progreso calculado.
+        Raises:
+            ValidationError: si la cantidad es <= 0.
+        """
+        if cantidad <= 0:
+            raise ValidationError({'cantidad': 'La cantidad debe ser mayor a 0.'})
+
+        tarea.cantidad_registrada = tarea.cantidad_registrada + cantidad
+
+        update_fields = ['cantidad_registrada']
+        if tarea.cantidad_objetivo and tarea.cantidad_objetivo > 0:
+            nuevo_porcentaje = min(
+                int(float(tarea.cantidad_registrada) / float(tarea.cantidad_objetivo) * 100),
+                100,
+            )
+            tarea.porcentaje_completado = nuevo_porcentaje
+            update_fields.append('porcentaje_completado')
+
+        tarea.save(update_fields=update_fields)
+
+        logger.info('Cantidad agregada manualmente', extra={
+            'tarea_id': str(tarea.id),
+            'cantidad': str(cantidad),
+            'porcentaje_completado': tarea.porcentaje_completado,
+        })
+        return tarea
+
+    @staticmethod
+    @transaction.atomic
     def iniciar_sesion(tarea: Tarea, usuario) -> 'SesionTrabajo':
         """
         Inicia un cronómetro para la tarea.

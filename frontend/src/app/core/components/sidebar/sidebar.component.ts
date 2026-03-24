@@ -52,6 +52,7 @@ export class SidebarComponent implements OnInit {
     {
       sectionLabel: 'Módulos',
       items: [
+        /*
         {
           label: 'SaiVentas',
           icon: 'shopping_cart',
@@ -69,17 +70,18 @@ export class SidebarComponent implements OnInit {
             { label: 'Gestiones', icon: 'phone', route: '/cobros/gestiones' },
             { label: 'Pagos', icon: 'check_circle', route: '/cobros/pagos' },
           ],
-        },
+        },*/
         {
-          label: 'Proyectos',
+          label: 'Gestion de Proyectos',
           icon: 'work',
           children: [
-            { label: 'Lista', icon: 'list', route: '/proyectos' },
-            { label: 'Nuevo', icon: 'add', route: '/proyectos/nuevo' },
+            { label: 'Proyectos', icon: 'list', route: '/proyectos' },
+            { label: 'Actividades', icon: 'construction', route: '/proyectos/actividades' },
+          //  { label: 'Nuevo', icon: 'add', route: '/proyectos/nuevo' },
             { label: 'Tareas', icon: 'task_alt', route: '/proyectos/tareas' },
             { label: 'Kanban', icon: 'view_kanban', route: '/proyectos/tareas/kanban' },
-            { label: 'Nueva Tarea', icon: 'playlist_add', route: '/proyectos/tareas/nueva' },
-            { label: 'Catálogo de actividades', icon: 'construction', route: '/proyectos/actividades' },
+           // { label: 'Nueva Tarea', icon: 'playlist_add', route: '/proyectos/tareas/nueva' },
+            
             { label: 'Configuración', icon: 'tune', route: '/proyectos/configuracion' },
           ],
         },
@@ -88,7 +90,9 @@ export class SidebarComponent implements OnInit {
     {
       sectionLabel: 'Catálogos',
       items: [
-        { label: 'Terceros', icon: 'people', route: '/terceros' },
+        { label: 'Consecutivos', icon: 'tag',    route: '/admin/consecutivos' },
+        { label: 'Terceros',     icon: 'contacts',     route: '/terceros' },
+        { label: 'Usuarios',     icon: 'manage_accounts', route: '/admin/usuarios' },
       ],
     },
     {
@@ -99,9 +103,7 @@ export class SidebarComponent implements OnInit {
           label: 'Administración',
           icon: 'admin_panel_settings',
           children: [
-            { label: 'Usuarios',      icon: 'group',    route: '/admin/usuarios' },
-            { label: 'Empresa',       icon: 'business', route: '/admin/empresa' },
-            { label: 'Consecutivos',  icon: 'tag',      route: '/admin/consecutivos' },
+            { label: 'Empresa', icon: 'business', route: '/admin/empresa' },
           ],
         },
       ],

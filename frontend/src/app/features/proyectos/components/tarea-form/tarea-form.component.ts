@@ -83,7 +83,8 @@ export class TareaFormComponent implements OnInit {
   readonly saving                = signal(false);
   readonly esRecurrente          = signal(false);
   readonly loadingFases          = signal(false);
-  readonly selectedActividadModo = signal<string | null>(null);
+  readonly selectedActividadModo  = signal<'solo_estados' | 'timesheet' | 'cantidad' | null>(null);
+  readonly selectedActividadUnidad = signal<string>('');
 
   // ── Controles de búsqueda (NO parte del form group) ────────
   readonly proyectoSearch          = new FormControl('');
@@ -318,7 +319,7 @@ export class TareaFormComponent implements OnInit {
   }
 
   private loadClientes(): void {
-    this.terceroService.list({ tipo_tercero: 'cliente', activo: true }).subscribe(clientes => {
+    this.terceroService.listAll({ tipo_tercero: 'cliente', activo: true }).subscribe(clientes => {
       this.allClientes = clientes;
       this.clientesFiltrados.set(clientes);
       this.cdr.markForCheck();
@@ -402,7 +403,10 @@ export class TareaFormComponent implements OnInit {
           this.actividadSaiopenSearch.setValue(
             `${t.actividad_proyecto_detail.actividad_codigo} — ${t.actividad_proyecto_detail.actividad_nombre}`
           );
-          this.selectedActividadModo.set(t.actividad_proyecto_detail.actividad_unidad_medida);
+          this.selectedActividadModo.set(
+            this.resolverModo(t.actividad_proyecto_detail.actividad_unidad_medida)
+          );
+          this.selectedActividadUnidad.set(t.actividad_proyecto_detail.actividad_unidad_medida ?? '');
         }
         if (t.responsable_detail) {
           this.responsableSearch.setValue(
@@ -464,6 +468,7 @@ export class TareaFormComponent implements OnInit {
     this.tareasPadreFiltradas.set([]);
     this.actividadesFiltradas.set([]);
     this.selectedActividadModo.set(null);
+    this.selectedActividadUnidad.set('');
     this.loadFasesYTareas(proyecto.id);
     this.loadActividadesProyecto(proyecto.id);
   }
@@ -479,7 +484,8 @@ export class TareaFormComponent implements OnInit {
   onActividadSaiopenSelected(event: MatAutocompleteSelectedEvent): void {
     const act = event.option.value as ActividadProyecto;
     this.form.controls.actividad_proyecto.setValue(act.id);
-    this.selectedActividadModo.set(act.actividad_unidad_medida);
+    this.selectedActividadModo.set(this.resolverModo(act.actividad_unidad_medida));
+    this.selectedActividadUnidad.set(act.actividad_unidad_medida ?? '');
   }
 
   onActividadSaiopenBlur(): void {
@@ -487,7 +493,15 @@ export class TareaFormComponent implements OnInit {
     if (typeof v === 'string' && !v.trim()) {
       this.form.controls.actividad_proyecto.setValue(null);
       this.selectedActividadModo.set(null);
+      this.selectedActividadUnidad.set('');
     }
+  }
+
+  private resolverModo(um: string | null | undefined): 'solo_estados' | 'timesheet' | 'cantidad' {
+    const u = (um ?? '').toLowerCase().trim();
+    if (u === 'hora' || u === 'horas') return 'timesheet';
+    if (u) return 'cantidad';
+    return 'solo_estados';
   }
 
   onTareaPadreSelected(event: MatAutocompleteSelectedEvent): void {

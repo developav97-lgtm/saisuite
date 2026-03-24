@@ -115,7 +115,7 @@ export class ActividadListComponent implements OnInit {
   ngOnInit(): void {
     this.loadActividades(0);
     // Cargar todos los consecutivos; filtrado por tipo via computed
-    this.consecutivoService.list().subscribe({
+    this.consecutivoService.listAll().subscribe({
       next: (list) => this.allConsecutivos.set(list),
       error: () => { /* silencioso */ },
     });

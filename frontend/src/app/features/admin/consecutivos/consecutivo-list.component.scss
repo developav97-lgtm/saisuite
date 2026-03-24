@@ -1,12 +1,15 @@
-// ── Buscador ───────────────────────────────────────────────────
-.cl-search-bar {
+// ── Barra de filtros ────────────────────────────────────────────
+.cl-filters-card {
   display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
   align-items: center;
-  padding: 0.75rem 1rem;
+  padding: 0.875rem 1rem;
   margin-bottom: 1rem;
 }
 
-.cl-search-field { width: 100%; max-width: 360px; }
+.cl-search-field { flex: 1; min-width: 200px; }
+.cl-filter       { width: 180px; flex-shrink: 0; }
 
 // ── Progress bar ──────────────────────────────────────────────
 .cl-progress {
@@ -61,7 +64,7 @@
   font-size: 0.6875rem;
   font-weight: 600;
   padding: 0.15rem 0.5rem;
-  border-radius: 4px;
+  border-radius: 12px;
 
   &--active {
     background: #e8f5e9;
@@ -72,6 +75,14 @@
     color: var(--sc-text-muted);
   }
 }
+
+// ── Anchos de columnas de la tabla ─────────────────────────────
+.mat-column-tipo          { width: 210px; flex: 0 0 210px; }
+.mat-column-nombre        { flex: 1; min-width: 140px; }
+.mat-column-prefijo       { width: 80px;  flex: 0 0 80px;  }
+.mat-column-proximo_codigo{ width: 130px; flex: 0 0 130px; }
+.mat-column-formato       { width: 160px; flex: 0 0 160px; }
+.mat-column-activo        { width: 90px;  flex: 0 0 90px;  }
 
 // ── Acciones ───────────────────────────────────────────────────
 .cl-col-acciones {

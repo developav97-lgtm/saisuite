@@ -687,6 +687,30 @@ class TareaViewSet(viewsets.ModelViewSet):
             )
         return Response(self.get_serializer(tarea).data)
 
+    @action(detail=True, methods=['post'], url_path='agregar-cantidad')
+    def agregar_cantidad(self, request, pk=None):
+        """
+        POST /api/v1/proyectos/tareas/{id}/agregar-cantidad/
+        Body: {"cantidad": 2.5}
+        Suma cantidad ejecutada manualmente a la tarea.
+        """
+        tarea = self.get_object()
+        try:
+            cantidad = Decimal(str(request.data.get('cantidad', 0)))
+        except InvalidOperation:
+            return Response(
+                {'detail': 'Formato de cantidad inválido.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            tarea = TimesheetService.agregar_cantidad(tarea, cantidad)
+        except ValidationError as exc:
+            return Response(
+                exc.message_dict if hasattr(exc, 'message_dict') else {'detail': exc.message},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return Response(self.get_serializer(tarea).data)
+
     # ── Timesheet: cronómetro ─────────────────────────────────
 
     @action(detail=True, methods=['post'], url_path='sesiones/iniciar')

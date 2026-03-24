@@ -117,6 +117,50 @@ def calcular_avance_proyecto(proyecto_id) -> Decimal:
 
 
 # ──────────────────────────────────────────────
+# Recálculo ActividadProyecto desde tareas
+# ──────────────────────────────────────────────
+
+def recalcular_cantidad_ejecutada_ap(actividad_proyecto_id) -> Decimal:
+    """
+    Recalcula cantidad_ejecutada y porcentaje_avance de una ActividadProyecto
+    sumando el progreso de todas sus tareas asociadas.
+
+    - Modo 'hora'/'horas': suma horas_registradas de las tareas
+    - Otros: suma cantidad_registrada de las tareas
+    """
+    try:
+        ap = ActividadProyecto.objects.select_related('actividad').get(id=actividad_proyecto_id)
+    except ActividadProyecto.DoesNotExist:
+        return Decimal('0')
+
+    from apps.proyectos.models import Tarea
+    tareas = Tarea.all_objects.filter(actividad_proyecto_id=actividad_proyecto_id)
+
+    unidad = (ap.actividad.unidad_medida or '').lower().strip()
+    if unidad in ('hora', 'horas'):
+        total = tareas.aggregate(s=Sum('horas_registradas'))['s'] or Decimal('0')
+    else:
+        total = tareas.aggregate(s=Sum('cantidad_registrada'))['s'] or Decimal('0')
+
+    cantidad = Decimal(str(total)).quantize(Decimal('0.01'))
+
+    if ap.cantidad_planificada > Decimal('0'):
+        pct = min((cantidad / ap.cantidad_planificada * Decimal('100')).quantize(Decimal('0.01')), Decimal('100'))
+    else:
+        pct = Decimal('0')
+
+    ActividadProyecto.objects.filter(id=actividad_proyecto_id).update(
+        cantidad_ejecutada=cantidad,
+        porcentaje_avance=pct,
+    )
+    logger.info(
+        'ActividadProyecto recalculada desde tareas',
+        extra={'ap_id': str(actividad_proyecto_id), 'cantidad': str(cantidad), 'pct': str(pct)},
+    )
+    return cantidad
+
+
+# ──────────────────────────────────────────────
 # ConfiguracionModuloService
 # ──────────────────────────────────────────────
 
@@ -944,6 +988,12 @@ class ActividadProyectoService:
 
     @staticmethod
     def desasignar_actividad(ap: ActividadProyecto) -> None:
+        estados_bloqueados = [EstadoProyecto.PLANIFICADO, EstadoProyecto.EN_EJECUCION]
+        if ap.proyecto.estado in estados_bloqueados:
+            raise ValidationError(
+                f'No se pueden eliminar actividades de un proyecto en estado '
+                f'"{ap.proyecto.get_estado_display()}". Solo se permite en estado Borrador.'
+            )
         logger.info(
             'Actividad desasignada del proyecto',
             extra={'id': str(ap.id), 'proyecto_id': str(ap.proyecto_id)},

@@ -11,7 +11,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatIconModule } from '@angular/material/icon';
 import {
   Subject, debounceTime, distinctUntilChanged, switchMap,
-  takeUntil, catchError, of,
+  takeUntil, catchError, of, map,
 } from 'rxjs';
 import { TerceroService } from '../../../core/services/tercero.service';
 import { TerceroList } from '../../../core/models/tercero.model';
@@ -76,6 +76,7 @@ export class TerceroSelectorComponent implements OnInit, OnDestroy {
         }
         this.buscando.set(true);
         return this.terceroService.list({ search: q, activo: true, page_size: 20 }).pipe(
+          map(r => r.results),
           catchError(() => of([])),
         );
       }),

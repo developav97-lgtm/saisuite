@@ -495,3 +495,19 @@ Cada feature genera su propia documentación en `docs/plans/`, `docs/technical/`
 
 ## Documentación Base
 Ver docs/base-reference/ para docs técnicos generales del proyecto.
+
+## Estándares UI/UX — Angular
+
+CRITICO: Antes de generar CUALQUIER componente Angular, leer:
+- `docs/standards/UI-UX-STANDARDS.md`
+
+Estos estándares se aplican a TODOS los componentes sin excepción:
+- Tablas vacías: `sc-empty-state` con icono + mensaje + botón, FUERA del `mat-table`
+- Formularios: `appearance="outline"`, errores con `@if` dentro del `mat-form-field`
+- Estados de carga: `mat-progress-bar` encima de la tabla (NUNCA spinner centrado en listados)
+- Feedback: `MatSnackBar` con `panelClass: ['snack-success'|'snack-error'|'snack-warning']`
+- Confirmaciones de eliminacion: `MatDialog` con `ConfirmDialogComponent` (NUNCA `confirm()`)
+- Acciones en tablas: `mat-icon-button` con tooltip, orden: Ver | Editar | Eliminar
+- Sintaxis Angular 18: `@if` / `@for` / `@switch` — NUNCA `*ngIf` / `*ngFor`
+- SCSS: variables `var(--sc-*)` siempre, sin colores hardcodeados
+- Referencia canónica de listados: `proyecto-list` component
