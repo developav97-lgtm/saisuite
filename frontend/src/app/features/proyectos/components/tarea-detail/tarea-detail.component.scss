@@ -719,3 +719,114 @@
     overflow-y: visible;
   }
 }
+
+// ── Timesheet entries diarios ──────────────────────────────────────────────────
+.td-ts-entries {
+  margin-top: 16px;
+}
+
+.td-ts-entries-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+
+  .td-section-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+}
+
+.td-ts-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 12px;
+  background: var(--sc-background-alt, #f9f9f9);
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+.td-ts-form-field {
+  flex: 1 1 120px;
+
+  &--horas { flex: 0 0 100px; }
+  &--desc  { flex: 2 1 200px; }
+}
+
+.td-ts-form-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  padding-top: 4px;
+}
+
+.td-ts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.td-ts-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--sc-border-color, #e0e0e0);
+  background: var(--sc-surface, #fff);
+
+  &--validado {
+    border-color: #a5d6a7;
+    background: #f1f8f1;
+  }
+}
+
+.td-ts-item-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.td-ts-fecha {
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.td-ts-horas {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--mat-primary-color, #1976d2);
+  white-space: nowrap;
+}
+
+.td-ts-desc {
+  font-size: 12px;
+  color: var(--sc-text-secondary, #757575);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.td-ts-item-actions {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.td-ts-badge-validado {
+  display: flex;
+  align-items: center;
+  color: #388e3c;
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+}

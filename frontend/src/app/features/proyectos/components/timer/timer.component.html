@@ -1,0 +1,74 @@
+<div class="timer-widget" [class.timer-widget--activo]="corriendo" [class.timer-widget--pausado]="pausado">
+
+  <!-- Display de tiempo -->
+  <div class="timer-display">
+    <span class="timer-display__tiempo" [class.timer-display__tiempo--corriendo]="corriendo">
+      {{ tiempoFormateado }}
+    </span>
+    @if (sesionActiva()) {
+      <span class="timer-display__estado">
+        @if (corriendo) { <mat-icon class="timer-display__estado-icon">fiber_manual_record</mat-icon> Grabando }
+        @else { <mat-icon class="timer-display__estado-icon">pause</mat-icon> Pausado }
+      </span>
+    }
+  </div>
+
+  <!-- Controles -->
+  <div class="timer-controls">
+    @if (!sesionActiva()) {
+      <button
+        mat-raised-button
+        color="primary"
+        [disabled]="loading()"
+        (click)="start()"
+        matTooltip="Iniciar cronómetro"
+        class="timer-btn timer-btn--start"
+      >
+        <mat-icon>play_arrow</mat-icon>
+        Iniciar
+      </button>
+    }
+
+    @if (corriendo) {
+      <button
+        mat-stroked-button
+        [disabled]="loading()"
+        (click)="pause()"
+        matTooltip="Pausar"
+        class="timer-btn timer-btn--pause"
+      >
+        <mat-icon>pause</mat-icon>
+        Pausar
+      </button>
+    }
+
+    @if (pausado) {
+      <button
+        mat-stroked-button
+        color="primary"
+        [disabled]="loading()"
+        (click)="resume()"
+        matTooltip="Reanudar"
+        class="timer-btn"
+      >
+        <mat-icon>play_arrow</mat-icon>
+        Reanudar
+      </button>
+    }
+
+    @if (sesionActiva()) {
+      <button
+        mat-raised-button
+        color="warn"
+        [disabled]="loading()"
+        (click)="stop()"
+        matTooltip="Detener y guardar horas"
+        class="timer-btn timer-btn--stop"
+      >
+        <mat-icon>stop</mat-icon>
+        Detener
+      </button>
+    }
+  </div>
+
+</div>

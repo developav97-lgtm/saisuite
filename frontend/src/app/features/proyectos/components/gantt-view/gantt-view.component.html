@@ -1,0 +1,58 @@
+<!-- Barra de carga -->
+@if (loading()) {
+  <mat-progress-bar mode="indeterminate" />
+}
+
+@if (!loading()) {
+  @if (hasData()) {
+    <!-- Controles superiores -->
+    <div class="gv-toolbar">
+      <mat-button-toggle-group
+        [(ngModel)]="viewMode"
+        (change)="onViewModeChange()"
+        aria-label="Modo de vista"
+        class="gv-view-toggle"
+      >
+        <mat-button-toggle value="Day">Día</mat-button-toggle>
+        <mat-button-toggle value="Week">Semana</mat-button-toggle>
+        <mat-button-toggle value="Month">Mes</mat-button-toggle>
+      </mat-button-toggle-group>
+
+      <button
+        mat-icon-button
+        (click)="refreshGantt()"
+        matTooltip="Actualizar Gantt"
+        class="gv-refresh-btn"
+      >
+        <mat-icon>refresh</mat-icon>
+      </button>
+    </div>
+
+    <!-- Leyenda de estados -->
+    <div class="gv-legend">
+      @for (item of LEGEND; track item.clase) {
+        <span class="gv-legend__item">
+          <span class="gv-legend__dot" [class]="'gv-legend__dot--' + item.clase"></span>
+          {{ item.label }}
+        </span>
+      }
+    </div>
+
+    <!-- Contenedor SVG de Frappe Gantt -->
+    <div class="gv-chart-wrapper">
+      <svg #ganttContainer class="gv-chart"></svg>
+    </div>
+
+  } @else {
+
+    <!-- Estado vacío -->
+    <div class="sc-empty-state">
+      <mat-icon class="sc-empty-state__icon">calendar_today</mat-icon>
+      <p class="sc-empty-state__title">Sin tareas en el Gantt</p>
+      <p class="sc-empty-state__subtitle">
+        Asigna fechas de inicio y fin a las tareas del proyecto para verlas aquí.
+      </p>
+    </div>
+
+  }
+}

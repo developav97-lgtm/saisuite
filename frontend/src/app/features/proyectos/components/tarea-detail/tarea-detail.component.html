@@ -285,6 +285,113 @@
                     </span>
                   </div>
                 }
+
+                <!-- ── Registros diarios (TimesheetEntry) ── -->
+                <mat-divider />
+                <div class="td-ts-entries">
+
+                  <!-- Cabecera con botón agregar -->
+                  <div class="td-ts-entries-header">
+                    <span class="td-section-label">
+                      <mat-icon>event_note</mat-icon>
+                      Registros diarios
+                    </span>
+                    @if (!mostrarFormEntry()) {
+                      <button
+                        mat-stroked-button
+                        color="primary"
+                        (click)="mostrarFormEntry.set(true)"
+                      >
+                        <mat-icon>add</mat-icon>
+                        Registrar horas
+                      </button>
+                    }
+                  </div>
+
+                  <!-- Formulario de registro manual -->
+                  @if (mostrarFormEntry()) {
+                    <div class="td-ts-form">
+                      <mat-form-field appearance="outline" class="td-ts-form-field">
+                        <mat-label>Fecha</mat-label>
+                        <input
+                          matInput
+                          type="date"
+                          [(ngModel)]="entryFecha"
+                          [max]="hoyIso()"
+                        />
+                      </mat-form-field>
+
+                      <mat-form-field appearance="outline" class="td-ts-form-field td-ts-form-field--horas">
+                        <mat-label>Horas</mat-label>
+                        <input
+                          matInput
+                          type="number"
+                          [(ngModel)]="entryHoras"
+                          min="0.25"
+                          max="24"
+                          step="0.25"
+                        />
+                        <span matSuffix>h</span>
+                      </mat-form-field>
+
+                      <mat-form-field appearance="outline" class="td-ts-form-field td-ts-form-field--desc">
+                        <mat-label>Descripción (opcional)</mat-label>
+                        <input matInput [(ngModel)]="entryDescripcion" />
+                      </mat-form-field>
+
+                      <div class="td-ts-form-actions">
+                        <button
+                          mat-raised-button
+                          color="primary"
+                          [disabled]="guardandoEntry()"
+                          (click)="registrarEntryManual()"
+                        >
+                          <mat-icon>save</mat-icon>
+                          Guardar
+                        </button>
+                        <button mat-button (click)="mostrarFormEntry.set(false)">Cancelar</button>
+                      </div>
+                    </div>
+                  }
+
+                  <!-- Historial de entries -->
+                  @if (loadingEntries()) {
+                    <mat-progress-bar mode="indeterminate" />
+                  } @else if (timesheetEntries().length > 0) {
+                    <div class="td-ts-list">
+                      @for (entry of timesheetEntries(); track entry.id) {
+                        <div class="td-ts-item" [class.td-ts-item--validado]="entry.validado">
+                          <div class="td-ts-item-main">
+                            <span class="td-ts-fecha">{{ entry.fecha | date:'d MMM yyyy':'':'es-CO' }}</span>
+                            <span class="td-ts-horas">{{ entry.horas }}h</span>
+                            @if (entry.descripcion) {
+                              <span class="td-ts-desc">{{ entry.descripcion }}</span>
+                            }
+                          </div>
+                          <div class="td-ts-item-actions">
+                            @if (entry.validado) {
+                              <span class="td-ts-badge-validado" matTooltip="Validado por {{ entry.validado_por_detail?.nombre }}">
+                                <mat-icon>verified</mat-icon>
+                              </span>
+                            } @else {
+                              <button
+                                mat-icon-button
+                                color="warn"
+                                matTooltip="Eliminar registro"
+                                (click)="eliminarEntry(entry)"
+                              >
+                                <mat-icon>delete_outline</mat-icon>
+                              </button>
+                            }
+                          </div>
+                        </div>
+                      }
+                    </div>
+                  } @else {
+                    <p class="td-empty-text">Sin registros de horas diarios.</p>
+                  }
+
+                </div>
               }
 
               <!-- ── MODO: cantidad ── -->

@@ -216,3 +216,13 @@ export interface FollowerResponse {
   message: string;
   followers_count: number;
 }
+
+/** Formato de tarea para Frappe Gantt (espeja el endpoint /gantt-data/) */
+export interface GanttTask {
+  id: string;
+  name: string;
+  start: string;        // ISO date string "YYYY-MM-DD"
+  end: string;          // ISO date string "YYYY-MM-DD"
+  progress: number;     // 0-100
+  custom_class: string; // ej. "estado-en_progreso"
+}

@@ -76,4 +76,10 @@ export class ProyectoService {
       `${this.baseUrl}/${id}/camino-critico/`,
     );
   }
+
+  getGanttData(id: string): Observable<{ tasks: import('../models/tarea.model').GanttTask[] }> {
+    return this.http.get<{ tasks: import('../models/tarea.model').GanttTask[] }>(
+      `${this.baseUrl}/${id}/gantt-data/`,
+    );
+  }
 }

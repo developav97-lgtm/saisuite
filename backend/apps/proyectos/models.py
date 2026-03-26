@@ -822,6 +822,65 @@ class SesionTrabajo(BaseModel):
         return Decimal(self.duracion_segundos) / Decimal(3600)
 
 
+class TimesheetEntry(BaseModel):
+    """
+    Registro diario de horas trabajadas en una tarea.
+    Un usuario puede tener un solo registro por tarea por día.
+    Una vez validado, el registro no se puede editar ni eliminar.
+    """
+    tarea = models.ForeignKey(
+        'Tarea',
+        on_delete=models.CASCADE,
+        related_name='timesheets',
+        verbose_name='Tarea',
+    )
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='timesheets',
+        verbose_name='Usuario',
+    )
+    fecha       = models.DateField(verbose_name='Fecha')
+    horas       = models.DecimalField(
+        max_digits=5, decimal_places=2, verbose_name='Horas',
+        validators=[MinValueValidator(Decimal('0.01')), MaxValueValidator(Decimal('24'))],
+    )
+    descripcion = models.TextField(blank=True, verbose_name='Descripción')
+
+    # Validación
+    validado          = models.BooleanField(default=False, verbose_name='Validado')
+    validado_por      = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='timesheets_validados',
+        verbose_name='Validado por',
+    )
+    fecha_validacion  = models.DateTimeField(null=True, blank=True, verbose_name='Fecha de validación')
+
+    class Meta:
+        db_table            = 'timesheet_entries'
+        verbose_name        = 'Registro de Horas'
+        verbose_name_plural = 'Registros de Horas'
+        ordering            = ['-fecha', '-created_at']
+        unique_together     = [['tarea', 'usuario', 'fecha']]
+        indexes             = [
+            models.Index(fields=['usuario', 'fecha']),
+            models.Index(fields=['tarea', 'validado']),
+        ]
+
+    def __str__(self):
+        return f'{self.usuario.full_name or self.usuario.email} — {self.tarea.codigo} ({self.fecha}) {self.horas}h'
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        if self.horas is not None:
+            if self.horas <= 0:
+                raise ValidationError({'horas': 'Las horas deben ser mayores a 0.'})
+            if self.horas > 24:
+                raise ValidationError({'horas': 'Las horas no pueden superar 24 por día.'})
+
+
 class TipoDependencia(models.TextChoices):
     FINISH_TO_START  = 'FS', 'Finish to Start (FS)'
     START_TO_START   = 'SS', 'Start to Start (SS)'

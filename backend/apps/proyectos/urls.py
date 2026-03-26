@@ -43,6 +43,7 @@ from apps.proyectos.views import (
     ActividadSaiopenViewSet,
     ConfiguracionModuloView,
     TareaViewSet, TareaTagViewSet,
+    TimesheetViewSet,
 )
 
 router = DefaultRouter()
@@ -53,10 +54,11 @@ actividad_router = SimpleRouter()
 actividad_router.register(r'actividades', ActividadViewSet, basename='actividad')
 actividad_router.register(r'actividades-saiopen', ActividadSaiopenViewSet, basename='actividadsaiopen')
 
-# Tareas y tags
+# Tareas, tags y timesheets
 tarea_router = SimpleRouter()
 tarea_router.register(r'tareas', TareaViewSet, basename='tarea')
 tarea_router.register(r'tags', TareaTagViewSet, basename='tareatag')
+tarea_router.register(r'timesheets', TimesheetViewSet, basename='timesheet')
 
 urlpatterns = [
     # ── Catálogo de actividades ────────────────────────────────

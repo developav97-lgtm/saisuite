@@ -1,6 +1,9 @@
 // Angular Material
 @use '@angular/material' as mat;
 
+// Frappe Gantt
+@import 'frappe-gantt/dist/frappe-gantt.css';
+
 // ── Tema Material 3 ─────────────────────────────────────────
 $sc-theme: mat.define-theme((
   color: (

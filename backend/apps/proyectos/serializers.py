@@ -10,6 +10,7 @@ from apps.proyectos.models import (
     TipoProyecto, EstadoProyecto, RolTercero, TipoDocumento,
     Actividad, ActividadProyecto, TipoActividad, ConfiguracionModulo,
     Tarea, TareaTag, SesionTrabajo, ActividadSaiopen, TareaDependencia,
+    TimesheetEntry,
 )
 
 logger = logging.getLogger(__name__)
@@ -862,3 +863,68 @@ class SesionTrabajoSerializer(serializers.ModelSerializer):
             'codigo': obj.tarea.codigo,
             'nombre': obj.tarea.nombre,
         }
+
+
+# ──────────────────────────────────────────────
+# Timesheet — TimesheetEntry
+# ──────────────────────────────────────────────
+
+class TimesheetEntrySerializer(serializers.ModelSerializer):
+    """Serializer completo para registros diarios de horas."""
+    tarea_detail       = serializers.SerializerMethodField()
+    usuario_detail     = UserSummarySerializer(source='usuario', read_only=True)
+    validado_por_detail = serializers.SerializerMethodField()
+
+    class Meta:
+        model  = TimesheetEntry
+        fields = [
+            'id',
+            'tarea', 'tarea_detail',
+            'usuario', 'usuario_detail',
+            'fecha', 'horas', 'descripcion',
+            'validado', 'validado_por', 'validado_por_detail', 'fecha_validacion',
+            'created_at', 'updated_at',
+        ]
+        read_only_fields = [
+            'id',
+            'usuario', 'usuario_detail',
+            'validado', 'validado_por', 'validado_por_detail', 'fecha_validacion',
+            'created_at', 'updated_at',
+        ]
+
+    def validate_horas(self, value):
+        if value <= 0:
+            raise serializers.ValidationError('Las horas deben ser mayores a 0.')
+        if value > 24:
+            raise serializers.ValidationError('Las horas no pueden superar 24 por día.')
+        return value
+
+    def get_tarea_detail(self, obj: TimesheetEntry) -> dict:
+        return {
+            'id':     str(obj.tarea.id),
+            'codigo': obj.tarea.codigo,
+            'nombre': obj.tarea.nombre,
+        }
+
+    def get_validado_por_detail(self, obj: TimesheetEntry) -> dict | None:
+        if not obj.validado_por:
+            return None
+        return {
+            'id':     str(obj.validado_por.id),
+            'nombre': obj.validado_por.full_name or obj.validado_por.email,
+        }
+
+
+class TimesheetEntryCreateSerializer(serializers.Serializer):
+    """Serializer para crear/actualizar registros de horas."""
+    tarea_id    = serializers.UUIDField()
+    fecha       = serializers.DateField()
+    horas       = serializers.DecimalField(max_digits=5, decimal_places=2)
+    descripcion = serializers.CharField(required=False, allow_blank=True, default='')
+
+    def validate_horas(self, value):
+        if value <= 0:
+            raise serializers.ValidationError('Las horas deben ser mayores a 0.')
+        if value > 24:
+            raise serializers.ValidationError('Las horas no pueden superar 24 por día.')
+        return value

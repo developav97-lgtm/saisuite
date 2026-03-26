@@ -1,12 +1,14 @@
 """
-SaiSuite — Proyectos: TareaService + TimesheetService + DependenciaService
+SaiSuite — Proyectos: TareaService + TimesheetService + TimesheetEntryService + DependenciaService
 TODA la lógica de negocio de Tareas va aquí. Las views solo orquestan.
 """
 import logging
 from collections import defaultdict, deque
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from decimal import Decimal
 from typing import List, Optional
+
+from django.db.models import Sum
 
 from django.core.exceptions import ValidationError
 from django.db import transaction
@@ -821,3 +823,202 @@ class DependenciaService:
                 DependenciaService.reprogramar_en_cascada(
                     str(sucesora.id), company, _visitados
                 )
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# TimesheetEntryService
+# ──────────────────────────────────────────────────────────────────────────────
+
+class TimesheetEntryService:
+    """
+    Lógica de negocio para registros diarios de horas (TimesheetEntry).
+    Gestiona registro manual, edición, eliminación y validación por manager.
+    """
+
+    # ── Registro manual ───────────────────────────────────────────────────────
+
+    @staticmethod
+    @transaction.atomic
+    def registrar_horas(
+        tarea_id: str,
+        usuario,
+        fecha: date,
+        horas: Decimal,
+        descripcion: str = '',
+        company=None,
+    ):
+        """
+        Crea o actualiza un registro de horas para usuario/tarea/fecha.
+        Si ya existe un entry para ese día/tarea/usuario, lo actualiza
+        siempre que no esté validado.
+
+        Raises:
+            ValidationError: si horas fuera de rango o entry ya validado.
+        """
+        from apps.proyectos.models import Tarea, TimesheetEntry
+
+        if horas <= 0 or horas > 24:
+            raise ValidationError({'horas': 'Las horas deben estar entre 0.01 y 24.'})
+
+        tarea = Tarea.objects.select_related('company').get(
+            id=tarea_id, company=company,
+        )
+
+        entry, created = TimesheetEntry.objects.get_or_create(
+            tarea=tarea,
+            usuario=usuario,
+            fecha=fecha,
+            defaults={
+                'company': company,
+                'horas': horas,
+                'descripcion': descripcion,
+            },
+        )
+
+        if not created:
+            if entry.validado:
+                raise ValidationError(
+                    'Este registro ya fue validado y no se puede modificar.'
+                )
+            entry.horas       = horas
+            entry.descripcion = descripcion
+            entry.save(update_fields=['horas', 'descripcion'])
+
+        logger.info('timesheet_entry_registrado', extra={
+            'entry_id': str(entry.id),
+            'tarea_id': tarea_id,
+            'usuario_id': str(usuario.id),
+            'fecha': str(fecha),
+            'horas': str(horas),
+            'es_nuevo': created,
+        })
+        return entry
+
+    @staticmethod
+    @transaction.atomic
+    def eliminar_entry(entry_id: str, usuario):
+        """
+        Elimina un entry no validado. Solo el propietario o admin puede eliminar.
+
+        Raises:
+            ValidationError: si el entry está validado.
+        """
+        from apps.proyectos.models import TimesheetEntry
+
+        try:
+            entry = TimesheetEntry.objects.get(id=entry_id, usuario=usuario)
+        except TimesheetEntry.DoesNotExist:
+            raise ValidationError('Registro no encontrado.')
+
+        if entry.validado:
+            raise ValidationError('No se puede eliminar un registro ya validado.')
+
+        entry.delete()
+        logger.info('timesheet_entry_eliminado', extra={'entry_id': entry_id})
+
+    # ── Validación por manager ─────────────────────────────────────────────────
+
+    @staticmethod
+    @transaction.atomic
+    def validar_timesheet(entry_id: str, validador):
+        """
+        Manager/coordinador aprueba un registro de horas.
+        Solo puede validar el gerente o coordinador del proyecto,
+        o un company_admin.
+        Al validar, recalcula tarea.horas_registradas con la suma de entries validados.
+
+        Raises:
+            ValidationError: si el validador no tiene permisos o el entry no existe.
+        """
+        from apps.proyectos.models import TimesheetEntry
+        from django.utils import timezone
+
+        try:
+            entry = TimesheetEntry.objects.select_related(
+                'tarea__proyecto',
+            ).get(id=entry_id)
+        except TimesheetEntry.DoesNotExist:
+            raise ValidationError('Registro no encontrado.')
+
+        if entry.validado:
+            raise ValidationError('Este registro ya fue validado.')
+
+        # Verificar permiso: company_admin, gerente o coordinador del proyecto
+        proyecto = entry.tarea.proyecto
+        es_admin = getattr(validador, 'role', '') == 'company_admin' or getattr(validador, 'is_staff', False)
+        es_gerente     = str(proyecto.gerente_id)     == str(validador.id)
+        es_coordinador = proyecto.coordinador_id and str(proyecto.coordinador_id) == str(validador.id)
+
+        if not (es_admin or es_gerente or es_coordinador):
+            raise ValidationError(
+                'Solo el gerente, coordinador del proyecto o administrador pueden validar registros de horas.'
+            )
+
+        entry.validado         = True
+        entry.validado_por     = validador
+        entry.fecha_validacion = timezone.now()
+        entry.save(update_fields=['validado', 'validado_por', 'fecha_validacion'])
+
+        TimesheetEntryService.recalcular_horas_tarea(str(entry.tarea_id))
+
+        logger.info('timesheet_entry_validado', extra={
+            'entry_id': str(entry.id),
+            'validador_id': str(validador.id),
+        })
+        return entry
+
+    # ── Cálculo de horas acumuladas ────────────────────────────────────────────
+
+    @staticmethod
+    @transaction.atomic
+    def recalcular_horas_tarea(tarea_id: str) -> Decimal:
+        """
+        Recalcula tarea.horas_registradas como suma de todos los entries validados.
+        """
+        from apps.proyectos.models import Tarea, TimesheetEntry
+
+        total = TimesheetEntry.objects.filter(
+            tarea_id=tarea_id,
+            validado=True,
+        ).aggregate(total=Sum('horas'))['total'] or Decimal('0')
+
+        tarea = Tarea.objects.get(id=tarea_id)
+        tarea.horas_registradas = Decimal(str(total))
+
+        update_fields = ['horas_registradas']
+        if tarea.horas_estimadas and tarea.horas_estimadas > 0:
+            nuevo_porcentaje = min(
+                int(float(tarea.horas_registradas) / float(tarea.horas_estimadas) * 100),
+                100,
+            )
+            tarea.porcentaje_completado = nuevo_porcentaje
+            update_fields.append('porcentaje_completado')
+
+        tarea.save(update_fields=update_fields)
+
+        logger.info('horas_tarea_recalculadas', extra={
+            'tarea_id': tarea_id,
+            'total': str(total),
+        })
+        return Decimal(str(total))
+
+    # ── Consulta semanal ──────────────────────────────────────────────────────
+
+    @staticmethod
+    def mis_horas(usuario, fecha_inicio: date, fecha_fin: date, company=None):
+        """
+        Retorna los TimesheetEntry del usuario en el rango [fecha_inicio, fecha_fin],
+        opcionalmente filtrado por company.
+        """
+        from apps.proyectos.models import TimesheetEntry
+
+        qs = TimesheetEntry.objects.filter(
+            usuario=usuario,
+            fecha__gte=fecha_inicio,
+            fecha__lte=fecha_fin,
+        ).select_related('tarea', 'validado_por').order_by('-fecha', '-created_at')
+
+        if company:
+            qs = qs.filter(company=company)
+
+        return qs

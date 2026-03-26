@@ -16,7 +16,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from apps.proyectos.models import (
     Proyecto, Fase, TerceroProyecto, DocumentoContable, Hito,
     Actividad, ActividadProyecto, Tarea, TareaTag, SesionTrabajo,
-    ActividadSaiopen, TareaDependencia,
+    ActividadSaiopen, TareaDependencia, TimesheetEntry,
 )
 from apps.proyectos.serializers import (
     ProyectoListSerializer,
@@ -46,6 +46,8 @@ from apps.proyectos.serializers import (
     TareaDependenciaSerializer,
     TareaTagSerializer,
     SesionTrabajoSerializer,
+    TimesheetEntrySerializer,
+    TimesheetEntryCreateSerializer,
 )
 from apps.proyectos.services import (
     ProyectoService,
@@ -59,7 +61,7 @@ from apps.proyectos.services import (
     ProyectoException,
     calcular_avance_fase_desde_tareas,
 )
-from apps.proyectos.tarea_services import TimesheetService, DependenciaService
+from apps.proyectos.tarea_services import TimesheetService, DependenciaService, TimesheetEntryService
 from apps.notifications.services import NotificacionService
 from apps.proyectos.filters import ProyectoFilter, TareaFilter
 from apps.proyectos.permissions import CanAccessProyectos, CanEditProyecto, TareaPermission
@@ -146,6 +148,39 @@ class ProyectoViewSet(viewsets.ModelViewSet):
         proyecto = self.get_object()
         data     = ProyectoService.get_estado_financiero(proyecto)
         return Response(data, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['get'], url_path='gantt-data')
+    def gantt_data(self, request, pk=None):
+        """
+        GET /api/v1/proyectos/{id}/gantt-data/
+        Retorna tareas del proyecto en formato compatible con Frappe Gantt.
+        Solo incluye tareas con fecha_inicio y fecha_fin definidas.
+        """
+        proyecto = self.get_object()
+        tareas = (
+            proyecto.tareas
+            .filter(fecha_inicio__isnull=False, fecha_fin__isnull=False)
+            .select_related('fase', 'responsable')
+            .order_by('fecha_inicio')
+        )
+
+        tasks = [
+            {
+                'id': str(tarea.id),
+                'name': tarea.nombre,
+                'start': tarea.fecha_inicio.isoformat(),
+                'end': tarea.fecha_fin.isoformat(),
+                'progress': tarea.porcentaje_completado,
+                'custom_class': f'estado-{tarea.estado}',
+            }
+            for tarea in tareas
+        ]
+
+        logger.info('gantt_data_consultado', extra={
+            'proyecto_id': str(proyecto.id),
+            'tareas_count': len(tasks),
+        })
+        return Response({'tasks': tasks}, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=['get'], url_path='camino-critico')
     def camino_critico(self, request, pk=None):
@@ -930,3 +965,134 @@ class TareaTagViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         company = getattr(self.request.user, 'company', None)
         serializer.save(company=company)
+
+
+class TimesheetViewSet(viewsets.GenericViewSet):
+    """
+    Gestión de registros diarios de horas (TimesheetEntry).
+
+    GET    /api/v1/proyectos/timesheets/                                 — listar mis timesheets
+    POST   /api/v1/proyectos/timesheets/                                 — crear registro manual
+    PATCH  /api/v1/proyectos/timesheets/{id}/                            — editar (no validado)
+    DELETE /api/v1/proyectos/timesheets/{id}/                            — eliminar (no validado)
+    GET    /api/v1/proyectos/timesheets/mis_horas/?fecha_inicio=&fecha_fin=
+    POST   /api/v1/proyectos/timesheets/{id}/validar/
+    """
+    serializer_class   = TimesheetEntrySerializer
+    permission_classes = [CanAccessProyectos]
+
+    def get_queryset(self):
+        company = getattr(self.request.user, 'company', None)
+        qs = TimesheetEntry.objects.select_related(
+            'tarea', 'usuario', 'validado_por',
+        ).filter(usuario=self.request.user)
+        if company:
+            qs = qs.filter(company=company)
+        return qs
+
+    # ── CRUD ──────────────────────────────────────────────────────────────────
+
+    def list(self, request):
+        """GET /api/v1/proyectos/timesheets/"""
+        qs = self.get_queryset()
+        tarea_id = request.query_params.get('tarea')
+        if tarea_id:
+            qs = qs.filter(tarea_id=tarea_id)
+        validado = request.query_params.get('validado')
+        if validado is not None:
+            qs = qs.filter(validado=(validado.lower() == 'true'))
+        fecha_inicio = request.query_params.get('fecha_inicio')
+        fecha_fin    = request.query_params.get('fecha_fin')
+        if fecha_inicio:
+            qs = qs.filter(fecha__gte=fecha_inicio)
+        if fecha_fin:
+            qs = qs.filter(fecha__lte=fecha_fin)
+        return Response(self.get_serializer(qs, many=True).data)
+
+    def create(self, request):
+        """POST /api/v1/proyectos/timesheets/"""
+        ser = TimesheetEntryCreateSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        d = ser.validated_data
+        company = getattr(request.user, 'company', None)
+        try:
+            entry = TimesheetEntryService.registrar_horas(
+                tarea_id=str(d['tarea_id']),
+                usuario=request.user,
+                fecha=d['fecha'],
+                horas=d['horas'],
+                descripcion=d.get('descripcion', ''),
+                company=company,
+            )
+        except (ValidationError, Exception) as exc:
+            msg = exc.message if hasattr(exc, 'message') else str(exc)
+            return Response({'detail': msg}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(
+            TimesheetEntrySerializer(entry).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+    def partial_update(self, request, pk=None):
+        """PATCH /api/v1/proyectos/timesheets/{id}/"""
+        company = getattr(request.user, 'company', None)
+        try:
+            entry = TimesheetEntry.objects.get(
+                id=pk, usuario=request.user, company=company,
+            )
+        except TimesheetEntry.DoesNotExist:
+            return Response({'detail': 'No encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+        if entry.validado:
+            return Response(
+                {'detail': 'No se puede editar un registro ya validado.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        ser = TimesheetEntrySerializer(entry, data=request.data, partial=True)
+        ser.is_valid(raise_exception=True)
+        ser.save()
+        return Response(ser.data)
+
+    def destroy(self, request, pk=None):
+        """DELETE /api/v1/proyectos/timesheets/{id}/"""
+        try:
+            TimesheetEntryService.eliminar_entry(pk, request.user)
+        except ValidationError as exc:
+            return Response(
+                {'detail': exc.message if hasattr(exc, 'message') else str(exc)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=False, methods=['get'], url_path='mis_horas')
+    def mis_horas(self, request):
+        """GET /api/v1/proyectos/timesheets/mis_horas/?fecha_inicio=YYYY-MM-DD&fecha_fin=YYYY-MM-DD"""
+        fecha_inicio = request.query_params.get('fecha_inicio')
+        fecha_fin    = request.query_params.get('fecha_fin')
+        if not fecha_inicio or not fecha_fin:
+            return Response(
+                {'detail': 'Se requieren fecha_inicio y fecha_fin (YYYY-MM-DD).'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            from datetime import date
+            fi = date.fromisoformat(fecha_inicio)
+            ff = date.fromisoformat(fecha_fin)
+        except ValueError:
+            return Response(
+                {'detail': 'Formato de fecha inválido. Use YYYY-MM-DD.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        company = getattr(request.user, 'company', None)
+        qs = TimesheetEntryService.mis_horas(request.user, fi, ff, company)
+        return Response(TimesheetEntrySerializer(qs, many=True).data)
+
+    @action(detail=True, methods=['post'], url_path='validar')
+    def validar(self, request, pk=None):
+        """POST /api/v1/proyectos/timesheets/{id}/validar/"""
+        try:
+            entry = TimesheetEntryService.validar_timesheet(pk, request.user)
+        except ValidationError as exc:
+            return Response(
+                {'detail': exc.message if hasattr(exc, 'message') else str(exc)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return Response(TimesheetEntrySerializer(entry).data)

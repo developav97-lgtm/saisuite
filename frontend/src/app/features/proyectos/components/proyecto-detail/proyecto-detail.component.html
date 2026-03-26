@@ -237,6 +237,13 @@
         </div>
       </mat-tab>
 
+      <!-- Tab 7: Gantt -->
+      <mat-tab label="Gantt">
+        <div class="pd-tab-content">
+          <app-gantt-view [proyectoId]="p.id" />
+        </div>
+      </mat-tab>
+
     </mat-tab-group>
   </div>
 } @else {
