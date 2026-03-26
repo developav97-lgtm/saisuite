@@ -1,6 +1,6 @@
 """
 SaiSuite — Proyectos: Tests de Views — ActividadProyectoViewSet
-Cubre: GET/POST/PATCH/DELETE /api/v1/proyectos/{id}/actividades/
+Cubre: GET/POST/PATCH/DELETE /api/v1/projects/{id}/activities/
 """
 from decimal import Decimal
 from rest_framework.test import APITestCase
@@ -8,7 +8,7 @@ from rest_framework import status
 from django.contrib.auth import get_user_model
 
 from apps.companies.models import Company, CompanyModule
-from apps.proyectos.models import (
+from apps.proyectos.models import (ProjectStatus, PhaseStatus, ActivityType, MeasurementMode,
     Proyecto, Fase, Actividad, ActividadProyecto, EstadoProyecto,
 )
 
@@ -29,7 +29,7 @@ def crear_usuario(company, email='gapv@test.com', role='company_admin'):
 
 def crear_proyecto_db(company, gerente, codigo='APV-PRY-001', **kwargs):
     defaults = dict(
-        nombre='Proyecto APV', tipo='obra_civil',
+        nombre='Proyecto APV', tipo='civil_works',
         cliente_id='900111', cliente_nombre='Cliente',
         fecha_inicio_planificada='2026-04-01',
         fecha_fin_planificada='2026-12-31',
@@ -66,7 +66,7 @@ class ActividadProyectoListCreateTest(APITestCase):
         self.fase      = crear_fase_db(self.company, self.proyecto)
         self.actividad = crear_actividad_db(self.company)
         self.client.force_authenticate(user=self.user)
-        self.url = f'/api/v1/proyectos/{self.proyecto.id}/actividades/'
+        self.url = f'/api/v1/projects/{self.proyecto.id}/activities/'
 
     def test_listar_actividades_proyecto_vacio(self):
         resp = self.client.get(self.url)
@@ -160,9 +160,9 @@ class ActividadProyectoListCreateTest(APITestCase):
     def test_cantidad_ejecutada_permitida_en_ejecucion(self):
         proyecto_en_ejec = crear_proyecto_db(
             self.company, self.user, 'APV-PRY-002',
-            estado=EstadoProyecto.EN_EJECUCION,
+            estado=ProjectStatus.IN_PROGRESS,
         )
-        url = f'/api/v1/proyectos/{proyecto_en_ejec.id}/actividades/'
+        url = f'/api/v1/projects/{proyecto_en_ejec.id}/activities/'
         data = {
             'actividad': str(self.actividad.id),
             'cantidad_planificada': '10.00',
@@ -193,7 +193,7 @@ class ActividadProyectoUpdateDeleteTest(APITestCase):
         self.user      = crear_usuario(self.company, 'gapvupd@test.com')
         self.proyecto  = crear_proyecto_db(
             self.company, self.user, 'APV-UPD-001',
-            estado=EstadoProyecto.EN_EJECUCION,
+            estado=ProjectStatus.IN_PROGRESS,
         )
         self.fase      = crear_fase_db(self.company, self.proyecto)
         self.actividad = crear_actividad_db(self.company, 'ACT-APV-UPD')
@@ -203,7 +203,7 @@ class ActividadProyectoUpdateDeleteTest(APITestCase):
             cantidad_planificada=Decimal('10'), costo_unitario=Decimal('5000'),
         )
         self.client.force_authenticate(user=self.user)
-        self.url = f'/api/v1/proyectos/{self.proyecto.id}/actividades/{self.ap.id}/'
+        self.url = f'/api/v1/projects/{self.proyecto.id}/activities/{self.ap.id}/'
 
     def test_actualizar_cantidad_ejecutada(self):
         data = {'cantidad_ejecutada': '7.00'}
@@ -219,10 +219,22 @@ class ActividadProyectoUpdateDeleteTest(APITestCase):
         self.assertEqual(self.fase.porcentaje_avance, Decimal('100.00'))
 
     def test_eliminar_actividad_proyecto(self):
-        resp = self.client.delete(self.url)
+        # La regla de negocio permite eliminar sólo en estado 'draft'.
+        proyecto_draft = crear_proyecto_db(
+            self.company, self.user, 'APV-UPD-DEL',
+            estado=ProjectStatus.DRAFT,
+        )
+        fase_draft = crear_fase_db(self.company, proyecto_draft)
+        ap_draft = ActividadProyecto.all_objects.create(
+            company=self.company, proyecto=proyecto_draft,
+            actividad=self.actividad, fase=fase_draft,
+            cantidad_planificada=Decimal('5'), costo_unitario=Decimal('1000'),
+        )
+        url = f'/api/v1/projects/{proyecto_draft.id}/activities/{ap_draft.id}/'
+        resp = self.client.delete(url)
         self.assertEqual(resp.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(
-            ActividadProyecto.all_objects.filter(id=self.ap.id).exists()
+            ActividadProyecto.all_objects.filter(id=ap_draft.id).exists()
         )
 
     def test_eliminar_recalcula_avance_fase_a_cero(self):

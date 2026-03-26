@@ -57,7 +57,7 @@ def make_proyecto(company, gerente, codigo=None):
         gerente=gerente,
         codigo=codigo,
         nombre='Proyecto Test Tarea',
-        tipo='obra_civil',
+        tipo='civil_works',
         cliente_id='111',
         cliente_nombre='Cliente',
         fecha_inicio_planificada=date.today(),
@@ -85,7 +85,7 @@ def make_tarea(company, proyecto, **kwargs):
     # fase es obligatoria desde DEC-021; crear una por defecto si no se provee
     if 'fase' not in kwargs:
         kwargs['fase'] = make_fase(proyecto)
-    defaults = dict(nombre='Tarea de prueba', estado='por_hacer')
+    defaults = dict(nombre='Tarea de prueba', estado='todo')
     defaults.update(kwargs)
     return Tarea.all_objects.create(company=company, proyecto=proyecto, **defaults)
 
@@ -143,7 +143,7 @@ class TestTareaModelBasico:
         t = make_tarea(c, p)
         assert t.id is not None
         assert t.proyecto_id == p.id
-        assert t.estado == 'por_hacer'
+        assert t.estado == 'todo'
 
     def test_codigo_autogenerado_task(self):
         c = make_company()
@@ -189,7 +189,7 @@ class TestTareaModelBasico:
         g = make_user(c)
         p = make_proyecto(c, g)
         t = make_tarea(c, p)
-        assert t.estado == 'por_hacer'
+        assert t.estado == 'todo'
 
     def test_prioridad_default_normal(self):
         c = make_company()
@@ -433,7 +433,7 @@ class TestTareaProperties:
         t = make_tarea(
             c, p,
             fecha_limite=date.today() - timedelta(days=1),
-            estado='en_progreso'
+            estado='in_progress'
         )
         assert t.es_vencida is True
 
@@ -444,7 +444,7 @@ class TestTareaProperties:
         t = make_tarea(
             c, p,
             fecha_limite=date.today() - timedelta(days=1),
-            estado='completada'
+            estado='completed'
         )
         assert t.es_vencida is False
 
@@ -455,7 +455,7 @@ class TestTareaProperties:
         t = make_tarea(
             c, p,
             fecha_limite=date.today() - timedelta(days=1),
-            estado='cancelada'
+            estado='cancelled'
         )
         assert t.es_vencida is False
 

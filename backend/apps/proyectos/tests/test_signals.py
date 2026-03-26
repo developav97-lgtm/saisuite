@@ -27,7 +27,7 @@ def crear_usuario(company, email='gsig@test.com'):
 def crear_proyecto(company, gerente, codigo='SIG-PRY-001'):
     return Proyecto.all_objects.create(
         company=company, gerente=gerente, codigo=codigo,
-        nombre='Sig Proyecto', tipo='obra_civil',
+        nombre='Sig Proyecto', tipo='civil_works',
         cliente_id='111', cliente_nombre='C',
         fecha_inicio_planificada='2026-04-01',
         fecha_fin_planificada='2026-12-31',

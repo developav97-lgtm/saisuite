@@ -31,7 +31,7 @@ def make_proyecto(company, gerente, codigo='FASE-PRY-001'):
     return Proyecto.all_objects.create(
         company=company, gerente=gerente,
         codigo=codigo, nombre='Proyecto Fase Test',
-        tipo='obra_civil',
+        tipo='civil_works',
         cliente_id='111', cliente_nombre='Cliente',
         fecha_inicio_planificada=date.today(),
         fecha_fin_planificada=date.today() + timedelta(days=180),

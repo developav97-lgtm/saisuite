@@ -28,7 +28,7 @@ def make_user(company, email='gtp@test.com'):
 def make_proyecto(company, gerente, codigo='TP-PRY-001'):
     return Proyecto.all_objects.create(
         company=company, gerente=gerente, codigo=codigo,
-        nombre='TP Proyecto', tipo='obra_civil',
+        nombre='TP Proyecto', tipo='civil_works',
         cliente_id='111', cliente_nombre='C',
         fecha_inicio_planificada=date.today(),
         fecha_fin_planificada=date.today() + timedelta(days=90),
@@ -45,7 +45,7 @@ def make_fase(proyecto, orden=1):
     )
 
 
-def make_tp(proyecto, tercero_id='900111222', rol='cliente', fase=None, **kwargs):
+def make_tp(proyecto, tercero_id='900111222', rol='client', fase=None, **kwargs):
     return TerceroProyecto.all_objects.create(
         company=proyecto.company,
         proyecto=proyecto,
@@ -91,19 +91,19 @@ class TestTerceroProyectoModel:
 
     def test_roles_disponibles(self):
         roles = [r.value for r in RolTercero]
-        assert 'cliente' in roles
-        assert 'subcontratista' in roles
-        assert 'proveedor' in roles
-        assert 'consultor' in roles
-        assert 'interventor' in roles
+        assert 'client' in roles
+        assert 'subcontractor' in roles
+        assert 'vendor' in roles
+        assert 'consultant' in roles
+        assert 'inspector' in roles
         assert 'supervisor' in roles
 
     def test_mismo_tercero_multiples_roles_en_proyecto(self):
         c = make_company('905001005')
         g = make_user(c, 'gtp5@test.com')
         p = make_proyecto(c, g, 'TP-PRY-005')
-        make_tp(p, '900111222', rol='cliente')
-        make_tp(p, '900111222', rol='proveedor')
+        make_tp(p, '900111222', rol='client')
+        make_tp(p, '900111222', rol='vendor')
         assert TerceroProyecto.all_objects.filter(
             proyecto=p, tercero_id='900111222'
         ).count() == 2
@@ -114,12 +114,12 @@ class TestTerceroProyectoModel:
         g = make_user(c, 'gtp6@test.com')
         p = make_proyecto(c, g, 'TP-PRY-006')
         f = make_fase(p, orden=1)
-        make_tp(p, '900111333', rol='cliente', fase=f)
+        make_tp(p, '900111333', rol='client', fase=f)
         with pytest.raises(IntegrityError):
             TerceroProyecto.all_objects.create(
                 company=c, proyecto=p,
                 tercero_id='900111333', tercero_nombre='X',
-                rol='cliente', fase=f,
+                rol='client', fase=f,
             )
 
     def test_mismo_rol_en_diferente_fase(self):
@@ -128,8 +128,8 @@ class TestTerceroProyectoModel:
         p = make_proyecto(c, g, 'TP-PRY-007')
         f1 = make_fase(p, orden=1)
         f2 = make_fase(p, orden=2)
-        tp1 = make_tp(p, '900111444', rol='subcontratista', fase=f1)
-        tp2 = make_tp(p, '900111444', rol='subcontratista', fase=f2)
+        tp1 = make_tp(p, '900111444', rol='subcontractor', fase=f1)
+        tp2 = make_tp(p, '900111444', rol='subcontractor', fase=f2)
         assert tp1.id != tp2.id
 
     def test_tercero_cliente_en_un_proyecto_proveedor_en_otro(self):
@@ -137,16 +137,16 @@ class TestTerceroProyectoModel:
         g = make_user(c, 'gtp8@test.com')
         p1 = make_proyecto(c, g, 'TP-PRY-008A')
         p2 = make_proyecto(c, g, 'TP-PRY-008B')
-        tp1 = make_tp(p1, '900222333', rol='cliente')
-        tp2 = make_tp(p2, '900222333', rol='proveedor')
-        assert tp1.rol == 'cliente'
-        assert tp2.rol == 'proveedor'
+        tp1 = make_tp(p1, '900222333', rol='client')
+        tp2 = make_tp(p2, '900222333', rol='vendor')
+        assert tp1.rol == 'client'
+        assert tp2.rol == 'vendor'
 
     def test_str_incluye_nombre_rol_y_codigo_proyecto(self):
         c = make_company('905001009')
         g = make_user(c, 'gtp9@test.com')
         p = make_proyecto(c, g, 'TP-PRY-009')
-        tp = make_tp(p, rol='cliente')
+        tp = make_tp(p, rol='client')
         s = str(tp)
         assert 'Tercero SA' in s
         assert 'Cliente' in s

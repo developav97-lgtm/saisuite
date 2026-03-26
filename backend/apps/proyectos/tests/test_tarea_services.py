@@ -27,7 +27,7 @@ class TestCrearTareaConValidaciones:
         assert tarea.codigo.startswith('TASK-')
 
     def test_crear_tarea_proyecto_borrador_falla(self, proyecto, user):
-        proyecto.estado = 'borrador'
+        proyecto.estado = 'draft'
         proyecto.save()
 
         with pytest.raises(ValidationError) as exc:
@@ -38,7 +38,7 @@ class TestCrearTareaConValidaciones:
         assert 'proyecto' in exc.value.message_dict
 
     def test_crear_tarea_proyecto_cerrado_falla(self, proyecto):
-        proyecto.estado = 'cerrado'
+        proyecto.estado = 'closed'
         proyecto.save()
 
         with pytest.raises(ValidationError) as exc:
@@ -66,8 +66,8 @@ class TestCrearTareaConValidaciones:
             gerente=user,
             codigo='PRY-OTRO-001',
             nombre='Otro Proyecto',
-            tipo='obra_civil',
-            estado='en_ejecucion',
+            tipo='civil_works',
+            estado='in_progress',
             cliente_id='222',
             cliente_nombre='Otro Cliente',
             fecha_inicio_planificada=date.today(),
@@ -136,12 +136,12 @@ class TestValidarPuedeCompletar:
         assert 'pendiente' in mensaje.lower()
 
     def test_con_subtareas_completadas_puede(self, tarea_con_subtareas):
-        tarea_con_subtareas.subtareas.update(estado='completada')
+        tarea_con_subtareas.subtasks.update(estado='completed')
         puede, mensaje = TareaService.validar_puede_completar(tarea_con_subtareas)
         assert puede is True
 
     def test_con_subtareas_canceladas_puede(self, tarea_con_subtareas):
-        tarea_con_subtareas.subtareas.update(estado='cancelada')
+        tarea_con_subtareas.subtasks.update(estado='cancelled')
         puede, mensaje = TareaService.validar_puede_completar(tarea_con_subtareas)
         assert puede is True
 
@@ -150,17 +150,17 @@ class TestValidarPuedeCompletar:
 class TestCambiarEstado:
 
     def test_cambiar_a_en_progreso(self, tarea_simple):
-        tarea = TareaService.cambiar_estado(tarea_simple, 'en_progreso')
-        assert tarea.estado == 'en_progreso'
+        tarea = TareaService.cambiar_estado(tarea_simple, 'in_progress')
+        assert tarea.estado == 'in_progress'
 
     def test_cambiar_a_completada_sets_porcentaje_100(self, tarea_simple):
-        tarea = TareaService.cambiar_estado(tarea_simple, 'completada')
-        assert tarea.estado == 'completada'
+        tarea = TareaService.cambiar_estado(tarea_simple, 'completed')
+        assert tarea.estado == 'completed'
         assert tarea.porcentaje_completado == 100
 
     def test_cambiar_a_completada_con_subtareas_pendientes_falla(self, tarea_con_subtareas):
         with pytest.raises(ValidationError) as exc:
-            TareaService.cambiar_estado(tarea_con_subtareas, 'completada')
+            TareaService.cambiar_estado(tarea_con_subtareas, 'completed')
         assert 'estado' in exc.value.message_dict
 
     def test_cambiar_estado_invalido_falla(self, tarea_simple):
@@ -169,15 +169,15 @@ class TestCambiarEstado:
         assert 'estado' in exc.value.message_dict
 
     def test_cambiar_a_cancelada(self, tarea_simple):
-        tarea = TareaService.cambiar_estado(tarea_simple, 'cancelada')
-        assert tarea.estado == 'cancelada'
+        tarea = TareaService.cambiar_estado(tarea_simple, 'cancelled')
+        assert tarea.estado == 'cancelled'
 
 
 @pytest.mark.django_db
 class TestRecalcularAvanceTareaPadre:
 
     def test_recalcula_promedio_correcto(self, tarea_con_subtareas):
-        subtareas = list(tarea_con_subtareas.subtareas.all())
+        subtareas = list(tarea_con_subtareas.subtasks.all())
         subtareas[0].porcentaje_completado = 50
         subtareas[0].save()
         subtareas[1].porcentaje_completado = 50
@@ -201,7 +201,7 @@ class TestRecalcularAvanceTareaPadre:
         assert tarea_simple.porcentaje_completado == 25
 
     def test_todas_completadas_da_100(self, tarea_con_subtareas):
-        tarea_con_subtareas.subtareas.update(porcentaje_completado=100)
+        tarea_con_subtareas.subtasks.update(porcentaje_completado=100)
         TareaService.recalcular_avance_tarea_padre(tarea_con_subtareas)
         tarea_con_subtareas.refresh_from_db()
         assert tarea_con_subtareas.porcentaje_completado == 100
@@ -211,7 +211,7 @@ class TestRecalcularAvanceTareaPadre:
 class TestEliminarTareaConSubtareas:
 
     def test_cascada_elimina_padre_y_subtareas(self, tarea_con_subtareas):
-        subtareas_ids = list(tarea_con_subtareas.subtareas.values_list('id', flat=True))
+        subtareas_ids = list(tarea_con_subtareas.subtasks.values_list('id', flat=True))
         padre_id = tarea_con_subtareas.id
 
         resultado = TareaService.eliminar_tarea_con_subtareas(
@@ -227,7 +227,7 @@ class TestEliminarTareaConSubtareas:
             assert not Tarea.objects.filter(id=sid).exists()
 
     def test_promover_sube_subtareas_al_nivel_del_padre(self, tarea_con_subtareas):
-        subtareas_ids = list(tarea_con_subtareas.subtareas.values_list('id', flat=True))
+        subtareas_ids = list(tarea_con_subtareas.subtasks.values_list('id', flat=True))
         padre_id = tarea_con_subtareas.id
         abuelo = tarea_con_subtareas.tarea_padre  # None en este caso
 
@@ -266,7 +266,7 @@ class TestObtenerTareasVencidas:
             fase=fase,
             nombre='Vencida',
             fecha_limite=timezone.now().date() - timedelta(days=1),
-            estado='por_hacer',
+            estado='todo',
         )
         Tarea.objects.create(
             company=proyecto.company,
@@ -274,7 +274,7 @@ class TestObtenerTareasVencidas:
             fase=fase,
             nombre='No vencida',
             fecha_limite=timezone.now().date() + timedelta(days=5),
-            estado='por_hacer',
+            estado='todo',
         )
 
         tareas = TareaService.obtener_tareas_vencidas(proyecto)
@@ -289,7 +289,7 @@ class TestObtenerTareasVencidas:
             fase=fase,
             nombre='Completada vencida',
             fecha_limite=timezone.now().date() - timedelta(days=1),
-            estado='completada',
+            estado='completed',
         )
         Tarea.objects.create(
             company=proyecto.company,
@@ -297,7 +297,7 @@ class TestObtenerTareasVencidas:
             fase=fase,
             nombre='Cancelada vencida',
             fecha_limite=timezone.now().date() - timedelta(days=1),
-            estado='cancelada',
+            estado='cancelled',
         )
 
         tareas = TareaService.obtener_tareas_vencidas(proyecto)
@@ -310,7 +310,7 @@ class TestObtenerTareasVencidas:
             fase=fase,
             nombre='Vencida global',
             fecha_limite=timezone.now().date() - timedelta(days=2),
-            estado='en_progreso',
+            estado='in_progress',
         )
         tareas = TareaService.obtener_tareas_vencidas()
         assert any(t.nombre == 'Vencida global' for t in tareas)
@@ -326,7 +326,7 @@ class TestObtenerTareasProximasVencer:
             fase=fase,
             nombre='Vence mañana',
             fecha_limite=timezone.now().date() + timedelta(days=1),
-            estado='por_hacer',
+            estado='todo',
         )
         Tarea.objects.create(
             company=proyecto.company,
@@ -334,7 +334,7 @@ class TestObtenerTareasProximasVencer:
             fase=fase,
             nombre='Vence en 5 días',
             fecha_limite=timezone.now().date() + timedelta(days=5),
-            estado='por_hacer',
+            estado='todo',
         )
 
         tareas = TareaService.obtener_tareas_proximas_vencer(dias=1, proyecto=proyecto)
@@ -349,7 +349,7 @@ class TestObtenerTareasProximasVencer:
             fase=fase,
             nombre='Completada próxima',
             fecha_limite=timezone.now().date() + timedelta(days=1),
-            estado='completada',
+            estado='completed',
         )
 
         tareas = TareaService.obtener_tareas_proximas_vencer(dias=1, proyecto=proyecto)
@@ -362,7 +362,7 @@ class TestObtenerTareasProximasVencer:
             fase=fase,
             nombre='Vence hoy',
             fecha_limite=timezone.now().date(),
-            estado='por_hacer',
+            estado='todo',
         )
 
         tareas = TareaService.obtener_tareas_proximas_vencer(dias=0, proyecto=proyecto)
@@ -382,7 +382,7 @@ class TestGenerarTareaRecurrente:
             es_recurrente=True,
             frecuencia_recurrencia='semanal',
             fecha_limite=hoy,
-            estado='completada',
+            estado='completed',
         )
 
         nueva = TareaService.generar_tarea_recurrente(original)
@@ -390,7 +390,7 @@ class TestGenerarTareaRecurrente:
         assert nueva is not None
         assert nueva.nombre == original.nombre
         assert nueva.fecha_limite == hoy + timedelta(weeks=1)
-        assert nueva.estado == 'por_hacer'
+        assert nueva.estado == 'todo'
         assert nueva.es_recurrente is True
 
     def test_genera_tarea_diaria(self, proyecto, fase):

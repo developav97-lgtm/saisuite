@@ -37,7 +37,7 @@ class TestAutoFollowerAlCrear:
 class TestRecalcularAvancePadreSignal:
 
     def test_recalcula_al_cambiar_porcentaje_subtarea(self, tarea_con_subtareas):
-        subtarea = tarea_con_subtareas.subtareas.first()
+        subtarea = tarea_con_subtareas.subtasks.first()
         subtarea.porcentaje_completado = 100
         subtarea.save()
 
@@ -46,9 +46,9 @@ class TestRecalcularAvancePadreSignal:
         assert tarea_con_subtareas.porcentaje_completado == 33
 
     def test_recalcula_todas_al_100(self, tarea_con_subtareas):
-        tarea_con_subtareas.subtareas.all().update(porcentaje_completado=100)
+        tarea_con_subtareas.subtasks.all().update(porcentaje_completado=100)
         # Disparar el signal con la última subtarea guardada individualmente
-        ultima = tarea_con_subtareas.subtareas.last()
+        ultima = tarea_con_subtareas.subtasks.last()
         ultima.porcentaje_completado = 100
         ultima.save()
 
@@ -80,11 +80,11 @@ class TestGenerarTareaRecurrenteSignal:
             es_recurrente=True,
             frecuencia_recurrencia='diaria',
             fecha_limite=hoy,
-            estado='por_hacer',
+            estado='todo',
         )
         count_inicial = Tarea.objects.count()
 
-        tarea_original.estado = 'completada'
+        tarea_original.estado = 'completed'
         tarea_original.save()
 
         assert Tarea.objects.count() == count_inicial + 1
@@ -99,7 +99,7 @@ class TestGenerarTareaRecurrenteSignal:
     def test_no_genera_si_no_es_recurrente(self, tarea_simple):
         count_inicial = Tarea.objects.count()
 
-        tarea_simple.estado = 'completada'
+        tarea_simple.estado = 'completed'
         tarea_simple.save()
 
         assert Tarea.objects.count() == count_inicial
@@ -115,7 +115,7 @@ class TestGenerarTareaRecurrenteSignal:
             nombre='Recurrente nueva',
             es_recurrente=True,
             frecuencia_recurrencia='semanal',
-            estado='por_hacer',
+            estado='todo',
         )
 
         # Solo debe existir la tarea recién creada, no una generada automáticamente

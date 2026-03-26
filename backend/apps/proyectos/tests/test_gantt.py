@@ -1,6 +1,6 @@
 """
 SaiSuite — Tests: Endpoint gantt-data
-GET /api/v1/proyectos/{id}/gantt-data/
+GET /api/v1/projects/{id}/gantt-data/
 
 Cubre:
 - Retorna 200 con formato correcto
@@ -56,8 +56,8 @@ def make_proyecto(company, gerente):
         company=company, gerente=gerente,
         codigo=f'PRY-{_nit()}',
         nombre='Proyecto Gantt Test',
-        tipo='obra_civil',
-        estado='en_ejecucion',
+        tipo='civil_works',
+        estado='in_progress',
         cliente_id='888', cliente_nombre='Cliente Gantt',
         fecha_inicio_planificada=date.today(),
         fecha_fin_planificada=date.today() + timedelta(days=90),
@@ -75,7 +75,7 @@ def make_fase(company, proyecto):
     )
 
 
-def make_tarea(company, proyecto, fase, nombre, fi, ff, estado='por_hacer', progreso=0):
+def make_tarea(company, proyecto, fase, nombre, fi, ff, estado='todo', progreso=0):
     return Tarea.objects.create(
         company=company, proyecto=proyecto, fase=fase,
         nombre=nombre, estado=estado,
@@ -95,22 +95,22 @@ class TestGanttDataEndpoint(APITestCase):
         self.fase     = make_fase(self.company, self.proyecto)
         token = RefreshToken.for_user(self.user)
         self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token.access_token}')
-        self.url = f'/api/v1/proyectos/{self.proyecto.id}/gantt-data/'
+        self.url = f'/api/v1/projects/{self.proyecto.id}/gantt-data/'
         hoy = date.today()
         self.t1 = make_tarea(
             self.company, self.proyecto, self.fase, 'Tarea A',
             fi=hoy, ff=hoy + timedelta(days=5),
-            estado='en_progreso', progreso=40,
+            estado='in_progress', progreso=40,
         )
         self.t2 = make_tarea(
             self.company, self.proyecto, self.fase, 'Tarea B',
             fi=hoy + timedelta(days=5), ff=hoy + timedelta(days=10),
-            estado='por_hacer', progreso=0,
+            estado='todo', progreso=0,
         )
         self.t3 = make_tarea(
             self.company, self.proyecto, self.fase, 'Tarea C',
             fi=hoy + timedelta(days=2), ff=hoy + timedelta(days=7),
-            estado='completada', progreso=100,
+            estado='completed', progreso=100,
         )
 
     def test_retorna_200(self):
@@ -135,9 +135,9 @@ class TestGanttDataEndpoint(APITestCase):
     def test_custom_class_contiene_estado(self):
         resp = self.client.get(self.url)
         tasks = {t['id']: t for t in resp.data['tasks']}
-        self.assertEqual(tasks[str(self.t1.id)]['custom_class'], 'estado-en_progreso')
-        self.assertEqual(tasks[str(self.t2.id)]['custom_class'], 'estado-por_hacer')
-        self.assertEqual(tasks[str(self.t3.id)]['custom_class'], 'estado-completada')
+        self.assertEqual(tasks[str(self.t1.id)]['custom_class'], 'estado-in_progress')
+        self.assertEqual(tasks[str(self.t2.id)]['custom_class'], 'estado-todo')
+        self.assertEqual(tasks[str(self.t3.id)]['custom_class'], 'estado-completed')
 
     def test_progress_es_porcentaje_completado(self):
         resp = self.client.get(self.url)
@@ -154,7 +154,7 @@ class TestGanttDataEndpoint(APITestCase):
         # Crear tarea sin fecha_inicio ni fecha_fin
         Tarea.objects.create(
             company=self.company, proyecto=self.proyecto, fase=self.fase,
-            nombre='Sin fechas', estado='por_hacer',
+            nombre='Sin fechas', estado='todo',
         )
         resp = self.client.get(self.url)
         names = [t['name'] for t in resp.data['tasks']]
@@ -163,7 +163,7 @@ class TestGanttDataEndpoint(APITestCase):
     def test_proyecto_sin_tareas_retorna_lista_vacia(self):
         proyecto_vacio = make_proyecto(self.company, self.user)
         resp = self.client.get(
-            f'/api/v1/proyectos/{proyecto_vacio.id}/gantt-data/'
+            f'/api/v1/projects/{proyecto_vacio.id}/gantt-data/'
         )
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         self.assertEqual(resp.data['tasks'], [])

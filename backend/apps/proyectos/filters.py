@@ -3,12 +3,12 @@ SaiSuite — Proyectos: Filtros
 """
 import django_filters
 from django.db.models import Q
-from apps.proyectos.models import Proyecto, TipoProyecto, EstadoProyecto, Tarea
+from apps.proyectos.models import Project, ProjectType, ProjectStatus, Task
 
 
-class ProyectoFilter(django_filters.FilterSet):
-    estado        = django_filters.ChoiceFilter(choices=EstadoProyecto.choices)
-    tipo          = django_filters.ChoiceFilter(choices=TipoProyecto.choices)
+class ProjectFilter(django_filters.FilterSet):
+    estado        = django_filters.ChoiceFilter(choices=ProjectStatus.choices)
+    tipo          = django_filters.ChoiceFilter(choices=ProjectType.choices)
     cliente_id    = django_filters.CharFilter(lookup_expr='iexact')
     gerente       = django_filters.UUIDFilter(field_name='gerente__id')
     activo        = django_filters.BooleanFilter()
@@ -27,7 +27,7 @@ class ProyectoFilter(django_filters.FilterSet):
     )
 
     class Meta:
-        model  = Proyecto
+        model  = Project
         fields = [
             'estado', 'tipo', 'cliente_id', 'gerente', 'activo',
             'fecha_inicio_desde', 'fecha_inicio_hasta',
@@ -35,14 +35,14 @@ class ProyectoFilter(django_filters.FilterSet):
         ]
 
 
-class TareaFilter(django_filters.FilterSet):
-    """Filtros avanzados para Tarea."""
+class TaskFilter(django_filters.FilterSet):
+    """Filtros avanzados para Task."""
 
     # Búsqueda libre
     search = django_filters.CharFilter(method='filter_search')
 
     # Estado y prioridad
-    estado      = django_filters.ChoiceFilter(choices=Tarea._meta.get_field('estado').choices)
+    estado      = django_filters.ChoiceFilter(choices=Task._meta.get_field('estado').choices)
     prioridad   = django_filters.NumberFilter()
     prioridad_min = django_filters.NumberFilter(field_name='prioridad', lookup_expr='gte')
 
@@ -66,7 +66,7 @@ class TareaFilter(django_filters.FilterSet):
     solo_raiz = django_filters.BooleanFilter(method='filter_solo_raiz')
 
     class Meta:
-        model = Tarea
+        model = Task
         fields = [
             'estado', 'prioridad', 'proyecto', 'fase', 'actividad_saiopen',
             'responsable', 'cliente', 'es_recurrente',
@@ -84,7 +84,7 @@ class TareaFilter(django_filters.FilterSet):
         if value:
             return queryset.filter(
                 fecha_limite__lt=timezone.now().date()
-            ).exclude(estado__in=['completada', 'cancelada'])
+            ).exclude(estado__in=['completed', 'cancelled'])
         return queryset
 
     def filter_sin_responsable(self, queryset, name, value):
@@ -104,3 +104,8 @@ class TareaFilter(django_filters.FilterSet):
         if value:
             return queryset.filter(tarea_padre__isnull=True)
         return queryset
+
+
+# ALIASES DE COMPATIBILIDAD — eliminar en REFT-10
+ProyectoFilter = ProjectFilter
+TareaFilter = TaskFilter

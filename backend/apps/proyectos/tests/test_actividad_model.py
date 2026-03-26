@@ -7,7 +7,7 @@ from django.db import IntegrityError
 from django.contrib.auth import get_user_model
 
 from apps.companies.models import Company, CompanyModule
-from apps.proyectos.models import Actividad, TipoActividad
+from apps.proyectos.models import ProjectStatus, PhaseStatus, ActivityType, MeasurementMode,  Actividad, ActivityType, TipoActividad
 
 User = get_user_model()
 
@@ -60,20 +60,20 @@ class TestActividadModel:
 
     def test_tipos_disponibles(self):
         tipos = [t.value for t in TipoActividad]
-        assert 'mano_obra' in tipos
+        assert 'labor' in tipos
         assert 'material' in tipos
-        assert 'equipo' in tipos
-        assert 'subcontrato' in tipos
+        assert 'equipment' in tipos
+        assert 'subcontract' in tipos
 
     def test_tipo_mano_obra(self):
         c = make_company('903001006')
-        a = make_actividad(c, 'ACT-006', tipo='mano_obra')
-        assert a.tipo == TipoActividad.MANO_OBRA
+        a = make_actividad(c, 'ACT-006', tipo='labor')
+        assert a.tipo == ActivityType.LABOR
 
     def test_tipo_equipo(self):
         c = make_company('903001007')
-        a = make_actividad(c, 'ACT-007', tipo='equipo')
-        assert a.tipo == TipoActividad.EQUIPO
+        a = make_actividad(c, 'ACT-007', tipo='equipment')
+        assert a.tipo == ActivityType.EQUIPMENT
 
     def test_unique_together_company_codigo(self):
         c = make_company('903001008')
@@ -125,7 +125,7 @@ class TestActividadModel:
     def test_actividad_usable_en_multiples_proyectos(self):
         """La misma actividad puede asignarse a múltiples proyectos (vía ActividadProyecto)."""
         from django.contrib.auth import get_user_model
-        from apps.proyectos.models import Proyecto, ActividadProyecto
+        from apps.proyectos.models import ProjectStatus, PhaseStatus, ActivityType, MeasurementMode,  Proyecto, ActividadProyecto
         from datetime import date, timedelta
         User = get_user_model()
         c = make_company('903001016')
@@ -134,14 +134,14 @@ class TestActividadModel:
 
         p1 = Proyecto.all_objects.create(
             company=c, gerente=g, codigo='PRY-A1',
-            nombre='P1', tipo='servicios',
+            nombre='P1', tipo='services',
             cliente_id='111', cliente_nombre='C1',
             fecha_inicio_planificada=date.today(),
             fecha_fin_planificada=date.today() + timedelta(days=60),
         )
         p2 = Proyecto.all_objects.create(
             company=c, gerente=g, codigo='PRY-A2',
-            nombre='P2', tipo='servicios',
+            nombre='P2', tipo='services',
             cliente_id='222', cliente_nombre='C2',
             fecha_inicio_planificada=date.today(),
             fecha_fin_planificada=date.today() + timedelta(days=60),

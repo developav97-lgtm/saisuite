@@ -11,6 +11,9 @@ from django.utils import timezone
 from rest_framework.exceptions import ValidationError, PermissionDenied
 
 from apps.proyectos.models import (
+    Project, Phase, ProjectStakeholder, AccountingDocument, Milestone,
+    ProjectStatus, PhaseStatus, Activity, ProjectActivity, ModuleSettings,
+    ActivityType, MeasurementMode,
     Proyecto, Fase, TerceroProyecto, DocumentoContable, Hito,
     EstadoProyecto, EstadoFase, Actividad, ActividadProyecto, ConfiguracionModulo,
 )
@@ -51,13 +54,13 @@ def calcular_avance_fase_desde_tareas(fase_id) -> Decimal:
     from apps.proyectos.models import Tarea
     tareas = Tarea.all_objects.filter(
         fase_id=fase_id,
-    ).exclude(estado='cancelada')
+    ).exclude(estado='cancelled')
 
     total = tareas.count()
     if total == 0:
         pct = Decimal('0')
     else:
-        completadas = tareas.filter(estado='completada').count()
+        completadas = tareas.filter(estado='completed').count()
         pct = (Decimal(completadas) / Decimal(total) * Decimal('100')).quantize(Decimal('0.01'))
 
     Fase.objects.filter(id=fase_id).update(porcentaje_avance=pct)
@@ -187,16 +190,16 @@ class ConfiguracionModuloService:
 
 # Transiciones válidas: estado_actual → [estados_destino]
 TRANSICIONES_VALIDAS: dict[str, list[str]] = {
-    EstadoProyecto.BORRADOR:     [EstadoProyecto.PLANIFICADO, EstadoProyecto.CANCELADO],
-    EstadoProyecto.PLANIFICADO:  [EstadoProyecto.EN_EJECUCION, EstadoProyecto.BORRADOR, EstadoProyecto.CANCELADO],
-    EstadoProyecto.EN_EJECUCION: [EstadoProyecto.SUSPENDIDO, EstadoProyecto.CERRADO, EstadoProyecto.CANCELADO],
-    EstadoProyecto.SUSPENDIDO:   [EstadoProyecto.EN_EJECUCION, EstadoProyecto.CANCELADO],
-    EstadoProyecto.CERRADO:      [],
-    EstadoProyecto.CANCELADO:    [],
+    ProjectStatus.DRAFT:     [ProjectStatus.PLANNED, ProjectStatus.CANCELLED],
+    ProjectStatus.PLANNED:  [ProjectStatus.IN_PROGRESS, ProjectStatus.DRAFT, ProjectStatus.CANCELLED],
+    ProjectStatus.IN_PROGRESS: [ProjectStatus.SUSPENDED, ProjectStatus.CLOSED, ProjectStatus.CANCELLED],
+    ProjectStatus.SUSPENDED:   [ProjectStatus.IN_PROGRESS, ProjectStatus.CANCELLED],
+    ProjectStatus.CLOSED:      [],
+    ProjectStatus.CANCELLED:    [],
 }
 
 # Estados que permiten edición del proyecto
-ESTADOS_EDITABLES = {EstadoProyecto.BORRADOR, EstadoProyecto.PLANIFICADO}
+ESTADOS_EDITABLES = {ProjectStatus.DRAFT, ProjectStatus.PLANNED}
 
 
 # ──────────────────────────────────────────────
@@ -216,7 +219,7 @@ class ProyectoService:
             Proyecto.all_objects
             .filter(activo=True)
             .select_related('gerente', 'coordinador', 'company')
-            .annotate(fases_count=Count('fases', filter=Q(fases__activo=True)))
+            .annotate(fases_count=Count('phases', filter=Q(phases__activo=True)))
         )
         if company is not None:
             qs = qs.filter(company=company)
@@ -228,7 +231,7 @@ class ProyectoService:
         return (
             Proyecto.objects
             .select_related('gerente', 'coordinador', 'company')
-            .prefetch_related('fases')
+            .prefetch_related('phases')
             .get(id=proyecto_id)
         )
 
@@ -344,7 +347,7 @@ class ProyectoService:
         """Soft delete: marca proyecto y todas sus fases como inactivos."""
         proyecto.activo = False
         proyecto.save(update_fields=['activo', 'updated_at'])
-        proyecto.fases.filter(activo=True).update(activo=False)
+        proyecto.phases.filter(activo=True).update(activo=False)
         logger.info('Proyecto eliminado (soft)', extra={'proyecto_id': str(proyecto.id)})
 
     @staticmethod
@@ -358,14 +361,14 @@ class ProyectoService:
         if nuevo_estado not in transiciones:
             raise TransicionEstadoInvalidaException(
                 f'No se puede pasar de "{proyecto.get_estado_display()}" '
-                f'a "{dict(proyecto.EstadoProyecto.choices).get(nuevo_estado, nuevo_estado)}".'
+                f'a "{dict(ProjectStatus.choices).get(nuevo_estado, nuevo_estado)}".'
                 if hasattr(proyecto, 'EstadoProyecto')
                 else f'Transición de estado inválida: {estado_actual} → {nuevo_estado}.'
             )
 
         # Precondiciones por transición
-        if estado_actual == EstadoProyecto.BORRADOR and nuevo_estado == EstadoProyecto.PLANIFICADO:
-            fases_activas = proyecto.fases.filter(activo=True).count()
+        if estado_actual == ProjectStatus.DRAFT and nuevo_estado == ProjectStatus.PLANNED:
+            fases_activas = proyecto.phases.filter(activo=True).count()
             if fases_activas == 0:
                 raise TransicionEstadoInvalidaException(
                     'Para planificar el proyecto debe tener al menos 1 fase definida.'
@@ -375,7 +378,7 @@ class ProyectoService:
                     'Para planificar el proyecto debe tener un presupuesto total mayor a cero.'
                 )
 
-        if estado_actual == EstadoProyecto.PLANIFICADO and nuevo_estado == EstadoProyecto.EN_EJECUCION:
+        if estado_actual == ProjectStatus.PLANNED and nuevo_estado == ProjectStatus.IN_PROGRESS:
             try:
                 config = ConfiguracionModulo.objects.get(company=proyecto.company)
                 requiere_sync = config.requiere_sync_saiopen_para_ejecucion
@@ -386,9 +389,9 @@ class ProyectoService:
                     'El proyecto debe estar sincronizado con Saiopen antes de iniciar ejecución.'
                 )
 
-        if estado_actual == EstadoProyecto.EN_EJECUCION and nuevo_estado == EstadoProyecto.CERRADO:
+        if estado_actual == ProjectStatus.IN_PROGRESS and nuevo_estado == ProjectStatus.CLOSED:
             if not forzar:
-                fases_incompletas = proyecto.fases.filter(
+                fases_incompletas = proyecto.phases.filter(
                     activo=True, porcentaje_avance__lt=100
                 ).count()
                 if fases_incompletas > 0:
@@ -398,9 +401,9 @@ class ProyectoService:
                     )
 
         # Registrar fecha real de inicio/fin
-        if nuevo_estado == EstadoProyecto.EN_EJECUCION and not proyecto.fecha_inicio_real:
+        if nuevo_estado == ProjectStatus.IN_PROGRESS and not proyecto.fecha_inicio_real:
             proyecto.fecha_inicio_real = timezone.now().date()
-        if nuevo_estado in {EstadoProyecto.CERRADO, EstadoProyecto.CANCELADO}:
+        if nuevo_estado in {ProjectStatus.CLOSED, ProjectStatus.CANCELLED}:
             if not proyecto.fecha_fin_real:
                 proyecto.fecha_fin_real = timezone.now().date()
 
@@ -426,7 +429,7 @@ class ProyectoService:
         from django.db.models import Sum as DbSum
 
         # Presupuesto por categorías (suma de fases activas)
-        fases_agg = proyecto.fases.filter(activo=True).aggregate(
+        fases_agg = proyecto.phases.filter(activo=True).aggregate(
             total_mano_obra=DbSum('presupuesto_mano_obra'),
             total_materiales=DbSum('presupuesto_materiales'),
             total_subcontratos=DbSum('presupuesto_subcontratos'),
@@ -454,7 +457,7 @@ class ProyectoService:
         precio_venta_aiu = presupuesto_costos * (1 + aiu_factor)
 
         # Costo ejecutado (documentos contables importados de Saiopen)
-        docs_agg = proyecto.documentos.aggregate(ejecutado=DbSum('valor_neto'))
+        docs_agg = proyecto.documents.aggregate(ejecutado=DbSum('valor_neto'))
         costo_ejecutado = _d(docs_agg['ejecutado'])
 
         # Avance financiero
@@ -465,7 +468,7 @@ class ProyectoService:
         )
 
         # Avance físico (promedio ponderado de fases — simplificado por orden)
-        fases_avance = proyecto.fases.filter(activo=True).values_list('porcentaje_avance', flat=True)
+        fases_avance = proyecto.phases.filter(activo=True).values_list('porcentaje_avance', flat=True)
         pct_fisico = (
             sum(fases_avance) / len(fases_avance)
             if fases_avance
@@ -505,12 +508,12 @@ class FaseService:
     @staticmethod
     def list_fases(proyecto: Proyecto) -> QuerySet:
         """Retorna fases activas del proyecto, ordenadas."""
-        return proyecto.fases.filter(activo=True).order_by('orden')
+        return proyecto.phases.filter(activo=True).order_by('orden')
 
     @staticmethod
     def _calcular_presupuesto_fases(proyecto: Proyecto, excluir_fase_id=None) -> Decimal:
         """Suma el presupuesto total de todas las fases activas del proyecto."""
-        qs = proyecto.fases.filter(activo=True)
+        qs = proyecto.phases.filter(activo=True)
         if excluir_fase_id:
             qs = qs.exclude(id=excluir_fase_id)
 
@@ -527,7 +530,7 @@ class FaseService:
     @transaction.atomic
     def create_fase(proyecto: Proyecto, data: dict) -> Fase:
         """Crea una fase validando presupuesto y orden."""
-        if proyecto.estado in {EstadoProyecto.CERRADO, EstadoProyecto.CANCELADO}:
+        if proyecto.estado in {ProjectStatus.CLOSED, ProjectStatus.CANCELLED}:
             raise ProyectoNoEditableException(
                 f'No se pueden agregar fases a un proyecto en estado "{proyecto.get_estado_display()}".'
             )
@@ -555,7 +558,7 @@ class FaseService:
         # Auto-ordenar si no viene orden
         if 'orden' not in data or data['orden'] is None:
             ultimo_orden = (
-                proyecto_locked.fases.filter(activo=True)
+                proyecto_locked.phases.filter(activo=True)
                 .order_by('-orden')
                 .values_list('orden', flat=True)
                 .first()
@@ -621,20 +624,20 @@ class FaseService:
         Solo puede haber una fase activa por proyecto a la vez.
         La fase anterior activa pasa a 'planificada' automáticamente.
         """
-        if fase.estado == EstadoFase.COMPLETADA:
+        if fase.estado == PhaseStatus.COMPLETED:
             raise ProyectoException('No se puede activar una fase ya completada.')
-        if fase.estado == EstadoFase.CANCELADA:
+        if fase.estado == PhaseStatus.CANCELLED:
             raise ProyectoException('No se puede activar una fase cancelada.')
 
         # Desactivar cualquier otra fase activa del mismo proyecto
         Fase.objects.filter(
             proyecto=fase.proyecto,
-            estado=EstadoFase.ACTIVA,
+            estado=PhaseStatus.ACTIVE,
         ).exclude(id=fase.id).update(
-            estado=EstadoFase.PLANIFICADA,
+            estado=PhaseStatus.PLANNED,
         )
 
-        fase.estado = EstadoFase.ACTIVA
+        fase.estado = PhaseStatus.ACTIVE
         if not fase.fecha_inicio_real:
             from django.utils import timezone
             fase.fecha_inicio_real = timezone.now().date()
@@ -647,13 +650,13 @@ class FaseService:
     @transaction.atomic
     def completar_fase(fase: Fase) -> Fase:
         """Marca una fase como completada y registra fecha real de fin."""
-        if fase.estado not in (EstadoFase.ACTIVA, EstadoFase.PLANIFICADA):
+        if fase.estado not in (PhaseStatus.ACTIVE, PhaseStatus.PLANNED):
             raise ProyectoException(
                 f'Solo se pueden completar fases activas o planificadas. Estado actual: {fase.estado}.'
             )
 
         from django.utils import timezone
-        fase.estado = EstadoFase.COMPLETADA
+        fase.estado = PhaseStatus.COMPLETED
         if not fase.fecha_fin_real:
             fase.fecha_fin_real = timezone.now().date()
         fase.save(update_fields=['estado', 'fecha_fin_real', 'updated_at'])
@@ -988,7 +991,7 @@ class ActividadProyectoService:
 
     @staticmethod
     def desasignar_actividad(ap: ActividadProyecto) -> None:
-        estados_bloqueados = [EstadoProyecto.PLANIFICADO, EstadoProyecto.EN_EJECUCION]
+        estados_bloqueados = [ProjectStatus.PLANNED, ProjectStatus.IN_PROGRESS]
         if ap.proyecto.estado in estados_bloqueados:
             raise ValidationError(
                 f'No se pueden eliminar actividades de un proyecto en estado '

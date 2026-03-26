@@ -6,11 +6,16 @@ import logging
 from decimal import Decimal
 from rest_framework import serializers
 from apps.proyectos.models import (
+    Project, Phase, ProjectStakeholder, AccountingDocument, Milestone,
+    Activity, ProjectActivity, SaiopenActivity, TaskTag, Task,
+    WorkSession, TimesheetEntry, TaskDependency, ModuleSettings,
+    ProjectStatus, PhaseStatus, StakeholderRole, DocumentType,
+    MeasurementMode, ActivityType, DependencyType,
+    # Aliases de compatibilidad — eliminar en REFT-10
     Proyecto, Fase, TerceroProyecto, DocumentoContable, Hito,
     TipoProyecto, EstadoProyecto, RolTercero, TipoDocumento,
     Actividad, ActividadProyecto, TipoActividad, ConfiguracionModulo,
     Tarea, TareaTag, SesionTrabajo, ActividadSaiopen, TareaDependencia,
-    TimesheetEntry,
 )
 
 logger = logging.getLogger(__name__)
@@ -23,19 +28,19 @@ class UserSummarySerializer(serializers.Serializer):
     full_name  = serializers.CharField()
 
 
-class FaseListSerializer(serializers.ModelSerializer):
+class PhaseListSerializer(serializers.ModelSerializer):
     """Serializer de listado de fases — campos mínimos."""
     presupuesto_total = serializers.SerializerMethodField()
 
     class Meta:
-        model  = Fase
+        model  = Phase
         fields = [
             'id', 'nombre', 'orden', 'estado', 'porcentaje_avance',
             'presupuesto_total', 'activo', 'created_at',
         ]
         read_only_fields = ['id', 'created_at']
 
-    def get_presupuesto_total(self, obj: Fase) -> str:
+    def get_presupuesto_total(self, obj: Phase) -> str:
         total = (
             obj.presupuesto_mano_obra
             + obj.presupuesto_materiales
@@ -46,12 +51,12 @@ class FaseListSerializer(serializers.ModelSerializer):
         return str(total)
 
 
-class FaseDetailSerializer(serializers.ModelSerializer):
+class PhaseDetailSerializer(serializers.ModelSerializer):
     """Serializer de detalle de fase — todos los campos."""
     presupuesto_total = serializers.SerializerMethodField()
 
     class Meta:
-        model  = Fase
+        model  = Phase
         fields = [
             'id', 'proyecto', 'nombre', 'descripcion', 'orden', 'estado',
             'fecha_inicio_planificada', 'fecha_fin_planificada',
@@ -64,7 +69,7 @@ class FaseDetailSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'proyecto', 'created_at', 'updated_at']
 
-    def get_presupuesto_total(self, obj: Fase) -> str:
+    def get_presupuesto_total(self, obj: Phase) -> str:
         total = (
             obj.presupuesto_mano_obra
             + obj.presupuesto_materiales
@@ -75,11 +80,11 @@ class FaseDetailSerializer(serializers.ModelSerializer):
         return str(total)
 
 
-class FaseCreateUpdateSerializer(serializers.ModelSerializer):
+class PhaseCreateUpdateSerializer(serializers.ModelSerializer):
     """Serializer de escritura para fases."""
 
     class Meta:
-        model  = Fase
+        model  = Phase
         fields = [
             'nombre', 'descripcion', 'orden',
             'fecha_inicio_planificada', 'fecha_fin_planificada',
@@ -106,12 +111,12 @@ class FaseCreateUpdateSerializer(serializers.ModelSerializer):
         return attrs
 
 
-class ProyectoListSerializer(serializers.ModelSerializer):
+class ProjectListSerializer(serializers.ModelSerializer):
     """Serializer de listado de proyectos — campos mínimos para tabla."""
     gerente = UserSummarySerializer(read_only=True)
 
     class Meta:
-        model  = Proyecto
+        model  = Project
         fields = [
             'id', 'codigo', 'nombre', 'tipo', 'estado',
             'cliente_nombre', 'gerente',
@@ -121,7 +126,7 @@ class ProyectoListSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_at']
 
 
-class ProyectoDetailSerializer(serializers.ModelSerializer):
+class ProjectDetailSerializer(serializers.ModelSerializer):
     """Serializer de detalle de proyecto — todos los campos."""
     gerente             = UserSummarySerializer(read_only=True)
     coordinador         = UserSummarySerializer(read_only=True)
@@ -129,7 +134,7 @@ class ProyectoDetailSerializer(serializers.ModelSerializer):
     presupuesto_fases_total = serializers.SerializerMethodField()
 
     class Meta:
-        model  = Proyecto
+        model  = Project
         fields = [
             'id', 'codigo', 'nombre', 'tipo', 'estado',
             'cliente_id', 'cliente_nombre',
@@ -144,12 +149,12 @@ class ProyectoDetailSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
 
-    def get_fases_count(self, obj: Proyecto) -> int:
-        return obj.fases.filter(activo=True).count()
+    def get_fases_count(self, obj: Project) -> int:
+        return obj.phases.filter(activo=True).count()
 
-    def get_presupuesto_fases_total(self, obj: Proyecto) -> str:
+    def get_presupuesto_fases_total(self, obj: Project) -> str:
         from django.db.models import Sum
-        result = obj.fases.filter(activo=True).aggregate(
+        result = obj.phases.filter(activo=True).aggregate(
             total=Sum('presupuesto_mano_obra')
                 + Sum('presupuesto_materiales')
                 + Sum('presupuesto_subcontratos')
@@ -160,7 +165,7 @@ class ProyectoDetailSerializer(serializers.ModelSerializer):
         return str(total)
 
 
-class ProyectoCreateUpdateSerializer(serializers.ModelSerializer):
+class ProjectCreateUpdateSerializer(serializers.ModelSerializer):
     """Serializer de escritura para proyectos."""
     # codigo es opcional — el service lo genera automáticamente si no se provee
     codigo          = serializers.CharField(max_length=50, required=False, allow_blank=True)
@@ -170,7 +175,7 @@ class ProyectoCreateUpdateSerializer(serializers.ModelSerializer):
     consecutivo_id  = serializers.UUIDField(required=False, allow_null=True, write_only=True)
 
     class Meta:
-        model  = Proyecto
+        model  = Project
         fields = [
             'codigo', 'nombre', 'tipo',
             'cliente_id', 'cliente_nombre',
@@ -197,9 +202,9 @@ class ProyectoCreateUpdateSerializer(serializers.ModelSerializer):
         return attrs
 
 
-class CambiarEstadoSerializer(serializers.Serializer):
+class ChangeStatusSerializer(serializers.Serializer):
     """Serializer para la acción de cambio de estado del proyecto."""
-    nuevo_estado = serializers.ChoiceField(choices=EstadoProyecto.choices)
+    nuevo_estado = serializers.ChoiceField(choices=ProjectStatus.choices)
     forzar       = serializers.BooleanField(
         default=False,
         required=False,
@@ -208,10 +213,10 @@ class CambiarEstadoSerializer(serializers.Serializer):
 
 
 # ──────────────────────────────────────────────
-# Fase B: TerceroProyecto
+# ProjectStakeholder
 # ──────────────────────────────────────────────
 
-class TerceroProyectoSerializer(serializers.ModelSerializer):
+class ProjectStakeholderSerializer(serializers.ModelSerializer):
     """Serializer de lectura para terceros vinculados al proyecto."""
     rol_display  = serializers.CharField(source='get_rol_display', read_only=True)
     fase_nombre  = serializers.CharField(source='fase.nombre', read_only=True, default=None)
@@ -220,7 +225,7 @@ class TerceroProyectoSerializer(serializers.ModelSerializer):
     )
 
     class Meta:
-        model  = TerceroProyecto
+        model  = ProjectStakeholder
         fields = [
             'id', 'proyecto', 'tercero_id', 'tercero_nombre',
             'rol', 'rol_display', 'fase', 'fase_nombre',
@@ -230,11 +235,11 @@ class TerceroProyectoSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'proyecto', 'created_at', 'tercero_fk_nombre']
 
 
-class TerceroProyectoCreateSerializer(serializers.ModelSerializer):
+class ProjectStakeholderCreateSerializer(serializers.ModelSerializer):
     """Serializer de escritura para vincular un tercero al proyecto."""
 
     class Meta:
-        model  = TerceroProyecto
+        model  = ProjectStakeholder
         fields = ['tercero_id', 'tercero_nombre', 'rol', 'fase', 'tercero_fk']
 
     def validate_fase(self, fase):
@@ -248,17 +253,17 @@ class TerceroProyectoCreateSerializer(serializers.ModelSerializer):
 
 
 # ──────────────────────────────────────────────
-# Fase B: DocumentoContable
+# AccountingDocument
 # ──────────────────────────────────────────────
 
-class DocumentoContableListSerializer(serializers.ModelSerializer):
+class AccountingDocumentListSerializer(serializers.ModelSerializer):
     """Serializer de listado de documentos contables — campos mínimos."""
     tipo_documento_display = serializers.CharField(
         source='get_tipo_documento_display', read_only=True
     )
 
     class Meta:
-        model  = DocumentoContable
+        model  = AccountingDocument
         fields = [
             'id', 'tipo_documento', 'tipo_documento_display',
             'saiopen_doc_id', 'numero_documento', 'fecha_documento',
@@ -268,14 +273,14 @@ class DocumentoContableListSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
-class DocumentoContableDetailSerializer(serializers.ModelSerializer):
+class AccountingDocumentDetailSerializer(serializers.ModelSerializer):
     """Serializer de detalle de documento contable — todos los campos."""
     tipo_documento_display = serializers.CharField(
         source='get_tipo_documento_display', read_only=True
     )
 
     class Meta:
-        model  = DocumentoContable
+        model  = AccountingDocument
         fields = [
             'id', 'proyecto', 'fase',
             'saiopen_doc_id', 'tipo_documento', 'tipo_documento_display',
@@ -288,15 +293,15 @@ class DocumentoContableDetailSerializer(serializers.ModelSerializer):
 
 
 # ──────────────────────────────────────────────
-# Fase B: Hito
+# Milestone
 # ──────────────────────────────────────────────
 
-class HitoSerializer(serializers.ModelSerializer):
+class MilestoneSerializer(serializers.ModelSerializer):
     """Serializer de lectura para hitos del proyecto."""
     fase_nombre = serializers.CharField(source='fase.nombre', read_only=True, default=None)
 
     class Meta:
-        model  = Hito
+        model  = Milestone
         fields = [
             'id', 'proyecto', 'fase', 'fase_nombre',
             'nombre', 'descripcion',
@@ -308,11 +313,11 @@ class HitoSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'proyecto', 'facturado', 'documento_factura', 'fecha_facturacion', 'created_at']
 
 
-class HitoCreateSerializer(serializers.ModelSerializer):
+class MilestoneCreateSerializer(serializers.ModelSerializer):
     """Serializer de escritura para crear un hito."""
 
     class Meta:
-        model  = Hito
+        model  = Milestone
         fields = ['nombre', 'descripcion', 'fase', 'porcentaje_proyecto', 'valor_facturar', 'facturable']
 
     def validate_porcentaje_proyecto(self, value):
@@ -338,7 +343,7 @@ class HitoCreateSerializer(serializers.ModelSerializer):
         return fase
 
 
-class GenerarFacturaSerializer(serializers.Serializer):
+class GenerateInvoiceSerializer(serializers.Serializer):
     """Serializer para la acción de generar factura desde un hito."""
     confirmar = serializers.BooleanField(
         help_text='Debe ser true para confirmar la solicitud de facturación.'
@@ -353,15 +358,15 @@ class GenerarFacturaSerializer(serializers.Serializer):
 
 
 # ──────────────────────────────────────────────
-# Actividades — catálogo global
+# Activity — catálogo global
 # ──────────────────────────────────────────────
 
-class ActividadListSerializer(serializers.ModelSerializer):
+class ActivityListSerializer(serializers.ModelSerializer):
     """Serializer de listado de actividades — campos mínimos para tabla."""
     tipo_display = serializers.CharField(source='get_tipo_display', read_only=True)
 
     class Meta:
-        model  = Actividad
+        model  = Activity
         fields = [
             'id', 'codigo', 'nombre', 'tipo', 'tipo_display',
             'unidad_medida', 'costo_unitario_base', 'activo', 'created_at',
@@ -369,12 +374,12 @@ class ActividadListSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_at']
 
 
-class ActividadDetailSerializer(serializers.ModelSerializer):
+class ActivityDetailSerializer(serializers.ModelSerializer):
     """Serializer de detalle de actividad — todos los campos."""
     tipo_display = serializers.CharField(source='get_tipo_display', read_only=True)
 
     class Meta:
-        model  = Actividad
+        model  = Activity
         fields = [
             'id', 'codigo', 'nombre', 'descripcion',
             'tipo', 'tipo_display', 'unidad_medida', 'costo_unitario_base',
@@ -384,14 +389,14 @@ class ActividadDetailSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_at', 'updated_at']
 
 
-class ActividadCreateUpdateSerializer(serializers.ModelSerializer):
+class ActivityCreateUpdateSerializer(serializers.ModelSerializer):
     """Serializer de escritura para el catálogo de actividades."""
     codigo         = serializers.CharField(max_length=50, required=False, allow_blank=True)
     # consecutivo_id: UUID del ConfiguracionConsecutivo a usar para generar el código
     consecutivo_id = serializers.UUIDField(required=False, allow_null=True, write_only=True)
 
     class Meta:
-        model  = Actividad
+        model  = Activity
         fields = [
             'codigo', 'nombre', 'descripcion',
             'tipo', 'unidad_medida', 'costo_unitario_base',
@@ -406,10 +411,10 @@ class ActividadCreateUpdateSerializer(serializers.ModelSerializer):
 
 
 # ──────────────────────────────────────────────
-# Actividades — asignación a proyecto
+# ProjectActivity — asignación a proyecto
 # ──────────────────────────────────────────────
 
-class ActividadProyectoSerializer(serializers.ModelSerializer):
+class ProjectActivitySerializer(serializers.ModelSerializer):
     """Serializer de lectura para actividades asignadas a un proyecto."""
     actividad_codigo       = serializers.CharField(source='actividad.codigo', read_only=True)
     actividad_nombre       = serializers.CharField(source='actividad.nombre', read_only=True)
@@ -419,7 +424,7 @@ class ActividadProyectoSerializer(serializers.ModelSerializer):
     presupuesto_total      = serializers.SerializerMethodField()
 
     class Meta:
-        model  = ActividadProyecto
+        model  = ProjectActivity
         fields = [
             'id', 'proyecto', 'actividad',
             'actividad_codigo', 'actividad_nombre',
@@ -431,17 +436,17 @@ class ActividadProyectoSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'proyecto', 'created_at']
 
-    def get_presupuesto_total(self, obj: ActividadProyecto) -> str:
+    def get_presupuesto_total(self, obj: ProjectActivity) -> str:
         return str(obj.presupuesto_total)
 
 
-class ActividadProyectoCreateUpdateSerializer(serializers.ModelSerializer):
+class ProjectActivityCreateSerializer(serializers.ModelSerializer):
     """Serializer de escritura para asignar/actualizar actividades en un proyecto.
     porcentaje_avance es auto-calculado por señales — no se acepta en escritura.
     """
 
     class Meta:
-        model  = ActividadProyecto
+        model  = ProjectActivity
         fields = [
             'actividad', 'fase',
             'cantidad_planificada', 'cantidad_ejecutada',
@@ -470,7 +475,7 @@ class ActividadProyectoCreateUpdateSerializer(serializers.ModelSerializer):
             cantidad_ejecutada is not None
             and Decimal(str(cantidad_ejecutada)) > Decimal('0')
             and proyecto
-            and proyecto.estado not in ('en_ejecucion', 'suspendido')
+            and proyecto.estado not in ('in_progress', 'suspended')
         ):
             raise serializers.ValidationError({
                 'cantidad_ejecutada': (
@@ -482,14 +487,14 @@ class ActividadProyectoCreateUpdateSerializer(serializers.ModelSerializer):
 
 
 # ──────────────────────────────────────────────
-# Configuración del módulo
+# ModuleSettings
 # ──────────────────────────────────────────────
 
-class ConfiguracionModuloSerializer(serializers.ModelSerializer):
+class ModuleSettingsSerializer(serializers.ModelSerializer):
     """Serializer para la configuración del módulo de proyectos."""
 
     class Meta:
-        model  = ConfiguracionModulo
+        model  = ModuleSettings
         fields = [
             'requiere_sync_saiopen_para_ejecucion',
             'dias_alerta_vencimiento',
@@ -498,15 +503,15 @@ class ConfiguracionModuloSerializer(serializers.ModelSerializer):
 
 
 # ──────────────────────────────────────────────
-# ActividadSaiopen — catálogo
+# SaiopenActivity — catálogo
 # ──────────────────────────────────────────────
 
-class ActividadSaiopenListSerializer(serializers.ModelSerializer):
-    """Serializer de listado de ActividadSaiopen — campos mínimos para autocomplete."""
+class SaiopenActivitySerializer(serializers.ModelSerializer):
+    """Serializer de listado de SaiopenActivity — campos mínimos para autocomplete."""
     unidad_medida_display = serializers.CharField(source='get_unidad_medida_display', read_only=True)
 
     class Meta:
-        model  = ActividadSaiopen
+        model  = SaiopenActivity
         fields = [
             'id', 'codigo', 'nombre', 'unidad_medida', 'unidad_medida_display',
             'costo_unitario_base', 'activo',
@@ -514,12 +519,12 @@ class ActividadSaiopenListSerializer(serializers.ModelSerializer):
         read_only_fields = ['id']
 
 
-class ActividadSaiopenDetailSerializer(serializers.ModelSerializer):
-    """Serializer de detalle de ActividadSaiopen — todos los campos."""
+class SaiopenActivityDetailSerializer(serializers.ModelSerializer):
+    """Serializer de detalle de SaiopenActivity — todos los campos."""
     unidad_medida_display = serializers.CharField(source='get_unidad_medida_display', read_only=True)
 
     class Meta:
-        model  = ActividadSaiopen
+        model  = SaiopenActivity
         fields = [
             'id', 'codigo', 'nombre', 'descripcion',
             'unidad_medida', 'unidad_medida_display',
@@ -530,12 +535,12 @@ class ActividadSaiopenDetailSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_at', 'updated_at']
 
 
-class ActividadSaiopenCreateUpdateSerializer(serializers.ModelSerializer):
-    """Serializer de escritura para ActividadSaiopen."""
+class SaiopenActivityCreateUpdateSerializer(serializers.ModelSerializer):
+    """Serializer de escritura para SaiopenActivity."""
     codigo = serializers.CharField(max_length=50, required=False, allow_blank=True)
 
     class Meta:
-        model  = ActividadSaiopen
+        model  = SaiopenActivity
         fields = [
             'codigo', 'nombre', 'descripcion',
             'unidad_medida', 'costo_unitario_base',
@@ -548,28 +553,28 @@ class ActividadSaiopenCreateUpdateSerializer(serializers.ModelSerializer):
 
 
 # ──────────────────────────────────────────────
-# Sistema de Tareas
+# Task system
 # ──────────────────────────────────────────────
 
-class TareaTagSerializer(serializers.ModelSerializer):
+class TaskTagSerializer(serializers.ModelSerializer):
     """Serializer para tags de tareas."""
 
     class Meta:
-        model = TareaTag
+        model = TaskTag
         fields = ['id', 'nombre', 'color', 'created_at', 'updated_at']
         read_only_fields = ['id', 'created_at', 'updated_at']
 
 
-class TareaDependenciaSerializer(serializers.ModelSerializer):
+class TaskDependencySerializer(serializers.ModelSerializer):
     """
-    Serializer para TareaDependencia.
+    Serializer para TaskDependency.
     Incluye datos básicos de predecesora/sucesora para el frontend.
     """
     tarea_predecesora_detail = serializers.SerializerMethodField()
     tarea_sucesora_detail    = serializers.SerializerMethodField()
 
     class Meta:
-        model  = TareaDependencia
+        model  = TaskDependency
         fields = [
             'id',
             'tarea_predecesora', 'tarea_predecesora_detail',
@@ -579,18 +584,29 @@ class TareaDependenciaSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id']
 
-    def get_tarea_predecesora_detail(self, obj: TareaDependencia) -> dict:
+    def get_tarea_predecesora_detail(self, obj: TaskDependency) -> dict:
         t = obj.tarea_predecesora
         return {'id': str(t.id), 'nombre': t.nombre, 'codigo': t.codigo}
 
-    def get_tarea_sucesora_detail(self, obj: TareaDependencia) -> dict:
+    def get_tarea_sucesora_detail(self, obj: TaskDependency) -> dict:
         t = obj.tarea_sucesora
         return {'id': str(t.id), 'nombre': t.nombre, 'codigo': t.codigo}
 
 
-class TareaSerializer(serializers.ModelSerializer):
+class TaskDependencyCreateSerializer(serializers.ModelSerializer):
+    """Serializer de escritura para crear dependencias entre tareas."""
+
+    class Meta:
+        model  = TaskDependency
+        fields = [
+            'tarea_predecesora', 'tarea_sucesora',
+            'tipo_dependencia', 'retraso_dias',
+        ]
+
+
+class TaskDetailSerializer(serializers.ModelSerializer):
     """
-    Serializer para Tarea con nested subtareas y followers.
+    Serializer para Task con nested subtareas y followers.
     """
 
     # Campos calculados (read-only)
@@ -607,7 +623,7 @@ class TareaSerializer(serializers.ModelSerializer):
     cliente_detail            = serializers.SerializerMethodField()
     actividad_saiopen_detail  = serializers.SerializerMethodField()
     actividad_proyecto_detail = serializers.SerializerMethodField()
-    tags_detail               = TareaTagSerializer(source='tags', many=True, read_only=True)
+    tags_detail               = TaskTagSerializer(source='tags', many=True, read_only=True)
     subtareas_detail          = serializers.SerializerMethodField()
     followers_detail          = serializers.SerializerMethodField()
     modo_medicion             = serializers.ReadOnlyField()
@@ -615,7 +631,7 @@ class TareaSerializer(serializers.ModelSerializer):
     sucesoras_detail          = serializers.SerializerMethodField()
 
     class Meta:
-        model = Tarea
+        model = Task
         fields = [
             'id', 'codigo', 'nombre', 'descripcion',
             'proyecto', 'proyecto_detail',
@@ -720,16 +736,16 @@ class TareaSerializer(serializers.ModelSerializer):
         """Nested subtareas (máximo 2 niveles para performance)."""
         if obj.nivel_jerarquia >= 2:
             return []
-        subtareas = obj.subtareas.all()
-        return TareaSerializer(subtareas, many=True, context=self.context).data
+        subtareas = obj.subtasks.all()
+        return TaskDetailSerializer(subtareas, many=True, context=self.context).data
 
     def get_predecesoras_detail(self, obj):
-        deps = obj.predecesoras.select_related('tarea_predecesora').all()
-        return TareaDependenciaSerializer(deps, many=True, context=self.context).data
+        deps = obj.predecessors.select_related('tarea_predecesora').all()
+        return TaskDependencySerializer(deps, many=True, context=self.context).data
 
     def get_sucesoras_detail(self, obj):
-        deps = obj.sucesoras.select_related('tarea_sucesora').all()
-        return TareaDependenciaSerializer(deps, many=True, context=self.context).data
+        deps = obj.successors.select_related('tarea_sucesora').all()
+        return TaskDependencySerializer(deps, many=True, context=self.context).data
 
     def get_es_camino_critico(self, obj) -> bool:
         """
@@ -792,7 +808,7 @@ class TareaSerializer(serializers.ModelSerializer):
         if fase and 'proyecto' not in validated_data:
             validated_data['proyecto'] = fase.proyecto
 
-        tarea = Tarea.all_objects.create(**validated_data)
+        tarea = Task.all_objects.create(**validated_data)
 
         # Auto-agregar creador como follower
         request = self.context.get('request')
@@ -827,18 +843,91 @@ class TareaSerializer(serializers.ModelSerializer):
         return instance
 
 
+class TaskListSerializer(serializers.ModelSerializer):
+    """Serializer de listado de tareas — campos mínimos para tabla."""
+    tags_detail = TaskTagSerializer(source='tags', many=True, read_only=True)
+
+    class Meta:
+        model = Task
+        fields = [
+            'id', 'codigo', 'nombre', 'proyecto', 'fase',
+            'responsable', 'prioridad', 'estado',
+            'fecha_inicio', 'fecha_fin', 'fecha_limite',
+            'porcentaje_completado', 'horas_estimadas', 'horas_registradas',
+            'es_vencida', 'tiene_subtareas', 'nivel_jerarquia',
+            'tags', 'tags_detail',
+            'created_at',
+        ]
+        read_only_fields = ['id', 'codigo', 'created_at']
+
+
+class TaskCreateUpdateSerializer(serializers.ModelSerializer):
+    """Serializer de escritura para tareas."""
+
+    class Meta:
+        model  = Task
+        fields = [
+            'nombre', 'descripcion',
+            'fase', 'tarea_padre',
+            'cliente', 'actividad_saiopen', 'actividad_proyecto',
+            'cantidad_objetivo',
+            'responsable', 'followers',
+            'prioridad', 'tags',
+            'fecha_inicio', 'fecha_fin', 'fecha_limite',
+            'estado', 'porcentaje_completado',
+            'horas_estimadas',
+            'es_recurrente', 'frecuencia_recurrencia',
+        ]
+
+    def validate(self, data):
+        fecha_inicio = data.get('fecha_inicio')
+        fecha_fin    = data.get('fecha_fin')
+        if fecha_inicio and fecha_fin and fecha_inicio >= fecha_fin:
+            raise serializers.ValidationError({
+                'fecha_fin': 'Fecha fin debe ser posterior a fecha inicio'
+            })
+        return data
+
+
+class TaskKanbanSerializer(serializers.ModelSerializer):
+    """Serializer compacto para vista Kanban de tareas."""
+    tags_detail        = TaskTagSerializer(source='tags', many=True, read_only=True)
+    responsable_detail = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Task
+        fields = [
+            'id', 'codigo', 'nombre',
+            'responsable', 'responsable_detail',
+            'prioridad', 'estado',
+            'fecha_limite', 'es_vencida',
+            'porcentaje_completado',
+            'tags', 'tags_detail',
+        ]
+        read_only_fields = ['id', 'codigo']
+
+    def get_responsable_detail(self, obj):
+        if obj.responsable:
+            return {
+                'id': str(obj.responsable.id),
+                'nombre': obj.responsable.full_name,
+                'email': obj.responsable.email,
+            }
+        return None
+
+
 # ──────────────────────────────────────────────
-# Timesheet — SesionTrabajo
+# WorkSession
 # ──────────────────────────────────────────────
 
-class SesionTrabajoSerializer(serializers.ModelSerializer):
+class WorkSessionSerializer(serializers.ModelSerializer):
     """Serializer para sesiones de trabajo (cronómetro)."""
     duracion_horas = serializers.SerializerMethodField()
     usuario_detail = UserSummarySerializer(source='usuario', read_only=True)
     tarea_detail   = serializers.SerializerMethodField()
 
     class Meta:
-        model = SesionTrabajo
+        model = WorkSession
         fields = [
             'id',
             'tarea', 'tarea_detail',
@@ -854,10 +943,10 @@ class SesionTrabajoSerializer(serializers.ModelSerializer):
             'created_at', 'updated_at',
         ]
 
-    def get_duracion_horas(self, obj: SesionTrabajo) -> str:
+    def get_duracion_horas(self, obj: WorkSession) -> str:
         return str(obj.duracion_horas.quantize(Decimal('0.01')))
 
-    def get_tarea_detail(self, obj: SesionTrabajo) -> dict:
+    def get_tarea_detail(self, obj: WorkSession) -> dict:
         return {
             'id':     str(obj.tarea.id),
             'codigo': obj.tarea.codigo,
@@ -866,7 +955,7 @@ class SesionTrabajoSerializer(serializers.ModelSerializer):
 
 
 # ──────────────────────────────────────────────
-# Timesheet — TimesheetEntry
+# TimesheetEntry
 # ──────────────────────────────────────────────
 
 class TimesheetEntrySerializer(serializers.ModelSerializer):
@@ -928,3 +1017,42 @@ class TimesheetEntryCreateSerializer(serializers.Serializer):
         if value > 24:
             raise serializers.ValidationError('Las horas no pueden superar 24 por día.')
         return value
+
+
+# ============================================================
+# ALIASES DE COMPATIBILIDAD — eliminar en REFT-10
+# ============================================================
+ProyectoListSerializer = ProjectListSerializer
+ProyectoDetailSerializer = ProjectDetailSerializer
+ProyectoCreateUpdateSerializer = ProjectCreateUpdateSerializer
+CambiarEstadoSerializer = ChangeStatusSerializer
+FaseListSerializer = PhaseListSerializer
+FaseDetailSerializer = PhaseDetailSerializer
+FaseCreateUpdateSerializer = PhaseCreateUpdateSerializer
+TerceroProyectoSerializer = ProjectStakeholderSerializer
+TerceroProyectoCreateSerializer = ProjectStakeholderCreateSerializer
+DocumentoContableListSerializer = AccountingDocumentListSerializer
+DocumentoContableDetailSerializer = AccountingDocumentDetailSerializer
+HitoSerializer = MilestoneSerializer
+HitoCreateSerializer = MilestoneCreateSerializer
+GenerarFacturaSerializer = GenerateInvoiceSerializer
+ActividadListSerializer = ActivityListSerializer
+ActividadDetailSerializer = ActivityDetailSerializer
+ActividadCreateUpdateSerializer = ActivityCreateUpdateSerializer
+ActividadProyectoSerializer = ProjectActivitySerializer
+ActividadProyectoCreateSerializer = ProjectActivityCreateSerializer
+ActividadSaiopenSerializer = SaiopenActivitySerializer
+TareaTagSerializer = TaskTagSerializer
+TareaListSerializer = TaskListSerializer
+TareaDetailSerializer = TaskDetailSerializer
+TareaCreateUpdateSerializer = TaskCreateUpdateSerializer
+TareaKanbanSerializer = TaskKanbanSerializer
+SesionTrabajoSerializer = WorkSessionSerializer
+TareaDependenciaSerializer = TaskDependencySerializer
+TareaDependenciaCreateSerializer = TaskDependencyCreateSerializer
+ConfiguracionModuloSerializer = ModuleSettingsSerializer
+# TareaSerializer alias apunta al serializer de detalle completo
+TareaSerializer = TaskDetailSerializer
+ActividadSaiopenListSerializer = SaiopenActivitySerializer
+ActividadSaiopenDetailSerializer = SaiopenActivityDetailSerializer
+ActividadSaiopenCreateUpdateSerializer = SaiopenActivityCreateUpdateSerializer

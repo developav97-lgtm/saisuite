@@ -30,7 +30,7 @@ def make_user(company, email='gdoc@test.com'):
 def make_proyecto(company, gerente, codigo='DOC-PRY-001'):
     return Proyecto.all_objects.create(
         company=company, gerente=gerente, codigo=codigo,
-        nombre='Doc Proyecto', tipo='obra_civil',
+        nombre='Doc Proyecto', tipo='civil_works',
         cliente_id='111', cliente_nombre='C',
         fecha_inicio_planificada=date.today(),
         fecha_fin_planificada=date.today() + timedelta(days=90),
@@ -47,7 +47,7 @@ def make_fase(proyecto, orden=1):
     )
 
 
-def make_doc(project, saiopen_id='DOC-001', tipo='factura_venta', fase=None, **kwargs):
+def make_doc(project, saiopen_id='DOC-001', tipo='sales_invoice', fase=None, **kwargs):
     defaults = dict(
         numero_documento='FAC-001',
         fecha_documento=date.today(),
@@ -95,9 +95,9 @@ class TestDocumentoContableModel:
 
     def test_tipos_documento_disponibles(self):
         tipos = [t.value for t in TipoDocumento]
-        assert 'factura_venta' in tipos
-        assert 'factura_compra' in tipos
-        assert 'orden_compra' in tipos
+        assert 'sales_invoice' in tipos
+        assert 'purchase_invoice' in tipos
+        assert 'purchase_order' in tipos
         assert 'recibo_caja' in tipos
         assert 'comprobante_egreso' in tipos
         assert 'nomina' in tipos
@@ -113,7 +113,7 @@ class TestDocumentoContableModel:
             DocumentoContable.all_objects.create(
                 company=c, proyecto=p,
                 saiopen_doc_id='SAI-DUP-001',
-                tipo_documento='factura_venta',
+                tipo_documento='sales_invoice',
                 numero_documento='FAC-DUP',
                 fecha_documento=date.today(),
                 tercero_id='111', tercero_nombre='X',
@@ -149,8 +149,8 @@ class TestDocumentoContableModel:
         c = make_company('906001009')
         g = make_user(c, 'gdoc9@test.com')
         p = make_proyecto(c, g, 'DOC-PRY-009')
-        make_doc(p, 'SAI-001', tipo='factura_venta')
-        make_doc(p, 'SAI-002', tipo='orden_compra')
+        make_doc(p, 'SAI-001', tipo='sales_invoice')
+        make_doc(p, 'SAI-002', tipo='purchase_order')
         make_doc(p, 'SAI-003', tipo='anticipo')
         count = DocumentoContable.all_objects.filter(proyecto=p).count()
         assert count == 3
@@ -182,7 +182,7 @@ class TestDocumentoContableModel:
         c = make_company('906001012')
         g = make_user(c, 'gdoc12@test.com')
         p = make_proyecto(c, g, 'DOC-PRY-012')
-        doc = make_doc(p, tipo='factura_compra', numero_documento='FC-999')
+        doc = make_doc(p, tipo='purchase_invoice', numero_documento='FC-999')
         s = str(doc)
         assert 'FC-999' in s
 

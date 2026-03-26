@@ -27,7 +27,7 @@ def crear_usuario(company, email='gfv@test.com', role='company_admin'):
 
 def crear_proyecto_db(company, gerente, codigo='FV-PRY-001', **kwargs):
     defaults = dict(
-        nombre='Proyecto FV', tipo='obra_civil',
+        nombre='Proyecto FV', tipo='civil_works',
         cliente_id='900111', cliente_nombre='Cliente',
         fecha_inicio_planificada='2026-04-01',
         fecha_fin_planificada='2026-12-31',
@@ -55,7 +55,7 @@ class FaseListOrdenamientoTest(APITestCase):
         self.user     = crear_usuario(self.company)
         self.proyecto = crear_proyecto_db(self.company, self.user)
         self.client.force_authenticate(user=self.user)
-        self.url = f'/api/v1/proyectos/{self.proyecto.id}/fases/'
+        self.url = f'/api/v1/projects/{self.proyecto.id}/phases/'
 
     def _results(self, resp):
         """Desempaca paginación si existe, si no devuelve resp.data directamente."""
@@ -115,7 +115,7 @@ class FaseDetailUpdateTest(APITestCase):
         self.proyecto = crear_proyecto_db(self.company, self.user, 'FV-PRY-DET')
         self.fase     = crear_fase_db(self.company, self.proyecto, orden=1)
         self.client.force_authenticate(user=self.user)
-        self.url = f'/api/v1/proyectos/fases/{self.fase.id}/'
+        self.url = f'/api/v1/projects/phases/{self.fase.id}/'
 
     def test_detalle_incluye_todos_los_campos_presupuesto(self):
         resp = self.client.get(self.url)

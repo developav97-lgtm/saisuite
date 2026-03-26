@@ -3,26 +3,26 @@ SaiSuite — Proyectos: Admin
 """
 from django.contrib import admin
 from apps.proyectos.models import (
-    Proyecto, Fase, TerceroProyecto, DocumentoContable, Hito,
-    Actividad, ActividadProyecto, Tarea, TareaTag, SesionTrabajo,
+    Project, Phase, ProjectStakeholder, AccountingDocument, Milestone,
+    Activity, ProjectActivity, Task, TaskTag, WorkSession,
 )
 
 
-class FaseInline(admin.TabularInline):
-    model       = Fase
+class PhaseInline(admin.TabularInline):
+    model       = Phase
     extra       = 0
     fields      = ['nombre', 'orden', 'porcentaje_avance', 'activo']
     show_change_link = True
 
 
-@admin.register(Proyecto)
-class ProyectoAdmin(admin.ModelAdmin):
+@admin.register(Project)
+class ProjectAdmin(admin.ModelAdmin):
     list_display   = ['codigo', 'nombre', 'company', 'tipo', 'estado', 'gerente', 'presupuesto_total', 'activo']
     list_filter    = ['estado', 'tipo', 'activo', 'sincronizado_con_saiopen']
     search_fields  = ['codigo', 'nombre', 'cliente_nombre']
     raw_id_fields  = ['gerente', 'coordinador']
     readonly_fields = ['id', 'created_at', 'updated_at']
-    inlines        = [FaseInline]
+    inlines        = [PhaseInline]
 
     fieldsets = (
         ('Información general', {
@@ -56,8 +56,8 @@ class ProyectoAdmin(admin.ModelAdmin):
     )
 
 
-@admin.register(Fase)
-class FaseAdmin(admin.ModelAdmin):
+@admin.register(Phase)
+class PhaseAdmin(admin.ModelAdmin):
     list_display  = ['nombre', 'proyecto', 'orden', 'porcentaje_avance', 'activo']
     list_filter   = ['activo']
     search_fields = ['nombre', 'proyecto__codigo']
@@ -65,38 +65,38 @@ class FaseAdmin(admin.ModelAdmin):
     readonly_fields = ['id', 'created_at', 'updated_at']
 
 
-@admin.register(TerceroProyecto)
-class TerceroProyectoAdmin(admin.ModelAdmin):
+@admin.register(ProjectStakeholder)
+class ProjectStakeholderAdmin(admin.ModelAdmin):
     list_display  = ['tercero_nombre', 'rol', 'proyecto', 'activo']
     list_filter   = ['rol', 'activo']
     search_fields = ['tercero_nombre', 'tercero_id', 'proyecto__codigo']
 
 
-@admin.register(DocumentoContable)
-class DocumentoContableAdmin(admin.ModelAdmin):
+@admin.register(AccountingDocument)
+class AccountingDocumentAdmin(admin.ModelAdmin):
     list_display  = ['numero_documento', 'tipo_documento', 'fecha_documento', 'proyecto', 'valor_neto']
     list_filter   = ['tipo_documento']
     search_fields = ['numero_documento', 'saiopen_doc_id', 'tercero_nombre']
     readonly_fields = ['id', 'created_at', 'updated_at', 'sincronizado_desde_saiopen']
 
 
-@admin.register(Hito)
-class HitoAdmin(admin.ModelAdmin):
+@admin.register(Milestone)
+class MilestoneAdmin(admin.ModelAdmin):
     list_display  = ['nombre', 'proyecto', 'porcentaje_proyecto', 'valor_facturar', 'facturado']
     list_filter   = ['facturable', 'facturado']
     search_fields = ['nombre', 'proyecto__codigo']
 
 
-@admin.register(Actividad)
-class ActividadAdmin(admin.ModelAdmin):
+@admin.register(Activity)
+class ActivityAdmin(admin.ModelAdmin):
     list_display  = ['codigo', 'nombre', 'company', 'tipo', 'unidad_medida', 'costo_unitario_base', 'activo']
     list_filter   = ['tipo', 'activo', 'sincronizado_con_saiopen']
     search_fields = ['codigo', 'nombre']
     readonly_fields = ['id', 'created_at', 'updated_at']
 
 
-@admin.register(ActividadProyecto)
-class ActividadProyectoAdmin(admin.ModelAdmin):
+@admin.register(ProjectActivity)
+class ProjectActivityAdmin(admin.ModelAdmin):
     list_display  = ['actividad', 'proyecto', 'fase', 'cantidad_planificada', 'cantidad_ejecutada', 'costo_unitario', 'porcentaje_avance']
     list_filter   = ['actividad__tipo']
     search_fields = ['actividad__codigo', 'actividad__nombre', 'proyecto__codigo']
@@ -104,8 +104,8 @@ class ActividadProyectoAdmin(admin.ModelAdmin):
     readonly_fields = ['id', 'created_at', 'updated_at']
 
 
-@admin.register(Tarea)
-class TareaAdmin(admin.ModelAdmin):
+@admin.register(Task)
+class TaskAdmin(admin.ModelAdmin):
     list_display = [
         'codigo', 'nombre', 'proyecto', 'responsable',
         'estado', 'prioridad', 'porcentaje_completado', 'fecha_limite'
@@ -150,16 +150,16 @@ class TareaAdmin(admin.ModelAdmin):
     )
 
 
-@admin.register(TareaTag)
-class TareaTagAdmin(admin.ModelAdmin):
+@admin.register(TaskTag)
+class TaskTagAdmin(admin.ModelAdmin):
     list_display = ['nombre', 'color', 'company']
     list_filter = ['color', 'company']
     search_fields = ['nombre']
     readonly_fields = ['id', 'created_at', 'updated_at']
 
 
-@admin.register(SesionTrabajo)
-class SesionTrabajoAdmin(admin.ModelAdmin):
+@admin.register(WorkSession)
+class WorkSessionAdmin(admin.ModelAdmin):
     list_display  = ['tarea', 'usuario', 'inicio', 'fin', 'duracion_horas', 'estado']
     list_filter   = ['estado', 'inicio']
     search_fields = ['tarea__codigo', 'tarea__nombre', 'usuario__email']

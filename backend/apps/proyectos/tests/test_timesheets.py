@@ -56,8 +56,8 @@ def make_proyecto(company, gerente):
         company=company, gerente=gerente,
         codigo=f'TS-{_nit()}',
         nombre='Proyecto Timesheet',
-        tipo='servicios',
-        estado='en_ejecucion',
+        tipo='services',
+        estado='in_progress',
         cliente_id='777', cliente_nombre='Cliente TS',
         fecha_inicio_planificada=date.today(),
         fecha_fin_planificada=date.today() + timedelta(days=90),
@@ -78,7 +78,7 @@ def make_fase(company, proyecto):
 def make_tarea(company, proyecto, fase, nombre='Tarea TS'):
     return Tarea.objects.create(
         company=company, proyecto=proyecto, fase=fase,
-        nombre=nombre, estado='en_progreso',
+        nombre=nombre, estado='in_progress',
         horas_estimadas=Decimal('8'),
     )
 
@@ -275,7 +275,7 @@ class TestTimesheetViewSet(APITestCase):
         self.tarea     = make_tarea(self.company, self.proyecto, self.fase)
         token = RefreshToken.for_user(self.empleado)
         self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token.access_token}')
-        self.base_url = '/api/v1/proyectos/timesheets/'
+        self.base_url = '/api/v1/projects/timesheets/'
 
     # ── list ──────────────────────────────────────────────────────────────────
 
@@ -428,61 +428,61 @@ class TestTimerFlujo(APITestCase):
 
     def test_iniciar_sesion_retorna_201(self):
         resp = self.client.post(
-            f'/api/v1/proyectos/tareas/{self.tarea.id}/sesiones/iniciar/'
+            f'/api/v1/projects/tasks/{self.tarea.id}/sesiones/iniciar/'
         )
         self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(resp.data['estado'], 'activa')
+        self.assertEqual(resp.data['estado'], 'active')
 
     def test_no_puede_iniciar_dos_sesiones(self):
         self.client.post(
-            f'/api/v1/proyectos/tareas/{self.tarea.id}/sesiones/iniciar/'
+            f'/api/v1/projects/tasks/{self.tarea.id}/sesiones/iniciar/'
         )
         resp = self.client.post(
-            f'/api/v1/proyectos/tareas/{self.tarea.id}/sesiones/iniciar/'
+            f'/api/v1/projects/tasks/{self.tarea.id}/sesiones/iniciar/'
         )
         self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_pausar_sesion_activa(self):
         resp_inicio = self.client.post(
-            f'/api/v1/proyectos/tareas/{self.tarea.id}/sesiones/iniciar/'
+            f'/api/v1/projects/tasks/{self.tarea.id}/sesiones/iniciar/'
         )
         sesion_id = resp_inicio.data['id']
         resp = self.client.post(
-            f'/api/v1/proyectos/tareas/{self.tarea.id}/sesiones/{sesion_id}/pausar/'
+            f'/api/v1/projects/tasks/{self.tarea.id}/sesiones/{sesion_id}/pausar/'
         )
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
-        self.assertEqual(resp.data['estado'], 'pausada')
+        self.assertEqual(resp.data['estado'], 'paused')
 
     def test_reanudar_sesion_pausada(self):
         resp_inicio = self.client.post(
-            f'/api/v1/proyectos/tareas/{self.tarea.id}/sesiones/iniciar/'
+            f'/api/v1/projects/tasks/{self.tarea.id}/sesiones/iniciar/'
         )
         sesion_id = resp_inicio.data['id']
         self.client.post(
-            f'/api/v1/proyectos/tareas/{self.tarea.id}/sesiones/{sesion_id}/pausar/'
+            f'/api/v1/projects/tasks/{self.tarea.id}/sesiones/{sesion_id}/pausar/'
         )
         resp = self.client.post(
-            f'/api/v1/proyectos/tareas/{self.tarea.id}/sesiones/{sesion_id}/reanudar/'
+            f'/api/v1/projects/tasks/{self.tarea.id}/sesiones/{sesion_id}/reanudar/'
         )
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
-        self.assertEqual(resp.data['estado'], 'activa')
+        self.assertEqual(resp.data['estado'], 'active')
 
     def test_detener_sesion_actualiza_horas_tarea(self):
         resp_inicio = self.client.post(
-            f'/api/v1/proyectos/tareas/{self.tarea.id}/sesiones/iniciar/'
+            f'/api/v1/projects/tasks/{self.tarea.id}/sesiones/iniciar/'
         )
         sesion_id = resp_inicio.data['id']
         resp = self.client.post(
-            f'/api/v1/proyectos/tareas/{self.tarea.id}/sesiones/{sesion_id}/detener/',
+            f'/api/v1/projects/tasks/{self.tarea.id}/sesiones/{sesion_id}/detener/',
             {'notas': 'Trabajo completado'},
         )
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
-        self.assertEqual(resp.data['estado'], 'finalizada')
+        self.assertEqual(resp.data['estado'], 'finished')
 
     def test_sesion_activa_endpoint(self):
         self.client.post(
-            f'/api/v1/proyectos/tareas/{self.tarea.id}/sesiones/iniciar/'
+            f'/api/v1/projects/tasks/{self.tarea.id}/sesiones/iniciar/'
         )
-        resp = self.client.get('/api/v1/proyectos/tareas/sesion-activa/')
+        resp = self.client.get('/api/v1/projects/tasks/sesion-activa/')
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
-        self.assertEqual(resp.data['estado'], 'activa')
+        self.assertEqual(resp.data['estado'], 'active')

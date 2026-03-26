@@ -43,7 +43,7 @@ def crear_usuario(company, email='gsvc@test.com', role='company_admin'):
 
 def crear_proyecto(company, gerente, codigo='SVC-PRY-001', **kwargs):
     defaults = dict(
-        nombre='Proyecto SVC', tipo='obra_civil',
+        nombre='Proyecto SVC', tipo='civil_works',
         cliente_id='900111', cliente_nombre='Cliente',
         fecha_inicio_planificada='2026-04-01',
         fecha_fin_planificada='2026-12-31',
@@ -260,7 +260,7 @@ class ProyectoServiceGapTest(TestCase):
         # Hay PRY-001 ya creado; el siguiente debe ser PRY-002
         crear_proyecto(self.company, self.user, 'PRY-001', nombre='Base')
         data = {
-            'nombre': 'Segundo', 'tipo': 'servicios',
+            'nombre': 'Segundo', 'tipo': 'services',
             'cliente_id': '111', 'cliente_nombre': 'X',
             'fecha_inicio_planificada': '2026-04-01',
             'fecha_fin_planificada': '2026-12-31',
@@ -274,7 +274,7 @@ class ProyectoServiceGapTest(TestCase):
         c2 = crear_empresa('Sin Proyectos', '910000005')
         u2 = crear_usuario(c2, 'gsinpry@test.com')
         data = {
-            'nombre': 'Primero', 'tipo': 'servicios',
+            'nombre': 'Primero', 'tipo': 'services',
             'cliente_id': '111', 'cliente_nombre': 'X',
             'fecha_inicio_planificada': '2026-04-01',
             'fecha_fin_planificada': '2026-12-31',
@@ -287,7 +287,7 @@ class ProyectoServiceGapTest(TestCase):
     def test_validar_coordinador_misma_empresa(self):
         coord = crear_usuario(self.company, 'gcoord@test.com')
         data = {
-            'nombre': 'Con coord', 'tipo': 'servicios',
+            'nombre': 'Con coord', 'tipo': 'services',
             'cliente_id': '111', 'cliente_nombre': 'X',
             'fecha_inicio_planificada': '2026-04-01',
             'fecha_fin_planificada': '2026-12-31',
@@ -302,7 +302,7 @@ class ProyectoServiceGapTest(TestCase):
         c2 = crear_empresa('Otra', '910000006')
         u2 = crear_usuario(c2, 'gotro@test.com')
         data = {
-            'nombre': 'X', 'tipo': 'servicios',
+            'nombre': 'X', 'tipo': 'services',
             'cliente_id': '111', 'cliente_nombre': 'X',
             'fecha_inicio_planificada': '2026-04-01',
             'fecha_fin_planificada': '2026-12-31',
@@ -340,7 +340,7 @@ class TerceroProyectoServiceGapTest(TestCase):
     def test_list_terceros_todos(self):
         TerceroProyecto.all_objects.create(
             company=self.company, proyecto=self.proyecto,
-            tercero_id='111', tercero_nombre='A', rol='cliente',
+            tercero_id='111', tercero_nombre='A', rol='client',
         )
         qs = TerceroProyectoService.list_terceros(self.proyecto)
         self.assertEqual(qs.count(), 1)
@@ -349,11 +349,11 @@ class TerceroProyectoServiceGapTest(TestCase):
         fase = crear_fase(self.company, self.proyecto)
         TerceroProyecto.all_objects.create(
             company=self.company, proyecto=self.proyecto,
-            tercero_id='111', tercero_nombre='A', rol='cliente', fase=fase,
+            tercero_id='111', tercero_nombre='A', rol='client', fase=fase,
         )
         TerceroProyecto.all_objects.create(
             company=self.company, proyecto=self.proyecto,
-            tercero_id='222', tercero_nombre='B', rol='proveedor', fase=None,
+            tercero_id='222', tercero_nombre='B', rol='vendor', fase=None,
         )
         qs = TerceroProyectoService.list_terceros(self.proyecto, fase_id=str(fase.id))
         self.assertEqual(qs.count(), 1)
@@ -362,11 +362,11 @@ class TerceroProyectoServiceGapTest(TestCase):
     def test_vincular_tercero_duplicado_lanza_error(self):
         TerceroProyecto.all_objects.create(
             company=self.company, proyecto=self.proyecto,
-            tercero_id='333', tercero_nombre='C', rol='cliente', fase=None,
+            tercero_id='333', tercero_nombre='C', rol='client', fase=None,
         )
         with self.assertRaises(ValidationError):
             TerceroProyectoService.vincular_tercero(self.proyecto, {
-                'tercero_id': '333', 'tercero_nombre': 'C', 'rol': 'cliente', 'fase': None,
+                'tercero_id': '333', 'tercero_nombre': 'C', 'rol': 'client', 'fase': None,
             })
 
 
@@ -403,7 +403,7 @@ class ActividadServiceTest(TestCase):
     def test_create_actividad_codigo_manual(self):
         data = {
             'codigo': 'ACT-MANUAL',
-            'nombre': 'Manual', 'tipo': 'mano_obra', 'unidad_medida': 'hora',
+            'nombre': 'Manual', 'tipo': 'labor', 'unidad_medida': 'hora',
         }
         a = ActividadService.create_actividad(data, self.user)
         self.assertEqual(a.codigo, 'ACT-MANUAL')

@@ -54,14 +54,14 @@ def user(company):
 
 @pytest.fixture
 def proyecto(company, user):
-    """Proyecto en estado 'en_ejecucion' listo para crear tareas."""
+    """Proyecto en estado 'in_progress' listo para crear tareas."""
     return Proyecto.all_objects.create(
         company=company,
         gerente=user,
         codigo=f'PRY-{_nit()}',
         nombre='Proyecto Test Services',
-        tipo='obra_civil',
-        estado='en_ejecucion',
+        tipo='civil_works',
+        estado='in_progress',
         cliente_id='111',
         cliente_nombre='Cliente Test',
         fecha_inicio_planificada=date.today(),
@@ -86,21 +86,21 @@ def fase(proyecto):
 
 @pytest.fixture
 def tarea_simple(proyecto, fase, user):
-    """Tarea sin subtareas en estado 'por_hacer'."""
+    """Tarea sin subtareas en estado 'todo'."""
     return Tarea.objects.create(
         company=proyecto.company,
         proyecto=proyecto,
         fase=fase,
         nombre='Tarea simple',
         responsable=user,
-        estado='por_hacer',
+        estado='todo',
     )
 
 
 @pytest.fixture
 def tarea_con_subtareas(proyecto, fase, tarea_simple):
     """
-    Retorna tarea_simple con 3 subtareas en estado 'por_hacer'.
+    Retorna tarea_simple con 3 subtareas en estado 'todo'.
     El fixture se llama 'tarea_con_subtareas' para mayor claridad en los tests.
     """
     for i in range(3):
@@ -111,7 +111,7 @@ def tarea_con_subtareas(proyecto, fase, tarea_simple):
             nombre=f'Subtarea {i + 1}',
             tarea_padre=tarea_simple,
             porcentaje_completado=0,
-            estado='por_hacer',
+            estado='todo',
         )
     tarea_simple.refresh_from_db()
     return tarea_simple

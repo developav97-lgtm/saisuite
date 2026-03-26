@@ -32,7 +32,7 @@ def _crear_user(company, email='u@test.com'):
 def _crear_proyecto(company, gerente, codigo='PRY-001'):
     return Proyecto.all_objects.create(
         company=company, gerente=gerente,
-        codigo=codigo, nombre='P', tipo='servicios',
+        codigo=codigo, nombre='P', tipo='services',
         cliente_id='1', cliente_nombre='C',
         fecha_inicio_planificada='2026-04-01',
         fecha_fin_planificada='2026-12-31',
@@ -90,7 +90,7 @@ class ProyectoCreateUpdateSerializerTest(TestCase):
     def _base_data(self, gerente_id, **kwargs):
         defaults = {
             'nombre': 'Proyecto Test',
-            'tipo': 'obra_civil',
+            'tipo': 'civil_works',
             'cliente_id': '900111',
             'cliente_nombre': 'Cliente',
             'fecha_inicio_planificada': '2026-04-01',
@@ -128,7 +128,7 @@ class ProyectoCreateUpdateSerializerTest(TestCase):
 class CambiarEstadoSerializerTest(TestCase):
 
     def test_estado_valido(self):
-        s = CambiarEstadoSerializer(data={'nuevo_estado': 'planificado'})
+        s = CambiarEstadoSerializer(data={'nuevo_estado': 'planned'})
         self.assertTrue(s.is_valid(), s.errors)
 
     def test_estado_invalido(self):
@@ -136,7 +136,7 @@ class CambiarEstadoSerializerTest(TestCase):
         self.assertFalse(s.is_valid())
 
     def test_forzar_default_false(self):
-        s = CambiarEstadoSerializer(data={'nuevo_estado': 'planificado'})
+        s = CambiarEstadoSerializer(data={'nuevo_estado': 'planned'})
         s.is_valid()
         self.assertFalse(s.validated_data.get('forzar', False))
 
@@ -157,7 +157,7 @@ class TerceroProyectoCreateSerializerTest(TestCase):
         defaults = {
             'tercero_id': '900111',
             'tercero_nombre': 'Subcontratista SA',
-            'rol': 'subcontratista',
+            'rol': 'subcontractor',
         }
         defaults.update(kwargs)
         return defaults

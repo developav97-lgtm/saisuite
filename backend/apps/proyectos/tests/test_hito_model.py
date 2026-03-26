@@ -29,7 +29,7 @@ def make_user(company, email='ghito@test.com'):
 def make_proyecto(company, gerente, codigo='HIT-PRY-001'):
     return Proyecto.all_objects.create(
         company=company, gerente=gerente, codigo=codigo,
-        nombre='Hito Proyecto', tipo='obra_civil',
+        nombre='Hito Proyecto', tipo='civil_works',
         cliente_id='111', cliente_nombre='C',
         fecha_inicio_planificada=date.today(),
         fecha_fin_planificada=date.today() + timedelta(days=180),
@@ -167,7 +167,7 @@ class TestHitoModel:
         doc = DocumentoContable.all_objects.create(
             company=c, proyecto=p,
             saiopen_doc_id='DOC-HITO-001',
-            tipo_documento='factura_venta',
+            tipo_documento='sales_invoice',
             numero_documento='FAC-H-001',
             fecha_documento=date.today(),
             tercero_id='111', tercero_nombre='Cliente',

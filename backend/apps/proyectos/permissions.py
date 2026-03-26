@@ -47,9 +47,9 @@ class CanEditProyecto(BasePermission):
         return obj.gerente_id == user.id
 
 
-class TareaPermission(CanAccessProyectos):
+class TaskPermission(CanAccessProyectos):
     """
-    Permisos para Tarea:
+    Permisos para Task:
     - Ver: Cualquier usuario con acceso al módulo proyectos
     - Crear/Editar: company_admin, seller, o usuarios con rol de edición
     - Eliminar: Solo company_admin o valmen_admin
@@ -80,3 +80,7 @@ class TareaPermission(CanAccessProyectos):
         if request.method in ('PUT', 'PATCH'):
             return obj.responsable_id == user.id
         return False
+
+
+# ALIASES DE COMPATIBILIDAD — eliminar en REFT-10
+TareaPermission = TaskPermission

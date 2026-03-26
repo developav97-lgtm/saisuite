@@ -58,8 +58,8 @@ def make_proyecto(company, gerente):
         company=company, gerente=gerente,
         codigo=f'PRY-{_nit()}',
         nombre='Proyecto Dep Test',
-        tipo='obra_civil',
-        estado='en_ejecucion',
+        tipo='civil_works',
+        estado='in_progress',
         cliente_id='999', cliente_nombre='Cliente Dep',
         fecha_inicio_planificada=date.today(),
         fecha_fin_planificada=date.today() + timedelta(days=120),
@@ -80,7 +80,7 @@ def make_fase(company, proyecto, orden=1):
 def make_tarea(company, proyecto, fase, nombre='Tarea', **kwargs):
     return Tarea.objects.create(
         company=company, proyecto=proyecto, fase=fase,
-        nombre=nombre, estado='por_hacer', **kwargs
+        nombre=nombre, estado='todo', **kwargs
     )
 
 
@@ -449,7 +449,7 @@ class DependenciaBaseTest(APITestCase):
         self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token.access_token}')
 
     def _url_dep(self, tarea_id, action):
-        return f'/api/v1/proyectos/tareas/{tarea_id}/{action}/'
+        return f'/api/v1/projects/tasks/{tarea_id}/{action}/'
 
 
 class TestCrearDependenciaEndpoint(DependenciaBaseTest):
@@ -533,7 +533,7 @@ class TestCaminoCriticoEndpoint(DependenciaBaseTest):
             str(self.ta.id), str(self.tb.id), self.company
         )
         resp = self.client.get(
-            f'/api/v1/proyectos/{self.proyecto.id}/camino-critico/'
+            f'/api/v1/projects/{self.proyecto.id}/camino-critico/'
         )
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         self.assertIn('tareas_criticas', resp.data)
@@ -542,7 +542,7 @@ class TestCaminoCriticoEndpoint(DependenciaBaseTest):
     def test_camino_critico_proyecto_vacio_retorna_lista_vacia(self):
         proyecto_vacio = make_proyecto(self.company, self.user)
         resp = self.client.get(
-            f'/api/v1/proyectos/{proyecto_vacio.id}/camino-critico/'
+            f'/api/v1/projects/{proyecto_vacio.id}/camino-critico/'
         )
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         self.assertEqual(resp.data['tareas_criticas'], [])
@@ -555,7 +555,7 @@ class TestTareaSerializerDependencias(DependenciaBaseTest):
         DependenciaService.crear_dependencia(
             str(self.ta.id), str(self.tb.id), self.company
         )
-        resp = self.client.get(f'/api/v1/proyectos/tareas/{self.tb.id}/')
+        resp = self.client.get(f'/api/v1/projects/tasks/{self.tb.id}/')
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         self.assertIn('predecesoras_detail', resp.data)
         self.assertEqual(len(resp.data['predecesoras_detail']), 1)
@@ -564,13 +564,13 @@ class TestTareaSerializerDependencias(DependenciaBaseTest):
         DependenciaService.crear_dependencia(
             str(self.ta.id), str(self.tb.id), self.company
         )
-        resp = self.client.get(f'/api/v1/proyectos/tareas/{self.ta.id}/')
+        resp = self.client.get(f'/api/v1/projects/tasks/{self.ta.id}/')
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         self.assertIn('sucesoras_detail', resp.data)
         self.assertEqual(len(resp.data['sucesoras_detail']), 1)
 
     def test_tarea_detail_incluye_es_camino_critico(self):
-        resp = self.client.get(f'/api/v1/proyectos/tareas/{self.ta.id}/')
+        resp = self.client.get(f'/api/v1/projects/tasks/{self.ta.id}/')
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         self.assertIn('es_camino_critico', resp.data)
         self.assertIsInstance(resp.data['es_camino_critico'], bool)

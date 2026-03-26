@@ -8,7 +8,7 @@ from rest_framework import status
 from django.contrib.auth import get_user_model
 
 from apps.companies.models import Company, CompanyModule
-from apps.proyectos.models import Proyecto, Fase, EstadoProyecto, ConfiguracionModulo
+from apps.proyectos.models import Proyecto, Fase, ProjectStatus, EstadoProyecto, ConfiguracionModulo
 
 User = get_user_model()
 
@@ -27,7 +27,7 @@ def crear_usuario(company, email='gpv@test.com', role='company_admin'):
 
 def crear_proyecto_db(company, gerente, codigo='PV-PRY-001', **kwargs):
     defaults = dict(
-        nombre='Proyecto PV', tipo='obra_civil',
+        nombre='Proyecto PV', tipo='civil_works',
         cliente_id='900111', cliente_nombre='Cliente',
         fecha_inicio_planificada='2026-04-01',
         fecha_fin_planificada='2026-12-31',
@@ -56,54 +56,54 @@ class IniciarEjecucionViewTest(APITestCase):
     def test_iniciar_ejecucion_exitoso_desde_planificado(self):
         proyecto = crear_proyecto_db(
             self.company, self.user, 'IE-PRY-001',
-            estado=EstadoProyecto.PLANIFICADO,
+            estado=ProjectStatus.PLANNED,
         )
-        url = f'/api/v1/proyectos/{proyecto.id}/iniciar-ejecucion/'
+        url = f'/api/v1/projects/{proyecto.id}/iniciar-ejecucion/'
         resp = self.client.post(url)
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
-        self.assertEqual(resp.data['estado'], EstadoProyecto.EN_EJECUCION)
+        self.assertEqual(resp.data['estado'], ProjectStatus.IN_PROGRESS)
 
     def test_iniciar_ejecucion_desde_borrador_falla(self):
         """BORRADOR → EN_EJECUCION no es una transición válida."""
         proyecto = crear_proyecto_db(self.company, self.user, 'IE-PRY-002')
-        url = f'/api/v1/proyectos/{proyecto.id}/iniciar-ejecucion/'
+        url = f'/api/v1/projects/{proyecto.id}/iniciar-ejecucion/'
         resp = self.client.post(url)
         self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_iniciar_ejecucion_requiere_sync_sin_sync_falla(self):
         proyecto = crear_proyecto_db(
             self.company, self.user, 'IE-PRY-003',
-            estado=EstadoProyecto.PLANIFICADO,
+            estado=ProjectStatus.PLANNED,
             sincronizado_con_saiopen=False,
         )
         ConfiguracionModulo.objects.create(
             company=self.company,
             requiere_sync_saiopen_para_ejecucion=True,
         )
-        url = f'/api/v1/proyectos/{proyecto.id}/iniciar-ejecucion/'
+        url = f'/api/v1/projects/{proyecto.id}/iniciar-ejecucion/'
         resp = self.client.post(url)
         self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_iniciar_ejecucion_requiere_sync_con_sync_exitoso(self):
         proyecto = crear_proyecto_db(
             self.company, self.user, 'IE-PRY-004',
-            estado=EstadoProyecto.PLANIFICADO,
+            estado=ProjectStatus.PLANNED,
             sincronizado_con_saiopen=True,
         )
         ConfiguracionModulo.objects.create(
             company=self.company,
             requiere_sync_saiopen_para_ejecucion=True,
         )
-        url = f'/api/v1/proyectos/{proyecto.id}/iniciar-ejecucion/'
+        url = f'/api/v1/projects/{proyecto.id}/iniciar-ejecucion/'
         resp = self.client.post(url)
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
 
     def test_iniciar_ejecucion_establece_fecha_inicio_real(self):
         proyecto = crear_proyecto_db(
             self.company, self.user, 'IE-PRY-005',
-            estado=EstadoProyecto.PLANIFICADO,
+            estado=ProjectStatus.PLANNED,
         )
-        url = f'/api/v1/proyectos/{proyecto.id}/iniciar-ejecucion/'
+        url = f'/api/v1/projects/{proyecto.id}/iniciar-ejecucion/'
         self.client.post(url)
         proyecto.refresh_from_db()
         self.assertIsNotNone(proyecto.fecha_inicio_real)
@@ -111,8 +111,8 @@ class IniciarEjecucionViewTest(APITestCase):
     def test_iniciar_ejecucion_proyecto_otra_empresa_404(self):
         c2 = crear_empresa('Otra PV', '912000002')
         u2 = crear_usuario(c2, 'gpv2@test.com')
-        p2 = crear_proyecto_db(c2, u2, 'IE-PRY-006', estado=EstadoProyecto.PLANIFICADO)
-        url = f'/api/v1/proyectos/{p2.id}/iniciar-ejecucion/'
+        p2 = crear_proyecto_db(c2, u2, 'IE-PRY-006', estado=ProjectStatus.PLANNED)
+        url = f'/api/v1/projects/{p2.id}/iniciar-ejecucion/'
         resp = self.client.post(url)
         self.assertEqual(resp.status_code, status.HTTP_404_NOT_FOUND)
 
@@ -121,9 +121,9 @@ class IniciarEjecucionViewTest(APITestCase):
         self.client.force_authenticate(user=viewer)
         proyecto = crear_proyecto_db(
             self.company, self.user, 'IE-PRY-007',
-            estado=EstadoProyecto.PLANIFICADO,
+            estado=ProjectStatus.PLANNED,
         )
-        url = f'/api/v1/proyectos/{proyecto.id}/iniciar-ejecucion/'
+        url = f'/api/v1/projects/{proyecto.id}/iniciar-ejecucion/'
         resp = self.client.post(url)
         self.assertIn(resp.status_code, [status.HTTP_403_FORBIDDEN, status.HTTP_401_UNAUTHORIZED])
 
@@ -134,18 +134,18 @@ class ProyectoFiltrosViewTest(APITestCase):
         self.company = crear_empresa('Filtros Co', '912000003')
         self.user    = crear_usuario(self.company, 'gfiltros@test.com')
         self.client.force_authenticate(user=self.user)
-        self.url = '/api/v1/proyectos/'
+        self.url = '/api/v1/projects/'
 
     def test_filtrar_por_estado_planificado(self):
         crear_proyecto_db(
             self.company, self.user, 'FLT-PRY-001',
-            estado=EstadoProyecto.PLANIFICADO,
+            estado=ProjectStatus.PLANNED,
         )
         crear_proyecto_db(
             self.company, self.user, 'FLT-PRY-002',
-            estado=EstadoProyecto.BORRADOR,
+            estado=ProjectStatus.DRAFT,
         )
-        resp = self.client.get(self.url, {'estado': 'planificado'})
+        resp = self.client.get(self.url, {'estado': 'planned'})
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         codigos = [p['codigo'] for p in resp.data['results']]
         self.assertIn('FLT-PRY-001', codigos)
@@ -153,12 +153,12 @@ class ProyectoFiltrosViewTest(APITestCase):
 
     def test_filtrar_por_tipo(self):
         crear_proyecto_db(
-            self.company, self.user, 'FLT-PRY-003', tipo='servicios'
+            self.company, self.user, 'FLT-PRY-003', tipo='services'
         )
         crear_proyecto_db(
-            self.company, self.user, 'FLT-PRY-004', tipo='obra_civil'
+            self.company, self.user, 'FLT-PRY-004', tipo='civil_works'
         )
-        resp = self.client.get(self.url, {'tipo': 'servicios'})
+        resp = self.client.get(self.url, {'tipo': 'services'})
         codigos = [p['codigo'] for p in resp.data['results']]
         self.assertIn('FLT-PRY-003', codigos)
         self.assertNotIn('FLT-PRY-004', codigos)
@@ -182,7 +182,7 @@ class ConfiguracionModuloViewTest(APITestCase):
         self.company = crear_empresa('Config View Co', '912000004')
         self.user    = crear_usuario(self.company, 'gcfgview@test.com')
         self.client.force_authenticate(user=self.user)
-        self.url = '/api/v1/proyectos/config/'
+        self.url = '/api/v1/projects/config/'
 
     def test_get_config_retorna_200(self):
         resp = self.client.get(self.url)

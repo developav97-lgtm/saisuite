@@ -32,7 +32,7 @@ def make_user(company, email='gap@test.com'):
 def make_proyecto(company, gerente, codigo='AP-PRY-001'):
     return Proyecto.all_objects.create(
         company=company, gerente=gerente, codigo=codigo,
-        nombre='AP Proyecto', tipo='obra_civil',
+        nombre='AP Proyecto', tipo='civil_works',
         cliente_id='111', cliente_nombre='C',
         fecha_inicio_planificada=date.today(),
         fecha_fin_planificada=date.today() + timedelta(days=90),
