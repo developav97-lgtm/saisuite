@@ -47,11 +47,11 @@ interface KanbanColumn {
 }
 
 const COLUMNAS_DEF: Omit<KanbanColumn, 'tareas'>[] = [
-  { id: 'por_hacer',   nombre: 'Por Hacer',   color: '#9e9e9e' },
-  { id: 'en_progreso', nombre: 'En Progreso', color: '#1e88e5' },
-  { id: 'en_revision', nombre: 'En Revisión', color: '#fb8c00' },
-  { id: 'bloqueada',   nombre: 'Bloqueada',   color: '#e53935' },
-  { id: 'completada',  nombre: 'Completada',  color: '#43a047' },
+  { id: 'todo',   nombre: 'Por Hacer',   color: '#9e9e9e' },
+  { id: 'in_progress', nombre: 'En Progreso', color: '#1e88e5' },
+  { id: 'in_review', nombre: 'En Revisión', color: '#fb8c00' },
+  { id: 'blocked',   nombre: 'Bloqueada',   color: '#e53935' },
+  { id: 'completed',  nombre: 'Completada',  color: '#43a047' },
 ];
 
 interface SelectOption { label: string; value: number | null; }

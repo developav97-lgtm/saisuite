@@ -36,12 +36,12 @@
   border-radius: 50%;
   flex-shrink: 0;
 
-  &--estado-por_hacer   { background: #90caf9; }
-  &--estado-en_progreso { background: #42a5f5; }
-  &--estado-en_revision { background: #ab47bc; }
-  &--estado-bloqueada   { background: #ef5350; }
-  &--estado-completada  { background: #66bb6a; }
-  &--estado-cancelada   { background: #bdbdbd; }
+  &--estado-todo   { background: #90caf9; }
+  &--estado-in_progress { background: #42a5f5; }
+  &--estado-in_review { background: #ab47bc; }
+  &--estado-blocked   { background: #ef5350; }
+  &--estado-completed  { background: #66bb6a; }
+  &--estado-cancelled   { background: #bdbdbd; }
 }
 
 // ── Chart wrapper ──────────────────────────────────────────────────────────────
@@ -61,21 +61,21 @@
 // ── Frappe Gantt bar colors per estado ────────────────────────────────────────
 // These override frappe-gantt's default blue bar using custom_class on the task.
 :host ::ng-deep {
-  .bar.estado-por_hacer   .bar-progress,
-  .bar.estado-por_hacer   .bar-wrapper .bar { fill: #90caf9; }
+  .bar.estado-todo   .bar-progress,
+  .bar.estado-todo   .bar-wrapper .bar { fill: #90caf9; }
 
-  .bar.estado-en_progreso .bar-progress,
-  .bar.estado-en_progreso .bar-wrapper .bar { fill: #42a5f5; }
+  .bar.estado-in_progress .bar-progress,
+  .bar.estado-in_progress .bar-wrapper .bar { fill: #42a5f5; }
 
-  .bar.estado-en_revision .bar-progress,
-  .bar.estado-en_revision .bar-wrapper .bar { fill: #ce93d8; }
+  .bar.estado-in_review .bar-progress,
+  .bar.estado-in_review .bar-wrapper .bar { fill: #ce93d8; }
 
-  .bar.estado-bloqueada   .bar-progress,
-  .bar.estado-bloqueada   .bar-wrapper .bar { fill: #ef9a9a; }
+  .bar.estado-blocked   .bar-progress,
+  .bar.estado-blocked   .bar-wrapper .bar { fill: #ef9a9a; }
 
-  .bar.estado-completada  .bar-progress,
-  .bar.estado-completada  .bar-wrapper .bar { fill: #a5d6a7; }
+  .bar.estado-completed  .bar-progress,
+  .bar.estado-completed  .bar-wrapper .bar { fill: #a5d6a7; }
 
-  .bar.estado-cancelada   .bar-progress,
-  .bar.estado-cancelada   .bar-wrapper .bar { fill: #e0e0e0; }
+  .bar.estado-cancelled   .bar-progress,
+  .bar.estado-cancelled   .bar-wrapper .bar { fill: #e0e0e0; }
 }

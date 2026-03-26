@@ -139,11 +139,11 @@ export class TimerComponent implements OnDestroy {
   }
 
   get corriendo(): boolean {
-    return this.sesionActiva()?.estado === 'activa';
+    return this.sesionActiva()?.estado === 'active';
   }
 
   get pausado(): boolean {
-    return this.sesionActiva()?.estado === 'pausada';
+    return this.sesionActiva()?.estado === 'paused';
   }
 
   private iniciarIntervalo(): void {

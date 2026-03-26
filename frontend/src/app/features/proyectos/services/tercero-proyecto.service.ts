@@ -11,7 +11,7 @@ export class TerceroProyectoService {
   private readonly http = inject(HttpClient);
 
   private url(proyectoId: string): string {
-    return `/api/v1/proyectos/${proyectoId}/terceros`;
+    return `/api/v1/projects/${proyectoId}/stakeholders`;
   }
 
   list(proyectoId: string): Observable<TerceroProyecto[]> {

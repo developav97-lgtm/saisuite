@@ -51,7 +51,7 @@
       <mat-progress-bar
         mode="determinate"
         [value]="tarea()!.horas_estimadas > 0 ? tarea()!.progreso_porcentaje : tarea()!.porcentaje_completado"
-        [class.td-progress--completada]="tarea()!.estado === 'completada'" />
+        [class.td-progress--completada]="tarea()!.estado === 'completed'" />
     </div>
 
     <!-- Body: 2 columnas -->

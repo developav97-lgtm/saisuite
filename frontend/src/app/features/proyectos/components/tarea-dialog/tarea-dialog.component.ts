@@ -150,7 +150,7 @@ export class TareaDialogComponent implements OnInit {
   readonly estadoColors  = ESTADO_COLORS;
 
   readonly estadosDisponibles: TareaEstado[] = [
-    'por_hacer', 'en_progreso', 'en_revision', 'bloqueada', 'completada', 'cancelada',
+    'todo', 'in_progress', 'in_review', 'blocked', 'completed', 'cancelled',
   ];
 
   ngOnInit(): void {

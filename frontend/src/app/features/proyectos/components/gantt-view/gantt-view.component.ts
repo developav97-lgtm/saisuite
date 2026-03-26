@@ -47,12 +47,12 @@ export class GanttViewComponent implements AfterViewInit, OnDestroy {
   private tasks: FrappeGanttTask[]    = [];
 
   readonly LEGEND = [
-    { clase: 'estado-por_hacer',   label: 'Por hacer'   },
-    { clase: 'estado-en_progreso', label: 'En progreso' },
-    { clase: 'estado-en_revision', label: 'En revisión' },
-    { clase: 'estado-bloqueada',   label: 'Bloqueada'   },
-    { clase: 'estado-completada',  label: 'Completada'  },
-    { clase: 'estado-cancelada',   label: 'Cancelada'   },
+    { clase: 'estado-todo',   label: 'Por hacer'   },
+    { clase: 'estado-in_progress', label: 'En progreso' },
+    { clase: 'estado-in_review', label: 'En revisión' },
+    { clase: 'estado-blocked',   label: 'Bloqueada'   },
+    { clase: 'estado-completed',  label: 'Completada'  },
+    { clase: 'estado-cancelled',   label: 'Cancelada'   },
   ];
 
   ngAfterViewInit(): void {

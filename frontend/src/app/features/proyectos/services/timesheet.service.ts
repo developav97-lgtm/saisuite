@@ -11,8 +11,8 @@ import {
 @Injectable({ providedIn: 'root' })
 export class TimesheetService {
   private readonly http      = inject(HttpClient);
-  private readonly baseUrl   = '/api/v1/proyectos/timesheets';
-  private readonly tareaBase = '/api/v1/proyectos/tareas';
+  private readonly baseUrl   = '/api/v1/projects/timesheets';
+  private readonly tareaBase = '/api/v1/projects/tasks';
 
   // ── Registro manual ────────────────────────────────────────────────────────
 

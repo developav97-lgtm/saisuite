@@ -8,7 +8,7 @@ interface Paginated<T> { count: number; next: string | null; previous: string | 
 @Injectable({ providedIn: 'root' })
 export class ActividadService {
   private readonly http    = inject(HttpClient);
-  private readonly baseUrl = '/api/v1/proyectos/actividades';
+  private readonly baseUrl = '/api/v1/projects/activities';
 
   list(search?: string, tipo?: TipoActividad, page = 1, pageSize = 25): Observable<Paginated<ActividadList>> {
     let params = new HttpParams()

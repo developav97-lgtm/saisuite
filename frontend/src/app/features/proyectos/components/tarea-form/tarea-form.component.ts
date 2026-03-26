@@ -122,7 +122,7 @@ export class TareaFormComponent implements OnInit {
     cliente:                [null as string | null],
     responsable:            [null as string | null],
     prioridad:              [2 as TareaPrioridad],
-    estado:                 ['por_hacer' as TareaEstado],
+    estado:                 ['todo' as TareaEstado],
     fecha_inicio:           [null as Date | null],
     fecha_fin:              [null as Date | null],
     fecha_limite:           [null as Date | null],
@@ -133,10 +133,10 @@ export class TareaFormComponent implements OnInit {
   });
 
   readonly estadoOptions: SelectOption<TareaEstado>[] = [
-    { label: 'Por Hacer',   value: 'por_hacer' },
-    { label: 'En Progreso', value: 'en_progreso' },
-    { label: 'En Revisión', value: 'en_revision' },
-    { label: 'Bloqueada',   value: 'bloqueada' },
+    { label: 'Por Hacer',   value: 'todo' },
+    { label: 'En Progreso', value: 'in_progress' },
+    { label: 'En Revisión', value: 'in_review' },
+    { label: 'Bloqueada',   value: 'blocked' },
   ];
 
   readonly prioridadOptions: SelectOption<TareaPrioridad>[] = [
@@ -604,7 +604,7 @@ export class TareaFormComponent implements OnInit {
       cliente:               val.cliente || null,
       responsable:           val.responsable || null,
       prioridad:             val.prioridad as TareaPrioridad,
-      estado:                val.estado as Exclude<TareaEstado, 'completada' | 'cancelada'>,
+      estado:                val.estado as Exclude<TareaEstado, 'completed' | 'cancelled'>,
       horas_estimadas:       val.horas_estimadas ?? 0,
       porcentaje_completado: val.porcentaje_completado ?? 0,
       es_recurrente:         val.es_recurrente ?? false,

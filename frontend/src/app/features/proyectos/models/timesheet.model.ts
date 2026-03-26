@@ -63,7 +63,7 @@ export interface SesionTrabajo {
   pausas: Pausa[];
   duracion_segundos: number;
   duracion_horas: string;
-  estado: 'activa' | 'pausada' | 'finalizada';
+  estado: 'active' | 'paused' | 'finished';
   notas: string;
   created_at: string;
   updated_at: string;

@@ -23,7 +23,7 @@ export interface ProyectoListParams {
 @Injectable({ providedIn: 'root' })
 export class ProyectoService {
   private readonly http = inject(HttpClient);
-  private readonly baseUrl = '/api/v1/proyectos';
+  private readonly baseUrl = '/api/v1/projects';
 
   list(params: ProyectoListParams = {}): Observable<PaginatedResponse<ProyectoList>> {
     let httpParams = new HttpParams();

@@ -11,7 +11,7 @@ export class DocumentoContableService {
   private readonly http = inject(HttpClient);
 
   private url(proyectoId: string): string {
-    return `/api/v1/proyectos/${proyectoId}/documentos`;
+    return `/api/v1/projects/${proyectoId}/documents`;
   }
 
   list(proyectoId: string, faseId?: string | null): Observable<DocumentoContableList[]> {
