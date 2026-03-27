@@ -13,6 +13,7 @@ import { TerceroListComponent } from '../tercero-list/tercero-list.component';
 import { DocumentoListComponent } from '../documento-list/documento-list.component';
 import { HitoListComponent } from '../hito-list/hito-list.component';
 import { ActividadProyectoListComponent } from '../actividad-proyecto-list/actividad-proyecto-list.component';
+import { GanttViewComponent } from '../gantt-view/gantt-view.component';
 import { ConfirmDialogComponent } from '../../../../shared/components/confirm-dialog/confirm-dialog.component';
 
 @Component({
@@ -29,6 +30,7 @@ import { ConfirmDialogComponent } from '../../../../shared/components/confirm-di
     DocumentoListComponent,
     HitoListComponent,
     ActividadProyectoListComponent,
+    GanttViewComponent,
   ],
 })
 export class ProyectoDetailComponent implements OnInit {
@@ -46,16 +48,16 @@ export class ProyectoDetailComponent implements OnInit {
   readonly TIPO_LABELS     = TIPO_LABELS;
 
   readonly ACCIONES_ESTADO: Partial<Record<EstadoProyecto, { label: string; estado: EstadoProyecto; color: 'primary' | 'warn' | 'accent' }[]>> = {
-    borrador:     [{ label: 'Planificar', estado: 'planificado', color: 'primary' }],
-    planificado:  [
-      { label: 'Iniciar ejecución', estado: 'en_ejecucion', color: 'primary' },
-      { label: 'Volver a borrador', estado: 'borrador', color: 'warn' },
+    draft:       [{ label: 'Planificar', estado: 'planned', color: 'primary' }],
+    planned:     [
+      { label: 'Iniciar ejecución', estado: 'in_progress', color: 'primary' },
+      { label: 'Volver a borrador', estado: 'draft', color: 'warn' },
     ],
-    en_ejecucion: [
-      { label: 'Suspender', estado: 'suspendido', color: 'warn' },
-      { label: 'Cerrar', estado: 'cerrado', color: 'accent' },
+    in_progress: [
+      { label: 'Suspender', estado: 'suspended', color: 'warn' },
+      { label: 'Cerrar', estado: 'closed', color: 'accent' },
     ],
-    suspendido: [{ label: 'Reactivar', estado: 'en_ejecucion', color: 'primary' }],
+    suspended: [{ label: 'Reactivar', estado: 'in_progress', color: 'primary' }],
   };
 
   ngOnInit(): void {

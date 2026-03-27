@@ -1,6 +1,6 @@
 /**
  * SaiSuite — ConfiguracionProyectoService
- * Consume GET/PATCH /api/v1/proyectos/config/
+ * Consume GET/PATCH /api/v1/projects/config/
  */
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
@@ -10,7 +10,7 @@ import { ConfiguracionProyecto } from '../models/configuracion-proyecto.model';
 @Injectable({ providedIn: 'root' })
 export class ConfiguracionProyectoService {
   private readonly http   = inject(HttpClient);
-  private readonly apiUrl = '/api/v1/proyectos/config';
+  private readonly apiUrl = '/api/v1/projects/config';
 
   obtener(): Observable<ConfiguracionProyecto> {
     return this.http.get<ConfiguracionProyecto>(`${this.apiUrl}/`);

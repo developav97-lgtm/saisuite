@@ -8,7 +8,7 @@ from rest_framework import status
 from django.contrib.auth import get_user_model
 
 from apps.companies.models import Company, CompanyModule
-from apps.proyectos.models import Proyecto, Fase
+from apps.proyectos.models import Project, Phase
 
 User = get_user_model()
 
@@ -27,20 +27,20 @@ def crear_usuario(company, email='gfv@test.com', role='company_admin'):
 
 def crear_proyecto_db(company, gerente, codigo='FV-PRY-001', **kwargs):
     defaults = dict(
-        nombre='Proyecto FV', tipo='obra_civil',
+        nombre='Project FV', tipo='civil_works',
         cliente_id='900111', cliente_nombre='Cliente',
         fecha_inicio_planificada='2026-04-01',
         fecha_fin_planificada='2026-12-31',
         presupuesto_total=Decimal('1000000'),
     )
     defaults.update(kwargs)
-    return Proyecto.all_objects.create(company=company, gerente=gerente, codigo=codigo, **defaults)
+    return Project.all_objects.create(company=company, gerente=gerente, codigo=codigo, **defaults)
 
 
 def crear_fase_db(company, proyecto, orden=1, nombre=None, **kwargs):
-    return Fase.all_objects.create(
+    return Phase.all_objects.create(
         company=company, proyecto=proyecto,
-        nombre=nombre or f'Fase {orden}', orden=orden,
+        nombre=nombre or f'Phase {orden}', orden=orden,
         fecha_inicio_planificada='2026-04-01',
         fecha_fin_planificada='2026-06-30',
         presupuesto_mano_obra=Decimal('200000'),
@@ -55,7 +55,7 @@ class FaseListOrdenamientoTest(APITestCase):
         self.user     = crear_usuario(self.company)
         self.proyecto = crear_proyecto_db(self.company, self.user)
         self.client.force_authenticate(user=self.user)
-        self.url = f'/api/v1/proyectos/{self.proyecto.id}/fases/'
+        self.url = f'/api/v1/projects/{self.proyecto.id}/phases/'
 
     def _results(self, resp):
         """Desempaca paginación si existe, si no devuelve resp.data directamente."""
@@ -100,7 +100,7 @@ class FaseListOrdenamientoTest(APITestCase):
     def test_solo_fases_activas_en_listado(self):
         crear_fase_db(self.company, self.proyecto, orden=1, nombre='Activa')
         f_inactiva = crear_fase_db(self.company, self.proyecto, orden=2, nombre='Inactiva')
-        Fase.all_objects.filter(id=f_inactiva.id).update(activo=False)
+        Phase.all_objects.filter(id=f_inactiva.id).update(activo=False)
         resp = self.client.get(self.url)
         nombres = [f['nombre'] for f in self._results(resp)]
         self.assertIn('Activa', nombres)
@@ -115,7 +115,7 @@ class FaseDetailUpdateTest(APITestCase):
         self.proyecto = crear_proyecto_db(self.company, self.user, 'FV-PRY-DET')
         self.fase     = crear_fase_db(self.company, self.proyecto, orden=1)
         self.client.force_authenticate(user=self.user)
-        self.url = f'/api/v1/proyectos/fases/{self.fase.id}/'
+        self.url = f'/api/v1/projects/phases/{self.fase.id}/'
 
     def test_detalle_incluye_todos_los_campos_presupuesto(self):
         resp = self.client.get(self.url)

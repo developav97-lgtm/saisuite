@@ -1,7 +1,7 @@
 /**
  * SaiSuite — ConfiguracionComponent (Proyectos)
  * Página de configuración del módulo de proyectos.
- * Consume GET/PATCH /api/v1/proyectos/config/
+ * Consume GET/PATCH /api/v1/projects/config/
  */
 import {
   ChangeDetectionStrategy, ChangeDetectorRef,

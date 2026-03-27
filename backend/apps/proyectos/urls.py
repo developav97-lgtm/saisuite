@@ -1,143 +1,160 @@
 """
-SaiSuite — Proyectos: URLs
+SaiSuite — Projects: URLs
+REFT-09: URL prefixes migrated to English. Spanish prefix kept as deprecated alias.
 
-Catálogo de actividades:
-  GET/POST       /api/v1/proyectos/actividades/
-  GET/PATCH/DEL  /api/v1/proyectos/actividades/{id}/
+Catalog of activities:
+  GET/POST       /api/v1/projects/activities/
+  GET/PATCH/DEL  /api/v1/projects/activities/{id}/
 
-Rutas Fase A:
-  GET/POST       /api/v1/proyectos/
-  GET/PATCH/DEL  /api/v1/proyectos/{id}/
-  POST           /api/v1/proyectos/{id}/cambiar-estado/
-  GET            /api/v1/proyectos/{id}/estado-financiero/
-  GET/POST       /api/v1/proyectos/{id}/fases/
-  GET/PATCH/DEL  /api/v1/fases/{id}/
+Phase A routes:
+  GET/POST       /api/v1/projects/
+  GET/PATCH/DEL  /api/v1/projects/{id}/
+  POST           /api/v1/projects/{id}/change-status/
+  GET            /api/v1/projects/{id}/financial-status/
+  GET/POST       /api/v1/projects/{id}/phases/
+  GET/PATCH/DEL  /api/v1/projects/phases/{id}/
 
-Rutas Fase B:
-  GET/POST       /api/v1/proyectos/{id}/terceros/
-  DELETE         /api/v1/proyectos/{id}/terceros/{pk}/
-  GET            /api/v1/proyectos/{id}/documentos/
-  GET            /api/v1/proyectos/{id}/documentos/{pk}/
-  GET/POST       /api/v1/proyectos/{id}/hitos/
-  POST           /api/v1/proyectos/{id}/hitos/{pk}/generar-factura/
+Phase B routes:
+  GET/POST       /api/v1/projects/{id}/stakeholders/
+  DELETE         /api/v1/projects/{id}/stakeholders/{pk}/
+  GET            /api/v1/projects/{id}/documents/
+  GET            /api/v1/projects/{id}/documents/{pk}/
+  GET/POST       /api/v1/projects/{id}/milestones/
+  POST           /api/v1/projects/{id}/milestones/{pk}/generate-invoice/
 
-Rutas Actividades por proyecto:
-  GET/POST       /api/v1/proyectos/{id}/actividades/
-  PATCH/DELETE   /api/v1/proyectos/{id}/actividades/{pk}/
+Activity routes per project:
+  GET/POST       /api/v1/projects/{id}/activities/
+  PATCH/DELETE   /api/v1/projects/{id}/activities/{pk}/
 
-Rutas Tareas:
-  GET/POST       /api/v1/proyectos/tareas/
-  GET/PATCH/DEL  /api/v1/proyectos/tareas/{id}/
-  POST           /api/v1/proyectos/tareas/{id}/agregar-follower/
-  DELETE         /api/v1/proyectos/tareas/{id}/quitar-follower/{user_id}/
-  POST           /api/v1/proyectos/tareas/{id}/cambiar-estado/
-  GET/POST       /api/v1/proyectos/tags/
-  GET/PATCH/DEL  /api/v1/proyectos/tags/{id}/
+Task routes:
+  GET/POST       /api/v1/projects/tasks/
+  GET/PATCH/DEL  /api/v1/projects/tasks/{id}/
+  POST           /api/v1/projects/tasks/{id}/add-follower/
+  DELETE         /api/v1/projects/tasks/{id}/remove-follower/{user_id}/
+  POST           /api/v1/projects/tasks/{id}/change-status/
+  GET/POST       /api/v1/projects/tags/
+  GET/PATCH/DEL  /api/v1/projects/tags/{id}/
+
+Deprecated aliases (REFT-09 — remove in REFT-21):
+  All of the above are also served under /api/v1/proyectos/ for backwards compatibility.
 """
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter, SimpleRouter
+
+# NOTE: ViewSet classes are still named with Spanish identifiers pending REFT-10.
+# English aliases (ProjectViewSet, PhaseViewSet, …) will be importable once REFT-10
+# renames the classes in views.py. Until then we import the existing names.
 from apps.proyectos.views import (
-    ProyectoViewSet, FaseViewSet,
-    TerceroProyectoViewSet, DocumentoContableViewSet, HitoViewSet,
-    ActividadViewSet, ActividadProyectoViewSet,
-    ActividadSaiopenViewSet,
-    ConfiguracionModuloView,
-    TareaViewSet, TareaTagViewSet,
+    ProjectViewSet,
+    PhaseViewSet,
+    ProjectStakeholderViewSet,
+    AccountingDocumentViewSet,
+    MilestoneViewSet,
+    ActivityViewSet,
+    ProjectActivityViewSet,
+    SaiopenActivityViewSet,
+    ModuleSettingsView,
+    TaskViewSet,
+    TaskTagViewSet,
+    TimesheetViewSet,
 )
 
-router = DefaultRouter()
-router.register(r'', ProyectoViewSet, basename='proyecto')
+# ── Main project router ────────────────────────────────────────────────────────
+project_router = DefaultRouter()
+project_router.register(r'', ProjectViewSet, basename='project')
 
-# SimpleRouter: no genera vista raíz en '' que conflictiría con ProyectoViewSet
-actividad_router = SimpleRouter()
-actividad_router.register(r'actividades', ActividadViewSet, basename='actividad')
-actividad_router.register(r'actividades-saiopen', ActividadSaiopenViewSet, basename='actividadsaiopen')
+# ── Activity catalog router ────────────────────────────────────────────────────
+# SimpleRouter: avoids a root '' conflict with project_router
+activity_router = SimpleRouter()
+activity_router.register(r'activities', ActivityViewSet, basename='activity')
+activity_router.register(r'activities-saiopen', SaiopenActivityViewSet, basename='activity-saiopen')
 
-# Tareas y tags
-tarea_router = SimpleRouter()
-tarea_router.register(r'tareas', TareaViewSet, basename='tarea')
-tarea_router.register(r'tags', TareaTagViewSet, basename='tareatag')
+# ── Task, tag and timesheet router ────────────────────────────────────────────
+task_router = SimpleRouter()
+task_router.register(r'tasks', TaskViewSet, basename='task')
+task_router.register(r'tags', TaskTagViewSet, basename='task-tag')
+task_router.register(r'timesheets', TimesheetViewSet, basename='timesheet')
 
 urlpatterns = [
-    # ── Catálogo de actividades ────────────────────────────────
-    path('', include(actividad_router.urls)),
+    # ── Activity catalog ──────────────────────────────────────────────────
+    path('', include(activity_router.urls)),
 
-    # ── Tareas y Tags ──────────────────────────────────────────
-    path('', include(tarea_router.urls)),
+    # ── Tasks and Tags ────────────────────────────────────────────────────
+    path('', include(task_router.urls)),
 
-    # ── Fases ──────────────────────────────────────────────────
+    # ── Phases ────────────────────────────────────────────────────────────
     path(
-        '<uuid:proyecto_pk>/fases/',
-        FaseViewSet.as_view({'get': 'list', 'post': 'create'}),
-        name='proyecto-fases-list',
+        '<uuid:proyecto_pk>/phases/',
+        PhaseViewSet.as_view({'get': 'list', 'post': 'create'}),
+        name='project-phases-list',
     ),
     path(
-        'fases/<uuid:pk>/',
-        FaseViewSet.as_view({'get': 'retrieve', 'patch': 'partial_update', 'delete': 'destroy'}),
-        name='fase-detail',
+        'phases/<uuid:pk>/',
+        PhaseViewSet.as_view({'get': 'retrieve', 'patch': 'partial_update', 'delete': 'destroy'}),
+        name='phase-detail',
     ),
     path(
-        'fases/<uuid:pk>/activar/',
-        FaseViewSet.as_view({'post': 'activar'}),
-        name='fase-activar',
+        'phases/<uuid:pk>/activate/',
+        PhaseViewSet.as_view({'post': 'activar'}),
+        name='phase-activate',
     ),
     path(
-        'fases/<uuid:pk>/completar/',
-        FaseViewSet.as_view({'post': 'completar'}),
-        name='fase-completar',
-    ),
-
-    # ── Terceros ───────────────────────────────────────────────
-    path(
-        '<uuid:proyecto_pk>/terceros/',
-        TerceroProyectoViewSet.as_view({'get': 'list', 'post': 'create'}),
-        name='proyecto-terceros-list',
-    ),
-    path(
-        '<uuid:proyecto_pk>/terceros/<uuid:pk>/',
-        TerceroProyectoViewSet.as_view({'delete': 'destroy'}),
-        name='proyecto-terceros-detail',
+        'phases/<uuid:pk>/complete/',
+        PhaseViewSet.as_view({'post': 'completar'}),
+        name='phase-complete',
     ),
 
-    # ── Documentos contables ───────────────────────────────────
+    # ── Stakeholders ──────────────────────────────────────────────────────
     path(
-        '<uuid:proyecto_pk>/documentos/',
-        DocumentoContableViewSet.as_view({'get': 'list'}),
-        name='proyecto-documentos-list',
+        '<uuid:proyecto_pk>/stakeholders/',
+        ProjectStakeholderViewSet.as_view({'get': 'list', 'post': 'create'}),
+        name='project-stakeholders-list',
     ),
     path(
-        '<uuid:proyecto_pk>/documentos/<uuid:pk>/',
-        DocumentoContableViewSet.as_view({'get': 'retrieve'}),
-        name='proyecto-documentos-detail',
-    ),
-
-    # ── Hitos ──────────────────────────────────────────────────
-    path(
-        '<uuid:proyecto_pk>/hitos/',
-        HitoViewSet.as_view({'get': 'list', 'post': 'create'}),
-        name='proyecto-hitos-list',
-    ),
-    path(
-        '<uuid:proyecto_pk>/hitos/<uuid:pk>/generar-factura/',
-        HitoViewSet.as_view({'post': 'generar_factura'}),
-        name='proyecto-hitos-generar-factura',
+        '<uuid:proyecto_pk>/stakeholders/<uuid:pk>/',
+        ProjectStakeholderViewSet.as_view({'delete': 'destroy'}),
+        name='project-stakeholders-detail',
     ),
 
-    # ── Actividades por proyecto ───────────────────────────────
+    # ── Accounting documents ──────────────────────────────────────────────
     path(
-        '<uuid:proyecto_pk>/actividades/',
-        ActividadProyectoViewSet.as_view({'get': 'list', 'post': 'create'}),
-        name='proyecto-actividades-list',
+        '<uuid:proyecto_pk>/documents/',
+        AccountingDocumentViewSet.as_view({'get': 'list'}),
+        name='project-documents-list',
     ),
     path(
-        '<uuid:proyecto_pk>/actividades/<uuid:pk>/',
-        ActividadProyectoViewSet.as_view({'patch': 'partial_update', 'delete': 'destroy'}),
-        name='proyecto-actividades-detail',
+        '<uuid:proyecto_pk>/documents/<uuid:pk>/',
+        AccountingDocumentViewSet.as_view({'get': 'retrieve'}),
+        name='project-documents-detail',
     ),
 
-    # ── Configuración del módulo ───────────────────────────────
-    path('config/', ConfiguracionModuloView.as_view(), name='proyectos-config'),
+    # ── Milestones ────────────────────────────────────────────────────────
+    path(
+        '<uuid:proyecto_pk>/milestones/',
+        MilestoneViewSet.as_view({'get': 'list', 'post': 'create'}),
+        name='project-milestones-list',
+    ),
+    path(
+        '<uuid:proyecto_pk>/milestones/<uuid:pk>/generate-invoice/',
+        MilestoneViewSet.as_view({'post': 'generar_factura'}),
+        name='project-milestones-generate-invoice',
+    ),
 
-    # ── Router principal de proyectos ──────────────────────────
-    path('', include(router.urls)),
+    # ── Activities per project ────────────────────────────────────────────
+    path(
+        '<uuid:proyecto_pk>/activities/',
+        ProjectActivityViewSet.as_view({'get': 'list', 'post': 'create'}),
+        name='project-activities-list',
+    ),
+    path(
+        '<uuid:proyecto_pk>/activities/<uuid:pk>/',
+        ProjectActivityViewSet.as_view({'patch': 'partial_update', 'delete': 'destroy'}),
+        name='project-activities-detail',
+    ),
+
+    # ── Module configuration ──────────────────────────────────────────────
+    path('config/', ModuleSettingsView.as_view(), name='projects-config'),
+
+    # ── Main project router ───────────────────────────────────────────────
+    path('', include(project_router.urls)),
 ]

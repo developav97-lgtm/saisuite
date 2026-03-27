@@ -1,3 +1,39 @@
+## DEC-023: Refactoring Completo — Renombrado Español → Inglés
+**Fecha:** 2026-03-26
+**Estado:** 🔄 En ejecución — rama `refactor/english-rename`
+**Contexto:** El codebase de `apps/proyectos` usaba nombres en español para modelos, campos, enums y URLs. Decisión tomada por Juan David para estandarizar a inglés antes de escalar el equipo.
+
+**Alcance aprobado:**
+- D1 ✅ Campos en BD cambian (vía RenameField migrations)
+- D2 ✅ URLs cambian `/proyectos/` → `/projects/` (con alias temporal por 1 release)
+- D3 ✅ Valores de TextChoices en BD cambian (vía RunSQL data migrations)
+- D4 ✅ `'proyectos'` en `companies_companymodule` cambia a `'projects'`
+
+**Mapeo de clases:**
+- Proyecto → Project, Tarea → Task, Fase → Phase, TareaDependencia → TaskDependency
+- SesionTrabajo → WorkSession (db_table='sesiones_trabajo' se preserva)
+- TimesheetEntry → sin cambio (ya en inglés)
+
+**Decisiones de naming específicas:**
+- `interventor` (RolTercero) → `inspector` (evita colisión con `supervisor`)
+- Tarea.estado: `por_hacer`→`todo`, `en_progreso`→`in_progress`, `en_revision`→`in_review`
+- WorkSession estados: `activa`→`active`, `pausada`→`paused`, `finalizada`→`finished`
+
+**Consecuencia:** 27 tareas (REFT-01 a REFT-27), estimación 7-8 días. Ver `docs/plans/REFACTOR-TASK-BREAKDOWN.md`.
+
+---
+
+## DEC-024: Nueva Arquitectura de Navegación — Landing de Módulos
+**Fecha:** 2026-03-26
+**Estado:** 🔄 Pendiente implementación (REFT-22 a REFT-25)
+**Contexto:** Sidebar global con todos los módulos no escala al crecer la plataforma.
+
+**Decisión:** Post-login muestra landing de módulos (`/modulos`). Cada módulo tiene su propio sidebar contextual. Toggle Kanban/Lista con localStorage. Vista Cards de Proyectos con `mat-card`.
+
+**Stack:** Angular Material únicamente — NUNCA PrimeNG.
+
+---
+
 ## DEC-012: Terceros y Consecutivos como Módulos Transversales
 
 **Fecha:** 19 Marzo 2026

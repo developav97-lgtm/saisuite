@@ -1,7 +1,7 @@
 # CONTEXT.md - Estado del Proyecto Saicloud
 
-**Última actualización:** 24 Marzo 2026  
-**Sesión:** Refactor Arquitectura Proyectos (Completado)
+**Última actualización:** 26 Marzo 2026
+**Sesión:** Rename Inglés Completo — apps/proyectos (REFT-01 a REFT-21)
 
 ---
 
@@ -15,7 +15,29 @@
 
 ---
 
-## ✅ COMPLETADO RECIENTEMENTE (24 Marzo 2026)
+## ✅ COMPLETADO RECIENTEMENTE (26 Marzo 2026)
+
+### Rename Completo Español → Inglés (REFT-01–REFT-21)
+**Tiempo:** ~3 sesiones
+**Complejidad:** XL
+
+**Cambios principales:**
+- ✅ Migration 0013: 13 `RenameModel` + 11 `AlterField` + 11 `RunSQL` data migrations
+- ✅ Todos los modelos renombrados: `Proyecto→Project`, `Fase→Phase`, `Tarea→Task`, `SesionTrabajo→WorkSession`, `TareaDependencia→TaskDependency`, `TerceroProyecto→ProjectStakeholder`, `DocumentoContable→AccountingDocument`, `Hito→Milestone`, `Actividad→Activity`, `ActividadProyecto→ProjectActivity`, `ActividadSaiopen→SaiopenActivity`, `EtiquetaTarea→TaskTag`, `ConfiguracionModulo→ModuleSettings`
+- ✅ TextChoices en inglés: `por_hacer→todo`, `en_progreso→in_progress`, `completada→completed`, etc.
+- ✅ Related names en inglés: `fases→phases`, `tareas→tasks`, `subtareas→subtasks`, etc.
+- ✅ URLs: `/api/v1/proyectos/` → `/api/v1/projects/`, path segments en inglés
+- ✅ Todos los aliases de compatibilidad eliminados (REFT-10)
+- ✅ 365 tests backend pasando (REFT-11)
+- ✅ Angular: status values, URLs y modelos actualizados (REFT-12–16)
+- ✅ Management command `migrar_actividades_a_tareas` actualizado
+- ✅ URL deprecated `/api/v1/proyectos/` eliminada (REFT-21)
+
+**Decisiones:** DEC-010 (snake_case API), DEC-011 (Angular Material), y decisions de rename en DECISIONS.md
+
+---
+
+## ✅ COMPLETADO (24 Marzo 2026)
 
 ### Refactor Arquitectura Proyectos
 **Tiempo:** 2 días (23-24 Marzo)  
@@ -121,15 +143,16 @@ frontend/src/app/proyectos/
 ## 🚧 PENDIENTES
 
 ### Prioridad Alta
-- [ ] Tabs de Fases en Detalle Proyecto (2-3 horas)
+- [ ] REFT-22–REFT-27: Angular features pendientes (ModuleLauncher, sidebar contextual, Kanban/Lista toggle, Project cards view, E2E verify)
+- [ ] Tabs de Fases en Detalle Proyecto
 
 ### Prioridad Media
-- [ ] Endpoint Comparación Saiopen (`GET /api/v1/proyectos/{id}/comparacion-saiopen/`)
+- [ ] Endpoint Comparación Saiopen (`GET /api/v1/projects/{id}/comparacion-saiopen/`)
 - [ ] Sincronización Actividades desde Saiopen (agente + SQS)
 
 ### Prioridad Baja
 - [ ] Documentación técnica actualizada
-- [ ] Panel Admin para ActividadSaiopen
+- [ ] Panel Admin para SaiopenActivity
 
 ---
 
@@ -202,6 +225,6 @@ frontend/src/app/proyectos/
 
 ---
 
-*Última sesión: 24 Marzo 2026*  
-*Estado: Refactor completado y documentado*  
-*Listo para: Pruebas exhaustivas*
+*Última sesión: 26 Marzo 2026*
+*Estado: Rename Inglés completo — 365 tests backend OK, Angular compilando sin errores TS*
+*Listo para: REFT-22–27 (Angular features) o inicio de nueva feature*

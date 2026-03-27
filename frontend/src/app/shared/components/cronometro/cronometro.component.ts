@@ -50,8 +50,8 @@ export class CronometroComponent implements OnInit, OnDestroy {
 
   // ── Computed ────────────────────────────────────────────────
   readonly estado     = computed(() => this.sesion()?.estado ?? 'inactiva');
-  readonly estaActiva  = computed(() => this.estado() === 'activa');
-  readonly estaPausada = computed(() => this.estado() === 'pausada');
+  readonly estaActiva  = computed(() => this.estado() === 'active');
+  readonly estaPausada = computed(() => this.estado() === 'paused');
   readonly estaInactiva = computed(() => this.estado() === 'inactiva');
 
   private intervalId: ReturnType<typeof setInterval> | null = null;
@@ -191,7 +191,7 @@ export class CronometroComponent implements OnInit, OnDestroy {
   private restaurarSesion(sesion: SesionTrabajo): void {
     this.sesion.set(sesion);
     this.tiempoTranscurrido.set(this.calcularSegundosTranscurridos(sesion));
-    if (sesion.estado === 'activa') {
+    if (sesion.estado === 'active') {
       this.iniciarInterval();
     }
     this.cdr.markForCheck();

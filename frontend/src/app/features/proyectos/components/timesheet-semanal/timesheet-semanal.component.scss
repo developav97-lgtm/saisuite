@@ -1,0 +1,125 @@
+// ── Navegación ─────────────────────────────────────────────────────────────────
+.ts-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0 16px;
+}
+
+.ts-nav__rango {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--sc-text-primary, #212121);
+  min-width: 200px;
+  text-align: center;
+}
+
+.ts-nav__hoy-btn {
+  margin-left: 4px;
+}
+
+// ── Tabla ──────────────────────────────────────────────────────────────────────
+.ts-table-wrapper {
+  overflow-x: auto;
+  border: 1px solid var(--sc-border-color, #e0e0e0);
+  border-radius: 8px;
+}
+
+.ts-table {
+  width: 100%;
+  min-width: 640px;
+}
+
+// ── Columna tarea ─────────────────────────────────────────────────────────────
+.ts-col-tarea {
+  min-width: 200px;
+  max-width: 260px;
+  padding: 8px 12px !important;
+}
+
+.ts-tarea-codigo {
+  display: block;
+  font-size: 11px;
+  color: var(--sc-text-secondary, #757575);
+  font-family: monospace;
+}
+
+.ts-tarea-nombre {
+  display: block;
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 230px;
+}
+
+// ── Columnas de días ───────────────────────────────────────────────────────────
+.ts-col-dia {
+  text-align: center !important;
+  min-width: 68px;
+  padding: 6px 4px !important;
+}
+
+.ts-header-dia {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.ts-header-dia__label {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.ts-header-dia__fecha {
+  font-size: 11px;
+  color: var(--sc-text-secondary, #757575);
+  font-weight: normal;
+}
+
+.ts-col-hoy {
+  background: color-mix(in srgb, var(--mat-primary-color, #1976d2) 7%, transparent) !important;
+
+  .ts-header-dia__label {
+    color: var(--mat-primary-color, #1976d2);
+  }
+}
+
+.ts-col-finde {
+  background: var(--sc-background-alt, #f9f9f9) !important;
+  color: var(--sc-text-secondary, #757575);
+}
+
+// ── Horas ──────────────────────────────────────────────────────────────────────
+.ts-horas {
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+
+  &--vacio {
+    color: var(--sc-text-disabled, #bdbdbd);
+  }
+
+  &--total {
+    color: var(--mat-primary-color, #1976d2);
+  }
+}
+
+// ── Columna total ──────────────────────────────────────────────────────────────
+.ts-col-total {
+  text-align: right !important;
+  min-width: 72px;
+  padding: 6px 12px !important;
+  border-left: 2px solid var(--sc-border-color, #e0e0e0);
+}
+
+.ts-total-label,
+.ts-grand-total {
+  font-size: 13px;
+}
+
+.ts-grand-total {
+  color: var(--mat-primary-color, #1976d2);
+}

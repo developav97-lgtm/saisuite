@@ -23,7 +23,7 @@ export interface ProyectoListParams {
 @Injectable({ providedIn: 'root' })
 export class ProyectoService {
   private readonly http = inject(HttpClient);
-  private readonly baseUrl = '/api/v1/proyectos';
+  private readonly baseUrl = '/api/v1/projects';
 
   list(params: ProyectoListParams = {}): Observable<PaginatedResponse<ProyectoList>> {
     let httpParams = new HttpParams();
@@ -74,6 +74,12 @@ export class ProyectoService {
   getCaminoCritico(id: string): Observable<{ tareas_criticas: string[] }> {
     return this.http.get<{ tareas_criticas: string[] }>(
       `${this.baseUrl}/${id}/camino-critico/`,
+    );
+  }
+
+  getGanttData(id: string): Observable<{ tasks: import('../models/tarea.model').GanttTask[] }> {
+    return this.http.get<{ tasks: import('../models/tarea.model').GanttTask[] }>(
+      `${this.baseUrl}/${id}/gantt-data/`,
     );
   }
 }

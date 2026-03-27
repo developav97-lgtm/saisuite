@@ -20,7 +20,7 @@ export interface SesionTrabajoUsuarioDetail {
   full_name: string;
 }
 
-export type SesionTrabajoEstado = 'activa' | 'pausada' | 'finalizada';
+export type SesionTrabajoEstado = 'active' | 'paused' | 'finished';
 
 export interface SesionTrabajo {
   id: string;

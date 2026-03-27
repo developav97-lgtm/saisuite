@@ -1,39 +1,45 @@
 """
-SaiSuite — Proyectos: TareaService + TimesheetService + DependenciaService
+SaiSuite — Proyectos: TaskService + TimesheetService + TimesheetEntryService + DependencyService
 TODA la lógica de negocio de Tareas va aquí. Las views solo orquestan.
 """
 import logging
 from collections import defaultdict, deque
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from decimal import Decimal
 from typing import List, Optional
+
+from django.db.models import Sum
 
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
 
-from apps.proyectos.models import Proyecto, Tarea
+from apps.proyectos.models import (
+    Project, Phase, Task, TaskTag, WorkSession, TimesheetEntry,
+    TaskDependency, SaiopenActivity, ProjectActivity, Activity,
+    ProjectStatus, PhaseStatus, MeasurementMode, DependencyType,
+)
 
 logger = logging.getLogger(__name__)
 
 
-class TareaService:
+class TaskService:
     """Service para operaciones de negocio de Tareas."""
 
     @staticmethod
     @transaction.atomic
     def crear_tarea_con_validaciones(
-        proyecto: Proyecto,
+        proyecto: Project,
         nombre: str,
         **kwargs,
-    ) -> Tarea:
+    ) -> Task:
         """
         Crear tarea con validaciones de negocio completas.
 
         Raises:
             ValidationError: Si el proyecto no está activo o la jerarquía es inválida.
         """
-        estados_activos = ['planificado', 'en_ejecucion']
+        estados_activos = ['planned', 'in_progress']
         if proyecto.estado not in estados_activos:
             raise ValidationError({
                 'proyecto': (
@@ -55,15 +61,14 @@ class TareaService:
 
         # Auto-asignar fase: si no se provee, buscar la fase activa o la primera del proyecto (DEC-021)
         if 'fase' not in kwargs:
-            from apps.proyectos.models import Fase, EstadoFase
             fase = (
-                Fase.all_objects.filter(proyecto=proyecto, estado=EstadoFase.ACTIVA, activo=True).first()
-                or Fase.all_objects.filter(proyecto=proyecto, activo=True).order_by('orden').first()
+                Phase.all_objects.filter(proyecto=proyecto, estado=PhaseStatus.ACTIVE, activo=True).first()
+                or Phase.all_objects.filter(proyecto=proyecto, activo=True).order_by('orden').first()
             )
             if fase:
                 kwargs['fase'] = fase
 
-        tarea = Tarea.objects.create(
+        tarea = Task.objects.create(
             proyecto=proyecto,
             company=proyecto.company,
             nombre=nombre,
@@ -78,7 +83,7 @@ class TareaService:
         return tarea
 
     @staticmethod
-    def validar_puede_completar(tarea: Tarea) -> tuple[bool, Optional[str]]:
+    def validar_puede_completar(tarea: Task) -> tuple[bool, Optional[str]]:
         """
         Valida si una tarea puede ser completada.
 
@@ -86,8 +91,8 @@ class TareaService:
             (puede_completar, mensaje_error)
         """
         if tarea.tiene_subtareas:
-            subtareas_pendientes = tarea.subtareas.exclude(
-                estado__in=['completada', 'cancelada']
+            subtareas_pendientes = tarea.subtasks.exclude(
+                estado__in=['completed', 'cancelled']
             ).count()
 
             if subtareas_pendientes > 0:
@@ -101,24 +106,24 @@ class TareaService:
     @staticmethod
     @transaction.atomic
     def cambiar_estado(
-        tarea: Tarea,
+        tarea: Task,
         nuevo_estado: str,
         user=None,
-    ) -> Tarea:
+    ) -> Task:
         """
         Cambia el estado de la tarea con validaciones de negocio.
 
         Raises:
             ValidationError: Si el estado es inválido o no se puede completar.
         """
-        estados_validos = [choice[0] for choice in Tarea._meta.get_field('estado').choices]
+        estados_validos = [choice[0] for choice in Task._meta.get_field('estado').choices]
         if nuevo_estado not in estados_validos:
             raise ValidationError({
                 'estado': f'Estado inválido. Opciones: {estados_validos}'
             })
 
-        if nuevo_estado == 'completada':
-            puede_completar, mensaje = TareaService.validar_puede_completar(tarea)
+        if nuevo_estado == 'completed':
+            puede_completar, mensaje = TaskService.validar_puede_completar(tarea)
             if not puede_completar:
                 raise ValidationError({'estado': mensaje})
             tarea.porcentaje_completado = 100
@@ -133,13 +138,13 @@ class TareaService:
         return tarea
 
     @staticmethod
-    def recalcular_avance_tarea_padre(tarea_padre: Tarea) -> None:
+    def recalcular_avance_tarea_padre(tarea_padre: Task) -> None:
         """
         Recalcula el porcentaje_completado de una tarea a partir del promedio
         de sus subtareas. Usa QuerySet.update() para evitar disparar signals
         y prevenir recursión infinita.
         """
-        subtareas = tarea_padre.subtareas.all()
+        subtareas = tarea_padre.subtasks.all()
 
         if not subtareas.exists():
             return
@@ -149,7 +154,7 @@ class TareaService:
         nuevo_porcentaje = int(suma / total)
 
         if tarea_padre.porcentaje_completado != nuevo_porcentaje:
-            Tarea.objects.filter(id=tarea_padre.id).update(
+            Task.objects.filter(id=tarea_padre.id).update(
                 porcentaje_completado=nuevo_porcentaje
             )
             logger.info('Avance de tarea padre recalculado', extra={
@@ -159,13 +164,13 @@ class TareaService:
 
             # Propagación recursiva hacia arriba
             if tarea_padre.tarea_padre_id:
-                tarea_abuelo = Tarea.objects.get(id=tarea_padre.tarea_padre_id)
-                TareaService.recalcular_avance_tarea_padre(tarea_abuelo)
+                tarea_abuelo = Task.objects.get(id=tarea_padre.tarea_padre_id)
+                TaskService.recalcular_avance_tarea_padre(tarea_abuelo)
 
     @staticmethod
     @transaction.atomic
     def eliminar_tarea_con_subtareas(
-        tarea: Tarea,
+        tarea: Task,
         accion_subtareas: str = 'cascada',
     ) -> dict:
         """
@@ -182,12 +187,12 @@ class TareaService:
                 'accion_subtareas': 'Debe ser "cascada" o "promover".'
             })
 
-        subtareas_count = tarea.subtareas.count()
+        subtareas_count = tarea.subtasks.count()
         tarea_id = tarea.id
         tarea_nombre = tarea.nombre
 
         if accion_subtareas == 'promover' and subtareas_count > 0:
-            tarea.subtareas.update(tarea_padre=tarea.tarea_padre)
+            tarea.subtasks.update(tarea_padre=tarea.tarea_padre)
 
         tarea.delete()
 
@@ -206,14 +211,14 @@ class TareaService:
         }
 
     @staticmethod
-    def obtener_tareas_vencidas(proyecto: Optional[Proyecto] = None) -> List[Tarea]:
+    def obtener_tareas_vencidas(proyecto: Optional[Project] = None) -> List[Task]:
         """
         Retorna tareas cuya fecha_limite ya pasó y no están completadas ni canceladas.
         """
-        qs = Tarea.objects.filter(
+        qs = Task.objects.filter(
             fecha_limite__lt=timezone.now().date()
         ).exclude(
-            estado__in=['completada', 'cancelada']
+            estado__in=['completed', 'cancelled']
         ).select_related('proyecto', 'responsable')
 
         if proyecto:
@@ -224,19 +229,19 @@ class TareaService:
     @staticmethod
     def obtener_tareas_proximas_vencer(
         dias: int = 1,
-        proyecto: Optional[Proyecto] = None,
-    ) -> List[Tarea]:
+        proyecto: Optional[Project] = None,
+    ) -> List[Task]:
         """
         Retorna tareas que vencen dentro de los próximos N días (inclusive hoy).
         """
         hoy = timezone.now().date()
         fecha_limite = hoy + timedelta(days=dias)
 
-        qs = Tarea.objects.filter(
+        qs = Task.objects.filter(
             fecha_limite__gte=hoy,
             fecha_limite__lte=fecha_limite,
         ).exclude(
-            estado__in=['completada', 'cancelada']
+            estado__in=['completed', 'cancelled']
         ).select_related('proyecto', 'responsable')
 
         if proyecto:
@@ -246,13 +251,13 @@ class TareaService:
 
     @staticmethod
     @transaction.atomic
-    def generar_tarea_recurrente(tarea_original: Tarea) -> Optional[Tarea]:  # noqa: E501
+    def generar_tarea_recurrente(tarea_original: Task) -> Optional[Task]:  # noqa: E501
         """
         Genera una nueva instancia de una tarea recurrente cuando la original
         es completada.
 
         Returns:
-            Nueva Tarea creada, o None si no aplica.
+            Nueva Task creada, o None si no aplica.
         """
         if not tarea_original.es_recurrente:
             return None
@@ -272,7 +277,7 @@ class TareaService:
         base_fecha = tarea_original.fecha_limite or timezone.now().date()
         nueva_fecha_limite = base_fecha + delta
 
-        nueva_tarea = Tarea.objects.create(
+        nueva_tarea = Task.objects.create(
             company=tarea_original.company,
             proyecto=tarea_original.proyecto,
             fase=tarea_original.fase,
@@ -290,7 +295,7 @@ class TareaService:
         nueva_tarea.tags.set(tarea_original.tags.all())
         nueva_tarea.followers.set(tarea_original.followers.all())
 
-        Tarea.objects.filter(id=tarea_original.id).update(
+        Task.objects.filter(id=tarea_original.id).update(
             proxima_generacion=nueva_fecha_limite
         )
 
@@ -310,7 +315,7 @@ class TimesheetService:
 
     @staticmethod
     @transaction.atomic
-    def agregar_horas(tarea: Tarea, horas: Decimal) -> Tarea:
+    def agregar_horas(tarea: Task, horas: Decimal) -> Task:
         """
         Agrega horas manualmente a las horas_registradas de la tarea.
         Sincroniza porcentaje_completado con el progreso calculado por horas.
@@ -343,7 +348,7 @@ class TimesheetService:
 
     @staticmethod
     @transaction.atomic
-    def agregar_cantidad(tarea: Tarea, cantidad: Decimal) -> Tarea:
+    def agregar_cantidad(tarea: Task, cantidad: Decimal) -> Task:
         """
         Agrega cantidad ejecutada manualmente a cantidad_registrada.
         Sincroniza porcentaje_completado con el progreso calculado.
@@ -375,18 +380,16 @@ class TimesheetService:
 
     @staticmethod
     @transaction.atomic
-    def iniciar_sesion(tarea: Tarea, usuario) -> 'SesionTrabajo':
+    def iniciar_sesion(tarea: Task, usuario) -> WorkSession:
         """
         Inicia un cronómetro para la tarea.
         Solo puede haber una sesión activa por usuario a la vez.
         Raises:
             ValidationError: si ya existe una sesión activa o pausada.
         """
-        from apps.proyectos.models import SesionTrabajo
-
-        sesion_activa = SesionTrabajo.objects.filter(
+        sesion_activa = WorkSession.objects.filter(
             usuario=usuario,
-            estado__in=['activa', 'pausada'],
+            estado__in=['active', 'paused'],
         ).first()
 
         if sesion_activa:
@@ -394,12 +397,12 @@ class TimesheetService:
                 'Ya tienes una sesión activa. Detén o reanuda la sesión actual antes de iniciar una nueva.'
             )
 
-        sesion = SesionTrabajo.objects.create(
+        sesion = WorkSession.objects.create(
             company=tarea.company,
             tarea=tarea,
             usuario=usuario,
             inicio=timezone.now(),
-            estado='activa',
+            estado='active',
         )
 
         logger.info('Sesión de trabajo iniciada', extra={
@@ -411,25 +414,23 @@ class TimesheetService:
 
     @staticmethod
     @transaction.atomic
-    def pausar_sesion(sesion_id: str, usuario) -> 'SesionTrabajo':
+    def pausar_sesion(sesion_id: str, usuario) -> WorkSession:
         """
         Pausa una sesión activa.
         Raises:
             ValidationError: si la sesión no existe o no está activa.
         """
-        from apps.proyectos.models import SesionTrabajo
-
         try:
-            sesion = SesionTrabajo.objects.get(
-                id=sesion_id, usuario=usuario, estado='activa',
+            sesion = WorkSession.objects.get(
+                id=sesion_id, usuario=usuario, estado='active',
             )
-        except SesionTrabajo.DoesNotExist:
+        except WorkSession.DoesNotExist:
             raise ValidationError('Sesión no encontrada o no está activa.')
 
         pausas = sesion.pausas or []
         pausas.append({'inicio': timezone.now().isoformat(), 'fin': None})
         sesion.pausas = pausas
-        sesion.estado = 'pausada'
+        sesion.estado = 'paused'
         sesion.save(update_fields=['pausas', 'estado'])
 
         logger.info('Sesión pausada', extra={'sesion_id': str(sesion.id)})
@@ -437,26 +438,24 @@ class TimesheetService:
 
     @staticmethod
     @transaction.atomic
-    def reanudar_sesion(sesion_id: str, usuario) -> 'SesionTrabajo':
+    def reanudar_sesion(sesion_id: str, usuario) -> WorkSession:
         """
         Reanuda una sesión pausada cerrando el registro de pausa activo.
         Raises:
             ValidationError: si la sesión no existe o no está pausada.
         """
-        from apps.proyectos.models import SesionTrabajo
-
         try:
-            sesion = SesionTrabajo.objects.get(
-                id=sesion_id, usuario=usuario, estado='pausada',
+            sesion = WorkSession.objects.get(
+                id=sesion_id, usuario=usuario, estado='paused',
             )
-        except SesionTrabajo.DoesNotExist:
+        except WorkSession.DoesNotExist:
             raise ValidationError('Sesión no encontrada o no está pausada.')
 
         pausas = sesion.pausas or []
         if pausas and pausas[-1]['fin'] is None:
             pausas[-1]['fin'] = timezone.now().isoformat()
         sesion.pausas = pausas
-        sesion.estado = 'activa'
+        sesion.estado = 'active'
         sesion.save(update_fields=['pausas', 'estado'])
 
         logger.info('Sesión reanudada', extra={'sesion_id': str(sesion.id)})
@@ -464,35 +463,33 @@ class TimesheetService:
 
     @staticmethod
     @transaction.atomic
-    def detener_sesion(sesion_id: str, usuario, notas: str = '') -> 'SesionTrabajo':
+    def detener_sesion(sesion_id: str, usuario, notas: str = '') -> WorkSession:
         """
         Detiene la sesión (activa o pausada), calcula la duración neta
         y suma las horas a tarea.horas_registradas.
         Raises:
             ValidationError: si la sesión no existe.
         """
-        from apps.proyectos.models import SesionTrabajo
-
         try:
-            sesion = SesionTrabajo.objects.select_related('tarea').get(
+            sesion = WorkSession.objects.select_related('tarea').get(
                 id=sesion_id,
                 usuario=usuario,
-                estado__in=['activa', 'pausada'],
+                estado__in=['active', 'paused'],
             )
-        except SesionTrabajo.DoesNotExist:
+        except WorkSession.DoesNotExist:
             raise ValidationError('Sesión no encontrada.')
 
         ahora = timezone.now()
 
         # Cerrar pausa activa si la sesión estaba pausada
-        if sesion.estado == 'pausada':
+        if sesion.estado == 'paused':
             pausas = sesion.pausas or []
             if pausas and pausas[-1]['fin'] is None:
                 pausas[-1]['fin'] = ahora.isoformat()
             sesion.pausas = pausas
 
         sesion.fin = ahora
-        sesion.estado = 'finalizada'
+        sesion.estado = 'finished'
         sesion.notas = notas
         sesion.duracion_segundos = TimesheetService._calcular_duracion_segundos(sesion)
         sesion.save(update_fields=['fin', 'estado', 'notas', 'duracion_segundos', 'pausas'])
@@ -522,20 +519,18 @@ class TimesheetService:
         return sesion
 
     @staticmethod
-    def sesion_activa_usuario(usuario) -> Optional['SesionTrabajo']:
+    def sesion_activa_usuario(usuario) -> Optional[WorkSession]:
         """
         Retorna la sesión activa o pausada del usuario, o None si no hay ninguna.
         Útil para restaurar el estado del cronómetro al recargar la página.
         """
-        from apps.proyectos.models import SesionTrabajo
-
-        return SesionTrabajo.objects.filter(
+        return WorkSession.objects.filter(
             usuario=usuario,
-            estado__in=['activa', 'pausada'],
+            estado__in=['active', 'paused'],
         ).select_related('tarea').first()
 
     @staticmethod
-    def _calcular_duracion_segundos(sesion: 'SesionTrabajo') -> int:
+    def _calcular_duracion_segundos(sesion: WorkSession) -> int:
         """
         Calcula la duración neta de la sesión en segundos,
         restando el tiempo total de pausas.
@@ -557,7 +552,7 @@ class TimesheetService:
         return max(0, int(duracion_total - duracion_pausas))
 
 
-class DependenciaService:
+class DependencyService:
     """
     Service para operaciones de dependencias entre tareas.
     Incluye detección de ciclos (DFS), CPM y reprogramación en cascada.
@@ -571,24 +566,22 @@ class DependenciaService:
         company,
         tipo: str = 'FS',
         retraso_dias: int = 0,
-    ) -> 'TareaDependencia':
+    ) -> TaskDependency:
         """
         Crea una dependencia entre dos tareas validando que no forme un ciclo.
 
         Raises:
             ValidationError: si las tareas no existen, son iguales o forman ciclo.
         """
-        from apps.proyectos.models import TareaDependencia
-
         if str(predecesora_id) == str(sucesora_id):
             raise ValidationError(
                 'Una tarea no puede ser predecesora de sí misma.'
             )
 
         try:
-            predecesora = Tarea.objects.get(id=predecesora_id, company=company)
-            sucesora    = Tarea.objects.get(id=sucesora_id, company=company)
-        except Tarea.DoesNotExist:
+            predecesora = Task.objects.get(id=predecesora_id, company=company)
+            sucesora    = Task.objects.get(id=sucesora_id, company=company)
+        except Task.DoesNotExist:
             raise ValidationError('Una o ambas tareas no existen.')
 
         if predecesora.proyecto_id != sucesora.proyecto_id:
@@ -596,12 +589,12 @@ class DependenciaService:
                 'Ambas tareas deben pertenecer al mismo proyecto.'
             )
 
-        if DependenciaService._detectar_ciclo(predecesora_id, sucesora_id, company):
+        if DependencyService._detectar_ciclo(predecesora_id, sucesora_id, company):
             raise ValidationError(
                 'La dependencia crearía un ciclo entre las tareas.'
             )
 
-        dependencia, created = TareaDependencia.objects.get_or_create(
+        dependencia, created = TaskDependency.objects.get_or_create(
             company=company,
             tarea_predecesora=predecesora,
             tarea_sucesora=sucesora,
@@ -630,11 +623,9 @@ class DependenciaService:
         Si se puede alcanzar, agregar la arista pred→suc crearía un ciclo.
         Retorna True si habría ciclo, False si es seguro.
         """
-        from apps.proyectos.models import TareaDependencia
-
         # Construir mapa de adyacencia para las tareas de la misma empresa
         sucesoras_map: dict[str, list[str]] = defaultdict(list)
-        for dep in TareaDependencia.objects.filter(company=company).values(
+        for dep in TaskDependency.objects.filter(company=company).values(
             'tarea_predecesora_id', 'tarea_sucesora_id'
         ):
             sucesoras_map[str(dep['tarea_predecesora_id'])].append(
@@ -666,10 +657,9 @@ class DependenciaService:
         Solo considera tareas con fecha_inicio y fecha_fin definidas.
         Para tareas sin duración, se usa 1 día por defecto.
         """
-        from apps.proyectos.models import TareaDependencia
         from datetime import date
 
-        tareas_qs = Tarea.objects.filter(
+        tareas_qs = Task.objects.filter(
             proyecto_id=proyecto_id,
             company=company,
         ).values('id', 'fecha_inicio', 'fecha_fin', 'nombre')
@@ -691,7 +681,7 @@ class DependenciaService:
                 return max(1, delta)
             return 1
 
-        deps_qs = TareaDependencia.objects.filter(
+        deps_qs = TaskDependency.objects.filter(
             company=company,
             tarea_predecesora__proyecto_id=proyecto_id,
         ).values('tarea_predecesora_id', 'tarea_sucesora_id', 'retraso_dias')
@@ -773,8 +763,6 @@ class DependenciaService:
         Solo ajusta si la nueva fecha es POSTERIOR a la actual.
         Recursivo: propaga cambios hacia abajo en la cadena.
         """
-        from apps.proyectos.models import TareaDependencia
-
         if _visitados is None:
             _visitados = set()
 
@@ -783,14 +771,14 @@ class DependenciaService:
         _visitados.add(str(tarea_id))
 
         try:
-            predecesora = Tarea.objects.get(id=tarea_id, company=company)
-        except Tarea.DoesNotExist:
+            predecesora = Task.objects.get(id=tarea_id, company=company)
+        except Task.DoesNotExist:
             return
 
         if not predecesora.fecha_fin:
             return
 
-        deps_fs = TareaDependencia.objects.filter(
+        deps_fs = TaskDependency.objects.filter(
             tarea_predecesora=predecesora,
             tipo_dependencia='FS',
             company=company,
@@ -818,6 +806,197 @@ class DependenciaService:
                 })
 
                 # Recursión hacia las sucesoras de la sucesora
-                DependenciaService.reprogramar_en_cascada(
+                DependencyService.reprogramar_en_cascada(
                     str(sucesora.id), company, _visitados
                 )
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# TimesheetEntryService
+# ──────────────────────────────────────────────────────────────────────────────
+
+class TimesheetEntryService:
+    """
+    Lógica de negocio para registros diarios de horas (TimesheetEntry).
+    Gestiona registro manual, edición, eliminación y validación por manager.
+    """
+
+    # ── Registro manual ───────────────────────────────────────────────────────
+
+    @staticmethod
+    @transaction.atomic
+    def registrar_horas(
+        tarea_id: str,
+        usuario,
+        fecha: date,
+        horas: Decimal,
+        descripcion: str = '',
+        company=None,
+    ):
+        """
+        Crea o actualiza un registro de horas para usuario/tarea/fecha.
+        Si ya existe un entry para ese día/tarea/usuario, lo actualiza
+        siempre que no esté validado.
+
+        Raises:
+            ValidationError: si horas fuera de rango o entry ya validado.
+        """
+        if horas <= 0 or horas > 24:
+            raise ValidationError({'horas': 'Las horas deben estar entre 0.01 y 24.'})
+
+        tarea = Task.objects.select_related('company').get(
+            id=tarea_id, company=company,
+        )
+
+        entry, created = TimesheetEntry.objects.get_or_create(
+            tarea=tarea,
+            usuario=usuario,
+            fecha=fecha,
+            defaults={
+                'company': company,
+                'horas': horas,
+                'descripcion': descripcion,
+            },
+        )
+
+        if not created:
+            if entry.validado:
+                raise ValidationError(
+                    'Este registro ya fue validado y no se puede modificar.'
+                )
+            entry.horas       = horas
+            entry.descripcion = descripcion
+            entry.save(update_fields=['horas', 'descripcion'])
+
+        logger.info('timesheet_entry_registrado', extra={
+            'entry_id': str(entry.id),
+            'tarea_id': tarea_id,
+            'usuario_id': str(usuario.id),
+            'fecha': str(fecha),
+            'horas': str(horas),
+            'es_nuevo': created,
+        })
+        return entry
+
+    @staticmethod
+    @transaction.atomic
+    def eliminar_entry(entry_id: str, usuario):
+        """
+        Elimina un entry no validado. Solo el propietario o admin puede eliminar.
+
+        Raises:
+            ValidationError: si el entry está validado.
+        """
+        try:
+            entry = TimesheetEntry.objects.get(id=entry_id, usuario=usuario)
+        except TimesheetEntry.DoesNotExist:
+            raise ValidationError('Registro no encontrado.')
+
+        if entry.validado:
+            raise ValidationError('No se puede eliminar un registro ya validado.')
+
+        entry.delete()
+        logger.info('timesheet_entry_eliminado', extra={'entry_id': entry_id})
+
+    # ── Validación por manager ─────────────────────────────────────────────────
+
+    @staticmethod
+    @transaction.atomic
+    def validar_timesheet(entry_id: str, validador):
+        """
+        Manager/coordinador aprueba un registro de horas.
+        Solo puede validar el gerente o coordinador del proyecto,
+        o un company_admin.
+        Al validar, recalcula tarea.horas_registradas con la suma de entries validados.
+
+        Raises:
+            ValidationError: si el validador no tiene permisos o el entry no existe.
+        """
+        from django.utils import timezone
+
+        try:
+            entry = TimesheetEntry.objects.select_related(
+                'tarea__proyecto',
+            ).get(id=entry_id)
+        except TimesheetEntry.DoesNotExist:
+            raise ValidationError('Registro no encontrado.')
+
+        if entry.validado:
+            raise ValidationError('Este registro ya fue validado.')
+
+        # Verificar permiso: company_admin, gerente o coordinador del proyecto
+        proyecto = entry.tarea.proyecto
+        es_admin = getattr(validador, 'role', '') == 'company_admin' or getattr(validador, 'is_staff', False)
+        es_gerente     = str(proyecto.gerente_id)     == str(validador.id)
+        es_coordinador = proyecto.coordinador_id and str(proyecto.coordinador_id) == str(validador.id)
+
+        if not (es_admin or es_gerente or es_coordinador):
+            raise ValidationError(
+                'Solo el gerente, coordinador del proyecto o administrador pueden validar registros de horas.'
+            )
+
+        entry.validado         = True
+        entry.validado_por     = validador
+        entry.fecha_validacion = timezone.now()
+        entry.save(update_fields=['validado', 'validado_por', 'fecha_validacion'])
+
+        TimesheetEntryService.recalcular_horas_tarea(str(entry.tarea_id))
+
+        logger.info('timesheet_entry_validado', extra={
+            'entry_id': str(entry.id),
+            'validador_id': str(validador.id),
+        })
+        return entry
+
+    # ── Cálculo de horas acumuladas ────────────────────────────────────────────
+
+    @staticmethod
+    @transaction.atomic
+    def recalcular_horas_tarea(tarea_id: str) -> Decimal:
+        """
+        Recalcula tarea.horas_registradas como suma de todos los entries validados.
+        """
+        total = TimesheetEntry.objects.filter(
+            tarea_id=tarea_id,
+            validado=True,
+        ).aggregate(total=Sum('horas'))['total'] or Decimal('0')
+
+        tarea = Task.objects.get(id=tarea_id)
+        tarea.horas_registradas = Decimal(str(total))
+
+        update_fields = ['horas_registradas']
+        if tarea.horas_estimadas and tarea.horas_estimadas > 0:
+            nuevo_porcentaje = min(
+                int(float(tarea.horas_registradas) / float(tarea.horas_estimadas) * 100),
+                100,
+            )
+            tarea.porcentaje_completado = nuevo_porcentaje
+            update_fields.append('porcentaje_completado')
+
+        tarea.save(update_fields=update_fields)
+
+        logger.info('horas_tarea_recalculadas', extra={
+            'tarea_id': tarea_id,
+            'total': str(total),
+        })
+        return Decimal(str(total))
+
+    # ── Consulta semanal ──────────────────────────────────────────────────────
+
+    @staticmethod
+    def mis_horas(usuario, fecha_inicio: date, fecha_fin: date, company=None):
+        """
+        Retorna los TimesheetEntry del usuario en el rango [fecha_inicio, fecha_fin],
+        opcionalmente filtrado por company.
+        """
+        qs = TimesheetEntry.objects.filter(
+            usuario=usuario,
+            fecha__gte=fecha_inicio,
+            fecha__lte=fecha_fin,
+        ).select_related('tarea', 'validado_por').order_by('-fecha', '-created_at')
+
+        if company:
+            qs = qs.filter(company=company)
+
+        return qs
+

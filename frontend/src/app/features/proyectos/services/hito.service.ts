@@ -11,7 +11,7 @@ export class HitoService {
   private readonly http = inject(HttpClient);
 
   private url(proyectoId: string): string {
-    return `/api/v1/proyectos/${proyectoId}/hitos`;
+    return `/api/v1/projects/${proyectoId}/milestones`;
   }
 
   list(proyectoId: string): Observable<Hito[]> {

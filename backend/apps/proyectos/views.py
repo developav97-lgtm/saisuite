@@ -14,38 +14,40 @@ from rest_framework.views import APIView
 from django_filters.rest_framework import DjangoFilterBackend
 
 from apps.proyectos.models import (
-    Proyecto, Fase, TerceroProyecto, DocumentoContable, Hito,
-    Actividad, ActividadProyecto, Tarea, TareaTag, SesionTrabajo,
-    ActividadSaiopen, TareaDependencia,
+    Project, Phase, ProjectStakeholder, AccountingDocument, Milestone,
+    Activity, ProjectActivity, Task, TaskTag, WorkSession,
+    SaiopenActivity, TaskDependency, TimesheetEntry,
 )
 from apps.proyectos.serializers import (
-    ProyectoListSerializer,
-    ProyectoDetailSerializer,
-    ProyectoCreateUpdateSerializer,
-    CambiarEstadoSerializer,
-    FaseListSerializer,
-    FaseDetailSerializer,
-    FaseCreateUpdateSerializer,
-    TerceroProyectoSerializer,
-    TerceroProyectoCreateSerializer,
-    DocumentoContableListSerializer,
-    DocumentoContableDetailSerializer,
-    HitoSerializer,
-    HitoCreateSerializer,
-    GenerarFacturaSerializer,
-    ActividadListSerializer,
-    ActividadDetailSerializer,
-    ActividadCreateUpdateSerializer,
-    ActividadProyectoSerializer,
-    ActividadProyectoCreateUpdateSerializer,
-    ActividadSaiopenListSerializer,
-    ActividadSaiopenDetailSerializer,
-    ActividadSaiopenCreateUpdateSerializer,
-    ConfiguracionModuloSerializer,
-    TareaSerializer,
-    TareaDependenciaSerializer,
-    TareaTagSerializer,
-    SesionTrabajoSerializer,
+    ProjectListSerializer,
+    ProjectDetailSerializer,
+    ProjectCreateUpdateSerializer,
+    ChangeStatusSerializer,
+    PhaseListSerializer,
+    PhaseDetailSerializer,
+    PhaseCreateUpdateSerializer,
+    ProjectStakeholderSerializer,
+    ProjectStakeholderCreateSerializer,
+    AccountingDocumentListSerializer,
+    AccountingDocumentDetailSerializer,
+    MilestoneSerializer,
+    MilestoneCreateSerializer,
+    GenerateInvoiceSerializer,
+    ActivityListSerializer,
+    ActivityDetailSerializer,
+    ActivityCreateUpdateSerializer,
+    ProjectActivitySerializer,
+    ProjectActivityCreateSerializer,
+    SaiopenActivitySerializer,
+    SaiopenActivityDetailSerializer,
+    SaiopenActivityCreateUpdateSerializer,
+    ModuleSettingsSerializer,
+    TaskDetailSerializer,
+    TaskDependencySerializer,
+    TaskTagSerializer,
+    WorkSessionSerializer,
+    TimesheetEntrySerializer,
+    TimesheetEntryCreateSerializer,
 )
 from apps.proyectos.services import (
     ProyectoService,
@@ -59,20 +61,20 @@ from apps.proyectos.services import (
     ProyectoException,
     calcular_avance_fase_desde_tareas,
 )
-from apps.proyectos.tarea_services import TimesheetService, DependenciaService
+from apps.proyectos.tarea_services import TimesheetService, DependencyService, TimesheetEntryService
 from apps.notifications.services import NotificacionService
-from apps.proyectos.filters import ProyectoFilter, TareaFilter
-from apps.proyectos.permissions import CanAccessProyectos, CanEditProyecto, TareaPermission
+from apps.proyectos.filters import ProjectFilter, TaskFilter
+from apps.proyectos.permissions import CanAccessProyectos, CanEditProyecto, TaskPermission
 
 logger = logging.getLogger(__name__)
 
 
-class ProyectoViewSet(viewsets.ModelViewSet):
+class ProjectViewSet(viewsets.ModelViewSet):
     """
     CRUD de proyectos + acciones de cambio de estado y reporte financiero.
     """
     filter_backends  = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    filterset_class  = ProyectoFilter
+    filterset_class  = ProjectFilter
     search_fields    = ['codigo', 'nombre', 'cliente_nombre']
     ordering_fields  = ['codigo', 'nombre', 'estado', 'fecha_inicio_planificada', 'created_at']
     ordering         = ['-created_at']
@@ -85,12 +87,12 @@ class ProyectoViewSet(viewsets.ModelViewSet):
 
     def get_serializer_class(self):
         if self.action == 'list':
-            return ProyectoListSerializer
+            return ProjectListSerializer
         if self.action in ('create', 'update', 'partial_update'):
-            return ProyectoCreateUpdateSerializer
+            return ProjectCreateUpdateSerializer
         if self.action == 'cambiar_estado':
-            return CambiarEstadoSerializer
-        return ProyectoDetailSerializer
+            return ChangeStatusSerializer
+        return ProjectDetailSerializer
 
     def perform_create(self, serializer):
         proyecto = ProyectoService.create_proyecto(serializer.validated_data, self.request.user)
@@ -111,7 +113,7 @@ class ProyectoViewSet(viewsets.ModelViewSet):
     def cambiar_estado(self, request, pk=None):
         """POST /api/v1/proyectos/{id}/cambiar-estado/"""
         proyecto   = self.get_object()
-        serializer = CambiarEstadoSerializer(data=request.data)
+        serializer = ChangeStatusSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         proyecto_actualizado = ProyectoService.cambiar_estado(
@@ -120,7 +122,7 @@ class ProyectoViewSet(viewsets.ModelViewSet):
             forzar=serializer.validated_data.get('forzar', False),
         )
         return Response(
-            ProyectoDetailSerializer(proyecto_actualizado).data,
+            ProjectDetailSerializer(proyecto_actualizado).data,
             status=status.HTTP_200_OK,
         )
 
@@ -130,13 +132,13 @@ class ProyectoViewSet(viewsets.ModelViewSet):
         POST /api/v1/proyectos/{id}/iniciar-ejecucion/
         Inicia la ejecución del proyecto validando configuración del módulo.
         """
-        from apps.proyectos.models import EstadoProyecto
+        from apps.proyectos.models import ProjectStatus
         proyecto = self.get_object()
         proyecto_actualizado = ProyectoService.cambiar_estado(
-            proyecto, nuevo_estado=EstadoProyecto.EN_EJECUCION
+            proyecto, nuevo_estado=ProjectStatus.IN_PROGRESS
         )
         return Response(
-            ProyectoDetailSerializer(proyecto_actualizado).data,
+            ProjectDetailSerializer(proyecto_actualizado).data,
             status=status.HTTP_200_OK,
         )
 
@@ -147,6 +149,39 @@ class ProyectoViewSet(viewsets.ModelViewSet):
         data     = ProyectoService.get_estado_financiero(proyecto)
         return Response(data, status=status.HTTP_200_OK)
 
+    @action(detail=True, methods=['get'], url_path='gantt-data')
+    def gantt_data(self, request, pk=None):
+        """
+        GET /api/v1/proyectos/{id}/gantt-data/
+        Retorna tareas del proyecto en formato compatible con Frappe Gantt.
+        Solo incluye tareas con fecha_inicio y fecha_fin definidas.
+        """
+        proyecto = self.get_object()
+        tareas = (
+            proyecto.tasks
+            .filter(fecha_inicio__isnull=False, fecha_fin__isnull=False)
+            .select_related('fase', 'responsable')
+            .order_by('fecha_inicio')
+        )
+
+        tasks = [
+            {
+                'id': str(tarea.id),
+                'name': tarea.nombre,
+                'start': tarea.fecha_inicio.isoformat(),
+                'end': tarea.fecha_fin.isoformat(),
+                'progress': tarea.porcentaje_completado,
+                'custom_class': f'estado-{tarea.estado}',
+            }
+            for tarea in tareas
+        ]
+
+        logger.info('gantt_data_consultado', extra={
+            'proyecto_id': str(proyecto.id),
+            'tareas_count': len(tasks),
+        })
+        return Response({'tasks': tasks}, status=status.HTTP_200_OK)
+
     @action(detail=True, methods=['get'], url_path='camino-critico')
     def camino_critico(self, request, pk=None):
         """
@@ -155,13 +190,13 @@ class ProyectoViewSet(viewsets.ModelViewSet):
         """
         proyecto = self.get_object()
         company  = getattr(request.user, 'company', None)
-        criticas = DependenciaService.calcular_camino_critico(
+        criticas = DependencyService.calcular_camino_critico(
             str(proyecto.id), company
         )
         return Response({'tareas_criticas': criticas}, status=status.HTTP_200_OK)
 
 
-class FaseViewSet(viewsets.ModelViewSet):
+class PhaseViewSet(viewsets.ModelViewSet):
     """
     CRUD de fases.
     - Listado y creación via /proyectos/{id}/fases/
@@ -171,21 +206,21 @@ class FaseViewSet(viewsets.ModelViewSet):
 
     def get_serializer_class(self):
         if self.action == 'list':
-            return FaseListSerializer
+            return PhaseListSerializer
         if self.action in ('create', 'update', 'partial_update'):
-            return FaseCreateUpdateSerializer
-        return FaseDetailSerializer
+            return PhaseCreateUpdateSerializer
+        return PhaseDetailSerializer
 
     def get_queryset(self):
         proyecto_pk = self.kwargs.get('proyecto_pk')
         if proyecto_pk:
-            proyecto = Proyecto.all_objects.get(id=proyecto_pk)
+            proyecto = Project.all_objects.get(id=proyecto_pk)
             return FaseService.list_fases(proyecto)
-        return Fase.all_objects.filter(activo=True).select_related('proyecto')
+        return Phase.all_objects.filter(activo=True).select_related('proyecto')
 
     def perform_create(self, serializer):
         proyecto_pk = self.kwargs.get('proyecto_pk')
-        proyecto    = Proyecto.all_objects.get(id=proyecto_pk)
+        proyecto    = Project.all_objects.get(id=proyecto_pk)
         fase = FaseService.create_fase(proyecto, serializer.validated_data)
         serializer.instance = fase
 
@@ -206,7 +241,7 @@ class FaseViewSet(viewsets.ModelViewSet):
             fase_actualizada = FaseService.activar_fase(fase)
         except ProyectoException as exc:
             return Response({'error': str(exc.detail)}, status=status.HTTP_400_BAD_REQUEST)
-        return Response(FaseDetailSerializer(fase_actualizada).data)
+        return Response(PhaseDetailSerializer(fase_actualizada).data)
 
     @action(detail=True, methods=['post'], url_path='completar')
     def completar(self, request, pk=None, **kwargs):
@@ -216,10 +251,10 @@ class FaseViewSet(viewsets.ModelViewSet):
             fase_actualizada = FaseService.completar_fase(fase)
         except ProyectoException as exc:
             return Response({'error': str(exc.detail)}, status=status.HTTP_400_BAD_REQUEST)
-        return Response(FaseDetailSerializer(fase_actualizada).data)
+        return Response(PhaseDetailSerializer(fase_actualizada).data)
 
 
-class ActividadSaiopenViewSet(viewsets.ModelViewSet):
+class SaiopenActivityViewSet(viewsets.ModelViewSet):
     """
     CRUD del catálogo de actividades Saiopen.
     GET/POST  /api/v1/proyectos/actividades-saiopen/
@@ -233,17 +268,17 @@ class ActividadSaiopenViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         company = getattr(self.request.user, 'company', None)
-        qs = ActividadSaiopen.all_objects.filter(activo=True)
+        qs = SaiopenActivity.all_objects.filter(activo=True)
         if company:
             qs = qs.filter(company=company)
         return qs
 
     def get_serializer_class(self):
         if self.action == 'list':
-            return ActividadSaiopenListSerializer
+            return SaiopenActivitySerializer
         if self.action in ('create', 'update', 'partial_update'):
-            return ActividadSaiopenCreateUpdateSerializer
-        return ActividadSaiopenDetailSerializer
+            return SaiopenActivityCreateUpdateSerializer
+        return SaiopenActivityDetailSerializer
 
     def perform_create(self, serializer):
         company = getattr(self.request.user, 'company', None)
@@ -256,7 +291,7 @@ class ActividadSaiopenViewSet(viewsets.ModelViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class TerceroProyectoViewSet(viewsets.GenericViewSet):
+class ProjectStakeholderViewSet(viewsets.GenericViewSet):
     """
     Terceros vinculados a un proyecto.
     - GET/POST  /api/v1/proyectos/{proyecto_pk}/terceros/
@@ -266,42 +301,42 @@ class TerceroProyectoViewSet(viewsets.GenericViewSet):
 
     def _get_proyecto(self):
         proyecto_pk = self.kwargs['proyecto_pk']
-        return Proyecto.all_objects.get(id=proyecto_pk)
+        return Project.all_objects.get(id=proyecto_pk)
 
     def get_serializer_class(self):
         if self.action == 'create':
-            return TerceroProyectoCreateSerializer
-        return TerceroProyectoSerializer
+            return ProjectStakeholderCreateSerializer
+        return ProjectStakeholderSerializer
 
     def list(self, request, proyecto_pk=None):
         """GET /api/v1/proyectos/{id}/terceros/?fase=UUID"""
         proyecto = self._get_proyecto()
         fase_id  = request.query_params.get('fase') or None
         qs       = TerceroProyectoService.list_terceros(proyecto, fase_id=fase_id)
-        serializer = TerceroProyectoSerializer(qs, many=True)
+        serializer = ProjectStakeholderSerializer(qs, many=True)
         return Response(serializer.data)
 
     def create(self, request, proyecto_pk=None):
         """POST /api/v1/proyectos/{id}/terceros/"""
         proyecto   = self._get_proyecto()
-        serializer = TerceroProyectoCreateSerializer(
+        serializer = ProjectStakeholderCreateSerializer(
             data=request.data, context={'proyecto': proyecto}
         )
         serializer.is_valid(raise_exception=True)
         tercero = TerceroProyectoService.vincular_tercero(proyecto, serializer.validated_data)
         return Response(
-            TerceroProyectoSerializer(tercero).data,
+            ProjectStakeholderSerializer(tercero).data,
             status=status.HTTP_201_CREATED,
         )
 
     def destroy(self, request, proyecto_pk=None, pk=None):
         """DELETE /api/v1/proyectos/{id}/terceros/{pk}/"""
-        tercero = TerceroProyecto.all_objects.get(id=pk, proyecto_id=proyecto_pk)
+        tercero = ProjectStakeholder.all_objects.get(id=pk, proyecto_id=proyecto_pk)
         TerceroProyectoService.desvincular_tercero(tercero)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class DocumentoContableViewSet(viewsets.GenericViewSet):
+class AccountingDocumentViewSet(viewsets.GenericViewSet):
     """
     Documentos contables del proyecto (solo lectura — los crea el agente Go).
     - GET  /api/v1/proyectos/{proyecto_pk}/documentos/
@@ -310,24 +345,24 @@ class DocumentoContableViewSet(viewsets.GenericViewSet):
     permission_classes = [CanAccessProyectos]
 
     def _get_proyecto(self):
-        return Proyecto.all_objects.get(id=self.kwargs['proyecto_pk'])
+        return Project.all_objects.get(id=self.kwargs['proyecto_pk'])
 
     def list(self, request, proyecto_pk=None):
         """GET /api/v1/proyectos/{id}/documentos/"""
         proyecto = self._get_proyecto()
         fase_id  = request.query_params.get('fase')
         qs       = DocumentoContableService.list_documentos(proyecto, fase_id=fase_id)
-        serializer = DocumentoContableListSerializer(qs, many=True)
+        serializer = AccountingDocumentListSerializer(qs, many=True)
         return Response(serializer.data)
 
     def retrieve(self, request, proyecto_pk=None, pk=None):
         """GET /api/v1/proyectos/{id}/documentos/{pk}/"""
         documento  = DocumentoContableService.get_documento(pk)
-        serializer = DocumentoContableDetailSerializer(documento)
+        serializer = AccountingDocumentDetailSerializer(documento)
         return Response(serializer.data)
 
 
-class HitoViewSet(viewsets.GenericViewSet):
+class MilestoneViewSet(viewsets.GenericViewSet):
     """
     Hitos facturables del proyecto.
     - GET/POST  /api/v1/proyectos/{proyecto_pk}/hitos/
@@ -336,43 +371,43 @@ class HitoViewSet(viewsets.GenericViewSet):
     permission_classes = [CanAccessProyectos, CanEditProyecto]
 
     def _get_proyecto(self):
-        return Proyecto.all_objects.get(id=self.kwargs['proyecto_pk'])
+        return Project.all_objects.get(id=self.kwargs['proyecto_pk'])
 
     def get_serializer_class(self):
         if self.action == 'create':
-            return HitoCreateSerializer
+            return MilestoneCreateSerializer
         if self.action == 'generar_factura':
-            return GenerarFacturaSerializer
-        return HitoSerializer
+            return GenerateInvoiceSerializer
+        return MilestoneSerializer
 
     def list(self, request, proyecto_pk=None):
         """GET /api/v1/proyectos/{id}/hitos/"""
         proyecto   = self._get_proyecto()
         qs         = HitoService.list_hitos(proyecto)
-        serializer = HitoSerializer(qs, many=True)
+        serializer = MilestoneSerializer(qs, many=True)
         return Response(serializer.data)
 
     def create(self, request, proyecto_pk=None):
         """POST /api/v1/proyectos/{id}/hitos/"""
         proyecto   = self._get_proyecto()
-        serializer = HitoCreateSerializer(
+        serializer = MilestoneCreateSerializer(
             data=request.data, context={'proyecto': proyecto}
         )
         serializer.is_valid(raise_exception=True)
         hito = HitoService.create_hito(proyecto, serializer.validated_data)
-        return Response(HitoSerializer(hito).data, status=status.HTTP_201_CREATED)
+        return Response(MilestoneSerializer(hito).data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=['post'], url_path='generar-factura')
     def generar_factura(self, request, proyecto_pk=None, pk=None):
         """POST /api/v1/proyectos/{id}/hitos/{pk}/generar-factura/"""
-        hito       = Hito.all_objects.get(id=pk, proyecto_id=proyecto_pk)
-        serializer = GenerarFacturaSerializer(data=request.data)
+        hito       = Milestone.all_objects.get(id=pk, proyecto_id=proyecto_pk)
+        serializer = GenerateInvoiceSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         hito_actualizado = HitoService.generar_factura(hito, request.user)
-        return Response(HitoSerializer(hito_actualizado).data, status=status.HTTP_200_OK)
+        return Response(MilestoneSerializer(hito_actualizado).data, status=status.HTTP_200_OK)
 
 
-class ActividadViewSet(viewsets.ModelViewSet):
+class ActivityViewSet(viewsets.ModelViewSet):
     """
     CRUD del catálogo global de actividades (por empresa).
     - GET/POST       /api/v1/proyectos/actividades/
@@ -391,10 +426,10 @@ class ActividadViewSet(viewsets.ModelViewSet):
 
     def get_serializer_class(self):
         if self.action == 'list':
-            return ActividadListSerializer
+            return ActivityListSerializer
         if self.action in ('create', 'update', 'partial_update'):
-            return ActividadCreateUpdateSerializer
-        return ActividadDetailSerializer
+            return ActivityCreateUpdateSerializer
+        return ActivityDetailSerializer
 
     def perform_create(self, serializer):
         actividad = ActividadService.create_actividad(serializer.validated_data, self.request.user)
@@ -412,7 +447,7 @@ class ActividadViewSet(viewsets.ModelViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class ActividadProyectoViewSet(viewsets.GenericViewSet):
+class ProjectActivityViewSet(viewsets.GenericViewSet):
     """
     Actividades asignadas a un proyecto.
     - GET/POST    /api/v1/proyectos/{proyecto_pk}/actividades/
@@ -421,50 +456,50 @@ class ActividadProyectoViewSet(viewsets.GenericViewSet):
     permission_classes = [CanAccessProyectos, CanEditProyecto]
 
     def _get_proyecto(self):
-        return Proyecto.all_objects.get(id=self.kwargs['proyecto_pk'])
+        return Project.all_objects.get(id=self.kwargs['proyecto_pk'])
 
     def get_serializer_class(self):
         if self.action in ('create', 'partial_update'):
-            return ActividadProyectoCreateUpdateSerializer
-        return ActividadProyectoSerializer
+            return ProjectActivityCreateSerializer
+        return ProjectActivitySerializer
 
     def list(self, request, proyecto_pk=None):
         """GET /api/v1/proyectos/{id}/actividades/"""
         proyecto = self._get_proyecto()
         fase_id  = request.query_params.get('fase')
         qs       = ActividadProyectoService.list_actividades_proyecto(proyecto, fase_id=fase_id)
-        serializer = ActividadProyectoSerializer(qs, many=True)
+        serializer = ProjectActivitySerializer(qs, many=True)
         return Response(serializer.data)
 
     def create(self, request, proyecto_pk=None):
         """POST /api/v1/proyectos/{id}/actividades/"""
         proyecto   = self._get_proyecto()
-        serializer = ActividadProyectoCreateUpdateSerializer(
+        serializer = ProjectActivityCreateSerializer(
             data=request.data, context={'proyecto': proyecto}
         )
         serializer.is_valid(raise_exception=True)
         ap = ActividadProyectoService.asignar_actividad(proyecto, serializer.validated_data)
-        return Response(ActividadProyectoSerializer(ap).data, status=status.HTTP_201_CREATED)
+        return Response(ProjectActivitySerializer(ap).data, status=status.HTTP_201_CREATED)
 
     def partial_update(self, request, proyecto_pk=None, pk=None):
         """PATCH /api/v1/proyectos/{id}/actividades/{pk}/"""
-        ap = ActividadProyecto.all_objects.get(id=pk, proyecto_id=proyecto_pk)
-        serializer = ActividadProyectoCreateUpdateSerializer(
+        ap = ProjectActivity.all_objects.get(id=pk, proyecto_id=proyecto_pk)
+        serializer = ProjectActivityCreateSerializer(
             ap, data=request.data, partial=True,
             context={'proyecto': ap.proyecto},
         )
         serializer.is_valid(raise_exception=True)
         ap = ActividadProyectoService.update_actividad_proyecto(ap, serializer.validated_data)
-        return Response(ActividadProyectoSerializer(ap).data)
+        return Response(ProjectActivitySerializer(ap).data)
 
     def destroy(self, request, proyecto_pk=None, pk=None):
         """DELETE /api/v1/proyectos/{id}/actividades/{pk}/"""
-        ap = ActividadProyecto.all_objects.get(id=pk, proyecto_id=proyecto_pk)
+        ap = ProjectActivity.all_objects.get(id=pk, proyecto_id=proyecto_pk)
         ActividadProyectoService.desasignar_actividad(ap)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class ConfiguracionModuloView(APIView):
+class ModuleSettingsView(APIView):
     """
     GET/PATCH de la configuración del módulo de proyectos para la empresa del usuario.
     GET   /api/v1/proyectos/config/
@@ -474,19 +509,19 @@ class ConfiguracionModuloView(APIView):
 
     def get(self, request):
         config = ConfiguracionModuloService.get_or_create(request.user.company)
-        return Response(ConfiguracionModuloSerializer(config).data)
+        return Response(ModuleSettingsSerializer(config).data)
 
     def patch(self, request):
         config     = ConfiguracionModuloService.get_or_create(request.user.company)
-        serializer = ConfiguracionModuloSerializer(config, data=request.data, partial=True)
+        serializer = ModuleSettingsSerializer(config, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         updated = ConfiguracionModuloService.update(request.user.company, serializer.validated_data)
-        return Response(ConfiguracionModuloSerializer(updated).data)
+        return Response(ModuleSettingsSerializer(updated).data)
 
 
-class TareaViewSet(viewsets.ModelViewSet):
+class TaskViewSet(viewsets.ModelViewSet):
     """
-    ViewSet para Tarea con filtros avanzados.
+    ViewSet para Task con filtros avanzados.
 
     Endpoints:
       GET/POST        /api/v1/proyectos/tareas/
@@ -496,19 +531,19 @@ class TareaViewSet(viewsets.ModelViewSet):
       POST            /api/v1/proyectos/tareas/{id}/cambiar-estado/
     """
 
-    serializer_class   = TareaSerializer
-    permission_classes = [TareaPermission]
+    serializer_class   = TaskDetailSerializer
+    permission_classes = [TaskPermission]
     filter_backends    = [DjangoFilterBackend, OrderingFilter]
-    filterset_class    = TareaFilter
+    filterset_class    = TaskFilter
     ordering_fields    = ['prioridad', 'fecha_limite', 'created_at', 'nombre']
     ordering           = ['-prioridad', 'fecha_limite']
 
     def get_queryset(self):
         company = getattr(self.request.user, 'company', None)
-        qs = Tarea.all_objects.select_related(
+        qs = Task.all_objects.select_related(
             'proyecto', 'fase', 'responsable', 'tarea_padre', 'cliente',
             'actividad_saiopen', 'actividad_proyecto__actividad',
-        ).prefetch_related('followers', 'tags', 'subtareas')
+        ).prefetch_related('followers', 'tags', 'subtasks')
 
         if company:
             qs = qs.filter(proyecto__company=company)
@@ -550,7 +585,7 @@ class TareaViewSet(viewsets.ModelViewSet):
                     f'te asignó la tarea "{instance.nombre}"'
                 ),
                 objeto_relacionado=instance,
-                url_accion=f'/proyectos/tareas/{instance.id}',
+                url_accion=f'/projects/tasks/{instance.id}',
             )
 
         return response
@@ -623,7 +658,7 @@ class TareaViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        estados_validos = [c[0] for c in Tarea._meta.get_field('estado').choices]
+        estados_validos = [c[0] for c in Task._meta.get_field('estado').choices]
         if nuevo_estado not in estados_validos:
             return Response(
                 {'error': f'Estado inválido. Opciones: {estados_validos}'},
@@ -631,8 +666,8 @@ class TareaViewSet(viewsets.ModelViewSet):
             )
 
         # No se puede completar si hay subtareas pendientes
-        if nuevo_estado == 'completada' and tarea.tiene_subtareas:
-            pendientes = tarea.subtareas.exclude(estado__in=['completada', 'cancelada'])
+        if nuevo_estado == 'completed' and tarea.tiene_subtareas:
+            pendientes = tarea.subtasks.exclude(estado__in=['completed', 'cancelled'])
             if pendientes.exists():
                 return Response(
                     {'error': 'No se puede completar: hay subtareas pendientes'},
@@ -652,7 +687,7 @@ class TareaViewSet(viewsets.ModelViewSet):
             f'{request.user.full_name or request.user.email} '
             f'cambió el estado de "{tarea.nombre}" a {nuevo_estado.replace("_", " ").title()}'
         )
-        url     = f'/proyectos/tareas/{tarea.id}'
+        url     = f'/projects/tasks/{tarea.id}'
         meta    = {'estado_anterior': estado_anterior, 'estado_nuevo': nuevo_estado}
 
         destinatarios = set()
@@ -741,10 +776,10 @@ class TareaViewSet(viewsets.ModelViewSet):
             # Adjuntar sesión activa existente para que el frontend la restaure
             sesion_activa = TimesheetService.sesion_activa_usuario(request.user)
             if sesion_activa:
-                data['sesion_activa'] = SesionTrabajoSerializer(sesion_activa).data
+                data['sesion_activa'] = WorkSessionSerializer(sesion_activa).data
             return Response(data, status=status.HTTP_400_BAD_REQUEST)
         return Response(
-            SesionTrabajoSerializer(sesion).data,
+            WorkSessionSerializer(sesion).data,
             status=status.HTTP_201_CREATED,
         )
 
@@ -761,7 +796,7 @@ class TareaViewSet(viewsets.ModelViewSet):
                 {'detail': exc.message if hasattr(exc, 'message') else str(exc)},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        return Response(SesionTrabajoSerializer(sesion).data)
+        return Response(WorkSessionSerializer(sesion).data)
 
     @action(
         detail=True, methods=['post'],
@@ -776,7 +811,7 @@ class TareaViewSet(viewsets.ModelViewSet):
                 {'detail': exc.message if hasattr(exc, 'message') else str(exc)},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        return Response(SesionTrabajoSerializer(sesion).data)
+        return Response(WorkSessionSerializer(sesion).data)
 
     @action(
         detail=True, methods=['post'],
@@ -795,7 +830,7 @@ class TareaViewSet(viewsets.ModelViewSet):
                 {'detail': exc.message if hasattr(exc, 'message') else str(exc)},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        return Response(SesionTrabajoSerializer(sesion).data)
+        return Response(WorkSessionSerializer(sesion).data)
 
     @action(detail=True, methods=['get'], url_path='sesiones')
     def listar_sesiones(self, request, pk=None):
@@ -804,7 +839,7 @@ class TareaViewSet(viewsets.ModelViewSet):
         Query params: ?estado=activa|pausada|finalizada  ?usuario=<uuid>
         """
         tarea = self.get_object()
-        qs = SesionTrabajo.objects.filter(tarea=tarea).select_related('usuario')
+        qs = WorkSession.objects.filter(tarea=tarea).select_related('usuario')
 
         estado = request.query_params.get('estado')
         if estado:
@@ -814,7 +849,7 @@ class TareaViewSet(viewsets.ModelViewSet):
         if usuario_id:
             qs = qs.filter(usuario_id=usuario_id)
 
-        return Response(SesionTrabajoSerializer(qs, many=True).data)
+        return Response(WorkSessionSerializer(qs, many=True).data)
 
     # ── Dependencias entre tareas ─────────────────────────────
 
@@ -843,7 +878,7 @@ class TareaViewSet(viewsets.ModelViewSet):
             retraso_dias = 0
 
         try:
-            dependencia = DependenciaService.crear_dependencia(
+            dependencia = DependencyService.crear_dependencia(
                 predecesora_id=predecesora_id,
                 sucesora_id=str(tarea.id),
                 company=company,
@@ -854,7 +889,7 @@ class TareaViewSet(viewsets.ModelViewSet):
             msgs = exc.message_dict if hasattr(exc, 'message_dict') else {'detail': exc.messages}
             return Response(msgs, status=status.HTTP_400_BAD_REQUEST)
 
-        serializer = TareaDependenciaSerializer(dependencia, context={'request': request})
+        serializer = TaskDependencySerializer(dependencia, context={'request': request})
         logger.info('dependencia_creada_via_api', extra={
             'tarea_id': str(tarea.id),
             'predecesora_id': str(predecesora_id),
@@ -877,12 +912,12 @@ class TareaViewSet(viewsets.ModelViewSet):
             )
 
         try:
-            dep = TareaDependencia.objects.get(
+            dep = TaskDependency.objects.get(
                 id=dependencia_id,
                 company=company,
                 tarea_sucesora=tarea,
             )
-        except TareaDependencia.DoesNotExist:
+        except TaskDependency.DoesNotExist:
             return Response(
                 {'detail': 'Dependencia no encontrada.'},
                 status=status.HTTP_404_NOT_FOUND,
@@ -903,26 +938,26 @@ class TareaViewSet(viewsets.ModelViewSet):
         """
         sesion = TimesheetService.sesion_activa_usuario(request.user)
         if sesion:
-            return Response(SesionTrabajoSerializer(sesion).data)
+            return Response(WorkSessionSerializer(sesion).data)
         return Response(
             {'detail': 'No hay sesión activa.'},
             status=status.HTTP_404_NOT_FOUND,
         )
 
 
-class TareaTagViewSet(viewsets.ModelViewSet):
+class TaskTagViewSet(viewsets.ModelViewSet):
     """
     CRUD de etiquetas de tareas por empresa.
     GET/POST       /api/v1/proyectos/tags/
     GET/PATCH/DEL  /api/v1/proyectos/tags/{id}/
     """
 
-    serializer_class   = TareaTagSerializer
+    serializer_class   = TaskTagSerializer
     permission_classes = [CanAccessProyectos]
 
     def get_queryset(self):
         company = getattr(self.request.user, 'company', None)
-        qs = TareaTag.all_objects.all()
+        qs = TaskTag.all_objects.all()
         if company:
             qs = qs.filter(company=company)
         return qs
@@ -930,3 +965,135 @@ class TareaTagViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         company = getattr(self.request.user, 'company', None)
         serializer.save(company=company)
+
+
+class TimesheetViewSet(viewsets.GenericViewSet):
+    """
+    Gestión de registros diarios de horas (TimesheetEntry).
+
+    GET    /api/v1/proyectos/timesheets/                                 — listar mis timesheets
+    POST   /api/v1/proyectos/timesheets/                                 — crear registro manual
+    PATCH  /api/v1/proyectos/timesheets/{id}/                            — editar (no validado)
+    DELETE /api/v1/proyectos/timesheets/{id}/                            — eliminar (no validado)
+    GET    /api/v1/proyectos/timesheets/mis_horas/?fecha_inicio=&fecha_fin=
+    POST   /api/v1/proyectos/timesheets/{id}/validar/
+    """
+    serializer_class   = TimesheetEntrySerializer
+    permission_classes = [CanAccessProyectos]
+
+    def get_queryset(self):
+        company = getattr(self.request.user, 'company', None)
+        qs = TimesheetEntry.objects.select_related(
+            'tarea', 'usuario', 'validado_por',
+        ).filter(usuario=self.request.user)
+        if company:
+            qs = qs.filter(company=company)
+        return qs
+
+    # ── CRUD ──────────────────────────────────────────────────────────────────
+
+    def list(self, request):
+        """GET /api/v1/proyectos/timesheets/"""
+        qs = self.get_queryset()
+        tarea_id = request.query_params.get('tarea')
+        if tarea_id:
+            qs = qs.filter(tarea_id=tarea_id)
+        validado = request.query_params.get('validado')
+        if validado is not None:
+            qs = qs.filter(validado=(validado.lower() == 'true'))
+        fecha_inicio = request.query_params.get('fecha_inicio')
+        fecha_fin    = request.query_params.get('fecha_fin')
+        if fecha_inicio:
+            qs = qs.filter(fecha__gte=fecha_inicio)
+        if fecha_fin:
+            qs = qs.filter(fecha__lte=fecha_fin)
+        return Response(self.get_serializer(qs, many=True).data)
+
+    def create(self, request):
+        """POST /api/v1/proyectos/timesheets/"""
+        ser = TimesheetEntryCreateSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        d = ser.validated_data
+        company = getattr(request.user, 'company', None)
+        try:
+            entry = TimesheetEntryService.registrar_horas(
+                tarea_id=str(d['tarea_id']),
+                usuario=request.user,
+                fecha=d['fecha'],
+                horas=d['horas'],
+                descripcion=d.get('descripcion', ''),
+                company=company,
+            )
+        except (ValidationError, Exception) as exc:
+            msg = exc.message if hasattr(exc, 'message') else str(exc)
+            return Response({'detail': msg}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(
+            TimesheetEntrySerializer(entry).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+    def partial_update(self, request, pk=None):
+        """PATCH /api/v1/proyectos/timesheets/{id}/"""
+        company = getattr(request.user, 'company', None)
+        try:
+            entry = TimesheetEntry.objects.get(
+                id=pk, usuario=request.user, company=company,
+            )
+        except TimesheetEntry.DoesNotExist:
+            return Response({'detail': 'No encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+        if entry.validado:
+            return Response(
+                {'detail': 'No se puede editar un registro ya validado.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        ser = TimesheetEntrySerializer(entry, data=request.data, partial=True)
+        ser.is_valid(raise_exception=True)
+        ser.save()
+        return Response(ser.data)
+
+    def destroy(self, request, pk=None):
+        """DELETE /api/v1/proyectos/timesheets/{id}/"""
+        try:
+            TimesheetEntryService.eliminar_entry(pk, request.user)
+        except ValidationError as exc:
+            return Response(
+                {'detail': exc.message if hasattr(exc, 'message') else str(exc)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=False, methods=['get'], url_path='mis_horas')
+    def mis_horas(self, request):
+        """GET /api/v1/proyectos/timesheets/mis_horas/?fecha_inicio=YYYY-MM-DD&fecha_fin=YYYY-MM-DD"""
+        fecha_inicio = request.query_params.get('fecha_inicio')
+        fecha_fin    = request.query_params.get('fecha_fin')
+        if not fecha_inicio or not fecha_fin:
+            return Response(
+                {'detail': 'Se requieren fecha_inicio y fecha_fin (YYYY-MM-DD).'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            from datetime import date
+            fi = date.fromisoformat(fecha_inicio)
+            ff = date.fromisoformat(fecha_fin)
+        except ValueError:
+            return Response(
+                {'detail': 'Formato de fecha inválido. Use YYYY-MM-DD.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        company = getattr(request.user, 'company', None)
+        qs = TimesheetEntryService.mis_horas(request.user, fi, ff, company)
+        return Response(TimesheetEntrySerializer(qs, many=True).data)
+
+    @action(detail=True, methods=['post'], url_path='validar')
+    def validar(self, request, pk=None):
+        """POST /api/v1/proyectos/timesheets/{id}/validar/"""
+        try:
+            entry = TimesheetEntryService.validar_timesheet(pk, request.user)
+        except ValidationError as exc:
+            return Response(
+                {'detail': exc.message if hasattr(exc, 'message') else str(exc)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return Response(TimesheetEntrySerializer(entry).data)
+

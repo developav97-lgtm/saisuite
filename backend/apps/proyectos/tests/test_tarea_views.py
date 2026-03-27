@@ -1,10 +1,10 @@
 """
 SaiSuite — Tests: TareaViewSet + TareaTagViewSet
-Cubre: GET/POST/PATCH/DELETE /api/v1/proyectos/tareas/
-       GET/POST/PATCH/DELETE /api/v1/proyectos/tags/
-       POST /api/v1/proyectos/tareas/{id}/agregar-follower/
-       DELETE /api/v1/proyectos/tareas/{id}/quitar-follower/{user_id}/
-       POST /api/v1/proyectos/tareas/{id}/cambiar-estado/
+Cubre: GET/POST/PATCH/DELETE /api/v1/projects/tasks/
+       GET/POST/PATCH/DELETE /api/v1/projects/tags/
+       POST /api/v1/projects/tasks/{id}/agregar-follower/
+       DELETE /api/v1/projects/tasks/{id}/quitar-follower/{user_id}/
+       POST /api/v1/projects/tasks/{id}/cambiar-estado/
 """
 from decimal import Decimal
 from datetime import date, timedelta
@@ -16,7 +16,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import get_user_model
 
 from apps.companies.models import Company, CompanyModule
-from apps.proyectos.models import Proyecto, Fase, Tarea, TareaTag
+from apps.proyectos.models import Project, Phase, Task, TaskTag
 
 User = get_user_model()
 
@@ -60,11 +60,11 @@ def make_user(company, role='company_admin'):
 
 
 def make_proyecto(company, gerente):
-    return Proyecto.all_objects.create(
+    return Project.all_objects.create(
         company=company, gerente=gerente,
         codigo=f'PRY-{nit()}',
-        nombre='Proyecto Test Views',
-        tipo='obra_civil',
+        nombre='Project Test Views',
+        tipo='civil_works',
         cliente_id='123', cliente_nombre='Cliente',
         fecha_inicio_planificada=date.today(),
         fecha_fin_planificada=date.today() + timedelta(days=90),
@@ -73,9 +73,9 @@ def make_proyecto(company, gerente):
 
 
 def make_fase(company, proyecto, orden=1):
-    return Fase.all_objects.create(
+    return Phase.all_objects.create(
         company=company, proyecto=proyecto,
-        nombre=f'Fase {orden}', orden=orden,
+        nombre=f'Phase {orden}', orden=orden,
         fecha_inicio_planificada=date.today(),
         fecha_fin_planificada=date.today() + timedelta(days=60),
         presupuesto_mano_obra=Decimal('500000'),
@@ -83,15 +83,15 @@ def make_fase(company, proyecto, orden=1):
 
 
 def make_tarea(company, proyecto, fase=None, **kwargs):
-    defaults = dict(nombre='Tarea Test', estado='por_hacer')
+    defaults = dict(nombre='Task Test', estado='todo')
     defaults.update(kwargs)
     if fase is not None:
         defaults['fase'] = fase
-    return Tarea.all_objects.create(company=company, proyecto=proyecto, **defaults)
+    return Task.all_objects.create(company=company, proyecto=proyecto, **defaults)
 
 
 def make_tag(company, nombre='bug', color='red'):
-    return TareaTag.all_objects.create(company=company, nombre=nombre, color=color)
+    return TaskTag.all_objects.create(company=company, nombre=nombre, color=color)
 
 
 # ── Base test case ────────────────────────────────────────────────────────────
@@ -108,23 +108,23 @@ class TareaBaseTest(APITestCase):
         self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token.access_token}')
 
 
-# ── TareaTag ViewSet ──────────────────────────────────────────────────────────
+# ── TaskTag ViewSet ──────────────────────────────────────────────────────────
 
 class TestTareaTagList(TareaBaseTest):
 
     def test_listar_tags_vacio(self):
-        resp = self.client.get('/api/v1/proyectos/tags/')
+        resp = self.client.get('/api/v1/projects/tags/')
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         self.assertEqual(len(get_results(resp)), 0)
 
     def test_crear_tag(self):
-        resp = self.client.post('/api/v1/proyectos/tags/', {'nombre': 'frontend', 'color': 'blue'})
+        resp = self.client.post('/api/v1/projects/tags/', {'nombre': 'frontend', 'color': 'blue'})
         self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
         self.assertEqual(resp.data['nombre'], 'frontend')
         self.assertEqual(resp.data['color'], 'blue')
 
     def test_crear_tag_color_invalido(self):
-        resp = self.client.post('/api/v1/proyectos/tags/', {'nombre': 'x', 'color': 'rainbow'})
+        resp = self.client.post('/api/v1/projects/tags/', {'nombre': 'x', 'color': 'rainbow'})
         self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_listar_solo_tags_de_empresa(self):
@@ -132,52 +132,52 @@ class TestTareaTagList(TareaBaseTest):
         otra = make_company('Otra Co')
         make_tag(otra, nombre='otro-tag')
 
-        resp = self.client.get('/api/v1/proyectos/tags/')
+        resp = self.client.get('/api/v1/projects/tags/')
         nombres = [t['nombre'] for t in get_results(resp)]
         self.assertIn('mi-tag', nombres)
         self.assertNotIn('otro-tag', nombres)
 
     def test_eliminar_tag(self):
         tag = make_tag(self.company, nombre='del-tag')
-        resp = self.client.delete(f'/api/v1/proyectos/tags/{tag.id}/')
+        resp = self.client.delete(f'/api/v1/projects/tags/{tag.id}/')
         self.assertEqual(resp.status_code, status.HTTP_204_NO_CONTENT)
 
     def test_actualizar_tag(self):
         tag = make_tag(self.company, nombre='viejo')
-        resp = self.client.patch(f'/api/v1/proyectos/tags/{tag.id}/', {'color': 'green'})
+        resp = self.client.patch(f'/api/v1/projects/tags/{tag.id}/', {'color': 'green'})
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         self.assertEqual(resp.data['color'], 'green')
 
 
-# ── Tarea List / Create ───────────────────────────────────────────────────────
+# ── Task List / Create ───────────────────────────────────────────────────────
 
 class TestTareaListCreate(TareaBaseTest):
 
     def test_listar_tareas_vacio(self):
-        resp = self.client.get('/api/v1/proyectos/tareas/')
+        resp = self.client.get('/api/v1/projects/tasks/')
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         self.assertEqual(len(get_results(resp)), 0)
 
     def test_crear_tarea_minima(self):
-        data = {'nombre': 'Nueva Tarea', 'fase': str(self.fase.id)}
-        resp = self.client.post('/api/v1/proyectos/tareas/', data)
+        data = {'nombre': 'Nueva Task', 'fase': str(self.fase.id)}
+        resp = self.client.post('/api/v1/projects/tasks/', data)
         self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(resp.data['nombre'], 'Nueva Tarea')
+        self.assertEqual(resp.data['nombre'], 'Nueva Task')
         self.assertTrue(resp.data['codigo'].startswith('TASK-'))
 
     def test_crear_tarea_auto_agrega_creador_como_follower(self):
-        data = {'nombre': 'Tarea Follower', 'fase': str(self.fase.id)}
-        resp = self.client.post('/api/v1/proyectos/tareas/', data)
+        data = {'nombre': 'Task Follower', 'fase': str(self.fase.id)}
+        resp = self.client.post('/api/v1/projects/tasks/', data)
         self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
         follower_ids = [f['id'] for f in resp.data['followers_detail']]
         self.assertIn(str(self.user.id), follower_ids)
 
     def test_crear_tarea_con_fase(self):
         data = {
-            'nombre': 'Con Fase',
+            'nombre': 'Con Phase',
             'fase': str(self.fase.id),
         }
-        resp = self.client.post('/api/v1/proyectos/tareas/', data)
+        resp = self.client.post('/api/v1/projects/tasks/', data)
         self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
         self.assertEqual(str(resp.data['fase']), str(self.fase.id))
 
@@ -188,7 +188,7 @@ class TestTareaListCreate(TareaBaseTest):
             'fase': str(self.fase.id),
             'responsable': str(responsable.id),
         }
-        resp = self.client.post('/api/v1/proyectos/tareas/', data)
+        resp = self.client.post('/api/v1/projects/tasks/', data)
         self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
         follower_ids = [f['id'] for f in resp.data['followers_detail']]
         self.assertIn(str(responsable.id), follower_ids)
@@ -200,82 +200,82 @@ class TestTareaListCreate(TareaBaseTest):
             'fecha_inicio': str(date.today()),
             'fecha_fin': str(date.today() - timedelta(days=1)),
         }
-        resp = self.client.post('/api/v1/proyectos/tareas/', data)
+        resp = self.client.post('/api/v1/projects/tasks/', data)
         self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('fecha_fin', resp.data)
 
     def test_listar_solo_tareas_de_empresa(self):
-        make_tarea(self.company, self.proyecto, fase=self.fase, nombre='Mi Tarea')
+        make_tarea(self.company, self.proyecto, fase=self.fase, nombre='Mi Task')
         otra_empresa  = make_company('Otra Co 2')
         otro_gerente  = make_user(otra_empresa)
         otro_proyecto = make_proyecto(otra_empresa, otro_gerente)
         otra_fase     = make_fase(otra_empresa, otro_proyecto)
-        make_tarea(otra_empresa, otro_proyecto, fase=otra_fase, nombre='Tarea Ajena')
+        make_tarea(otra_empresa, otro_proyecto, fase=otra_fase, nombre='Task Ajena')
 
-        resp = self.client.get('/api/v1/proyectos/tareas/')
+        resp = self.client.get('/api/v1/projects/tasks/')
         nombres = [t['nombre'] for t in get_results(resp)]
-        self.assertIn('Mi Tarea', nombres)
-        self.assertNotIn('Tarea Ajena', nombres)
+        self.assertIn('Mi Task', nombres)
+        self.assertNotIn('Task Ajena', nombres)
 
     def test_unauthenticated_returns_401(self):
         self.client.credentials()
-        resp = self.client.get('/api/v1/proyectos/tareas/')
+        resp = self.client.get('/api/v1/projects/tasks/')
         self.assertEqual(resp.status_code, status.HTTP_401_UNAUTHORIZED)
 
 
-# ── Tarea Retrieve / Update / Delete ─────────────────────────────────────────
+# ── Task Retrieve / Update / Delete ─────────────────────────────────────────
 
 class TestTareaDetail(TareaBaseTest):
 
     def setUp(self):
         super().setUp()
-        self.tarea = make_tarea(self.company, self.proyecto, fase=self.fase, nombre='Tarea Detalle')
+        self.tarea = make_tarea(self.company, self.proyecto, fase=self.fase, nombre='Task Detalle')
 
     def test_retrieve_tarea(self):
-        resp = self.client.get(f'/api/v1/proyectos/tareas/{self.tarea.id}/')
+        resp = self.client.get(f'/api/v1/projects/tasks/{self.tarea.id}/')
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
-        self.assertEqual(resp.data['nombre'], 'Tarea Detalle')
+        self.assertEqual(resp.data['nombre'], 'Task Detalle')
         self.assertIn('proyecto_detail', resp.data)
         self.assertIn('subtareas_detail', resp.data)
 
     def test_retrieve_incluye_computed_fields(self):
-        resp = self.client.get(f'/api/v1/proyectos/tareas/{self.tarea.id}/')
+        resp = self.client.get(f'/api/v1/projects/tasks/{self.tarea.id}/')
         self.assertIn('es_vencida', resp.data)
         self.assertIn('tiene_subtareas', resp.data)
         self.assertIn('nivel_jerarquia', resp.data)
 
     def test_patch_nombre(self):
-        resp = self.client.patch(f'/api/v1/proyectos/tareas/{self.tarea.id}/', {'nombre': 'Actualizado'})
+        resp = self.client.patch(f'/api/v1/projects/tasks/{self.tarea.id}/', {'nombre': 'Actualizado'})
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         self.assertEqual(resp.data['nombre'], 'Actualizado')
 
     def test_patch_estado(self):
-        resp = self.client.patch(f'/api/v1/proyectos/tareas/{self.tarea.id}/', {'estado': 'en_progreso'})
+        resp = self.client.patch(f'/api/v1/projects/tasks/{self.tarea.id}/', {'estado': 'in_progress'})
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
-        self.assertEqual(resp.data['estado'], 'en_progreso')
+        self.assertEqual(resp.data['estado'], 'in_progress')
 
     def test_patch_porcentaje_completado(self):
-        resp = self.client.patch(f'/api/v1/proyectos/tareas/{self.tarea.id}/', {'porcentaje_completado': 50})
+        resp = self.client.patch(f'/api/v1/projects/tasks/{self.tarea.id}/', {'porcentaje_completado': 50})
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         self.assertEqual(resp.data['porcentaje_completado'], 50)
 
     def test_delete_tarea(self):
-        resp = self.client.delete(f'/api/v1/proyectos/tareas/{self.tarea.id}/')
+        resp = self.client.delete(f'/api/v1/projects/tasks/{self.tarea.id}/')
         self.assertEqual(resp.status_code, status.HTTP_204_NO_CONTENT)
-        self.assertFalse(Tarea.all_objects.filter(id=self.tarea.id).exists())
+        self.assertFalse(Task.all_objects.filter(id=self.tarea.id).exists())
 
     def test_viewer_no_puede_delete(self):
         viewer = make_user(self.company, role='viewer')
         token = RefreshToken.for_user(viewer)
         self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token.access_token}')
-        resp = self.client.delete(f'/api/v1/proyectos/tareas/{self.tarea.id}/')
+        resp = self.client.delete(f'/api/v1/projects/tasks/{self.tarea.id}/')
         self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_viewer_puede_listar(self):
         viewer = make_user(self.company, role='viewer')
         token = RefreshToken.for_user(viewer)
         self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token.access_token}')
-        resp = self.client.get('/api/v1/proyectos/tareas/')
+        resp = self.client.get('/api/v1/projects/tasks/')
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
 
 
@@ -289,7 +289,7 @@ class TestAgregarFollower(TareaBaseTest):
 
     def test_agregar_follower_ok(self):
         nuevo = make_user(self.company)
-        url  = f'/api/v1/proyectos/tareas/{self.tarea.id}/agregar-follower/'
+        url  = f'/api/v1/projects/tasks/{self.tarea.id}/agregar-follower/'
         resp = self.client.post(url, {'user_id': str(nuevo.id)})
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         self.assertIn('followers_count', resp.data)
@@ -298,13 +298,13 @@ class TestAgregarFollower(TareaBaseTest):
         ])
 
     def test_agregar_follower_sin_user_id(self):
-        url  = f'/api/v1/proyectos/tareas/{self.tarea.id}/agregar-follower/'
+        url  = f'/api/v1/projects/tasks/{self.tarea.id}/agregar-follower/'
         resp = self.client.post(url, {})
         self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_agregar_follower_user_inexistente(self):
         import uuid
-        url  = f'/api/v1/proyectos/tareas/{self.tarea.id}/agregar-follower/'
+        url  = f'/api/v1/projects/tasks/{self.tarea.id}/agregar-follower/'
         resp = self.client.post(url, {'user_id': str(uuid.uuid4())})
         self.assertEqual(resp.status_code, status.HTTP_404_NOT_FOUND)
 
@@ -320,14 +320,14 @@ class TestQuitarFollower(TareaBaseTest):
         self.tarea.followers.add(self.follower)
 
     def test_quitar_follower_ok(self):
-        url  = f'/api/v1/proyectos/tareas/{self.tarea.id}/quitar-follower/{self.follower.id}/'
+        url  = f'/api/v1/projects/tasks/{self.tarea.id}/quitar-follower/{self.follower.id}/'
         resp = self.client.delete(url)
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         self.assertNotIn(self.follower, self.tarea.followers.all())
 
     def test_quitar_follower_user_inexistente(self):
         import uuid
-        url  = f'/api/v1/proyectos/tareas/{self.tarea.id}/quitar-follower/{uuid.uuid4()}/'
+        url  = f'/api/v1/projects/tasks/{self.tarea.id}/quitar-follower/{uuid.uuid4()}/'
         resp = self.client.delete(url)
         self.assertEqual(resp.status_code, status.HTTP_404_NOT_FOUND)
 
@@ -341,41 +341,41 @@ class TestCambiarEstado(TareaBaseTest):
         self.tarea = make_tarea(self.company, self.proyecto, fase=self.fase)
 
     def test_cambiar_estado_ok(self):
-        url  = f'/api/v1/proyectos/tareas/{self.tarea.id}/cambiar-estado/'
-        resp = self.client.post(url, {'estado': 'en_progreso'})
+        url  = f'/api/v1/projects/tasks/{self.tarea.id}/cambiar-estado/'
+        resp = self.client.post(url, {'estado': 'in_progress'})
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
-        self.assertEqual(resp.data['estado'], 'en_progreso')
+        self.assertEqual(resp.data['estado'], 'in_progress')
 
     def test_cambiar_estado_sin_estado(self):
-        url  = f'/api/v1/proyectos/tareas/{self.tarea.id}/cambiar-estado/'
+        url  = f'/api/v1/projects/tasks/{self.tarea.id}/cambiar-estado/'
         resp = self.client.post(url, {})
         self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_cambiar_estado_invalido(self):
-        url  = f'/api/v1/proyectos/tareas/{self.tarea.id}/cambiar-estado/'
+        url  = f'/api/v1/projects/tasks/{self.tarea.id}/cambiar-estado/'
         resp = self.client.post(url, {'estado': 'volando'})
         self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_no_completar_con_subtareas_pendientes(self):
         make_tarea(self.company, self.proyecto, fase=self.fase,
                    nombre='Subtarea Pendiente', tarea_padre=self.tarea,
-                   estado='por_hacer')
-        url  = f'/api/v1/proyectos/tareas/{self.tarea.id}/cambiar-estado/'
-        resp = self.client.post(url, {'estado': 'completada'})
+                   estado='todo')
+        url  = f'/api/v1/projects/tasks/{self.tarea.id}/cambiar-estado/'
+        resp = self.client.post(url, {'estado': 'completed'})
         self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('subtareas pendientes', resp.data['error'])
 
     def test_completar_cuando_subtareas_completas(self):
         make_tarea(self.company, self.proyecto, fase=self.fase,
                    nombre='Subtarea OK', tarea_padre=self.tarea,
-                   estado='completada')
-        url  = f'/api/v1/proyectos/tareas/{self.tarea.id}/cambiar-estado/'
-        resp = self.client.post(url, {'estado': 'completada'})
+                   estado='completed')
+        url  = f'/api/v1/projects/tasks/{self.tarea.id}/cambiar-estado/'
+        resp = self.client.post(url, {'estado': 'completed'})
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
 
     def test_todos_los_estados_validos(self):
-        for est in ['por_hacer', 'en_progreso', 'en_revision', 'bloqueada', 'cancelada']:
-            url  = f'/api/v1/proyectos/tareas/{self.tarea.id}/cambiar-estado/'
+        for est in ['todo', 'in_progress', 'in_review', 'blocked', 'cancelled']:
+            url  = f'/api/v1/projects/tasks/{self.tarea.id}/cambiar-estado/'
             resp = self.client.post(url, {'estado': est})
             self.assertEqual(resp.status_code, status.HTTP_200_OK, f'Falló con estado: {est}')
 
@@ -388,59 +388,59 @@ class TestTareaFiltros(TareaBaseTest):
         super().setUp()
         self.responsable = make_user(self.company)
         self.t1 = make_tarea(self.company, self.proyecto, fase=self.fase,
-                             nombre='Tarea Alta', prioridad=3, estado='en_progreso',
+                             nombre='Task Alta', prioridad=3, estado='in_progress',
                              responsable=self.responsable)
         self.t2 = make_tarea(self.company, self.proyecto, fase=self.fase,
-                             nombre='Tarea Baja', prioridad=1, estado='por_hacer')
+                             nombre='Task Baja', prioridad=1, estado='todo')
         self.t3 = make_tarea(self.company, self.proyecto, fase=self.fase,
-                             nombre='Tarea Vencida', estado='en_progreso',
+                             nombre='Task Vencida', estado='in_progress',
                              fecha_limite=date.today() - timedelta(days=1))
 
     def test_filtro_estado(self):
-        resp = self.client.get('/api/v1/proyectos/tareas/?estado=en_progreso')
+        resp = self.client.get('/api/v1/projects/tasks/?estado=in_progress')
         for t in get_results(resp):
-            self.assertEqual(t['estado'], 'en_progreso')
+            self.assertEqual(t['estado'], 'in_progress')
 
     def test_filtro_prioridad(self):
-        resp = self.client.get('/api/v1/proyectos/tareas/?prioridad=3')
+        resp = self.client.get('/api/v1/projects/tasks/?prioridad=3')
         resultados = get_results(resp)
         self.assertGreater(len(resultados), 0)
         for t in resultados:
             self.assertEqual(t['prioridad'], 3)
 
     def test_filtro_responsable(self):
-        resp = self.client.get(f'/api/v1/proyectos/tareas/?responsable={self.responsable.id}')
+        resp = self.client.get(f'/api/v1/projects/tasks/?responsable={self.responsable.id}')
         for t in get_results(resp):
             self.assertIsNotNone(t['responsable'])
 
     def test_filtro_vencidas(self):
-        resp = self.client.get('/api/v1/proyectos/tareas/?vencidas=true')
+        resp = self.client.get('/api/v1/projects/tasks/?vencidas=true')
         resultados = get_results(resp)
         self.assertGreater(len(resultados), 0)
         for t in resultados:
-            self.assertNotIn(t['estado'], ['completada', 'cancelada'])
+            self.assertNotIn(t['estado'], ['completed', 'cancelled'])
 
     def test_filtro_search_nombre(self):
-        resp = self.client.get('/api/v1/proyectos/tareas/?search=Alta')
+        resp = self.client.get('/api/v1/projects/tasks/?search=Alta')
         nombres = [t['nombre'] for t in get_results(resp)]
-        self.assertIn('Tarea Alta', nombres)
-        self.assertNotIn('Tarea Baja', nombres)
+        self.assertIn('Task Alta', nombres)
+        self.assertNotIn('Task Baja', nombres)
 
     def test_filtro_solo_raiz(self):
         make_tarea(self.company, self.proyecto, fase=self.fase,
                    nombre='Subtarea', tarea_padre=self.t1)
-        resp = self.client.get('/api/v1/proyectos/tareas/?solo_raiz=true')
+        resp = self.client.get('/api/v1/projects/tasks/?solo_raiz=true')
         for t in get_results(resp):
             self.assertIsNone(t['tarea_padre'])
 
     def test_todas_tareas_tienen_fase(self):
-        """Fase es requerida: todas las tareas deben tener fase asignada."""
-        resp = self.client.get('/api/v1/proyectos/tareas/')
+        """Phase es requerida: todas las tareas deben tener fase asignada."""
+        resp = self.client.get('/api/v1/projects/tasks/')
         for t in get_results(resp):
             self.assertIsNotNone(t['fase'])
 
     def test_filtro_proyecto_id(self):
-        resp = self.client.get(f'/api/v1/proyectos/tareas/?proyecto_id={self.proyecto.id}')
+        resp = self.client.get(f'/api/v1/projects/tasks/?proyecto_id={self.proyecto.id}')
         for t in get_results(resp):
             self.assertEqual(str(t['proyecto']), str(self.proyecto.id))
 
@@ -452,7 +452,7 @@ class TestTareaSerializerNested(TareaBaseTest):
     def test_subtareas_detail_incluidas(self):
         padre = make_tarea(self.company, self.proyecto, fase=self.fase, nombre='Padre')
         make_tarea(self.company, self.proyecto, fase=self.fase, nombre='Hijo', tarea_padre=padre)
-        resp = self.client.get(f'/api/v1/proyectos/tareas/{padre.id}/')
+        resp = self.client.get(f'/api/v1/projects/tasks/{padre.id}/')
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         self.assertEqual(len(resp.data['subtareas_detail']), 1)
         self.assertEqual(resp.data['subtareas_detail'][0]['nombre'], 'Hijo')
@@ -463,7 +463,7 @@ class TestTareaSerializerNested(TareaBaseTest):
         padre  = make_tarea(self.company, self.proyecto, fase=self.fase, nombre='Padre', tarea_padre=abuelo)
         make_tarea(self.company, self.proyecto, fase=self.fase, nombre='Nieto', tarea_padre=padre)
         # padre está en nivel 1, nieto en nivel 2
-        resp = self.client.get(f'/api/v1/proyectos/tareas/{padre.id}/')
+        resp = self.client.get(f'/api/v1/projects/tasks/{padre.id}/')
         self.assertEqual(len(resp.data['subtareas_detail']), 1)
         nieto_data = resp.data['subtareas_detail'][0]
         self.assertEqual(nieto_data['subtareas_detail'], [])
@@ -472,12 +472,12 @@ class TestTareaSerializerNested(TareaBaseTest):
         tarea = make_tarea(self.company, self.proyecto, fase=self.fase, nombre='Con Tags')
         tag   = make_tag(self.company, nombre='importante')
         tarea.tags.add(tag)
-        resp = self.client.get(f'/api/v1/proyectos/tareas/{tarea.id}/')
+        resp = self.client.get(f'/api/v1/projects/tasks/{tarea.id}/')
         tag_nombres = [t['nombre'] for t in resp.data['tags_detail']]
         self.assertIn('importante', tag_nombres)
 
     def test_proyecto_detail_incluido(self):
         tarea = make_tarea(self.company, self.proyecto, fase=self.fase)
-        resp = self.client.get(f'/api/v1/proyectos/tareas/{tarea.id}/')
+        resp = self.client.get(f'/api/v1/projects/tasks/{tarea.id}/')
         self.assertIn('codigo', resp.data['proyecto_detail'])
         self.assertEqual(resp.data['proyecto_detail']['id'], str(self.proyecto.id))

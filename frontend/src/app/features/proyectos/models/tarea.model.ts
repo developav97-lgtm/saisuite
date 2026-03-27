@@ -7,12 +7,12 @@
 import type { ModoMedicion } from './actividad-saiopen.model';
 
 export type TareaEstado =
-  | 'por_hacer'
-  | 'en_progreso'
-  | 'en_revision'
-  | 'bloqueada'
-  | 'completada'
-  | 'cancelada';
+  | 'todo'
+  | 'in_progress'
+  | 'in_review'
+  | 'blocked'
+  | 'completed'
+  | 'cancelled';
 
 export type TareaPrioridad = 1 | 2 | 3 | 4; // Baja, Normal, Alta, Urgente
 
@@ -184,7 +184,7 @@ export interface TareaCreateDTO {
   fecha_inicio?: string | null;
   fecha_fin?: string | null;
   fecha_limite?: string | null;
-  estado?: Exclude<TareaEstado, 'completada' | 'cancelada'>;
+  estado?: Exclude<TareaEstado, 'completed' | 'cancelled'>;
   porcentaje_completado?: number;
   horas_estimadas?: number;
   es_recurrente?: boolean;
@@ -215,4 +215,14 @@ export interface TareaFilters {
 export interface FollowerResponse {
   message: string;
   followers_count: number;
+}
+
+/** Formato de tarea para Frappe Gantt (espeja el endpoint /gantt-data/) */
+export interface GanttTask {
+  id: string;
+  name: string;
+  start: string;        // ISO date string "YYYY-MM-DD"
+  end: string;          // ISO date string "YYYY-MM-DD"
+  progress: number;     // 0-100
+  custom_class: string; // ej. "estado-in_progress"
 }

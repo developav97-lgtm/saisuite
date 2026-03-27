@@ -4,20 +4,20 @@
  */
 
 export type TipoProyecto =
-  | 'obra_civil'
-  | 'consultoria'
-  | 'manufactura'
-  | 'servicios'
-  | 'licitacion_publica'
-  | 'otro';
+  | 'civil_works'
+  | 'consulting'
+  | 'manufacturing'
+  | 'services'
+  | 'public_tender'
+  | 'other';
 
 export type EstadoProyecto =
-  | 'borrador'
-  | 'planificado'
-  | 'en_ejecucion'
-  | 'suspendido'
-  | 'cerrado'
-  | 'cancelado';
+  | 'draft'
+  | 'planned'
+  | 'in_progress'
+  | 'suspended'
+  | 'closed'
+  | 'cancelled';
 
 export interface UserSummary {
   id: string;
@@ -107,30 +107,30 @@ export interface EstadoFinanciero {
 
 /** Labels para los estados del proyecto */
 export const ESTADO_LABELS: Record<EstadoProyecto, string> = {
-  borrador: 'Borrador',
-  planificado: 'Planificado',
-  en_ejecucion: 'En ejecución',
-  suspendido: 'Suspendido',
-  cerrado: 'Cerrado',
-  cancelado: 'Cancelado',
+  draft:       'Borrador',
+  planned:     'Planificado',
+  in_progress: 'En ejecución',
+  suspended:   'Suspendido',
+  closed:      'Cerrado',
+  cancelled:   'Cancelado',
 };
 
-/** Severidades PrimeNG p-tag por estado */
+/** Severidades Material por estado */
 export const ESTADO_SEVERITY: Record<EstadoProyecto, 'info' | 'success' | 'warn' | 'danger' | 'secondary' | 'contrast'> = {
-  borrador: 'secondary',
-  planificado: 'info',
-  en_ejecucion: 'success',
-  suspendido: 'warn',
-  cerrado: 'contrast',
-  cancelado: 'danger',
+  draft:       'secondary',
+  planned:     'info',
+  in_progress: 'success',
+  suspended:   'warn',
+  closed:      'contrast',
+  cancelled:   'danger',
 };
 
 /** Labels para tipos de proyecto */
 export const TIPO_LABELS: Record<TipoProyecto, string> = {
-  obra_civil: 'Obra civil',
-  consultoria: 'Consultoría',
-  manufactura: 'Manufactura',
-  servicios: 'Servicios',
-  licitacion_publica: 'Licitación pública',
-  otro: 'Otro',
+  civil_works:    'Obra civil',
+  consulting:     'Consultoría',
+  manufacturing:  'Manufactura',
+  services:       'Servicios',
+  public_tender:  'Licitación pública',
+  other:          'Otro',
 };

@@ -1,6 +1,6 @@
 /**
  * SaiSuite — TareaTagService
- * Consume la API REST de tags en /api/v1/proyectos/tags/
+ * Consume la API REST de tags en /api/v1/projects/tags/
  */
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
@@ -17,10 +17,10 @@ export interface TareaTagCreateDTO {
 @Injectable({ providedIn: 'root' })
 export class TareaTagService {
   private readonly http = inject(HttpClient);
-  private readonly baseUrl = '/api/v1/proyectos/tags';
+  private readonly baseUrl = '/api/v1/projects/tags';
 
   /**
-   * GET /api/v1/proyectos/tags/
+   * GET /api/v1/projects/tags/
    */
   list(): Observable<TareaTag[]> {
     return this.http.get<PaginatedResponse<TareaTag>>(`${this.baseUrl}/`).pipe(
@@ -29,21 +29,21 @@ export class TareaTagService {
   }
 
   /**
-   * POST /api/v1/proyectos/tags/
+   * POST /api/v1/projects/tags/
    */
   create(data: TareaTagCreateDTO): Observable<TareaTag> {
     return this.http.post<TareaTag>(`${this.baseUrl}/`, data);
   }
 
   /**
-   * PATCH /api/v1/proyectos/tags/{id}/
+   * PATCH /api/v1/projects/tags/{id}/
    */
   update(id: string, data: Partial<TareaTagCreateDTO>): Observable<TareaTag> {
     return this.http.patch<TareaTag>(`${this.baseUrl}/${id}/`, data);
   }
 
   /**
-   * DELETE /api/v1/proyectos/tags/{id}/
+   * DELETE /api/v1/projects/tags/{id}/
    */
   delete(id: string): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/${id}/`);

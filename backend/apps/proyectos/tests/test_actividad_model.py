@@ -1,5 +1,5 @@
 """
-SaiSuite — Tests: Actividad model (catálogo global por empresa)
+SaiSuite — Tests: Activity model (catálogo global por empresa)
 """
 import pytest
 from decimal import Decimal
@@ -7,7 +7,7 @@ from django.db import IntegrityError
 from django.contrib.auth import get_user_model
 
 from apps.companies.models import Company, CompanyModule
-from apps.proyectos.models import Actividad, TipoActividad
+from apps.proyectos.models import ProjectStatus, PhaseStatus, ActivityType, MeasurementMode,  Activity, ActivityType, ActivityType
 
 User = get_user_model()
 
@@ -25,7 +25,7 @@ def make_actividad(company, codigo='ACT-001', **kwargs):
         tipo='material',
     )
     defaults.update(kwargs)
-    return Actividad.all_objects.create(company=company, codigo=codigo, **defaults)
+    return Activity.all_objects.create(company=company, codigo=codigo, **defaults)
 
 
 @pytest.mark.django_db
@@ -59,27 +59,27 @@ class TestActividadModel:
         assert a.descripcion == ''
 
     def test_tipos_disponibles(self):
-        tipos = [t.value for t in TipoActividad]
-        assert 'mano_obra' in tipos
+        tipos = [t.value for t in ActivityType]
+        assert 'labor' in tipos
         assert 'material' in tipos
-        assert 'equipo' in tipos
-        assert 'subcontrato' in tipos
+        assert 'equipment' in tipos
+        assert 'subcontract' in tipos
 
     def test_tipo_mano_obra(self):
         c = make_company('903001006')
-        a = make_actividad(c, 'ACT-006', tipo='mano_obra')
-        assert a.tipo == TipoActividad.MANO_OBRA
+        a = make_actividad(c, 'ACT-006', tipo='labor')
+        assert a.tipo == ActivityType.LABOR
 
     def test_tipo_equipo(self):
         c = make_company('903001007')
-        a = make_actividad(c, 'ACT-007', tipo='equipo')
-        assert a.tipo == TipoActividad.EQUIPO
+        a = make_actividad(c, 'ACT-007', tipo='equipment')
+        assert a.tipo == ActivityType.EQUIPMENT
 
     def test_unique_together_company_codigo(self):
         c = make_company('903001008')
         make_actividad(c, 'ACT-DUP')
         with pytest.raises(IntegrityError):
-            Actividad.all_objects.create(
+            Activity.all_objects.create(
                 company=c, codigo='ACT-DUP',
                 nombre='Otra', unidad_medida='m2', tipo='material',
             )
@@ -109,7 +109,7 @@ class TestActividadModel:
         make_actividad(c, 'ACT-Z')
         make_actividad(c, 'ACT-A')
         make_actividad(c, 'ACT-M')
-        codigos = [a.codigo for a in Actividad.all_objects.filter(company=c)]
+        codigos = [a.codigo for a in Activity.all_objects.filter(company=c)]
         assert codigos == sorted(codigos)
 
     def test_company_fk(self):
@@ -123,34 +123,34 @@ class TestActividadModel:
         assert a.unidad_medida == 'hora'
 
     def test_actividad_usable_en_multiples_proyectos(self):
-        """La misma actividad puede asignarse a múltiples proyectos (vía ActividadProyecto)."""
+        """La misma actividad puede asignarse a múltiples proyectos (vía ProjectActivity)."""
         from django.contrib.auth import get_user_model
-        from apps.proyectos.models import Proyecto, ActividadProyecto
+        from apps.proyectos.models import ProjectStatus, PhaseStatus, ActivityType, MeasurementMode,  Project, ProjectActivity
         from datetime import date, timedelta
         User = get_user_model()
         c = make_company('903001016')
         g = User.objects.create_user(email='gact@test.com', password='Pass!', company=c, is_active=True)
         act = make_actividad(c, 'ACT-SHARED')
 
-        p1 = Proyecto.all_objects.create(
+        p1 = Project.all_objects.create(
             company=c, gerente=g, codigo='PRY-A1',
-            nombre='P1', tipo='servicios',
+            nombre='P1', tipo='services',
             cliente_id='111', cliente_nombre='C1',
             fecha_inicio_planificada=date.today(),
             fecha_fin_planificada=date.today() + timedelta(days=60),
         )
-        p2 = Proyecto.all_objects.create(
+        p2 = Project.all_objects.create(
             company=c, gerente=g, codigo='PRY-A2',
-            nombre='P2', tipo='servicios',
+            nombre='P2', tipo='services',
             cliente_id='222', cliente_nombre='C2',
             fecha_inicio_planificada=date.today(),
             fecha_fin_planificada=date.today() + timedelta(days=60),
         )
-        ap1 = ActividadProyecto.all_objects.create(
+        ap1 = ProjectActivity.all_objects.create(
             company=c, proyecto=p1, actividad=act,
             cantidad_planificada=Decimal('10'), costo_unitario=Decimal('5000'),
         )
-        ap2 = ActividadProyecto.all_objects.create(
+        ap2 = ProjectActivity.all_objects.create(
             company=c, proyecto=p2, actividad=act,
             cantidad_planificada=Decimal('20'), costo_unitario=Decimal('5000'),
         )

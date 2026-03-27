@@ -2,7 +2,7 @@
  * SaiSuite — Modelos de Fase
  */
 
-export type EstadoFase = 'planificada' | 'activa' | 'completada' | 'cancelada';
+export type EstadoFase = 'planificada' | 'active' | 'completed' | 'cancelled';
 
 /** Fase en listado */
 export interface FaseList {

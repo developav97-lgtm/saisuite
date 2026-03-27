@@ -6,9 +6,9 @@ from decimal import Decimal
 from django.test import TestCase
 from django.contrib.auth import get_user_model
 from apps.companies.models import Company, CompanyModule
-from apps.proyectos.models import (
-    Proyecto, Fase, TerceroProyecto, DocumentoContable, Hito,
-    EstadoProyecto, ConfiguracionModulo,
+from apps.proyectos.models import (ProjectStatus, PhaseStatus, ActivityType, MeasurementMode,
+    Project, Phase, ProjectStakeholder, AccountingDocument, Milestone,
+    ProjectStatus, ModuleSettings,
 )
 from apps.proyectos.services import (
     ProyectoService,
@@ -45,8 +45,8 @@ def crear_usuario(company, email='gerente@test.com', role='company_admin'):
 def crear_proyecto(company, gerente, **kwargs):
     defaults = dict(
         codigo='PRY-001',
-        nombre='Proyecto Test',
-        tipo='obra_civil',
+        nombre='Project Test',
+        tipo='civil_works',
         cliente_id='900111222',
         cliente_nombre='Cliente Test',
         fecha_inicio_planificada='2026-04-01',
@@ -54,7 +54,7 @@ def crear_proyecto(company, gerente, **kwargs):
         presupuesto_total=Decimal('1000000.00'),
     )
     defaults.update(kwargs)
-    return Proyecto.all_objects.create(
+    return Project.all_objects.create(
         company=company, gerente=gerente, **defaults
     )
 
@@ -67,8 +67,8 @@ class ProyectoServiceCreateTest(TestCase):
 
     def test_create_proyecto_exitoso(self):
         data = {
-            'nombre': 'Proyecto A',
-            'tipo': 'obra_civil',
+            'nombre': 'Project A',
+            'tipo': 'civil_works',
             'cliente_id': '900111',
             'cliente_nombre': 'Cliente A',
             'fecha_inicio_planificada': '2026-04-01',
@@ -85,7 +85,7 @@ class ProyectoServiceCreateTest(TestCase):
     def test_create_proyecto_autocodigo(self):
         data = {
             'nombre': 'Sin codigo',
-            'tipo': 'servicios',
+            'tipo': 'services',
             'cliente_id': '111',
             'cliente_nombre': 'X',
             'fecha_inicio_planificada': '2026-04-01',
@@ -101,7 +101,7 @@ class ProyectoServiceCreateTest(TestCase):
         otro_user    = crear_usuario(otra_empresa, email='otro@otro.com')
         data = {
             'nombre': 'X',
-            'tipo': 'servicios',
+            'tipo': 'services',
             'cliente_id': '111',
             'cliente_nombre': 'X',
             'fecha_inicio_planificada': '2026-04-01',
@@ -127,16 +127,16 @@ class ProyectoServiceUpdateTest(TestCase):
         self.assertEqual(proyecto.nombre, 'Nombre actualizado')
 
     def test_update_en_cerrado_falla(self):
-        self.proyecto.estado = EstadoProyecto.CERRADO
+        self.proyecto.estado = ProjectStatus.CLOSED
         self.proyecto.save()
         with self.assertRaises(ProyectoNoEditableException):
             ProyectoService.update_proyecto(self.proyecto, {'nombre': 'X'})
 
     def test_soft_delete_cascada_fases(self):
-        Fase.all_objects.create(
+        Phase.all_objects.create(
             company=self.company,
             proyecto=self.proyecto,
-            nombre='Fase 1',
+            nombre='Phase 1',
             orden=1,
             fecha_inicio_planificada='2026-04-01',
             fecha_fin_planificada='2026-06-30',
@@ -145,7 +145,7 @@ class ProyectoServiceUpdateTest(TestCase):
         self.proyecto.refresh_from_db()
         self.assertFalse(self.proyecto.activo)
         self.assertEqual(
-            Fase.all_objects.filter(proyecto=self.proyecto, activo=True).count(), 0
+            Phase.all_objects.filter(proyecto=self.proyecto, activo=True).count(), 0
         )
 
 
@@ -158,80 +158,80 @@ class ProyectoServiceEstadoTest(TestCase):
 
     def test_transicion_borrador_a_planificado_sin_fases(self):
         with self.assertRaises(TransicionEstadoInvalidaException):
-            ProyectoService.cambiar_estado(self.proyecto, EstadoProyecto.PLANIFICADO)
+            ProyectoService.cambiar_estado(self.proyecto, ProjectStatus.PLANNED)
 
     def test_transicion_borrador_a_planificado_exitosa(self):
-        Fase.all_objects.create(
+        Phase.all_objects.create(
             company=self.company,
             proyecto=self.proyecto,
-            nombre='Fase 1',
+            nombre='Phase 1',
             orden=1,
             fecha_inicio_planificada='2026-04-01',
             fecha_fin_planificada='2026-06-30',
         )
-        proyecto = ProyectoService.cambiar_estado(self.proyecto, EstadoProyecto.PLANIFICADO)
-        self.assertEqual(proyecto.estado, EstadoProyecto.PLANIFICADO)
+        proyecto = ProyectoService.cambiar_estado(self.proyecto, ProjectStatus.PLANNED)
+        self.assertEqual(proyecto.estado, ProjectStatus.PLANNED)
 
     def test_transicion_planificado_a_ejecucion_sin_sync(self):
-        # El service solo bloquea si ConfiguracionModulo.requiere_sync_saiopen_para_ejecucion=True
-        ConfiguracionModulo.objects.create(
+        # El service solo bloquea si ModuleSettings.requiere_sync_saiopen_para_ejecucion=True
+        ModuleSettings.objects.create(
             company=self.company,
             requiere_sync_saiopen_para_ejecucion=True,
         )
-        self.proyecto.estado = EstadoProyecto.PLANIFICADO
+        self.proyecto.estado = ProjectStatus.PLANNED
         self.proyecto.save()
         with self.assertRaises(TransicionEstadoInvalidaException):
-            ProyectoService.cambiar_estado(self.proyecto, EstadoProyecto.EN_EJECUCION)
+            ProyectoService.cambiar_estado(self.proyecto, ProjectStatus.IN_PROGRESS)
 
     def test_transicion_planificado_a_ejecucion_con_sync(self):
-        self.proyecto.estado = EstadoProyecto.PLANIFICADO
+        self.proyecto.estado = ProjectStatus.PLANNED
         self.proyecto.sincronizado_con_saiopen = True
         self.proyecto.save()
-        proyecto = ProyectoService.cambiar_estado(self.proyecto, EstadoProyecto.EN_EJECUCION)
-        self.assertEqual(proyecto.estado, EstadoProyecto.EN_EJECUCION)
+        proyecto = ProyectoService.cambiar_estado(self.proyecto, ProjectStatus.IN_PROGRESS)
+        self.assertEqual(proyecto.estado, ProjectStatus.IN_PROGRESS)
         self.assertIsNotNone(proyecto.fecha_inicio_real)
 
     def test_transicion_invalida(self):
         with self.assertRaises(TransicionEstadoInvalidaException):
-            ProyectoService.cambiar_estado(self.proyecto, EstadoProyecto.CERRADO)
+            ProyectoService.cambiar_estado(self.proyecto, ProjectStatus.CLOSED)
 
     def test_transicion_estado_terminal(self):
-        self.proyecto.estado = EstadoProyecto.CERRADO
+        self.proyecto.estado = ProjectStatus.CLOSED
         self.proyecto.save()
         with self.assertRaises(TransicionEstadoInvalidaException):
-            ProyectoService.cambiar_estado(self.proyecto, EstadoProyecto.BORRADOR)
+            ProyectoService.cambiar_estado(self.proyecto, ProjectStatus.DRAFT)
 
     def test_cerrar_con_fases_incompletas_sin_forzar(self):
-        self.proyecto.estado = EstadoProyecto.EN_EJECUCION
+        self.proyecto.estado = ProjectStatus.IN_PROGRESS
         self.proyecto.save()
-        Fase.all_objects.create(
+        Phase.all_objects.create(
             company=self.company,
             proyecto=self.proyecto,
-            nombre='Fase 1',
+            nombre='Phase 1',
             orden=1,
             porcentaje_avance=Decimal('50'),
             fecha_inicio_planificada='2026-04-01',
             fecha_fin_planificada='2026-06-30',
         )
         with self.assertRaises(TransicionEstadoInvalidaException):
-            ProyectoService.cambiar_estado(self.proyecto, EstadoProyecto.CERRADO, forzar=False)
+            ProyectoService.cambiar_estado(self.proyecto, ProjectStatus.CLOSED, forzar=False)
 
     def test_cerrar_con_fases_incompletas_con_forzar(self):
-        self.proyecto.estado = EstadoProyecto.EN_EJECUCION
+        self.proyecto.estado = ProjectStatus.IN_PROGRESS
         self.proyecto.save()
-        Fase.all_objects.create(
+        Phase.all_objects.create(
             company=self.company,
             proyecto=self.proyecto,
-            nombre='Fase 1',
+            nombre='Phase 1',
             orden=1,
             porcentaje_avance=Decimal('50'),
             fecha_inicio_planificada='2026-04-01',
             fecha_fin_planificada='2026-06-30',
         )
         proyecto = ProyectoService.cambiar_estado(
-            self.proyecto, EstadoProyecto.CERRADO, forzar=True
+            self.proyecto, ProjectStatus.CLOSED, forzar=True
         )
-        self.assertEqual(proyecto.estado, EstadoProyecto.CERRADO)
+        self.assertEqual(proyecto.estado, ProjectStatus.CLOSED)
 
 
 class FaseServiceTest(TestCase):
@@ -245,7 +245,7 @@ class FaseServiceTest(TestCase):
 
     def _data_fase(self, **kwargs):
         defaults = dict(
-            nombre='Fase Test',
+            nombre='Phase Test',
             orden=1,
             fecha_inicio_planificada='2026-04-01',
             fecha_fin_planificada='2026-06-30',
@@ -274,10 +274,10 @@ class FaseServiceTest(TestCase):
         # Cada fase tiene exactamente 500000 (sin presupuesto_materiales default)
         base = dict(presupuesto_materiales=Decimal('0'), presupuesto_subcontratos=Decimal('0'))
         FaseService.create_fase(self.proyecto, self._data_fase(orden=1, presupuesto_mano_obra=Decimal('500000'), **base))
-        FaseService.create_fase(self.proyecto, self._data_fase(orden=2, nombre='Fase 2', presupuesto_mano_obra=Decimal('500000'), **base))
+        FaseService.create_fase(self.proyecto, self._data_fase(orden=2, nombre='Phase 2', presupuesto_mano_obra=Decimal('500000'), **base))
         # Ahora está al límite — agregar 1 peso más debe fallar
         with self.assertRaises(PresupuestoExcedidoException):
-            FaseService.create_fase(self.proyecto, self._data_fase(orden=3, nombre='Fase 3', presupuesto_mano_obra=Decimal('1'), **base))
+            FaseService.create_fase(self.proyecto, self._data_fase(orden=3, nombre='Phase 3', presupuesto_mano_obra=Decimal('1'), **base))
 
     def test_soft_delete_fase(self):
         fase = FaseService.create_fase(self.proyecto, self._data_fase())
@@ -297,7 +297,7 @@ class FaseServiceTest(TestCase):
             FaseService.update_fase(fase, {'presupuesto_mano_obra': Decimal('1500000')})
 
     def test_crear_fase_en_proyecto_cerrado(self):
-        self.proyecto.estado = EstadoProyecto.CERRADO
+        self.proyecto.estado = ProjectStatus.CLOSED
         self.proyecto.save()
         with self.assertRaises(ProyectoNoEditableException):
             FaseService.create_fase(self.proyecto, self._data_fase())
@@ -306,7 +306,7 @@ class FaseServiceTest(TestCase):
         data = self._data_fase()
         del data['orden']
         fase1 = FaseService.create_fase(self.proyecto, data.copy())
-        data2 = self._data_fase(nombre='Fase 2')
+        data2 = self._data_fase(nombre='Phase 2')
         del data2['orden']
         fase2 = FaseService.create_fase(self.proyecto, data2)
         self.assertEqual(fase1.orden, 1)
@@ -330,10 +330,10 @@ class ProyectoServiceFinancieroTest(TestCase):
         self.assertEqual(resultado['presupuesto_costos'], '0')
 
     def test_estado_financiero_con_fases(self):
-        Fase.all_objects.create(
+        Phase.all_objects.create(
             company=self.company,
             proyecto=self.proyecto,
-            nombre='Fase 1',
+            nombre='Phase 1',
             orden=1,
             fecha_inicio_planificada='2026-04-01',
             fecha_fin_planificada='2026-06-30',
@@ -361,7 +361,7 @@ class MultiTenantTest(TestCase):
         from apps.core import middleware as mw
         mw._thread_locals.company = self.company_b
         try:
-            count = Proyecto.objects.filter(codigo='PRY-A').count()
+            count = Project.objects.filter(codigo='PRY-A').count()
             self.assertEqual(count, 0)
         finally:
             mw._thread_locals.company = None
@@ -369,30 +369,30 @@ class MultiTenantTest(TestCase):
     def test_all_objects_sin_filtro(self):
         """all_objects retorna todos los proyectos sin filtrar por empresa."""
         crear_proyecto(self.company_b, self.user_b, codigo='PRY-B')
-        count = Proyecto.all_objects.count()
+        count = Project.all_objects.count()
         self.assertGreaterEqual(count, 2)
 
 
 # ══════════════════════════════════════════════
-# Helpers Fase B
+# Helpers Phase B
 # ══════════════════════════════════════════════
 
 def crear_fase(company, proyecto, orden=1, presupuesto_mano_obra=Decimal('200000'), **kwargs):
     defaults = dict(
-        nombre=f'Fase {orden}',
+        nombre=f'Phase {orden}',
         orden=orden,
         fecha_inicio_planificada='2026-04-01',
         fecha_fin_planificada='2026-06-30',
         presupuesto_mano_obra=presupuesto_mano_obra,
     )
     defaults.update(kwargs)
-    return Fase.all_objects.create(company=company, proyecto=proyecto, **defaults)
+    return Phase.all_objects.create(company=company, proyecto=proyecto, **defaults)
 
 
 def crear_documento(company, proyecto, fase=None, **kwargs):
     defaults = dict(
         saiopen_doc_id=f'DOC-{Decimal(str(id(kwargs)))}',
-        tipo_documento='factura_compra',
+        tipo_documento='purchase_invoice',
         numero_documento='FC-001',
         fecha_documento='2026-05-01',
         tercero_id='900123456',
@@ -401,7 +401,7 @@ def crear_documento(company, proyecto, fase=None, **kwargs):
         valor_neto=Decimal('100000'),
     )
     defaults.update(kwargs)
-    return DocumentoContable.all_objects.create(
+    return AccountingDocument.all_objects.create(
         company=company, proyecto=proyecto, fase=fase, **defaults
     )
 
@@ -423,7 +423,7 @@ class TerceroProyectoServiceTest(TestCase):
         tercero = TerceroProyectoService.vincular_tercero(self.proyecto, {
             'tercero_id': '900111',
             'tercero_nombre': 'Subcontratista SA',
-            'rol': 'subcontratista',
+            'rol': 'subcontractor',
             'fase': None,
         })
         self.assertIsNotNone(tercero.id)
@@ -435,14 +435,14 @@ class TerceroProyectoServiceTest(TestCase):
         TerceroProyectoService.vincular_tercero(self.proyecto, {
             'tercero_id': '900111',
             'tercero_nombre': 'Empresa XYZ',
-            'rol': 'subcontratista',
+            'rol': 'subcontractor',
             'fase': None,
         })
         # Mismo tercero, rol distinto — debe funcionar
         tercero2 = TerceroProyectoService.vincular_tercero(self.proyecto, {
             'tercero_id': '900111',
             'tercero_nombre': 'Empresa XYZ',
-            'rol': 'proveedor',
+            'rol': 'vendor',
             'fase': None,
         })
         self.assertIsNotNone(tercero2.id)
@@ -452,7 +452,7 @@ class TerceroProyectoServiceTest(TestCase):
         data = {
             'tercero_id': '900111',
             'tercero_nombre': 'Empresa XYZ',
-            'rol': 'subcontratista',
+            'rol': 'subcontractor',
             'fase': None,
         }
         TerceroProyectoService.vincular_tercero(self.proyecto, data.copy())
@@ -463,7 +463,7 @@ class TerceroProyectoServiceTest(TestCase):
         tercero = TerceroProyectoService.vincular_tercero(self.proyecto, {
             'tercero_id': '900222',
             'tercero_nombre': 'Consultor Test',
-            'rol': 'consultor',
+            'rol': 'consultant',
             'fase': None,
         })
         TerceroProyectoService.desvincular_tercero(tercero)
@@ -473,10 +473,10 @@ class TerceroProyectoServiceTest(TestCase):
     def test_list_terceros_solo_activos(self):
         """list_terceros no retorna terceros desvinculados."""
         t1 = TerceroProyectoService.vincular_tercero(self.proyecto, {
-            'tercero_id': '111', 'tercero_nombre': 'A', 'rol': 'cliente', 'fase': None,
+            'tercero_id': '111', 'tercero_nombre': 'A', 'rol': 'client', 'fase': None,
         })
         t2 = TerceroProyectoService.vincular_tercero(self.proyecto, {
-            'tercero_id': '222', 'tercero_nombre': 'B', 'rol': 'proveedor', 'fase': None,
+            'tercero_id': '222', 'tercero_nombre': 'B', 'rol': 'vendor', 'fase': None,
         })
         TerceroProyectoService.desvincular_tercero(t2)
         qs = TerceroProyectoService.list_terceros(self.proyecto)
@@ -489,7 +489,7 @@ class TerceroProyectoServiceTest(TestCase):
         tercero = TerceroProyectoService.vincular_tercero(self.proyecto, {
             'tercero_id': '900333',
             'tercero_nombre': 'Interventor',
-            'rol': 'interventor',
+            'rol': 'inspector',
             'fase': fase,
         })
         self.assertEqual(tercero.fase, fase)
@@ -508,7 +508,7 @@ class DocumentoContableServiceTest(TestCase):
             self.company, self.user, presupuesto_total=Decimal('1000000')
         )
         self.fase1 = crear_fase(self.company, self.proyecto, orden=1)
-        self.fase2 = crear_fase(self.company, self.proyecto, orden=2, nombre='Fase 2')
+        self.fase2 = crear_fase(self.company, self.proyecto, orden=2, nombre='Phase 2')
 
     def test_list_documentos_del_proyecto(self):
         crear_documento(self.company, self.proyecto, saiopen_doc_id='DOC-001')
@@ -556,7 +556,7 @@ class HitoServiceTest(TestCase):
 
     def _data_hito(self, **kwargs):
         defaults = dict(
-            nombre='Hito Test',
+            nombre='Milestone Test',
             descripcion='',
             porcentaje_proyecto=Decimal('25.00'),
             valor_facturar=Decimal('250000.00'),
@@ -577,12 +577,12 @@ class HitoServiceTest(TestCase):
         for i in range(4):
             HitoService.create_hito(
                 self.proyecto,
-                self._data_hito(nombre=f'Hito {i}', porcentaje_proyecto=Decimal('25.00')),
+                self._data_hito(nombre=f'Milestone {i}', porcentaje_proyecto=Decimal('25.00')),
             )
         with self.assertRaises(ValidationError):
             HitoService.create_hito(
                 self.proyecto,
-                self._data_hito(nombre='Hito 5', porcentaje_proyecto=Decimal('1.00')),
+                self._data_hito(nombre='Milestone 5', porcentaje_proyecto=Decimal('1.00')),
             )
 
     def test_crear_hito_porcentaje_exactamente_100(self):
@@ -601,7 +601,7 @@ class HitoServiceTest(TestCase):
         with self.assertRaises(ValidationError):
             HitoService.create_hito(
                 self.proyecto,
-                self._data_hito(nombre='Hito 2', porcentaje_proyecto=Decimal('30.00')),
+                self._data_hito(nombre='Milestone 2', porcentaje_proyecto=Decimal('30.00')),
             )
 
     def test_generar_factura_exitosa(self):

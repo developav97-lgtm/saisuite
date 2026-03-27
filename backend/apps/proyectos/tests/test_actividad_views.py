@@ -1,6 +1,6 @@
 """
 SaiSuite — Proyectos: Tests de Views — ActividadViewSet
-Cubre: GET/POST/PATCH/DELETE /api/v1/proyectos/actividades/
+Cubre: GET/POST/PATCH/DELETE /api/v1/projects/activities/
 """
 from decimal import Decimal
 from rest_framework.test import APITestCase
@@ -8,11 +8,11 @@ from rest_framework import status
 from django.contrib.auth import get_user_model
 
 from apps.companies.models import Company, CompanyModule
-from apps.proyectos.models import Proyecto, Actividad, ActividadProyecto
+from apps.proyectos.models import Project, Activity, ProjectActivity
 
 User = get_user_model()
 
-URL_ACTIVIDADES = '/api/v1/proyectos/actividades/'
+URL_ACTIVIDADES = '/api/v1/projects/activities/'
 
 
 def crear_empresa(nombre='AV Test Co', nit='913000001'):
@@ -30,13 +30,13 @@ def crear_usuario(company, email='gav@test.com', role='company_admin'):
 def crear_actividad_db(company, codigo='ACT-AV-001', **kwargs):
     defaults = dict(nombre='Excavación', unidad_medida='m3', tipo='material')
     defaults.update(kwargs)
-    return Actividad.all_objects.create(company=company, codigo=codigo, **defaults)
+    return Activity.all_objects.create(company=company, codigo=codigo, **defaults)
 
 
 def crear_proyecto_db(company, gerente, codigo='AV-PRY-001'):
-    return Proyecto.all_objects.create(
+    return Project.all_objects.create(
         company=company, gerente=gerente, codigo=codigo,
-        nombre='Proyecto AV', tipo='obra_civil',
+        nombre='Project AV', tipo='civil_works',
         cliente_id='900111', cliente_nombre='Cliente',
         fecha_inicio_planificada='2026-04-01',
         fecha_fin_planificada='2026-12-31',
@@ -81,12 +81,12 @@ class ActividadListCreateTest(APITestCase):
         self.assertNotIn('Pintura exterior', nombres)
 
     def test_filtrar_por_tipo(self):
-        crear_actividad_db(self.company, 'ACT-TIPO-001', tipo='mano_obra')
-        crear_actividad_db(self.company, 'ACT-TIPO-002', tipo='equipo')
-        resp = self.client.get(URL_ACTIVIDADES, {'tipo': 'mano_obra'})
+        crear_actividad_db(self.company, 'ACT-TIPO-001', tipo='labor')
+        crear_actividad_db(self.company, 'ACT-TIPO-002', tipo='equipment')
+        resp = self.client.get(URL_ACTIVIDADES, {'tipo': 'labor'})
         tipos = [a['tipo'] for a in resp.data['results']]
-        self.assertIn('mano_obra', tipos)
-        self.assertNotIn('equipo', tipos)
+        self.assertIn('labor', tipos)
+        self.assertNotIn('equipment', tipos)
 
     def test_crear_actividad_exitosa(self):
         data = {
@@ -98,7 +98,7 @@ class ActividadListCreateTest(APITestCase):
         self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
 
     def test_crear_actividad_autocodigo(self):
-        data = {'nombre': 'Auto', 'tipo': 'equipo', 'unidad_medida': 'hora'}
+        data = {'nombre': 'Auto', 'tipo': 'equipment', 'unidad_medida': 'hora'}
         resp = self.client.post(URL_ACTIVIDADES, data, format='json')
         self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
         self.assertTrue(resp.data['codigo'].startswith('ACT-'))
@@ -106,7 +106,7 @@ class ActividadListCreateTest(APITestCase):
     def test_crear_actividad_codigo_manual(self):
         data = {
             'codigo': 'MANUAL-001',
-            'nombre': 'Manual', 'tipo': 'subcontrato', 'unidad_medida': 'global',
+            'nombre': 'Manual', 'tipo': 'subcontract', 'unidad_medida': 'global',
         }
         resp = self.client.post(URL_ACTIVIDADES, data, format='json')
         self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
@@ -166,7 +166,7 @@ class ActividadDetailTest(APITestCase):
     def test_eliminar_con_asignaciones_retorna_400(self):
         gerente = self.user
         p = crear_proyecto_db(self.company, gerente, 'AV-PRY-DEL')
-        ActividadProyecto.all_objects.create(
+        ProjectActivity.all_objects.create(
             company=self.company, proyecto=p, actividad=self.actividad,
             cantidad_planificada=Decimal('10'), costo_unitario=Decimal('1000'),
         )

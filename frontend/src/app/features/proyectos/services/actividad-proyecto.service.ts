@@ -9,7 +9,7 @@ interface Paginated<T> { count: number; next: string | null; previous: string | 
 @Injectable({ providedIn: 'root' })
 export class ActividadProyectoService {
   private readonly http    = inject(HttpClient);
-  private readonly baseUrl = '/api/v1/proyectos';
+  private readonly baseUrl = '/api/v1/projects';
 
   listByProyecto(proyectoId: string, faseId?: string): Observable<ActividadProyecto[]> {
     let url = `${this.baseUrl}/${proyectoId}/actividades/`;

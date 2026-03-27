@@ -12,58 +12,58 @@ from apps.core.models import BaseModel
 logger = logging.getLogger(__name__)
 
 
-class TipoProyecto(models.TextChoices):
-    OBRA_CIVIL        = 'obra_civil',        'Obra civil'
-    CONSULTORIA       = 'consultoria',       'Consultoría'
-    MANUFACTURA       = 'manufactura',       'Manufactura'
-    SERVICIOS         = 'servicios',         'Servicios'
-    LICITACION_PUBLICA = 'licitacion_publica', 'Licitación pública'
-    OTRO              = 'otro',              'Otro'
+class ProjectType(models.TextChoices):
+    CIVIL_WORKS    = 'civil_works',    'Obra civil'
+    CONSULTING     = 'consulting',     'Consultoría'
+    MANUFACTURING  = 'manufacturing',  'Manufactura'
+    SERVICES       = 'services',       'Servicios'
+    PUBLIC_TENDER  = 'public_tender',  'Licitación pública'
+    OTHER          = 'other',          'Otro'
 
 
-class EstadoProyecto(models.TextChoices):
-    BORRADOR     = 'borrador',     'Borrador'
-    PLANIFICADO  = 'planificado',  'Planificado'
-    EN_EJECUCION = 'en_ejecucion', 'En ejecución'
-    SUSPENDIDO   = 'suspendido',   'Suspendido'
-    CERRADO      = 'cerrado',      'Cerrado'
-    CANCELADO    = 'cancelado',    'Cancelado'
+class ProjectStatus(models.TextChoices):
+    DRAFT       = 'draft',       'Borrador'
+    PLANNED     = 'planned',     'Planificado'
+    IN_PROGRESS = 'in_progress', 'En ejecución'
+    SUSPENDED   = 'suspended',   'Suspendido'
+    CLOSED      = 'closed',      'Cerrado'
+    CANCELLED   = 'cancelled',   'Cancelado'
 
 
-class RolTercero(models.TextChoices):
-    CLIENTE        = 'cliente',        'Cliente'
-    SUBCONTRATISTA = 'subcontratista', 'Subcontratista'
-    PROVEEDOR      = 'proveedor',      'Proveedor'
-    CONSULTOR      = 'consultor',      'Consultor'
-    INTERVENTOR    = 'interventor',    'Interventor'
-    SUPERVISOR     = 'supervisor',     'Supervisor'
+class StakeholderRole(models.TextChoices):
+    CLIENT        = 'client',        'Cliente'
+    SUBCONTRACTOR = 'subcontractor', 'Subcontratista'
+    VENDOR        = 'vendor',        'Proveedor'
+    CONSULTANT    = 'consultant',    'Consultor'
+    INSPECTOR     = 'inspector',     'Interventor'
+    SUPERVISOR    = 'supervisor',    'Supervisor'
 
 
-class TipoDocumento(models.TextChoices):
-    FACTURA_VENTA      = 'factura_venta',      'Factura de venta'
-    FACTURA_COMPRA     = 'factura_compra',      'Factura de compra'
-    ORDEN_COMPRA       = 'orden_compra',        'Orden de compra'
-    RECIBO_CAJA        = 'recibo_caja',         'Recibo de caja'
-    COMPROBANTE_EGRESO = 'comprobante_egreso',  'Comprobante de egreso'
-    NOMINA             = 'nomina',              'Nómina'
-    ANTICIPO           = 'anticipo',            'Anticipo'
-    ACTA_OBRA          = 'acta_obra',           'Acta de obra'
+class DocumentType(models.TextChoices):
+    SALES_INVOICE    = 'sales_invoice',    'Factura de venta'
+    PURCHASE_INVOICE = 'purchase_invoice', 'Factura de compra'
+    PURCHASE_ORDER   = 'purchase_order',   'Orden de compra'
+    CASH_RECEIPT     = 'cash_receipt',     'Recibo de caja'
+    EXPENSE_VOUCHER  = 'expense_voucher',  'Comprobante de egreso'
+    PAYROLL          = 'payroll',          'Nómina'
+    ADVANCE          = 'advance',          'Anticipo'
+    WORK_CERTIFICATE = 'work_certificate', 'Acta de obra'
 
 
-class EstadoFase(models.TextChoices):
-    PLANIFICADA = 'planificada', 'Planificada'
-    ACTIVA      = 'activa',      'Activa'
-    COMPLETADA  = 'completada',  'Completada'
-    CANCELADA   = 'cancelada',   'Cancelada'
+class PhaseStatus(models.TextChoices):
+    PLANNED   = 'planned',   'Planificada'
+    ACTIVE    = 'active',    'Activa'
+    COMPLETED = 'completed', 'Completada'
+    CANCELLED = 'cancelled', 'Cancelada'
 
 
-class ModoMedicion(models.TextChoices):
-    SOLO_ESTADOS = 'solo_estados', 'Solo estados'
-    TIMESHEET    = 'timesheet',    'Timesheet (horas)'
-    CANTIDAD     = 'cantidad',     'Cantidad ejecutada'
+class MeasurementMode(models.TextChoices):
+    STATUS_ONLY = 'status_only', 'Solo estados'
+    TIMESHEET   = 'timesheet',   'Timesheet (horas)'
+    QUANTITY    = 'quantity',    'Cantidad ejecutada'
 
 
-class Proyecto(BaseModel):
+class Project(BaseModel):
     """
     Proyecto de ejecución en Saicloud.
     Complementa la imputación contable de Saiopen con gestión de fases,
@@ -71,11 +71,11 @@ class Proyecto(BaseModel):
     """
     codigo  = models.CharField(max_length=50, db_index=True)
     nombre  = models.CharField(max_length=255)
-    tipo    = models.CharField(max_length=30, choices=TipoProyecto.choices)
+    tipo    = models.CharField(max_length=30, choices=ProjectType.choices)
     estado  = models.CharField(
         max_length=20,
-        choices=EstadoProyecto.choices,
-        default=EstadoProyecto.BORRADOR,
+        choices=ProjectStatus.choices,
+        default=ProjectStatus.DRAFT,
     )
 
     # Cliente principal (referencia a Saiopen — no FK para evitar acoplamiento)
@@ -86,14 +86,14 @@ class Proyecto(BaseModel):
     gerente = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
-        related_name='proyectos_como_gerente',
+        related_name='projects_as_manager',
     )
     coordinador = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='proyectos_como_coordinador',
+        related_name='projects_as_coordinator',
     )
 
     # Fechas planificadas
@@ -144,22 +144,22 @@ class Proyecto(BaseModel):
         return f'{self.codigo} — {self.nombre}'
 
 
-class ConfiguracionModulo(models.Model):
+class ModuleSettings(models.Model):
     """
     Configuración del módulo de proyectos por empresa.
     Se crea automáticamente con valores por defecto al primer acceso.
     """
-    MODOS_TIMESHEET = [
-        ('manual',      'Manual — registro de horas'),
-        ('cronometro',  'Cronómetro — tiempo real'),
-        ('ambos',       'Ambos modos disponibles'),
-        ('desactivado', 'Desactivado'),
+    TIMESHEET_MODES = [
+        ('manual',   'Manual — hour recording'),
+        ('timer',    'Timer — real time'),
+        ('both',     'Both modes available'),
+        ('disabled', 'Disabled'),
     ]
 
     company = models.OneToOneField(
         'companies.Company',
         on_delete=models.CASCADE,
-        related_name='configuracion_proyectos',
+        related_name='project_settings',
     )
     requiere_sync_saiopen_para_ejecucion = models.BooleanField(
         default=False,
@@ -171,8 +171,8 @@ class ConfiguracionModulo(models.Model):
     )
     modo_timesheet = models.CharField(
         max_length=20,
-        choices=MODOS_TIMESHEET,
-        default='ambos',
+        choices=TIMESHEET_MODES,
+        default='both',
         verbose_name='Modo de timesheet',
     )
 
@@ -184,12 +184,12 @@ class ConfiguracionModulo(models.Model):
         return f'Config proyectos — {self.company}'
 
 
-class Fase(BaseModel):
+class Phase(BaseModel):
     """
     Fase o etapa de un proyecto.
     Presupuesto desglosado por categoría (mano de obra, materiales, etc.)
     """
-    proyecto    = models.ForeignKey(Proyecto, on_delete=models.CASCADE, related_name='fases')
+    proyecto    = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='phases')
     nombre      = models.CharField(max_length=255)
     descripcion = models.TextField(blank=True)
     orden       = models.PositiveIntegerField(default=0)
@@ -211,8 +211,8 @@ class Fase(BaseModel):
 
     estado = models.CharField(
         max_length=20,
-        choices=EstadoFase.choices,
-        default=EstadoFase.PLANIFICADA,
+        choices=PhaseStatus.choices,
+        default=PhaseStatus.PLANNED,
         help_text='Estado operativo de la fase.',
     )
 
@@ -233,7 +233,7 @@ class Fase(BaseModel):
         return f'{self.proyecto.codigo} / Fase {self.orden}: {self.nombre}'
 
 
-class TerceroProyecto(BaseModel):
+class ProjectStakeholder(BaseModel):
     """
     Tercero vinculado a un proyecto con un rol específico.
     Un tercero puede tener múltiples roles en el mismo proyecto.
@@ -242,21 +242,21 @@ class TerceroProyecto(BaseModel):
     Los campos tercero_id/tercero_nombre se mantienen para loose coupling con Saiopen
     y compatibilidad con registros previos.
     """
-    proyecto      = models.ForeignKey(Proyecto, on_delete=models.CASCADE, related_name='terceros')
+    proyecto      = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='stakeholders')
     tercero_id    = models.CharField(max_length=50, help_text='NIT/ID del tercero en Saiopen')
     tercero_nombre = models.CharField(max_length=255)
-    rol           = models.CharField(max_length=20, choices=RolTercero.choices)
+    rol           = models.CharField(max_length=20, choices=StakeholderRole.choices)
     fase          = models.ForeignKey(
-        Fase, on_delete=models.SET_NULL,
+        Phase, on_delete=models.SET_NULL,
         null=True, blank=True,
-        related_name='terceros',
+        related_name='stakeholders',
     )
     # FK normalizada al catálogo de terceros (opcional — se llena cuando el tercero existe en Saisuite)
     tercero_fk = models.ForeignKey(
         'terceros.Tercero',
         on_delete=models.SET_NULL,
         null=True, blank=True,
-        related_name='proyectos_vinculados',
+        related_name='linked_projects',
     )
     activo = models.BooleanField(default=True)
 
@@ -269,21 +269,21 @@ class TerceroProyecto(BaseModel):
         return f'{self.tercero_nombre} ({self.get_rol_display()}) — {self.proyecto.codigo}'
 
 
-class DocumentoContable(BaseModel):
+class AccountingDocument(BaseModel):
     """
     Documento contable generado en Saiopen e importado al proyecto vía agente Go.
     Solo lectura desde Saicloud — la escritura es exclusiva del agente de sincronización.
     """
-    proyecto = models.ForeignKey(Proyecto, on_delete=models.CASCADE, related_name='documentos')
+    proyecto = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='documents')
     fase     = models.ForeignKey(
-        Fase, on_delete=models.SET_NULL,
+        Phase, on_delete=models.SET_NULL,
         null=True, blank=True,
-        related_name='documentos',
+        related_name='documents',
     )
 
     # Datos del documento en Saiopen
     saiopen_doc_id    = models.CharField(max_length=100)
-    tipo_documento    = models.CharField(max_length=30, choices=TipoDocumento.choices)
+    tipo_documento    = models.CharField(max_length=30, choices=DocumentType.choices)
     numero_documento  = models.CharField(max_length=100)
     fecha_documento   = models.DateField()
 
@@ -309,14 +309,14 @@ class DocumentoContable(BaseModel):
         return f'{self.get_tipo_documento_display()} {self.numero_documento} ({self.fecha_documento})'
 
 
-class TipoActividad(models.TextChoices):
-    MANO_OBRA   = 'mano_obra',   'Mano de obra'
+class ActivityType(models.TextChoices):
+    LABOR       = 'labor',       'Mano de obra'
     MATERIAL    = 'material',    'Material'
-    EQUIPO      = 'equipo',      'Equipo'
-    SUBCONTRATO = 'subcontrato', 'Subcontrato'
+    EQUIPMENT   = 'equipment',   'Equipo'
+    SUBCONTRACT = 'subcontract', 'Subcontrato'
 
 
-class Actividad(BaseModel):
+class Activity(BaseModel):
     """
     Actividad reutilizable — catálogo global por empresa.
     Una misma actividad puede asignarse a múltiples proyectos.
@@ -330,7 +330,7 @@ class Actividad(BaseModel):
         max_digits=15, decimal_places=2, default=0,
         help_text='Costo de referencia. Puede diferir por proyecto.',
     )
-    tipo   = models.CharField(max_length=20, choices=TipoActividad.choices)
+    tipo   = models.CharField(max_length=20, choices=ActivityType.choices)
     activo = models.BooleanField(default=True, db_index=True)
 
     # Sincronización con Saiopen (opcional)
@@ -347,18 +347,18 @@ class Actividad(BaseModel):
         return f'{self.codigo} — {self.nombre}'
 
 
-class ActividadProyecto(BaseModel):
+class ProjectActivity(BaseModel):
     """
-    Asignación de una Actividad a un Proyecto.
+    Asignación de una Activity a un Project.
     El costo_unitario puede diferir del costo_unitario_base del catálogo.
     presupuesto_total se calcula como cantidad_planificada × costo_unitario.
     """
-    proyecto  = models.ForeignKey(Proyecto, on_delete=models.CASCADE, related_name='actividades')
-    actividad = models.ForeignKey(Actividad, on_delete=models.PROTECT, related_name='asignaciones')
+    proyecto  = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='activities')
+    actividad = models.ForeignKey(Activity, on_delete=models.PROTECT, related_name='assignments')
     fase      = models.ForeignKey(
-        Fase, on_delete=models.SET_NULL,
+        Phase, on_delete=models.SET_NULL,
         null=True, blank=True,
-        related_name='actividades',
+        related_name='activities',
     )
 
     cantidad_planificada = models.DecimalField(max_digits=15, decimal_places=2, default=0)
@@ -383,7 +383,7 @@ class ActividadProyecto(BaseModel):
         return f'{self.proyecto.codigo} / {self.actividad.codigo}'
 
 
-class ActividadSaiopen(BaseModel):
+class SaiopenActivity(BaseModel):
     """
     Catálogo de actividades sincronizadas desde Saiopen.
     Una misma actividad puede vincularse a múltiples tareas y fases.
@@ -394,9 +394,9 @@ class ActividadSaiopen(BaseModel):
     descripcion     = models.TextField(blank=True)
     unidad_medida   = models.CharField(
         max_length=20,
-        choices=ModoMedicion.choices,
-        default=ModoMedicion.SOLO_ESTADOS,
-        help_text='Determina el modo de medición: solo_estados, timesheet o cantidad.',
+        choices=MeasurementMode.choices,
+        default=MeasurementMode.STATUS_ONLY,
+        help_text='Determina el modo de medición: status_only, timesheet o quantity.',
     )
     costo_unitario_base = models.DecimalField(
         max_digits=15, decimal_places=2, default=0,
@@ -418,16 +418,16 @@ class ActividadSaiopen(BaseModel):
         return f'{self.codigo} — {self.nombre}'
 
 
-class Hito(BaseModel):
+class Milestone(BaseModel):
     """
     Hito facturable del proyecto.
     Representa un porcentaje del avance que genera una factura en Saiopen.
     """
-    proyecto = models.ForeignKey(Proyecto, on_delete=models.CASCADE, related_name='hitos')
+    proyecto = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='milestones')
     fase     = models.ForeignKey(
-        Fase, on_delete=models.SET_NULL,
+        Phase, on_delete=models.SET_NULL,
         null=True, blank=True,
-        related_name='hitos',
+        related_name='milestones',
     )
 
     nombre      = models.CharField(max_length=255)
@@ -441,9 +441,9 @@ class Hito(BaseModel):
     facturable         = models.BooleanField(default=True)
     facturado          = models.BooleanField(default=False)
     documento_factura  = models.ForeignKey(
-        DocumentoContable, on_delete=models.SET_NULL,
+        AccountingDocument, on_delete=models.SET_NULL,
         null=True, blank=True,
-        related_name='hitos_facturados',
+        related_name='invoiced_milestones',
     )
     fecha_facturacion = models.DateField(null=True, blank=True)
 
@@ -457,7 +457,7 @@ class Hito(BaseModel):
         return f'{self.proyecto.codigo} — {self.nombre} ({estado})'
 
 
-class TareaTag(BaseModel):
+class TaskTag(BaseModel):
     """
     Etiquetas para categorizar y filtrar tareas.
     Hereda company de BaseModel — no duplicar FK.
@@ -488,7 +488,7 @@ class TareaTag(BaseModel):
         return self.nombre
 
 
-class Tarea(BaseModel):
+class Task(BaseModel):
     """
     Tarea de proyecto con capacidades avanzadas.
     Reemplaza ActividadProyecto con funcionalidad completa tipo Odoo.
@@ -499,26 +499,26 @@ class Tarea(BaseModel):
     # proyecto se auto-sincroniza desde fase.proyecto en save() para facilitar
     # consultas de performance sin romper la API existente.
     fase = models.ForeignKey(
-        'Fase',
+        'Phase',
         on_delete=models.CASCADE,
-        related_name='tareas',
+        related_name='tasks',
         help_text='Fase a la que pertenece esta tarea (obligatoria).',
     )
     proyecto = models.ForeignKey(
-        'Proyecto',
+        'Project',
         on_delete=models.CASCADE,
-        related_name='tareas',
+        related_name='tasks',
         editable=False,
         help_text='Auto-derivado de fase.proyecto. No editar directamente.',
     )
 
     # ===== ACTIVIDAD SAIOPEN (DEC-022) =====
     actividad_saiopen = models.ForeignKey(
-        'ActividadSaiopen',
+        'SaiopenActivity',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='tareas',
+        related_name='tasks',
         help_text='Actividad de Saiopen que determina el modo de medición.',
     )
 
@@ -528,7 +528,7 @@ class Tarea(BaseModel):
         null=True,
         blank=True,
         on_delete=models.CASCADE,
-        related_name='subtareas'
+        related_name='subtasks'
     )
 
     # ===== BÁSICO =====
@@ -553,11 +553,11 @@ class Tarea(BaseModel):
         null=True,
         blank=True,
         on_delete=models.SET_NULL,
-        related_name='tareas_asignadas'
+        related_name='assigned_tasks'
     )
     followers = models.ManyToManyField(
         settings.AUTH_USER_MODEL,
-        related_name='tareas_siguiendo',
+        related_name='following_tasks',
         blank=True
     )
 
@@ -571,7 +571,7 @@ class Tarea(BaseModel):
             (4, 'Urgente'),
         ]
     )
-    tags = models.ManyToManyField('TareaTag', related_name='tareas', blank=True)
+    tags = models.ManyToManyField('TaskTag', related_name='tasks', blank=True)
 
     # ===== FECHAS =====
     fecha_inicio = models.DateField(null=True, blank=True)
@@ -581,14 +581,14 @@ class Tarea(BaseModel):
     # ===== ESTADO Y PROGRESO =====
     estado = models.CharField(
         max_length=20,
-        default='por_hacer',
+        default='todo',
         choices=[
-            ('por_hacer', 'Por Hacer'),
-            ('en_progreso', 'En Progreso'),
-            ('en_revision', 'En Revisión'),
-            ('bloqueada', 'Bloqueada'),
-            ('completada', 'Completada'),
-            ('cancelada', 'Cancelada'),
+            ('todo',        'To Do'),
+            ('in_progress', 'In Progress'),
+            ('in_review',   'In Review'),
+            ('blocked',     'Blocked'),
+            ('completed',   'Completed'),
+            ('cancelled',   'Cancelled'),
         ]
     )
     porcentaje_completado = models.IntegerField(
@@ -611,7 +611,7 @@ class Tarea(BaseModel):
     # ===== MEDICIÓN POR CANTIDAD (DEC-022) =====
     cantidad_objetivo   = models.DecimalField(
         max_digits=15, decimal_places=2, default=0,
-        help_text='Cantidad objetivo (aplica cuando actividad_saiopen.unidad_medida = cantidad).',
+        help_text='Cantidad objetivo (aplica cuando actividad_saiopen.unidad_medida = quantity).',
     )
     cantidad_registrada = models.DecimalField(
         max_digits=15, decimal_places=2, default=0,
@@ -625,20 +625,20 @@ class Tarea(BaseModel):
         null=True,
         blank=True,
         choices=[
-            ('diaria', 'Diaria'),
-            ('semanal', 'Semanal'),
-            ('mensual', 'Mensual'),
+            ('daily',   'Daily'),
+            ('weekly',  'Weekly'),
+            ('monthly', 'Monthly'),
         ]
     )
     proxima_generacion = models.DateField(null=True, blank=True)
 
     # ===== ACTIVIDAD DEL PROYECTO (DEC-022) =====
     actividad_proyecto = models.ForeignKey(
-        'ActividadProyecto',
+        'ProjectActivity',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='tareas',
+        related_name='tasks',
         help_text='Actividad del proyecto a la que pertenece esta tarea.',
     )
 
@@ -697,7 +697,7 @@ class Tarea(BaseModel):
             from django.db.models import Max
             from django.db.models.functions import Cast, Substr
 
-            ultimo_numero = Tarea.all_objects.filter(
+            ultimo_numero = Task.all_objects.filter(
                 proyecto_id=self.proyecto_id
             ).aggregate(
                 max_num=Max(
@@ -721,21 +721,21 @@ class Tarea(BaseModel):
             try:
                 um = (self.actividad_proyecto.actividad.unidad_medida or '').lower().strip()
                 if um == 'hora':
-                    return ModoMedicion.TIMESHEET
+                    return MeasurementMode.TIMESHEET
                 if um:
-                    return ModoMedicion.CANTIDAD
+                    return MeasurementMode.QUANTITY
             except Exception:
                 pass
-        return ModoMedicion.SOLO_ESTADOS
+        return MeasurementMode.STATUS_ONLY
 
     @property
     def progreso_porcentaje(self) -> float:
         """Progreso calculado según el modo de medición de la actividad."""
         modo = self.modo_medicion
-        if modo == ModoMedicion.TIMESHEET:
+        if modo == MeasurementMode.TIMESHEET:
             if self.horas_estimadas and self.horas_estimadas > 0:
                 return min(float(self.horas_registradas) / float(self.horas_estimadas) * 100, 100.0)
-        elif modo == ModoMedicion.CANTIDAD:
+        elif modo == MeasurementMode.QUANTITY:
             if self.cantidad_objetivo and self.cantidad_objetivo > 0:
                 return min(float(self.cantidad_registrada) / float(self.cantidad_objetivo) * 100, 100.0)
         return float(self.porcentaje_completado)
@@ -748,13 +748,13 @@ class Tarea(BaseModel):
             return False
         return (
             self.fecha_limite < timezone.now().date()
-            and self.estado not in ['completada', 'cancelada']
+            and self.estado not in ['completed', 'cancelled']
         )
 
     @property
     def tiene_subtareas(self):
         """Retorna True si la tarea tiene subtareas"""
-        return self.subtareas.exists()
+        return self.subtasks.exists()
 
     @property
     def nivel_jerarquia(self):
@@ -769,27 +769,27 @@ class Tarea(BaseModel):
         return nivel
 
 
-class SesionTrabajo(BaseModel):
+class WorkSession(BaseModel):
     """
     Sesión de trabajo cronometrada sobre una tarea.
     Soporta pausas; la duración neta se calcula al detener la sesión.
     """
     ESTADOS = [
-        ('activa',     'Activa'),
-        ('pausada',    'Pausada'),
-        ('finalizada', 'Finalizada'),
+        ('active',   'Active'),
+        ('paused',   'Paused'),
+        ('finished', 'Finished'),
     ]
 
     tarea = models.ForeignKey(
-        'Tarea',
+        'Task',
         on_delete=models.CASCADE,
-        related_name='sesiones_trabajo',
+        related_name='work_sessions',
         verbose_name='Tarea',
     )
     usuario = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        related_name='sesiones_trabajo',
+        related_name='work_sessions',
         verbose_name='Usuario',
     )
 
@@ -799,7 +799,7 @@ class SesionTrabajo(BaseModel):
     pausas             = models.JSONField(default=list, verbose_name='Pausas')
     duracion_segundos  = models.IntegerField(default=0, verbose_name='Duración (segundos)')
     estado             = models.CharField(
-        max_length=20, choices=ESTADOS, default='activa', verbose_name='Estado',
+        max_length=20, choices=ESTADOS, default='active', verbose_name='Estado',
     )
     notas              = models.TextField(blank=True, verbose_name='Notas')
 
@@ -822,33 +822,92 @@ class SesionTrabajo(BaseModel):
         return Decimal(self.duracion_segundos) / Decimal(3600)
 
 
-class TipoDependencia(models.TextChoices):
+class TimesheetEntry(BaseModel):
+    """
+    Registro diario de horas trabajadas en una tarea.
+    Un usuario puede tener un solo registro por tarea por día.
+    Una vez validado, el registro no se puede editar ni eliminar.
+    """
+    tarea = models.ForeignKey(
+        'Task',
+        on_delete=models.CASCADE,
+        related_name='timesheets',
+        verbose_name='Tarea',
+    )
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='timesheets',
+        verbose_name='Usuario',
+    )
+    fecha       = models.DateField(verbose_name='Fecha')
+    horas       = models.DecimalField(
+        max_digits=5, decimal_places=2, verbose_name='Horas',
+        validators=[MinValueValidator(Decimal('0.01')), MaxValueValidator(Decimal('24'))],
+    )
+    descripcion = models.TextField(blank=True, verbose_name='Descripción')
+
+    # Validación
+    validado          = models.BooleanField(default=False, verbose_name='Validado')
+    validado_por      = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='validated_timesheets',
+        verbose_name='Validado por',
+    )
+    fecha_validacion  = models.DateTimeField(null=True, blank=True, verbose_name='Fecha de validación')
+
+    class Meta:
+        db_table            = 'timesheet_entries'
+        verbose_name        = 'Registro de Horas'
+        verbose_name_plural = 'Registros de Horas'
+        ordering            = ['-fecha', '-created_at']
+        unique_together     = [['tarea', 'usuario', 'fecha']]
+        indexes             = [
+            models.Index(fields=['usuario', 'fecha']),
+            models.Index(fields=['tarea', 'validado']),
+        ]
+
+    def __str__(self):
+        return f'{self.usuario.full_name or self.usuario.email} — {self.tarea.codigo} ({self.fecha}) {self.horas}h'
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        if self.horas is not None:
+            if self.horas <= 0:
+                raise ValidationError({'horas': 'Las horas deben ser mayores a 0.'})
+            if self.horas > 24:
+                raise ValidationError({'horas': 'Las horas no pueden superar 24 por día.'})
+
+
+class DependencyType(models.TextChoices):
     FINISH_TO_START  = 'FS', 'Finish to Start (FS)'
     START_TO_START   = 'SS', 'Start to Start (SS)'
     FINISH_TO_FINISH = 'FF', 'Finish to Finish (FF)'
 
 
-class TareaDependencia(BaseModel):
+class TaskDependency(BaseModel):
     """
     Relación predecesora-sucesora entre dos tareas del mismo proyecto.
     Soporta los tipos clásicos de dependencia CPM: FS, SS, FF.
     """
     tarea_predecesora = models.ForeignKey(
-        Tarea,
+        Task,
         on_delete=models.CASCADE,
-        related_name='sucesoras',
+        related_name='successors',
         verbose_name='Tarea predecesora',
     )
     tarea_sucesora = models.ForeignKey(
-        Tarea,
+        Task,
         on_delete=models.CASCADE,
-        related_name='predecesoras',
+        related_name='predecessors',
         verbose_name='Tarea sucesora',
     )
     tipo_dependencia = models.CharField(
         max_length=2,
-        choices=TipoDependencia.choices,
-        default=TipoDependencia.FINISH_TO_START,
+        choices=DependencyType.choices,
+        default=DependencyType.FINISH_TO_START,
     )
     retraso_dias = models.IntegerField(
         default=0,
@@ -873,3 +932,5 @@ class TareaDependencia(BaseModel):
                 raise ValidationError(
                     'Una tarea no puede ser predecesora de sí misma.'
                 )
+
+

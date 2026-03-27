@@ -1,5 +1,5 @@
 """
-SaiSuite — Tests: Signals de Tarea
+SaiSuite — Tests: Signals de Task
 Verifica comportamientos automáticos al crear/modificar Tareas.
 """
 from datetime import timedelta
@@ -7,28 +7,28 @@ from datetime import timedelta
 import pytest
 from django.utils import timezone
 
-from apps.proyectos.models import Tarea
+from apps.proyectos.models import Task
 
 
 @pytest.mark.django_db
 class TestAutoFollowerAlCrear:
 
     def test_responsable_se_agrega_como_follower(self, proyecto, fase, user):
-        tarea = Tarea.objects.create(
+        tarea = Task.objects.create(
             company=proyecto.company,
             proyecto=proyecto,
             fase=fase,
-            nombre='Tarea con responsable',
+            nombre='Task con responsable',
             responsable=user,
         )
         assert user in tarea.followers.all()
 
     def test_sin_responsable_no_falla(self, proyecto, fase):
-        tarea = Tarea.objects.create(
+        tarea = Task.objects.create(
             company=proyecto.company,
             proyecto=proyecto,
             fase=fase,
-            nombre='Tarea sin responsable',
+            nombre='Task sin responsable',
         )
         assert tarea.followers.count() == 0
 
@@ -37,7 +37,7 @@ class TestAutoFollowerAlCrear:
 class TestRecalcularAvancePadreSignal:
 
     def test_recalcula_al_cambiar_porcentaje_subtarea(self, tarea_con_subtareas):
-        subtarea = tarea_con_subtareas.subtareas.first()
+        subtarea = tarea_con_subtareas.subtasks.first()
         subtarea.porcentaje_completado = 100
         subtarea.save()
 
@@ -46,9 +46,9 @@ class TestRecalcularAvancePadreSignal:
         assert tarea_con_subtareas.porcentaje_completado == 33
 
     def test_recalcula_todas_al_100(self, tarea_con_subtareas):
-        tarea_con_subtareas.subtareas.all().update(porcentaje_completado=100)
+        tarea_con_subtareas.subtasks.all().update(porcentaje_completado=100)
         # Disparar el signal con la última subtarea guardada individualmente
-        ultima = tarea_con_subtareas.subtareas.last()
+        ultima = tarea_con_subtareas.subtasks.last()
         ultima.porcentaje_completado = 100
         ultima.save()
 
@@ -58,7 +58,7 @@ class TestRecalcularAvancePadreSignal:
     def test_no_dispara_al_crear_raiz(self, proyecto, fase):
         """Crear tarea sin padre no intenta recalcular."""
         # No debe lanzar excepción
-        tarea = Tarea.objects.create(
+        tarea = Task.objects.create(
             company=proyecto.company,
             proyecto=proyecto,
             fase=fase,
@@ -72,51 +72,51 @@ class TestGenerarTareaRecurrenteSignal:
 
     def test_genera_nueva_tarea_al_completar_recurrente(self, proyecto, fase):
         hoy = timezone.now().date()
-        tarea_original = Tarea.objects.create(
+        tarea_original = Task.objects.create(
             company=proyecto.company,
             proyecto=proyecto,
             fase=fase,
-            nombre='Tarea recurrente',
+            nombre='Task recurrente',
             es_recurrente=True,
             frecuencia_recurrencia='diaria',
             fecha_limite=hoy,
-            estado='por_hacer',
+            estado='todo',
         )
-        count_inicial = Tarea.objects.count()
+        count_inicial = Task.objects.count()
 
-        tarea_original.estado = 'completada'
+        tarea_original.estado = 'completed'
         tarea_original.save()
 
-        assert Tarea.objects.count() == count_inicial + 1
+        assert Task.objects.count() == count_inicial + 1
 
-        nueva = Tarea.objects.exclude(id=tarea_original.id).filter(
-            nombre='Tarea recurrente'
+        nueva = Task.objects.exclude(id=tarea_original.id).filter(
+            nombre='Task recurrente'
         ).last()
         assert nueva is not None
         assert nueva.fecha_limite == hoy + timedelta(days=1)
         assert nueva.es_recurrente is True
 
     def test_no_genera_si_no_es_recurrente(self, tarea_simple):
-        count_inicial = Tarea.objects.count()
+        count_inicial = Task.objects.count()
 
-        tarea_simple.estado = 'completada'
+        tarea_simple.estado = 'completed'
         tarea_simple.save()
 
-        assert Tarea.objects.count() == count_inicial
+        assert Task.objects.count() == count_inicial
 
     def test_no_genera_al_crear_recurrente(self, proyecto, fase):
         """Crear tarea recurrente NO debe generar una nueva instancia."""
-        count_inicial = Tarea.objects.count()
+        count_inicial = Task.objects.count()
 
-        Tarea.objects.create(
+        Task.objects.create(
             company=proyecto.company,
             proyecto=proyecto,
             fase=fase,
             nombre='Recurrente nueva',
             es_recurrente=True,
             frecuencia_recurrencia='semanal',
-            estado='por_hacer',
+            estado='todo',
         )
 
         # Solo debe existir la tarea recién creada, no una generada automáticamente
-        assert Tarea.objects.count() == count_inicial + 1
+        assert Task.objects.count() == count_inicial + 1

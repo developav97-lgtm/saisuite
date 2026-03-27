@@ -1,6 +1,6 @@
 /**
  * SaiSuite — TareaService
- * Consume la API REST de tareas en /api/v1/proyectos/tareas/
+ * Consume la API REST de tareas en /api/v1/projects/tasks/
  */
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
@@ -20,7 +20,7 @@ import {
 @Injectable({ providedIn: 'root' })
 export class TareaService {
   private readonly http = inject(HttpClient);
-  private readonly baseUrl = '/api/v1/proyectos/tareas';
+  private readonly baseUrl = '/api/v1/projects/tasks';
 
   /**
    * Construye HttpParams a partir de los filtros, omitiendo valores vacíos.
@@ -40,7 +40,7 @@ export class TareaService {
   }
 
   /**
-   * GET /api/v1/proyectos/tareas/
+   * GET /api/v1/projects/tasks/
    * Soporta todos los filtros de TareaFilters (incluyendo proyecto=<id>).
    * El backend devuelve PaginatedResponse<Tarea>; se extrae results automáticamente.
    */
@@ -58,35 +58,35 @@ export class TareaService {
   }
 
   /**
-   * GET /api/v1/proyectos/tareas/{id}/
+   * GET /api/v1/projects/tasks/{id}/
    */
   getById(id: string): Observable<Tarea> {
     return this.http.get<Tarea>(`${this.baseUrl}/${id}/`);
   }
 
   /**
-   * POST /api/v1/proyectos/tareas/
+   * POST /api/v1/projects/tasks/
    */
   create(data: TareaCreateDTO): Observable<Tarea> {
     return this.http.post<Tarea>(`${this.baseUrl}/`, data);
   }
 
   /**
-   * PATCH /api/v1/proyectos/tareas/{id}/
+   * PATCH /api/v1/projects/tasks/{id}/
    */
   update(id: string, data: TareaUpdateDTO): Observable<Tarea> {
     return this.http.patch<Tarea>(`${this.baseUrl}/${id}/`, data);
   }
 
   /**
-   * DELETE /api/v1/proyectos/tareas/{id}/
+   * DELETE /api/v1/projects/tasks/{id}/
    */
   delete(id: string): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/${id}/`);
   }
 
   /**
-   * POST /api/v1/proyectos/tareas/{id}/agregar-follower/
+   * POST /api/v1/projects/tasks/{id}/agregar-follower/
    */
   agregarFollower(tareaId: string, userId: string): Observable<FollowerResponse> {
     return this.http.post<FollowerResponse>(
@@ -96,7 +96,7 @@ export class TareaService {
   }
 
   /**
-   * DELETE /api/v1/proyectos/tareas/{id}/quitar-follower/{user_id}/
+   * DELETE /api/v1/projects/tasks/{id}/quitar-follower/{user_id}/
    */
   quitarFollower(tareaId: string, userId: string): Observable<FollowerResponse> {
     return this.http.delete<FollowerResponse>(
@@ -105,7 +105,7 @@ export class TareaService {
   }
 
   /**
-   * POST /api/v1/proyectos/tareas/{id}/cambiar-estado/
+   * POST /api/v1/projects/tasks/{id}/cambiar-estado/
    */
   cambiarEstado(tareaId: string, estado: string): Observable<Tarea> {
     return this.http.post<Tarea>(
@@ -129,7 +129,7 @@ export class TareaService {
   }
 
   /**
-   * POST /api/v1/proyectos/tareas/{id}/agregar-horas/
+   * POST /api/v1/projects/tasks/{id}/agregar-horas/
    * Suma horas trabajadas manualmente a horas_registradas.
    */
   agregarHoras(tareaId: string, horas: number): Observable<Tarea> {
@@ -140,7 +140,7 @@ export class TareaService {
   }
 
   /**
-   * POST /api/v1/proyectos/tareas/{id}/agregar-cantidad/
+   * POST /api/v1/projects/tasks/{id}/agregar-cantidad/
    * Suma cantidad ejecutada manualmente a cantidad_registrada.
    */
   agregarCantidad(tareaId: string, cantidad: number): Observable<Tarea> {
@@ -153,7 +153,7 @@ export class TareaService {
   // ── Dependencias ───────────────────────────────────────────────────────────
 
   /**
-   * POST /api/v1/proyectos/tareas/{id}/crear-dependencia/
+   * POST /api/v1/projects/tasks/{id}/crear-dependencia/
    * La tarea {id} es la sucesora; predecesora_id apunta a la predecesora.
    */
   crearDependencia(
@@ -169,7 +169,7 @@ export class TareaService {
   }
 
   /**
-   * DELETE /api/v1/proyectos/tareas/{id}/eliminar-dependencia/?dependencia_id=uuid
+   * DELETE /api/v1/projects/tasks/{id}/eliminar-dependencia/?dependencia_id=uuid
    */
   eliminarDependencia(tareaId: string, dependenciaId: string): Observable<void> {
     return this.http.delete<void>(

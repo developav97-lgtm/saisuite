@@ -21,6 +21,7 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { TareaService } from '../../services/tarea.service';
+import { TimesheetService } from '../../services/timesheet.service';
 import { ConfiguracionProyectoService } from '../../services/configuracion-proyecto.service';
 import { TareaCardComponent } from '../tarea-card/tarea-card.component';
 import { ConfirmDialogComponent } from '../../../../shared/components/confirm-dialog/confirm-dialog.component';
@@ -28,26 +29,27 @@ import { CronometroComponent } from '../../../../shared/components/cronometro/cr
 import { ComentariosThreadComponent } from '../../../../shared/components/comentarios-thread/comentarios-thread.component';
 import { SelectorDependenciasComponent } from '../selector-dependencias/selector-dependencias.component';
 import { Tarea, TareaEstado, TareaDependencia } from '../../models/tarea.model';
+import { TimesheetEntry } from '../../models/timesheet.model';
 import type { ModoMedicion } from '../../models/actividad-saiopen.model';
 import { ConfiguracionProyecto } from '../../models/configuracion-proyecto.model';
 import { SesionTrabajo } from '../../models/sesion-trabajo.model';
 
 export const ESTADO_LABELS: Record<string, string | undefined> = {
-  por_hacer:   'Por Hacer',
-  en_progreso: 'En Progreso',
-  en_revision: 'En Revisión',
-  bloqueada:   'Bloqueada',
-  completada:  'Completada',
-  cancelada:   'Cancelada',
+  todo:        'Por Hacer',
+  in_progress: 'En Progreso',
+  in_review:   'En Revisión',
+  blocked:     'Bloqueada',
+  completed:   'Completada',
+  cancelled:   'Cancelada',
 };
 
 export const ESTADO_COLORS: Record<string, string | undefined> = {
-  por_hacer:   '#9e9e9e',
-  en_progreso: '#1e88e5',
-  en_revision: '#fb8c00',
-  bloqueada:   '#e53935',
-  completada:  '#43a047',
-  cancelada:   '#757575',
+  todo:        '#9e9e9e',
+  in_progress: '#1e88e5',
+  in_review:   '#fb8c00',
+  blocked:     '#e53935',
+  completed:   '#43a047',
+  cancelled:   '#757575',
 };
 
 export const PRIORIDAD_LABELS: Record<string, string | undefined> = {
@@ -89,8 +91,9 @@ export const PRIORIDAD_COLORS: Record<string, string | undefined> = {
   ],
 })
 export class TareaDetailComponent implements OnInit {
-  private readonly tareaService   = inject(TareaService);
-  private readonly configService  = inject(ConfiguracionProyectoService);
+  private readonly tareaService      = inject(TareaService);
+  private readonly timesheetService  = inject(TimesheetService);
+  private readonly configService     = inject(ConfiguracionProyectoService);
   private readonly router         = inject(Router);
   private readonly route          = inject(ActivatedRoute);
   private readonly dialog         = inject(MatDialog);
@@ -201,6 +204,7 @@ export class TareaDetailComponent implements OnInit {
       next: (tarea) => {
         this.tarea.set(tarea);
         this.loading.set(false);
+        this.cargarEntries(tarea.id);
         this.cdr.markForCheck();
       },
       error: () => {
@@ -305,7 +309,7 @@ export class TareaDetailComponent implements OnInit {
 
   /** Estados disponibles para el selector de cambio rápido */
   readonly estadosDisponibles: TareaEstado[] = [
-    'por_hacer', 'en_progreso', 'en_revision', 'bloqueada', 'completada', 'cancelada',
+    'todo', 'in_progress', 'in_review', 'blocked', 'completed', 'cancelled',
   ];
 
   // ── Dependencias ──────────────────────────────────────────────
@@ -374,6 +378,89 @@ export class TareaDetailComponent implements OnInit {
 
   onSesionFinalizada(_sesion: SesionTrabajo): void {
     const t = this.tarea();
-    if (t) this.loadTarea(t.id);
+    if (t) {
+      this.loadTarea(t.id);
+      this.cargarEntries(t.id);
+    }
+  }
+
+  // ── Timesheet: registros diarios (TimesheetEntry) ─────────────
+
+  readonly timesheetEntries   = signal<TimesheetEntry[]>([]);
+  readonly loadingEntries     = signal(false);
+  readonly guardandoEntry     = signal(false);
+  readonly mostrarFormEntry   = signal(false);
+
+  // Campos del formulario manual
+  entryFecha       = this.hoyIso();
+  entryHoras       = 1;
+  entryDescripcion = '';
+
+  cargarEntries(tareaId: string): void {
+    this.loadingEntries.set(true);
+    this.timesheetService.list({ tarea: tareaId }).subscribe({
+      next: (entries) => {
+        this.timesheetEntries.set(entries);
+        this.loadingEntries.set(false);
+        this.cdr.markForCheck();
+      },
+      error: () => this.loadingEntries.set(false),
+    });
+  }
+
+  registrarEntryManual(): void {
+    const t = this.tarea();
+    if (!t) return;
+    if (!this.entryFecha || this.entryHoras <= 0) {
+      this.snackBar.open('Fecha y horas son obligatorios.', 'Cerrar', {
+        duration: 3000, panelClass: ['snack-error'],
+      });
+      return;
+    }
+    this.guardandoEntry.set(true);
+    this.timesheetService.create({
+      tarea_id:    t.id,
+      fecha:       this.entryFecha,
+      horas:       this.entryHoras,
+      descripcion: this.entryDescripcion,
+    }).subscribe({
+      next: () => {
+        this.mostrarFormEntry.set(false);
+        this.entryHoras       = 1;
+        this.entryDescripcion = '';
+        this.snackBar.open('Horas registradas.', 'Cerrar', {
+          duration: 3000, panelClass: ['snack-success'],
+        });
+        this.cargarEntries(t.id);
+        this.guardandoEntry.set(false);
+        this.cdr.markForCheck();
+      },
+      error: (err: { error?: { detail?: string } }) => {
+        const msg = err.error?.detail ?? 'No se pudo registrar las horas.';
+        this.snackBar.open(msg, 'Cerrar', { duration: 4000, panelClass: ['snack-error'] });
+        this.guardandoEntry.set(false);
+      },
+    });
+  }
+
+  eliminarEntry(entry: TimesheetEntry): void {
+    const t = this.tarea();
+    if (!t) return;
+    this.timesheetService.delete(entry.id).subscribe({
+      next: () => {
+        this.snackBar.open('Registro eliminado.', 'Cerrar', {
+          duration: 2500, panelClass: ['snack-success'],
+        });
+        this.cargarEntries(t.id);
+      },
+      error: (err: { error?: { detail?: string } }) => {
+        const msg = err.error?.detail ?? 'No se pudo eliminar.';
+        this.snackBar.open(msg, 'Cerrar', { duration: 4000, panelClass: ['snack-error'] });
+      },
+    });
+  }
+
+  hoyIso(): string {
+    return new Date().toISOString().slice(0, 10);
   }
 }

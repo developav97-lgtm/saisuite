@@ -1,5 +1,5 @@
 """
-SaiSuite — Tests: Fase model
+SaiSuite — Tests: Phase model
 """
 import pytest
 from decimal import Decimal
@@ -8,7 +8,7 @@ from django.db import IntegrityError
 from django.contrib.auth import get_user_model
 
 from apps.companies.models import Company, CompanyModule
-from apps.proyectos.models import Proyecto, Fase
+from apps.proyectos.models import Project, Phase
 
 User = get_user_model()
 
@@ -16,7 +16,7 @@ User = get_user_model()
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def make_company(nit='902001001'):
-    c = Company.objects.create(name='Fase Test Co', nit=nit)
+    c = Company.objects.create(name='Phase Test Co', nit=nit)
     CompanyModule.objects.create(company=c, module='proyectos', is_active=True)
     return c
 
@@ -28,10 +28,10 @@ def make_user(company, email='gf@test.com'):
 
 
 def make_proyecto(company, gerente, codigo='FASE-PRY-001'):
-    return Proyecto.all_objects.create(
+    return Project.all_objects.create(
         company=company, gerente=gerente,
-        codigo=codigo, nombre='Proyecto Fase Test',
-        tipo='obra_civil',
+        codigo=codigo, nombre='Project Phase Test',
+        tipo='civil_works',
         cliente_id='111', cliente_nombre='Cliente',
         fecha_inicio_planificada=date.today(),
         fecha_fin_planificada=date.today() + timedelta(days=180),
@@ -39,13 +39,13 @@ def make_proyecto(company, gerente, codigo='FASE-PRY-001'):
     )
 
 
-def make_fase(proyecto, nombre='Fase 1', orden=1, **kwargs):
+def make_fase(proyecto, nombre='Phase 1', orden=1, **kwargs):
     defaults = dict(
         fecha_inicio_planificada=date.today(),
         fecha_fin_planificada=date.today() + timedelta(days=60),
     )
     defaults.update(kwargs)
-    return Fase.all_objects.create(
+    return Phase.all_objects.create(
         company=proyecto.company,
         proyecto=proyecto, nombre=nombre, orden=orden, **defaults
     )
@@ -62,13 +62,13 @@ class TestFaseModel:
         p = make_proyecto(c, g)
         f = make_fase(p)
         assert f.id is not None
-        assert f.nombre == 'Fase 1'
+        assert f.nombre == 'Phase 1'
 
     def test_orden_default_cero(self):
         c = make_company('902001002')
         g = make_user(c, 'gf2@test.com')
         p = make_proyecto(c, g, 'FASE-PRY-002')
-        f = Fase.all_objects.create(
+        f = Phase.all_objects.create(
             company=c, proyecto=p, nombre='Sin orden',
             fecha_inicio_planificada=date.today(),
             fecha_fin_planificada=date.today() + timedelta(days=30),
@@ -102,7 +102,7 @@ class TestFaseModel:
         p = make_proyecto(c, g, 'FASE-PRY-006')
         make_fase(p, orden=1)
         with pytest.raises(IntegrityError):
-            Fase.all_objects.create(
+            Phase.all_objects.create(
                 company=c, proyecto=p, nombre='Duplicada', orden=1,
                 fecha_inicio_planificada=date.today(),
                 fecha_fin_planificada=date.today() + timedelta(days=30),
@@ -112,20 +112,20 @@ class TestFaseModel:
         c = make_company('902001007')
         g = make_user(c, 'gf7@test.com')
         p = make_proyecto(c, g, 'FASE-PRY-007')
-        make_fase(p, 'Fase 1', orden=1)
-        make_fase(p, 'Fase 2', orden=2)
-        make_fase(p, 'Fase 3', orden=3)
-        count = Fase.all_objects.filter(proyecto=p).count()
+        make_fase(p, 'Phase 1', orden=1)
+        make_fase(p, 'Phase 2', orden=2)
+        make_fase(p, 'Phase 3', orden=3)
+        count = Phase.all_objects.filter(proyecto=p).count()
         assert count == 3
 
     def test_ordenamiento_por_orden(self):
         c = make_company('902001008')
         g = make_user(c, 'gf8@test.com')
         p = make_proyecto(c, g, 'FASE-PRY-008')
-        make_fase(p, 'Fase 3', orden=3)
-        make_fase(p, 'Fase 1', orden=1)
-        make_fase(p, 'Fase 2', orden=2)
-        fases = list(Fase.all_objects.filter(proyecto=p))
+        make_fase(p, 'Phase 3', orden=3)
+        make_fase(p, 'Phase 1', orden=1)
+        make_fase(p, 'Phase 2', orden=2)
+        fases = list(Phase.all_objects.filter(proyecto=p))
         ordenes = [f.orden for f in fases]
         assert ordenes == sorted(ordenes)
 
@@ -175,7 +175,7 @@ class TestFaseModel:
         g = make_user(c, 'gf13@test.com')
         p = make_proyecto(c, g, 'FASE-PRY-013')
         f = make_fase(p)
-        Fase.all_objects.filter(id=f.id).update(porcentaje_avance=Decimal('75.00'))
+        Phase.all_objects.filter(id=f.id).update(porcentaje_avance=Decimal('75.00'))
         f.refresh_from_db()
         assert f.porcentaje_avance == Decimal('75.00')
 
@@ -184,5 +184,5 @@ class TestFaseModel:
         g = make_user(c, 'gf14@test.com')
         p = make_proyecto(c, g, 'FASE-PRY-014')
         f = make_fase(p)
-        # Fase hereda company de BaseModel
+        # Phase hereda company de BaseModel
         assert f.company_id == c.id

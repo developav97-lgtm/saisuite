@@ -7,7 +7,7 @@ Uso:
 import logging
 from django.core.management.base import BaseCommand
 from django.db import transaction
-from apps.proyectos.models import ActividadProyecto, Tarea
+from apps.proyectos.models import ProjectActivity, Task
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +31,7 @@ class Command(BaseCommand):
         migradas = 0
         errores = 0
 
-        actividades = ActividadProyecto.all_objects.select_related(
+        actividades = ProjectActivity.all_objects.select_related(
             'proyecto', 'fase', 'actividad', 'company'
         ).all()
 
@@ -41,7 +41,7 @@ class Command(BaseCommand):
         for ap in actividades:
             try:
                 # Verificar si ya fue migrada
-                if Tarea.all_objects.filter(actividad_proyecto_id=ap.id).exists():
+                if Task.all_objects.filter(actividad_proyecto_id=ap.id).exists():
                     self.stdout.write(f'  Ya migrada: {ap.id}')
                     continue
 
@@ -54,15 +54,15 @@ class Command(BaseCommand):
                     porcentaje = 0
 
                 if ap.cantidad_ejecutada >= ap.cantidad_planificada and ap.cantidad_planificada > 0:
-                    estado = 'completada'
+                    estado = 'completed'
                 elif ap.cantidad_ejecutada > 0:
-                    estado = 'en_progreso'
+                    estado = 'in_progress'
                 else:
-                    estado = 'por_hacer'
+                    estado = 'todo'
 
                 if not dry_run:
                     with transaction.atomic():
-                        Tarea.all_objects.create(
+                        Task.all_objects.create(
                             company=ap.company,
                             proyecto=ap.proyecto,
                             fase=ap.fase,

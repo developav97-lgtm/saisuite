@@ -218,10 +218,10 @@ export class FaseListComponent implements OnInit {
   }
 
   readonly ESTADO_LABELS: Record<string, string> = {
-    planificada: 'Planificada',
-    activa:      'Activa',
-    completada:  'Completada',
-    cancelada:   'Cancelada',
+    planned:   'Planificada',
+    active:    'Activa',
+    completed: 'Completada',
+    cancelled: 'Cancelada',
   };
 
   confirmarEliminar(fase: FaseList): void {

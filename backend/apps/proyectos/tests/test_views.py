@@ -8,7 +8,7 @@ from rest_framework import status
 from django.contrib.auth import get_user_model
 from apps.companies.models import Company, CompanyModule
 from apps.proyectos.models import (
-    Proyecto, Fase, TerceroProyecto, DocumentoContable, Hito, EstadoProyecto,
+    Project, Phase, ProjectStakeholder, AccountingDocument, Milestone, ProjectStatus,
 )
 
 User = get_user_model()
@@ -28,8 +28,8 @@ def crear_usuario(company, email='user@test.com', role='company_admin'):
 
 def crear_proyecto_db(company, gerente, codigo='PRY-001', **kwargs):
     defaults = dict(
-        nombre='Proyecto Test',
-        tipo='obra_civil',
+        nombre='Project Test',
+        tipo='civil_works',
         cliente_id='900111',
         cliente_nombre='Cliente',
         fecha_inicio_planificada='2026-04-01',
@@ -37,7 +37,7 @@ def crear_proyecto_db(company, gerente, codigo='PRY-001', **kwargs):
         presupuesto_total=Decimal('1000000'),
     )
     defaults.update(kwargs)
-    return Proyecto.all_objects.create(company=company, gerente=gerente, codigo=codigo, **defaults)
+    return Project.all_objects.create(company=company, gerente=gerente, codigo=codigo, **defaults)
 
 
 class ProyectoListCreateTest(APITestCase):
@@ -46,7 +46,7 @@ class ProyectoListCreateTest(APITestCase):
         self.company = crear_empresa()
         self.user    = crear_usuario(self.company)
         self.client.force_authenticate(user=self.user)
-        self.url = '/api/v1/proyectos/'
+        self.url = '/api/v1/projects/'
 
     def test_listar_proyectos(self):
         crear_proyecto_db(self.company, self.user)
@@ -56,8 +56,8 @@ class ProyectoListCreateTest(APITestCase):
 
     def test_crear_proyecto(self):
         data = {
-            'nombre': 'Nuevo Proyecto',
-            'tipo': 'servicios',
+            'nombre': 'Nuevo Project',
+            'tipo': 'services',
             'cliente_id': '111',
             'cliente_nombre': 'X',
             'fecha_inicio_planificada': '2026-04-01',
@@ -72,7 +72,7 @@ class ProyectoListCreateTest(APITestCase):
         viewer = crear_usuario(self.company, 'viewer@test.com', role='viewer')
         self.client.force_authenticate(user=viewer)
         data = {
-            'nombre': 'X', 'tipo': 'servicios', 'cliente_id': '1',
+            'nombre': 'X', 'tipo': 'services', 'cliente_id': '1',
             'cliente_nombre': 'X', 'fecha_inicio_planificada': '2026-04-01',
             'fecha_fin_planificada': '2026-12-31', 'presupuesto_total': '100',
             'gerente': str(viewer.id),
@@ -104,7 +104,7 @@ class ProyectoDetailTest(APITestCase):
         self.user     = crear_usuario(self.company)
         self.proyecto = crear_proyecto_db(self.company, self.user)
         self.client.force_authenticate(user=self.user)
-        self.url = f'/api/v1/proyectos/{self.proyecto.id}/'
+        self.url = f'/api/v1/projects/{self.proyecto.id}/'
 
     def test_obtener_detalle(self):
         resp = self.client.get(self.url)
@@ -129,24 +129,24 @@ class CambiarEstadoActionTest(APITestCase):
         self.user     = crear_usuario(self.company)
         self.proyecto = crear_proyecto_db(self.company, self.user)
         self.client.force_authenticate(user=self.user)
-        self.url = f'/api/v1/proyectos/{self.proyecto.id}/cambiar-estado/'
+        self.url = f'/api/v1/projects/{self.proyecto.id}/cambiar-estado/'
 
     def test_cambiar_a_planificado_sin_fases(self):
-        resp = self.client.post(self.url, {'nuevo_estado': 'planificado'}, format='json')
+        resp = self.client.post(self.url, {'nuevo_estado': 'planned'}, format='json')
         self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_cambiar_a_planificado_con_fases(self):
-        Fase.all_objects.create(
+        Phase.all_objects.create(
             company=self.company,
             proyecto=self.proyecto,
-            nombre='Fase 1',
+            nombre='Phase 1',
             orden=1,
             fecha_inicio_planificada='2026-04-01',
             fecha_fin_planificada='2026-06-30',
         )
-        resp = self.client.post(self.url, {'nuevo_estado': 'planificado'}, format='json')
+        resp = self.client.post(self.url, {'nuevo_estado': 'planned'}, format='json')
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
-        self.assertEqual(resp.data['estado'], 'planificado')
+        self.assertEqual(resp.data['estado'], 'planned')
 
     def test_estado_invalido(self):
         resp = self.client.post(self.url, {'nuevo_estado': 'inexistente'}, format='json')
@@ -160,7 +160,7 @@ class EstadoFinancieroActionTest(APITestCase):
         self.user     = crear_usuario(self.company)
         self.proyecto = crear_proyecto_db(self.company, self.user)
         self.client.force_authenticate(user=self.user)
-        self.url = f'/api/v1/proyectos/{self.proyecto.id}/estado-financiero/'
+        self.url = f'/api/v1/projects/{self.proyecto.id}/estado-financiero/'
 
     def test_obtener_estado_financiero(self):
         resp = self.client.get(self.url)
@@ -177,7 +177,7 @@ class FaseListCreateTest(APITestCase):
         self.user     = crear_usuario(self.company)
         self.proyecto = crear_proyecto_db(self.company, self.user)
         self.client.force_authenticate(user=self.user)
-        self.url = f'/api/v1/proyectos/{self.proyecto.id}/fases/'
+        self.url = f'/api/v1/projects/{self.proyecto.id}/phases/'
 
     def test_listar_fases(self):
         resp = self.client.get(self.url)
@@ -185,7 +185,7 @@ class FaseListCreateTest(APITestCase):
 
     def test_crear_fase(self):
         data = {
-            'nombre': 'Fase 1',
+            'nombre': 'Phase 1',
             'orden': 1,
             'fecha_inicio_planificada': '2026-04-01',
             'fecha_fin_planificada': '2026-06-30',
@@ -196,7 +196,7 @@ class FaseListCreateTest(APITestCase):
 
     def test_crear_fase_excede_presupuesto(self):
         data = {
-            'nombre': 'Fase Gigante',
+            'nombre': 'Phase Gigante',
             'orden': 1,
             'fecha_inicio_planificada': '2026-04-01',
             'fecha_fin_planificada': '2026-06-30',
@@ -212,23 +212,23 @@ class FaseDetailTest(APITestCase):
         self.company  = crear_empresa()
         self.user     = crear_usuario(self.company)
         self.proyecto = crear_proyecto_db(self.company, self.user)
-        self.fase     = Fase.all_objects.create(
+        self.fase     = Phase.all_objects.create(
             company=self.company,
             proyecto=self.proyecto,
-            nombre='Fase 1',
+            nombre='Phase 1',
             orden=1,
             fecha_inicio_planificada='2026-04-01',
             fecha_fin_planificada='2026-06-30',
         )
         self.client.force_authenticate(user=self.user)
-        self.url = f'/api/v1/proyectos/fases/{self.fase.id}/'
+        self.url = f'/api/v1/projects/phases/{self.fase.id}/'
 
     def test_obtener_fase(self):
         resp = self.client.get(self.url)
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
 
     def test_actualizar_fase(self):
-        resp = self.client.patch(self.url, {'nombre': 'Fase Actualizada'}, format='json')
+        resp = self.client.patch(self.url, {'nombre': 'Phase Actualizada'}, format='json')
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
 
     def test_eliminar_fase(self):
@@ -239,24 +239,24 @@ class FaseDetailTest(APITestCase):
 
 
 # ══════════════════════════════════════════════
-# Fase B — TerceroProyecto
+# Phase B — ProjectStakeholder
 # ══════════════════════════════════════════════
 
 def crear_fase_db(company, proyecto, orden=1, **kwargs):
     defaults = dict(
-        nombre=f'Fase {orden}',
+        nombre=f'Phase {orden}',
         orden=orden,
         fecha_inicio_planificada='2026-04-01',
         fecha_fin_planificada='2026-06-30',
         presupuesto_mano_obra=Decimal('200000'),
     )
     defaults.update(kwargs)
-    return Fase.all_objects.create(company=company, proyecto=proyecto, **defaults)
+    return Phase.all_objects.create(company=company, proyecto=proyecto, **defaults)
 
 
 def crear_documento_db(company, proyecto, fase=None, saiopen_doc_id='DOC-001', **kwargs):
     defaults = dict(
-        tipo_documento='factura_compra',
+        tipo_documento='purchase_invoice',
         numero_documento='FC-001',
         fecha_documento='2026-05-01',
         tercero_id='900123456',
@@ -265,7 +265,7 @@ def crear_documento_db(company, proyecto, fase=None, saiopen_doc_id='DOC-001', *
         valor_neto=Decimal('100000'),
     )
     defaults.update(kwargs)
-    return DocumentoContable.all_objects.create(
+    return AccountingDocument.all_objects.create(
         company=company, proyecto=proyecto, fase=fase,
         saiopen_doc_id=saiopen_doc_id, **defaults,
     )
@@ -278,7 +278,7 @@ class TerceroProyectoViewTest(APITestCase):
         self.user     = crear_usuario(self.company)
         self.proyecto = crear_proyecto_db(self.company, self.user)
         self.client.force_authenticate(user=self.user)
-        self.url = f'/api/v1/proyectos/{self.proyecto.id}/terceros/'
+        self.url = f'/api/v1/projects/{self.proyecto.id}/stakeholders/'
 
     def test_listar_terceros_vacio(self):
         resp = self.client.get(self.url)
@@ -289,12 +289,12 @@ class TerceroProyectoViewTest(APITestCase):
         data = {
             'tercero_id': '900111',
             'tercero_nombre': 'Subcontratista SA',
-            'rol': 'subcontratista',
+            'rol': 'subcontractor',
         }
         resp = self.client.post(self.url, data, format='json')
         self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
         self.assertEqual(resp.data['tercero_id'], '900111')
-        self.assertEqual(resp.data['rol'], 'subcontratista')
+        self.assertEqual(resp.data['rol'], 'subcontractor')
 
     def test_vincular_tercero_sin_rol_falla(self):
         data = {'tercero_id': '900111', 'tercero_nombre': 'X'}
@@ -302,17 +302,17 @@ class TerceroProyectoViewTest(APITestCase):
         self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_listar_terceros_muestra_vinculados(self):
-        TerceroProyecto.all_objects.create(
+        ProjectStakeholder.all_objects.create(
             company=self.company, proyecto=self.proyecto,
-            tercero_id='111', tercero_nombre='A', rol='cliente',
+            tercero_id='111', tercero_nombre='A', rol='client',
         )
         resp = self.client.get(self.url)
         self.assertEqual(len(resp.data), 1)
 
     def test_desvincular_tercero(self):
-        tercero = TerceroProyecto.all_objects.create(
+        tercero = ProjectStakeholder.all_objects.create(
             company=self.company, proyecto=self.proyecto,
-            tercero_id='999', tercero_nombre='Del', rol='proveedor',
+            tercero_id='999', tercero_nombre='Del', rol='vendor',
         )
         url_delete = f'{self.url}{tercero.id}/'
         resp = self.client.delete(url_delete)
@@ -330,7 +330,7 @@ class TerceroProyectoViewTest(APITestCase):
     def test_viewer_no_puede_vincular(self):
         viewer = crear_usuario(self.company, 'viewer@test.com', role='viewer')
         self.client.force_authenticate(user=viewer)
-        data = {'tercero_id': '111', 'tercero_nombre': 'X', 'rol': 'cliente'}
+        data = {'tercero_id': '111', 'tercero_nombre': 'X', 'rol': 'client'}
         resp = self.client.post(self.url, data, format='json')
         self.assertIn(resp.status_code, [status.HTTP_403_FORBIDDEN, status.HTTP_401_UNAUTHORIZED])
 
@@ -339,7 +339,7 @@ class TerceroProyectoViewTest(APITestCase):
         data = {
             'tercero_id': '900222',
             'tercero_nombre': 'Interventor',
-            'rol': 'interventor',
+            'rol': 'inspector',
             'fase': str(fase.id),
         }
         resp = self.client.post(self.url, data, format='json')
@@ -350,9 +350,9 @@ class TerceroProyectoViewTest(APITestCase):
         """No se deben ver terceros de otro proyecto."""
         otro_user     = crear_usuario(self.company, 'otro@test.com')
         otro_proyecto = crear_proyecto_db(self.company, otro_user, codigo='PRY-002')
-        TerceroProyecto.all_objects.create(
+        ProjectStakeholder.all_objects.create(
             company=self.company, proyecto=otro_proyecto,
-            tercero_id='888', tercero_nombre='Ajeno', rol='proveedor',
+            tercero_id='888', tercero_nombre='Ajeno', rol='vendor',
         )
         resp = self.client.get(self.url)
         ids = [t['tercero_id'] for t in resp.data]
@@ -360,7 +360,7 @@ class TerceroProyectoViewTest(APITestCase):
 
 
 # ══════════════════════════════════════════════
-# Fase B — DocumentoContable
+# Phase B — AccountingDocument
 # ══════════════════════════════════════════════
 
 class DocumentoContableViewTest(APITestCase):
@@ -370,7 +370,7 @@ class DocumentoContableViewTest(APITestCase):
         self.user     = crear_usuario(self.company)
         self.proyecto = crear_proyecto_db(self.company, self.user)
         self.client.force_authenticate(user=self.user)
-        self.url = f'/api/v1/proyectos/{self.proyecto.id}/documentos/'
+        self.url = f'/api/v1/projects/{self.proyecto.id}/documents/'
 
     def test_listar_documentos_vacio(self):
         resp = self.client.get(self.url)
@@ -387,7 +387,7 @@ class DocumentoContableViewTest(APITestCase):
     def test_no_permite_crear_documento(self):
         """Los documentos son solo lectura (los crea el agente Go)."""
         data = {
-            'tipo_documento': 'factura_compra',
+            'tipo_documento': 'purchase_invoice',
             'numero_documento': 'FC-999',
             'fecha_documento': '2026-06-01',
         }
@@ -406,7 +406,7 @@ class DocumentoContableViewTest(APITestCase):
 
     def test_filtrar_documentos_por_fase(self):
         fase1 = crear_fase_db(self.company, self.proyecto, orden=1)
-        fase2 = crear_fase_db(self.company, self.proyecto, orden=2, nombre='Fase 2')
+        fase2 = crear_fase_db(self.company, self.proyecto, orden=2, nombre='Phase 2')
         crear_documento_db(self.company, self.proyecto, fase=fase1, saiopen_doc_id='DOC-F1')
         crear_documento_db(self.company, self.proyecto, fase=fase2, saiopen_doc_id='DOC-F2')
         resp = self.client.get(self.url, {'fase': str(fase1.id)})
@@ -430,7 +430,7 @@ class DocumentoContableViewTest(APITestCase):
 
 
 # ══════════════════════════════════════════════
-# Fase B — Hito
+# Phase B — Milestone
 # ══════════════════════════════════════════════
 
 class HitoViewTest(APITestCase):
@@ -442,7 +442,7 @@ class HitoViewTest(APITestCase):
             self.company, self.user, presupuesto_total=Decimal('1000000')
         )
         self.client.force_authenticate(user=self.user)
-        self.url = f'/api/v1/proyectos/{self.proyecto.id}/hitos/'
+        self.url = f'/api/v1/projects/{self.proyecto.id}/milestones/'
 
     def test_listar_hitos_vacio(self):
         resp = self.client.get(self.url)
@@ -451,19 +451,19 @@ class HitoViewTest(APITestCase):
 
     def test_crear_hito(self):
         data = {
-            'nombre': 'Hito 1',
+            'nombre': 'Milestone 1',
             'porcentaje_proyecto': '25.00',
             'valor_facturar': '250000.00',
             'facturable': True,
         }
         resp = self.client.post(self.url, data, format='json')
         self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(resp.data['nombre'], 'Hito 1')
+        self.assertEqual(resp.data['nombre'], 'Milestone 1')
         self.assertFalse(resp.data['facturado'])
 
     def test_crear_hito_porcentaje_cero_falla(self):
         data = {
-            'nombre': 'Hito Malo',
+            'nombre': 'Milestone Malo',
             'porcentaje_proyecto': '0',
             'valor_facturar': '100000.00',
             'facturable': True,
@@ -473,7 +473,7 @@ class HitoViewTest(APITestCase):
 
     def test_crear_hito_valor_cero_falla(self):
         data = {
-            'nombre': 'Hito Malo',
+            'nombre': 'Milestone Malo',
             'porcentaje_proyecto': '10',
             'valor_facturar': '0',
             'facturable': True,
@@ -482,13 +482,13 @@ class HitoViewTest(APITestCase):
         self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_crear_hito_porcentaje_supera_100_falla(self):
-        Hito.all_objects.create(
+        Milestone.all_objects.create(
             company=self.company, proyecto=self.proyecto,
             nombre='H Existente', porcentaje_proyecto=Decimal('80'),
             valor_facturar=Decimal('800000'), facturable=True,
         )
         data = {
-            'nombre': 'Hito Extra',
+            'nombre': 'Milestone Extra',
             'porcentaje_proyecto': '30',
             'valor_facturar': '300000.00',
             'facturable': True,
@@ -497,7 +497,7 @@ class HitoViewTest(APITestCase):
         self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_listar_hitos_muestra_creados(self):
-        Hito.all_objects.create(
+        Milestone.all_objects.create(
             company=self.company, proyecto=self.proyecto,
             nombre='H1', porcentaje_proyecto=Decimal('50'),
             valor_facturar=Decimal('500000'), facturable=True,
@@ -531,16 +531,16 @@ class GenerarFacturaViewTest(APITestCase):
             self.company, self.user, presupuesto_total=Decimal('1000000'),
             sincronizado_con_saiopen=True,
         )
-        self.hito = Hito.all_objects.create(
+        self.hito = Milestone.all_objects.create(
             company=self.company,
             proyecto=self.proyecto,
-            nombre='Hito Facturable',
+            nombre='Milestone Facturable',
             porcentaje_proyecto=Decimal('25'),
             valor_facturar=Decimal('250000'),
             facturable=True,
         )
         self.client.force_authenticate(user=self.user)
-        self.url = f'/api/v1/proyectos/{self.proyecto.id}/hitos/{self.hito.id}/generar-factura/'
+        self.url = f'/api/v1/projects/{self.proyecto.id}/milestones/{self.hito.id}/generate-invoice/'
 
     def test_generar_factura_exitosa(self):
         resp = self.client.post(self.url, {'confirmar': True}, format='json')

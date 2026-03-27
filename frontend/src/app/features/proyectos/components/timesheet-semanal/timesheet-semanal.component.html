@@ -1,0 +1,127 @@
+<!-- Barra de carga -->
+@if (loading()) {
+  <mat-progress-bar mode="indeterminate" />
+}
+
+<!-- Navegación semanal -->
+<div class="ts-nav">
+  <button mat-icon-button (click)="semanaAnterior()" matTooltip="Semana anterior">
+    <mat-icon>chevron_left</mat-icon>
+  </button>
+
+  <span class="ts-nav__rango">{{ rangoSemana() }}</span>
+
+  <button mat-icon-button (click)="semanaSiguiente()" matTooltip="Semana siguiente">
+    <mat-icon>chevron_right</mat-icon>
+  </button>
+
+  <button
+    mat-stroked-button
+    (click)="semanaActual()"
+    class="ts-nav__hoy-btn"
+    matTooltip="Ir a semana actual"
+  >
+    Hoy
+  </button>
+</div>
+
+@if (!loading()) {
+  @if (filas().length > 0) {
+
+    <!-- Tabla semanal -->
+    <div class="ts-table-wrapper">
+      <table mat-table [dataSource]="filas()" class="ts-table">
+
+        <!-- Columna: Tarea -->
+        <ng-container matColumnDef="tarea">
+          <th mat-header-cell *matHeaderCellDef class="ts-col-tarea">Tarea</th>
+          <td mat-cell *matCellDef="let fila" class="ts-col-tarea">
+            <span class="ts-tarea-codigo">{{ fila.tarea.codigo }}</span>
+            <span class="ts-tarea-nombre">{{ fila.tarea.nombre }}</span>
+          </td>
+          <td mat-footer-cell *matFooterCellDef class="ts-total-label">
+            <strong>Total</strong>
+          </td>
+        </ng-container>
+
+        <!-- Columnas dinámicas: un día por columna -->
+        @for (dia of diasSemana(); track dia.fecha) {
+          <ng-container [matColumnDef]="dia.fecha">
+            <th
+              mat-header-cell
+              *matHeaderCellDef
+              [class.ts-col-hoy]="dia.esHoy"
+              [class.ts-col-finde]="dia.esFinDeSemana"
+              class="ts-col-dia"
+            >
+              <div class="ts-header-dia">
+                <span class="ts-header-dia__label">{{ dia.labelCorto }}</span>
+                <span class="ts-header-dia__fecha">{{ dia.fecha | date:'d/M' }}</span>
+              </div>
+            </th>
+            <td
+              mat-cell
+              *matCellDef="let fila"
+              [class.ts-col-hoy]="dia.esHoy"
+              [class.ts-col-finde]="dia.esFinDeSemana"
+              class="ts-col-dia"
+            >
+              @if (getHorasDia(fila, dia.fecha) > 0) {
+                <span class="ts-horas">
+                  {{ getHorasDia(fila, dia.fecha) | number:'1.1-1' }}h
+                </span>
+              } @else {
+                <span class="ts-horas ts-horas--vacio">—</span>
+              }
+            </td>
+            <td
+              mat-footer-cell
+              *matFooterCellDef
+              [class.ts-col-hoy]="dia.esHoy"
+              class="ts-col-dia"
+            >
+              @if ((totalPorDia()[dia.fecha] ?? 0) > 0) {
+                <strong class="ts-horas">
+                  {{ totalPorDia()[dia.fecha] | number:'1.1-1' }}h
+                </strong>
+              } @else {
+                <span class="ts-horas ts-horas--vacio">—</span>
+              }
+            </td>
+          </ng-container>
+        }
+
+        <!-- Columna: Total semanal por fila -->
+        <ng-container matColumnDef="total">
+          <th mat-header-cell *matHeaderCellDef class="ts-col-total">Total</th>
+          <td mat-cell *matCellDef="let fila" class="ts-col-total">
+            <strong class="ts-horas ts-horas--total">
+              {{ fila.totalSemana | number:'1.1-1' }}h
+            </strong>
+          </td>
+          <td mat-footer-cell *matFooterCellDef class="ts-col-total ts-grand-total">
+            <strong>{{ totalSemana() | number:'1.1-1' }}h</strong>
+          </td>
+        </ng-container>
+
+        <!-- Filas -->
+        <tr mat-header-row *matHeaderRowDef="columnas()"></tr>
+        <tr mat-row *matRowDef="let row; columns: columnas()"></tr>
+        <tr mat-footer-row *matFooterRowDef="columnas()"></tr>
+
+      </table>
+    </div>
+
+  } @else {
+
+    <!-- Estado vacío -->
+    <div class="sc-empty-state">
+      <mat-icon class="sc-empty-state__icon">access_time</mat-icon>
+      <p class="sc-empty-state__title">Sin registros esta semana</p>
+      <p class="sc-empty-state__subtitle">
+        Usa el cronómetro o registra horas manualmente en cada tarea.
+      </p>
+    </div>
+
+  }
+}
