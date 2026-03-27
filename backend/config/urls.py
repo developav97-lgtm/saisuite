@@ -22,8 +22,7 @@ urlpatterns = [
     path('api/v1/sync/', include('apps.sync_agent.urls')),
     path('api/v1/integrations/', include('apps.integrations.urls')),
     path('api/v1/core/', include('apps.core.urls')),
-    path('api/v1/projects/', include('apps.proyectos.urls')),      # REFT-09: new canonical prefix
-    path('api/v1/proyectos/', include('apps.proyectos.urls')),     # DEPRECATED — remove in REFT-21
+    path('api/v1/projects/', include('apps.proyectos.urls')),
     path('api/v1/terceros/', include('apps.terceros.urls')),
     path('api/v1/notificaciones/', include('apps.notifications.urls')),
 ]
