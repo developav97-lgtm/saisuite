@@ -1,10 +1,14 @@
 @if (isDesktop) {
-<aside class="sc-sidebar" [class.sc-sidebar--hidden]="!visible()">
+<aside class="sc-sidebar" [class.sc-sidebar--mini]="!visible()">
   <div class="sc-sidebar__scroll">
     <ng-container *ngTemplateOutlet="navTpl" />
   </div>
   <div class="sc-sidebar__footer">
-    <div class="sc-sidebar__footer-icon"><mat-icon>business</mat-icon></div>
+    <div class="sc-sidebar__footer-icon"
+      [matTooltip]="!visible() ? 'ValMen Tech' : ''"
+      matTooltipPosition="right">
+      <mat-icon>business</mat-icon>
+    </div>
     <div class="sc-sidebar__footer-text">
       <span class="sc-sidebar__footer-company">ValMen Tech</span>
       <span class="sc-sidebar__footer-version">Saicloud v1.0.0</span>
@@ -45,6 +49,8 @@
             [class.sc-nav__item--active]="isTareasActive()"
             (click)="handleItemClick(item)"
             role="button"
+            [matTooltip]="!visible() ? item.label : ''"
+            matTooltipPosition="right"
           >
             <mat-icon class="sc-nav__icon">{{ item.icon }}</mat-icon>
             <span class="sc-nav__label">{{ item.label }}</span>
@@ -58,6 +64,8 @@
             [routerLink]="item.route"
             routerLinkActive="sc-nav__item--active"
             [routerLinkActiveOptions]="{ exact: item.exact ?? false }"
+            [matTooltip]="!visible() ? item.label : ''"
+            matTooltipPosition="right"
           >
             <mat-icon class="sc-nav__icon">{{ item.icon }}</mat-icon>
             <span class="sc-nav__label">{{ item.label }}</span>

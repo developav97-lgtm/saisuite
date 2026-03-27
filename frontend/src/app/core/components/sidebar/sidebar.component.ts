@@ -6,14 +6,19 @@ import {
   OnDestroy,
   OnInit,
   Output,
+  Type,
   inject,
   input,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule, NavigationEnd } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatDialog } from '@angular/material/dialog';
+import { MatDialogModule } from '@angular/material/dialog';
 import { Subscription } from 'rxjs';
 import { filter } from 'rxjs/operators';
+import { QuickAccessRoute } from '../../../shared/services/quick-access-navigator.service';
 
 const TAREAS_VIEW_KEY = 'saisuite.tareasView';
 
@@ -35,7 +40,7 @@ export interface NavSection {
 @Component({
   selector: 'app-sidebar',
   standalone: true,
-  imports: [CommonModule, RouterModule, MatIconModule],
+  imports: [CommonModule, RouterModule, MatIconModule, MatTooltipModule, MatDialogModule],
   templateUrl: './sidebar.component.html',
   styleUrls: ['./sidebar.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -46,6 +51,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
 
   private readonly cdr    = inject(ChangeDetectorRef);
   private readonly router = inject(Router);
+  private readonly dialog = inject(MatDialog);
   private routerSub?: Subscription;
 
   isDesktop      = true;
@@ -89,6 +95,63 @@ export class SidebarComponent implements OnInit, OnDestroy {
             action: () => this.navigateToTareas(),
           },
           { label: 'Configuración', icon: 'tune',         route: '/proyectos/configuracion' },
+        ],
+      },
+      {
+        sectionLabel: 'Acceso rápido',
+        items: [
+          {
+            label: 'Terceros',
+            icon: 'contacts',
+            action: () => this.openQuickAccess(
+              'Terceros',
+              () => import('../../../features/terceros/pages/tercero-list-page/tercero-list-page.component')
+                        .then(m => m.TerceroListPageComponent),
+              [
+                {
+                  pattern: '/terceros/nuevo',
+                  loader: () => import('../../../features/terceros/pages/tercero-form/tercero-form.component')
+                                    .then(m => m.TerceroFormComponent),
+                },
+                {
+                  pattern: '/terceros/:id/editar',
+                  loader: () => import('../../../features/terceros/pages/tercero-form/tercero-form.component')
+                                    .then(m => m.TerceroFormComponent),
+                },
+              ],
+            ),
+          },
+          {
+            label: 'Usuarios',
+            icon: 'manage_accounts',
+            action: () => this.openQuickAccess(
+              'Usuarios',
+              () => import('../../../features/admin/user-list/user-list.component')
+                        .then(m => m.UserListComponent),
+              [
+                {
+                  pattern: '/admin/usuarios/nuevo',
+                  loader: () => import('../../../features/admin/user-form/user-form.component')
+                                    .then(m => m.UserFormComponent),
+                },
+                {
+                  pattern: '/admin/usuarios/:id',
+                  loader: () => import('../../../features/admin/user-form/user-form.component')
+                                    .then(m => m.UserFormComponent),
+                },
+              ],
+            ),
+          },
+          {
+            label: 'Consecutivos',
+            icon: 'tag',
+            action: () => this.openQuickAccess(
+              'Consecutivos',
+              () => import('../../../features/admin/consecutivos/consecutivo-list.component')
+                        .then(m => m.ConsecutivoListComponent),
+              [],
+            ),
+          },
         ],
       },
     ];
@@ -183,9 +246,29 @@ export class SidebarComponent implements OnInit, OnDestroy {
     return 'home';
   }
 
+  /** Abre un módulo en dialog overlay sin cambiar la URL ni el sidebar */
+  private openQuickAccess(
+    title: string,
+    loader: () => Promise<Type<unknown>>,
+    routes: QuickAccessRoute[],
+  ): void {
+    Promise.all([
+      loader(),
+      import('../../../shared/components/quick-access-dialog/quick-access-dialog.component'),
+    ]).then(([component, m]) => {
+      this.dialog.open(m.QuickAccessDialogComponent, {
+        data: { title, component, routes },
+        width: '92vw',
+        maxWidth: '92vw',
+        height: '88vh',
+        panelClass: 'sc-quick-access-dialog',
+      });
+    });
+  }
+
   /** Navega a la última vista de Tareas guardada (lista o kanban) */
   private navigateToTareas(): void {
-    const view = localStorage.getItem(TAREAS_VIEW_KEY) ?? 'list';
+    const view = localStorage.getItem(TAREAS_VIEW_KEY) ?? 'kanban';
     const route = view === 'kanban'
       ? '/proyectos/tareas/kanban'
       : '/proyectos/tareas';

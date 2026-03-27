@@ -9,9 +9,12 @@
   @if (buscando()) {
     <mat-progress-spinner matSuffix diameter="18" mode="indeterminate" />
   } @else if (seleccionado()) {
-    <button matSuffix mat-icon-button (click)="limpiar()" type="button">
-      <mat-icon>close</mat-icon>
-    </button>
+    <mat-icon matSuffix
+      (click)="limpiar()"
+      style="cursor:pointer; font-size:18px; opacity:0.5"
+      title="Limpiar selección">
+      close
+    </mat-icon>
   } @else {
     <mat-icon matSuffix>search</mat-icon>
   }

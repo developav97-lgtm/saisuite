@@ -37,6 +37,11 @@
         <span class="tt-badge">{{ totalMiembros() }}</span>
       }
     </span>
+    <button mat-stroked-button (click)="irANuevaTarea()"
+      matTooltip="Asigna usuarios a tareas del proyecto para agregarlos al equipo">
+      <mat-icon>add_task</mat-icon>
+      Asignar miembro
+    </button>
   </div>
 
   <!-- Lista de miembros -->
@@ -116,7 +121,15 @@
   @if (!loading() && team().length === 0) {
     <div class="sc-empty-state tt-empty">
       <mat-icon>group_off</mat-icon>
-      <p>No hay miembros con asignaciones en este período.</p>
+      <p class="sc-empty-state__title">Sin miembros en este período</p>
+      <p class="sc-empty-state__subtitle">
+        Los miembros del equipo son los usuarios asignados a las tareas del proyecto.<br>
+        Asigna usuarios a las tareas para que aparezcan aquí.
+      </p>
+      <button mat-stroked-button color="primary" (click)="irANuevaTarea()">
+        <mat-icon>add_task</mat-icon>
+        Ir a Tareas
+      </button>
     </div>
   }
 

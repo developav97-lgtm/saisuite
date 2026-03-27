@@ -3,6 +3,7 @@ SaiSuite — Proyectos: Views
 Las views SOLO orquestan: reciben request → llaman service → retornan response.
 """
 import logging
+from datetime import timedelta
 from decimal import Decimal, InvalidOperation
 
 from django.core.exceptions import ValidationError
@@ -160,29 +161,38 @@ class ProjectViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'], url_path='gantt-data')
     def gantt_data(self, request, pk=None):
         """
-        GET /api/v1/proyectos/{id}/gantt-data/
+        GET /api/v1/projects/{id}/gantt-data/
         Retorna tareas del proyecto en formato compatible con Frappe Gantt.
-        Solo incluye tareas con fecha_inicio y fecha_fin definidas.
+        Incluye tareas que tengan al menos fecha_fin o fecha_limite.
+        Si fecha_inicio no está definida se calcula como end - max(horas_estimadas/8, 1) días.
         """
+        from django.db.models import Q
         proyecto = self.get_object()
         tareas = (
             proyecto.tasks
-            .filter(fecha_inicio__isnull=False, fecha_fin__isnull=False)
+            .filter(
+                Q(fecha_fin__isnull=False) | Q(fecha_limite__isnull=False)
+            )
             .select_related('fase', 'responsable')
-            .order_by('fecha_inicio')
+            .order_by('fecha_limite', 'fecha_fin', 'nombre')
         )
 
-        tasks = [
-            {
-                'id': str(tarea.id),
-                'name': tarea.nombre,
-                'start': tarea.fecha_inicio.isoformat(),
-                'end': tarea.fecha_fin.isoformat(),
-                'progress': tarea.porcentaje_completado,
+        tasks = []
+        for tarea in tareas:
+            end_date   = tarea.fecha_fin or tarea.fecha_limite
+            dias_est   = max(int(float(tarea.horas_estimadas) / 8), 1) if tarea.horas_estimadas else 1
+            start_date = tarea.fecha_inicio or (end_date - timedelta(days=dias_est))
+            # Garantizar que start < end
+            if start_date >= end_date:
+                start_date = end_date - timedelta(days=1)
+            tasks.append({
+                'id':           str(tarea.id),
+                'name':         tarea.nombre,
+                'start':        start_date.isoformat(),
+                'end':          end_date.isoformat(),
+                'progress':     tarea.porcentaje_completado,
                 'custom_class': f'estado-{tarea.estado}',
-            }
-            for tarea in tareas
-        ]
+            })
 
         logger.info('gantt_data_consultado', extra={
             'proyecto_id': str(proyecto.id),

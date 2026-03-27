@@ -2,8 +2,15 @@
 
   <!-- Loading -->
   @if (loading()) {
-    <div class="trd-loading">
-      <mat-spinner diameter="40" />
+    <div class="sc-loading-state trd-loading">
+      <div class="sc-loader">
+        <div class="sc-loader__icon">
+          <mat-icon>cloud</mat-icon>
+        </div>
+      </div>
+      <div class="sc-loader__dots">
+        <span></span><span></span><span></span>
+      </div>
     </div>
   }
 

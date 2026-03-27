@@ -17,6 +17,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
+import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -36,7 +37,7 @@ import {
     CommonModule, FormsModule,
     MatButtonModule, MatIconModule,
     MatInputModule, MatFormFieldModule, MatSelectModule,
-    MatProgressBarModule, MatTooltipModule,
+    MatPaginatorModule, MatProgressBarModule, MatTooltipModule,
   ],
   templateUrl: './proyecto-cards.component.html',
   styleUrl: './proyecto-cards.component.scss',
@@ -47,11 +48,13 @@ export class ProyectoCardsComponent implements OnInit {
   private readonly router          = inject(Router);
   private readonly snackBar        = inject(MatSnackBar);
 
-  readonly proyectos   = signal<ProyectoList[]>([]);
+  readonly proyectos    = signal<ProyectoList[]>([]);
+  readonly totalCount   = signal(0);
   readonly loading      = signal(false);
   readonly searchText   = signal('');
   readonly estadoFilter = signal<EstadoProyecto | null>(null);
   readonly tipoFilter   = signal<TipoProyecto | null>(null);
+  readonly pageSize     = 25;
 
   readonly estadoOptions: { label: string; value: EstadoProyecto | null }[] = [
     { label: 'Todos los estados', value: null },
@@ -64,18 +67,22 @@ export class ProyectoCardsComponent implements OnInit {
   ];
 
   ngOnInit(): void {
-    this.load();
+    this.load(0);
   }
 
-  load(): void {
+  load(pageIndex: number): void {
     this.loading.set(true);
-    const params: ProyectoListParams = { page: 1, page_size: 100 };
+    const params: ProyectoListParams = { page: pageIndex + 1, page_size: this.pageSize };
     if (this.searchText())   params.search = this.searchText();
     if (this.estadoFilter()) params.estado  = this.estadoFilter()!;
     if (this.tipoFilter())   params.tipo    = this.tipoFilter()!;
 
     this.proyectoService.list(params).subscribe({
-      next: (res) => { this.proyectos.set(res.results); this.loading.set(false); },
+      next: (res) => {
+        this.proyectos.set(res.results);
+        this.totalCount.set(res.count);
+        this.loading.set(false);
+      },
       error: () => {
         this.snackBar.open('No se pudieron cargar los proyectos.', 'Cerrar', { duration: 4000, panelClass: ['snack-error'] });
         this.loading.set(false);
@@ -83,10 +90,14 @@ export class ProyectoCardsComponent implements OnInit {
     });
   }
 
-  onFilterChange(): void { this.load(); }
-  onSearch():       void { this.load(); }
+  onFilterChange(): void { this.load(0); }
+  onSearch():       void { this.load(0); }
+  onPage(e: PageEvent): void { this.load(e.pageIndex); }
 
-  irALista():           void { this.router.navigate(['/proyectos']); }
+  irALista(): void {
+    localStorage.setItem('saisuite.proyectosView', 'list');
+    this.router.navigate(['/proyectos']);
+  }
   verDetalle(id: string): void { this.router.navigate(['/proyectos', id]); }
   nuevoProyecto():       void { this.router.navigate(['/proyectos', 'nuevo']); }
 

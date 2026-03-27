@@ -3,7 +3,8 @@
  * Espeja exactamente los serializers de Django. snake_case en todo.
  */
 
-export type TipoActividad = 'mano_obra' | 'material' | 'equipo' | 'subcontrato';
+// Valores que espera el backend (ActivityType en models.py)
+export type TipoActividad = 'labor' | 'material' | 'equipment' | 'subcontract';
 
 /** Actividad en listado — campos mínimos para tabla */
 export interface ActividadList {
@@ -68,8 +69,8 @@ export interface ActividadProyectoCreate {
 }
 
 export const TIPO_ACTIVIDAD_LABELS: Record<TipoActividad, string> = {
-  mano_obra:   'Mano de obra',
+  labor:       'Mano de obra',
   material:    'Material',
-  equipo:      'Equipo',
-  subcontrato: 'Subcontrato',
+  equipment:   'Equipo',
+  subcontract: 'Subcontrato',
 };

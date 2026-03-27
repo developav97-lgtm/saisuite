@@ -12,7 +12,7 @@ export class ActividadProyectoService {
   private readonly baseUrl = '/api/v1/projects';
 
   listByProyecto(proyectoId: string, faseId?: string): Observable<ActividadProyecto[]> {
-    let url = `${this.baseUrl}/${proyectoId}/actividades/`;
+    let url = `${this.baseUrl}/${proyectoId}/activities/`;
     if (faseId) url += `?fase=${faseId}`;
     return this.http
       .get<Paginated<ActividadProyecto> | ActividadProyecto[]>(url)
@@ -20,14 +20,14 @@ export class ActividadProyectoService {
   }
 
   asignar(proyectoId: string, data: ActividadProyectoCreate): Observable<ActividadProyecto> {
-    return this.http.post<ActividadProyecto>(`${this.baseUrl}/${proyectoId}/actividades/`, data);
+    return this.http.post<ActividadProyecto>(`${this.baseUrl}/${proyectoId}/activities/`, data);
   }
 
   update(proyectoId: string, apId: string, data: Partial<ActividadProyectoCreate>): Observable<ActividadProyecto> {
-    return this.http.patch<ActividadProyecto>(`${this.baseUrl}/${proyectoId}/actividades/${apId}/`, data);
+    return this.http.patch<ActividadProyecto>(`${this.baseUrl}/${proyectoId}/activities/${apId}/`, data);
   }
 
   desasignar(proyectoId: string, apId: string): Observable<void> {
-    return this.http.delete<void>(`${this.baseUrl}/${proyectoId}/actividades/${apId}/`);
+    return this.http.delete<void>(`${this.baseUrl}/${proyectoId}/activities/${apId}/`);
   }
 }

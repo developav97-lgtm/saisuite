@@ -65,7 +65,7 @@
 
             @if (!editMode() && selectedTipo()) {
               @if (consecutivoUnico()) {
-                <div class="pf-consecutivo-info">
+                <div class="pf-consecutivo-info pf-consecutivo-info--ok">
                   <mat-icon>tag</mat-icon>
                   <span>Consecutivo: <strong>{{ consecutivoUnico()!.nombre }}</strong> — próx. <code>{{ consecutivoUnico()!.proximo_codigo }}</code></span>
                 </div>
@@ -73,12 +73,21 @@
                 <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
                   <mat-label>Consecutivo</mat-label>
                   <mat-select formControlName="consecutivo_id">
-                    <mat-option [value]="null">Sin consecutivo (auto)</mat-option>
                     @for (c of filteredConsecutivos(); track c.id) {
                       <mat-option [value]="c.id">{{ c.nombre }} — próx. {{ c.proximo_codigo }}</mat-option>
                     }
                   </mat-select>
+                  @if (form.get('consecutivo_id')?.invalid && form.get('consecutivo_id')?.touched) {
+                    <mat-error>Selecciona un consecutivo.</mat-error>
+                  }
                 </mat-form-field>
+              } @else {
+                <div class="pf-consecutivo-info pf-consecutivo-info--warn">
+                  <mat-icon>warning_amber</mat-icon>
+                  <span>No hay consecutivos configurados para este tipo.
+                    <a routerLink="/admin/consecutivos">Configurar consecutivos</a>
+                  </span>
+                </div>
               }
             }
 

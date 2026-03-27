@@ -25,6 +25,20 @@
   }
 }
 
+// ── Variantes del consecutivo info ────────────────────────────
+.pf-consecutivo-info--warn {
+  border-color: var(--sc-color-warning, #f59e0b);
+  background: rgba(245, 158, 11, 0.06);
+  color: var(--sc-text-color);
+
+  mat-icon { color: var(--sc-color-warning, #f59e0b); opacity: 1; }
+
+  a {
+    color: var(--sc-primary);
+    font-weight: 600;
+  }
+}
+
 // ── Layout de dos columnas ────────────────────────────────────
 .pf-layout {
   display: grid;

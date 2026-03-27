@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal, computed } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormControl, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -31,7 +31,7 @@ interface SelectOption { label: string; value: string; }
   styleUrl: './proyecto-form.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    CommonModule, ReactiveFormsModule,
+    CommonModule, ReactiveFormsModule, RouterModule,
     MatButtonModule, MatFormFieldModule, MatInputModule,
     MatSelectModule, MatAutocompleteModule,
     MatDatepickerModule, MatNativeDateModule,
@@ -166,6 +166,14 @@ export class ProyectoFormComponent implements OnInit {
         filtered.length === 1 ? filtered[0].id : null,
         { emitEvent: false },
       );
+      // Requerir consecutivo si hay más de uno disponible
+      const ctrl = this.form.controls.consecutivo_id;
+      if (filtered.length > 1) {
+        ctrl.setValidators([Validators.required]);
+      } else {
+        ctrl.clearValidators();
+      }
+      ctrl.updateValueAndValidity({ emitEvent: false });
     });
 
     const id = this.route.snapshot.paramMap.get('id');

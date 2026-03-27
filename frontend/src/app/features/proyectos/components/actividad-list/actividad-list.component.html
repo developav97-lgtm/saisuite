@@ -2,11 +2,24 @@
 
   <!-- Header -->
   <div class="sc-page-header">
-    <h1 class="sc-page-header__title">Catálogo de actividades</h1>
-    <button mat-raised-button color="primary" (click)="abrirDialogNueva()">
-      <mat-icon>add</mat-icon>
-      Nueva actividad
-    </button>
+    <h1 class="sc-page-header__title">Actividades</h1>
+    <div class="al-header-actions">
+      @if (viewMode() === 'list') {
+        <button mat-stroked-button matTooltip="Ver como tarjetas" (click)="setViewMode('cards')">
+          <mat-icon>grid_view</mat-icon>
+          Cards
+        </button>
+      } @else {
+        <button mat-stroked-button matTooltip="Ver como tabla" (click)="setViewMode('list')">
+          <mat-icon>view_list</mat-icon>
+          Lista
+        </button>
+      }
+      <button mat-raised-button color="primary" (click)="abrirDialogNueva()">
+        <mat-icon>add</mat-icon>
+        Nueva actividad
+      </button>
+    </div>
   </div>
 
   <!-- Filtros -->
@@ -37,74 +50,126 @@
     <mat-progress-bar mode="indeterminate" class="al-progress" />
   }
 
-  <!-- Tabla -->
-  <mat-table [dataSource]="actividades()" class="al-table">
+  @if (viewMode() === 'list') {
+    <!-- Tabla -->
+    @if (actividades().length > 0) {
+      <mat-table [dataSource]="actividades()" class="al-table">
 
-    <ng-container matColumnDef="codigo">
-      <mat-header-cell *matHeaderCellDef>Código</mat-header-cell>
-      <mat-cell *matCellDef="let row">
-        <span class="al-codigo">{{ row.codigo }}</span>
-      </mat-cell>
-    </ng-container>
+        <ng-container matColumnDef="codigo">
+          <mat-header-cell *matHeaderCellDef>Código</mat-header-cell>
+          <mat-cell *matCellDef="let row">
+            <span class="al-codigo">{{ row.codigo }}</span>
+          </mat-cell>
+        </ng-container>
 
-    <ng-container matColumnDef="nombre">
-      <mat-header-cell *matHeaderCellDef>Nombre</mat-header-cell>
-      <mat-cell *matCellDef="let row" class="al-cell-nombre">{{ row.nombre }}</mat-cell>
-    </ng-container>
+        <ng-container matColumnDef="nombre">
+          <mat-header-cell *matHeaderCellDef>Nombre</mat-header-cell>
+          <mat-cell *matCellDef="let row" class="al-cell-nombre">{{ row.nombre }}</mat-cell>
+        </ng-container>
 
-    <ng-container matColumnDef="tipo">
-      <mat-header-cell *matHeaderCellDef>Tipo</mat-header-cell>
-      <mat-cell *matCellDef="let row">
-        <span class="al-tipo-chip">{{ getTipoLabel(row.tipo) }}</span>
-      </mat-cell>
-    </ng-container>
+        <ng-container matColumnDef="tipo">
+          <mat-header-cell *matHeaderCellDef>Tipo</mat-header-cell>
+          <mat-cell *matCellDef="let row">
+            <span class="al-tipo-chip">{{ getTipoLabel(row.tipo) }}</span>
+          </mat-cell>
+        </ng-container>
 
-    <ng-container matColumnDef="unidad_medida">
-      <mat-header-cell *matHeaderCellDef>Unidad</mat-header-cell>
-      <mat-cell *matCellDef="let row">{{ row.unidad_medida }}</mat-cell>
-    </ng-container>
+        <ng-container matColumnDef="unidad_medida">
+          <mat-header-cell *matHeaderCellDef>Unidad</mat-header-cell>
+          <mat-cell *matCellDef="let row">{{ row.unidad_medida }}</mat-cell>
+        </ng-container>
 
-    <ng-container matColumnDef="costo_unitario_base">
-      <mat-header-cell *matHeaderCellDef class="al-col-right">Costo base</mat-header-cell>
-      <mat-cell *matCellDef="let row" class="al-col-right al-presupuesto">
-        {{ formatCurrency(row.costo_unitario_base) }}
-      </mat-cell>
-    </ng-container>
+        <ng-container matColumnDef="costo_unitario_base">
+          <mat-header-cell *matHeaderCellDef class="al-col-right">Costo base</mat-header-cell>
+          <mat-cell *matCellDef="let row" class="al-col-right al-presupuesto">
+            {{ formatCurrency(row.costo_unitario_base) }}
+          </mat-cell>
+        </ng-container>
 
-    <ng-container matColumnDef="acciones">
-      <mat-header-cell *matHeaderCellDef class="al-col-acciones"></mat-header-cell>
-      <mat-cell *matCellDef="let row" class="al-col-acciones">
-        <button mat-icon-button matTooltip="Editar" (click)="abrirDialogEditar(row)">
-          <mat-icon>edit</mat-icon>
+        <ng-container matColumnDef="acciones">
+          <mat-header-cell *matHeaderCellDef class="al-col-acciones"></mat-header-cell>
+          <mat-cell *matCellDef="let row" class="al-col-acciones">
+            <button mat-icon-button matTooltip="Editar" (click)="abrirDialogEditar(row)">
+              <mat-icon>edit</mat-icon>
+            </button>
+            <button mat-icon-button matTooltip="Eliminar" color="warn" (click)="confirmarEliminar(row)">
+              <mat-icon>delete_outline</mat-icon>
+            </button>
+          </mat-cell>
+        </ng-container>
+
+        <mat-header-row *matHeaderRowDef="displayedColumns" />
+        <mat-row *matRowDef="let row; columns: displayedColumns;" />
+      </mat-table>
+    }
+
+    <!-- Empty state (lista) -->
+    @if (!loading() && actividades().length === 0) {
+      <div class="sc-empty-state al-empty">
+        <mat-icon>construction</mat-icon>
+        <p>No hay actividades en el catálogo.</p>
+        <button mat-raised-button color="primary" (click)="abrirDialogNueva()">
+          <mat-icon>add</mat-icon>
+          Nueva actividad
         </button>
-        <button mat-icon-button matTooltip="Eliminar" color="warn" (click)="confirmarEliminar(row)">
-          <mat-icon>delete_outline</mat-icon>
+      </div>
+    }
+
+    <mat-paginator
+      [length]="totalCount()"
+      [pageSize]="pageSize"
+      [pageSizeOptions]="[25, 50, 100]"
+      (page)="onPage($event)"
+      showFirstLastButtons
+    />
+  } @else {
+    <!-- Vista tarjetas -->
+    @if (!loading() && actividades().length === 0) {
+      <div class="sc-empty-state al-empty">
+        <mat-icon>construction</mat-icon>
+        <p>No hay actividades en el catálogo.</p>
+        <button mat-raised-button color="primary" (click)="abrirDialogNueva()">
+          <mat-icon>add</mat-icon>
+          Nueva actividad
         </button>
-      </mat-cell>
-    </ng-container>
+      </div>
+    } @else {
+      <div class="al-cards-grid">
+        @for (row of actividades(); track row.id) {
+          <div class="al-card sc-card">
+            <div class="al-card-header">
+              <span class="al-codigo">{{ row.codigo }}</span>
+              <span class="al-tipo-chip">{{ getTipoLabel(row.tipo) }}</span>
+            </div>
+            <p class="al-card-nombre">{{ row.nombre }}</p>
+            <div class="al-card-meta">
+              <span class="al-card-unidad">
+                <mat-icon class="al-card-meta-icon">straighten</mat-icon>
+                {{ row.unidad_medida }}
+              </span>
+              <span class="al-card-costo">{{ formatCurrency(row.costo_unitario_base) }}</span>
+            </div>
+            <div class="al-card-actions">
+              <button mat-icon-button matTooltip="Editar" (click)="abrirDialogEditar(row)">
+                <mat-icon>edit</mat-icon>
+              </button>
+              <button mat-icon-button matTooltip="Eliminar" color="warn" (click)="confirmarEliminar(row)">
+                <mat-icon>delete_outline</mat-icon>
+              </button>
+            </div>
+          </div>
+        }
+      </div>
 
-    <mat-header-row *matHeaderRowDef="displayedColumns" />
-    <mat-row *matRowDef="let row; columns: displayedColumns;" />
-  </mat-table>
-
-  <!-- Empty state fuera del mat-table -->
-  @if (!loading() && actividades().length === 0) {
-    <div class="sc-empty-state al-empty">
-      <mat-icon>construction</mat-icon>
-      <p>No hay actividades en el catálogo.</p>
-      <button mat-raised-button color="primary" (click)="abrirDialogNueva()">
-        <mat-icon>add</mat-icon> Nueva actividad
-      </button>
-    </div>
+      <mat-paginator
+        [length]="totalCount()"
+        [pageSize]="pageSize"
+        [pageSizeOptions]="[25, 50, 100]"
+        (page)="onPage($event)"
+        showFirstLastButtons
+      />
+    }
   }
-
-  <mat-paginator
-    [length]="totalCount()"
-    [pageSize]="pageSize"
-    [pageSizeOptions]="[25, 50, 100]"
-    (page)="onPage($event)"
-    showFirstLastButtons
-  />
 
 </div>
 
@@ -136,7 +201,7 @@
         </mat-form-field>
       </div>
 
-      <!-- Consecutivo: info (1 resultado) o select (varios) — solo al crear -->
+      <!-- Consecutivo: info (1 resultado), select (varios) o error (ninguno) — solo al crear -->
       @if (!editingActividad() && selectedTipoForm()) {
         @if (consecutivoUnico()) {
           <div class="al-consecutivo-info">
@@ -147,12 +212,16 @@
           <mat-form-field appearance="outline" subscriptSizing="dynamic" class="al-field-full">
             <mat-label>Consecutivo</mat-label>
             <mat-select formControlName="consecutivo_id">
-              <mat-option [value]="null">Sin consecutivo (auto)</mat-option>
               @for (c of filteredConsecutivos(); track c.id) {
                 <mat-option [value]="c.id">{{ c.nombre }} — próx. {{ c.proximo_codigo }}</mat-option>
               }
             </mat-select>
           </mat-form-field>
+        } @else {
+          <div class="al-consecutivo-error">
+            <mat-icon>warning_amber</mat-icon>
+            <span>No hay consecutivo activo para este tipo. Créalo en <strong>Administración → Consecutivos</strong> antes de continuar.</span>
+          </div>
         }
       }
 

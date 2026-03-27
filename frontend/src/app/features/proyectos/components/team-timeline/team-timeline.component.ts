@@ -6,6 +6,7 @@
 import {
   ChangeDetectionStrategy, Component, OnInit, input, inject, signal, computed,
 } from '@angular/core';
+import { Router } from '@angular/router';
 import { DatePipe } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -43,6 +44,7 @@ export class TeamTimelineComponent implements OnInit {
 
   private readonly resourceService = inject(ResourceService);
   private readonly snackBar        = inject(MatSnackBar);
+  private readonly router          = inject(Router);
 
   readonly loading = signal(false);
   readonly team    = signal<TeamAvailabilityUser[]>([]);
@@ -95,6 +97,10 @@ export class TeamTimelineComponent implements OnInit {
     return usuario.asignaciones.reduce(
       (sum, a) => sum + Number(a.porcentaje_asignacion), 0,
     );
+  }
+
+  irANuevaTarea(): void {
+    this.router.navigate(['/proyectos', 'tareas', 'nueva']);
   }
 
   private formatDate(d: Date): string {

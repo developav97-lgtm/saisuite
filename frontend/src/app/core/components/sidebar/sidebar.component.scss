@@ -1,3 +1,8 @@
+// ── Host transparente: deja que <aside> sea el flex child real ─
+:host {
+  display: contents;
+}
+
 // ── Sidebar desktop ─────────────────────────────────────────
 .sc-sidebar {
   width: 268px;
@@ -10,10 +15,28 @@
   overflow: hidden;
   transition: width 0.2s ease, min-width 0.2s ease;
 
-  &--hidden {
-    width: 0;
-    min-width: 0;
-    border-right: none;
+  &--mini {
+    width: 56px;
+    min-width: 56px;
+
+    .sc-nav__label,
+    .sc-nav__section-label,
+    .sc-nav__badge,
+    .sc-nav__chevron,
+    .sc-nav__children,
+    .sc-sidebar__footer-text {
+      display: none;
+    }
+
+    .sc-nav__item {
+      justify-content: center;
+      padding: 0.5rem;
+    }
+
+    .sc-sidebar__footer {
+      justify-content: center;
+      padding: 0.875rem 0.5rem;
+    }
   }
 
   &__scroll {

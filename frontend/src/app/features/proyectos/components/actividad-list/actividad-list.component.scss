@@ -1,3 +1,10 @@
+// ── Header actions ────────────────────────────────────────────
+.al-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
 // ── Filtros ───────────────────────────────────────────────────
 .al-filters-card {
   display: flex;
@@ -98,6 +105,27 @@
 .al-field-half { flex: 1; }
 .al-field-full { width: 100%; }
 
+// ── Sin consecutivo — advertencia ─────────────────────────────
+.al-consecutivo-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: var(--sc-warning, #b45309);
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  border-radius: var(--sc-radius);
+  padding: 0.5rem 0.75rem;
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    color: #d97706;
+  }
+}
+
 // ── Info consecutivo auto-seleccionado ────────────────────────
 .al-consecutivo-info {
   display: flex;
@@ -123,6 +151,86 @@
   height: 16px;
   color: var(--sc-primary);
   opacity: 0.7;
+}
+
+// ── Cards grid ────────────────────────────────────────────────
+.al-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.al-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem;
+  cursor: default;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+  border: 1px solid var(--sc-surface-border) !important;
+
+  &:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+    border-color: var(--sc-primary) !important;
+    transform: translateY(-1px);
+  }
+}
+
+.al-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.al-card-nombre {
+  font-weight: 500;
+  font-size: 0.9375rem;
+  margin: 0;
+  flex: 1;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  line-clamp: 2;
+}
+
+.al-card-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  color: var(--sc-text-muted);
+}
+
+.al-card-unidad {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.al-card-meta-icon {
+  font-size: 14px;
+  width: 14px;
+  height: 14px;
+  opacity: 0.6;
+}
+
+.al-card-costo {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--sc-text);
+}
+
+.al-card-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.25rem;
+  margin-top: 0.25rem;
+  border-top: 1px solid var(--sc-surface-border);
+  padding-top: 0.5rem;
 }
 
 // ── Responsive ────────────────────────────────────────────────

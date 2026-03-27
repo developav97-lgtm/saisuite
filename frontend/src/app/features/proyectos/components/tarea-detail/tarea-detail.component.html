@@ -2,9 +2,16 @@
 
   <!-- Loading -->
   @if (loading()) {
-    <div class="td-loading">
-      <mat-spinner diameter="48" />
-      <span>Cargando tarea…</span>
+    <div class="sc-loading-state">
+      <div class="sc-loader">
+        <div class="sc-loader__icon">
+          <mat-icon>cloud</mat-icon>
+        </div>
+      </div>
+      <div class="sc-loader__dots">
+        <span></span><span></span><span></span>
+      </div>
+      <p class="sc-loader__text">Cargando tarea…</p>
     </div>
   }
 
@@ -195,8 +202,8 @@
                 }
               }
 
-              <!-- ── MODO: timesheet ── -->
-              @if (modoMedicion() === 'timesheet') {
+              <!-- ── MODO: timesheet (también visible en solo_estados si el proyecto tiene timesheet activo) ── -->
+              @if (modoMedicion() === 'timesheet' || (modoMedicion() === 'solo_estados' && !modoTimesheetDesactivado())) {
                 <!-- Resumen estimadas vs registradas -->
                 <div class="td-horas-resumen">
                   <div class="td-hora-bloque">

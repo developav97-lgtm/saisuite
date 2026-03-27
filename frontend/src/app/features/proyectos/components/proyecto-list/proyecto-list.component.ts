@@ -1,5 +1,7 @@
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
+
+const PROYECTOS_VIEW_KEY = 'saisuite.proyectosView';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatTableModule } from '@angular/material/table';
@@ -59,6 +61,10 @@ export class ProyectoListComponent implements OnInit {
   readonly ESTADO_LABELS = ESTADO_LABELS;
 
   ngOnInit(): void {
+    if (localStorage.getItem(PROYECTOS_VIEW_KEY) === 'cards') {
+      this.router.navigate(['/proyectos', 'cards']);
+      return;
+    }
     this.loadProyectos(0, this.pageSize);
   }
 
@@ -83,7 +89,10 @@ export class ProyectoListComponent implements OnInit {
   onPage(event: PageEvent): void { this.loadProyectos(event.pageIndex, event.pageSize); }
   verDetalle(id: string): void { this.router.navigate(['/proyectos', id]); }
   nuevoProyecto():        void { this.router.navigate(['/proyectos', 'nuevo']); }
-  irACards():             void { this.router.navigate(['/proyectos', 'cards']); }
+  irACards(): void {
+    localStorage.setItem(PROYECTOS_VIEW_KEY, 'cards');
+    this.router.navigate(['/proyectos', 'cards']);
+  }
 
   confirmarEliminar(proyecto: ProyectoList): void {
     const ref = this.dialog.open(ConfirmDialogComponent, {

@@ -4,12 +4,12 @@
  */
 
 export type RolTercero =
-  | 'cliente'
-  | 'proveedor'
-  | 'subcontratista'
-  | 'interventor'
-  | 'consultor'
-  | 'otro';
+  | 'client'
+  | 'vendor'
+  | 'subcontractor'
+  | 'inspector'
+  | 'consultant'
+  | 'supervisor';
 
 export interface TerceroProyecto {
   id: string;
@@ -35,12 +35,12 @@ export interface TerceroProyectoCreate {
 }
 
 export const ROL_LABELS: Record<RolTercero, string> = {
-  cliente:        'Cliente',
-  proveedor:      'Proveedor',
-  subcontratista: 'Subcontratista',
-  interventor:    'Interventor',
-  consultor:      'Consultor',
-  otro:           'Otro',
+  client:        'Cliente',
+  vendor:        'Proveedor',
+  subcontractor: 'Subcontratista',
+  inspector:     'Interventor',
+  consultant:    'Consultor',
+  supervisor:    'Supervisor',
 };
 
 export const ROL_OPTIONS: { value: RolTercero; label: string }[] = (

@@ -12,14 +12,21 @@
   </button>
 </div>
 
-<!-- ── Spinner ── -->
+<!-- ── Progress bar ── -->
 @if (loading()) {
-  <div class="apl-loading">
-    <mat-progress-spinner mode="indeterminate" diameter="40"></mat-progress-spinner>
-  </div>
-} @else {
+  <mat-progress-bar mode="indeterminate" class="apl-progress" />
+}
 
-  <!-- ── Tabla ── -->
+<!-- ── Empty state ── -->
+@if (!loading() && asignaciones().length === 0) {
+  <div class="sc-empty-state apl-empty">
+    <mat-icon>playlist_add</mat-icon>
+    <p>No hay actividades asignadas a este proyecto.</p>
+  </div>
+}
+
+<!-- ── Tabla (solo cuando hay registros) ── -->
+@if (asignaciones().length > 0) {
   <table mat-table [dataSource]="asignaciones()" class="apl-table mat-elevation-z1">
 
     <ng-container matColumnDef="actividad">
@@ -102,17 +109,6 @@
     <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
     <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
   </table>
-
-  <!-- ── Estado vacío ── -->
-  @if (asignaciones().length === 0) {
-    <mat-card class="apl-empty">
-      <mat-card-content>
-        <mat-icon>playlist_add</mat-icon>
-        <p>No hay actividades asignadas a este proyecto</p>
-        <span>Usa el botón "Asignar actividad" para agregar actividades del catálogo</span>
-      </mat-card-content>
-    </mat-card>
-  }
 }
 
 <!-- ── Dialog: asignar / editar actividad en proyecto ── -->
@@ -174,9 +170,6 @@
   <mat-dialog-actions align="end">
     <button mat-stroked-button (click)="onCancelar()">Cancelar</button>
     <button mat-raised-button color="primary" (click)="guardar()" [disabled]="saving()">
-      @if (saving()) {
-        <mat-progress-spinner diameter="18" mode="indeterminate"></mat-progress-spinner>
-      }
       Guardar
     </button>
   </mat-dialog-actions>

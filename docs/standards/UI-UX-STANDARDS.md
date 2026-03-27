@@ -4,11 +4,16 @@
 
 ---
 
-## REGLA GENERAL: Referencia canónica
+## REGLA GENERAL: Referencias canónicas
 
-**El componente `proyecto-list` es la referencia canónica de estilo para todos los listados.**
-Antes de crear cualquier componente de tipo lista, leer:
-`frontend/src/app/features/proyectos/components/proyecto-list/`
+| Patrón | Referencia canónica |
+|---|---|
+| Listado con tabla | `proyecto-list` |
+| Vista tarjetas | `proyecto-cards` |
+| Toggle Lista/Cards | `actividad-list` (in-page) ó `proyecto-list` + `proyecto-cards` (rutas) |
+| Quick Access modal | `sidebar.component` + `QuickAccessDialogComponent` |
+
+Antes de crear cualquier componente, leer el componente canónico correspondiente.
 
 ---
 
@@ -279,7 +284,220 @@ this.snackBar.open('Advertencia.', 'Cerrar', { duration: 4000, panelClass: ['sna
 
 ---
 
-## 8. Checklist antes de entregar un componente
+---
+
+## 8. Patrón: Toggle Lista / Cards (ESTÁNDAR OBLIGATORIO)
+
+Cualquier listado que soporte dos modos de visualización (tabla y tarjetas) sigue este patrón:
+
+### Visual
+- **Un solo botón stroked** que muestra el nombre de la vista alternativa.
+- En vista lista → botón `Cards` con ícono `grid_view`.
+- En vista tarjetas → botón `Lista` con ícono `view_list`.
+- **NUNCA** un `mat-button-toggle-group` de dos opciones simultáneas.
+
+### Implementación: mismo componente (in-page toggle)
+
+Usar cuando el volumen de datos es el mismo y no hay razón de URL separada (ej: `actividad-list`).
+
+**TS:**
+```typescript
+readonly viewMode = signal<'list' | 'cards'>(
+  (localStorage.getItem('saisuite.[feature]View') as 'list' | 'cards') ?? 'list',
+);
+
+setViewMode(mode: 'list' | 'cards'): void {
+  this.viewMode.set(mode);
+  localStorage.setItem('saisuite.[feature]View', mode);
+}
+```
+
+**HTML — header:**
+```html
+<div class="xx-header-actions">
+  @if (viewMode() === 'list') {
+    <button mat-stroked-button matTooltip="Ver como tarjetas" (click)="setViewMode('cards')">
+      <mat-icon>grid_view</mat-icon>
+      Cards
+    </button>
+  } @else {
+    <button mat-stroked-button matTooltip="Ver como tabla" (click)="setViewMode('list')">
+      <mat-icon>view_list</mat-icon>
+      Lista
+    </button>
+  }
+  <button mat-raised-button color="primary" (click)="nuevo()">
+    <mat-icon>add</mat-icon> Nueva entidad
+  </button>
+</div>
+```
+
+**HTML — contenido:**
+```html
+@if (viewMode() === 'list') {
+  <!-- mat-table + empty state + mat-paginator -->
+} @else {
+  <!-- grid de cards + empty state + mat-paginator -->
+}
+```
+
+**SCSS:**
+```scss
+.xx-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+```
+
+### Implementación: rutas separadas
+
+Usar cuando cada vista justifica su propia URL (ej: `proyecto-list` en `/proyectos` y `proyecto-cards` en `/proyectos/cards`).
+
+- En el componente de lista: `<button mat-stroked-button (click)="irACards()"><mat-icon>grid_view</mat-icon> Cards</button>`
+- En el componente de cards: `<button mat-stroked-button (click)="irALista()"><mat-icon>view_list</mat-icon> Lista</button>`
+- La preferencia se guarda con `localStorage.getItem('saisuite.[feature]View')` y se respeta en el guard/resolver de la ruta.
+
+### Cards grid — estructura HTML canónica
+
+```html
+<div class="xx-cards-grid">
+  @for (row of items(); track row.id) {
+    <div class="xx-card sc-card">
+      <div class="xx-card-header">
+        <span class="xx-codigo">{{ row.codigo }}</span>
+        <span class="xx-tipo-chip">{{ tipoLabel(row.tipo) }}</span>
+      </div>
+      <p class="xx-card-nombre">{{ row.nombre }}</p>
+      <div class="xx-card-meta">
+        <!-- métricas secundarias -->
+      </div>
+      <div class="xx-card-actions">
+        <button mat-icon-button matTooltip="Editar" (click)="editar(row)"><mat-icon>edit</mat-icon></button>
+        <button mat-icon-button matTooltip="Eliminar" color="warn" (click)="eliminar(row)"><mat-icon>delete_outline</mat-icon></button>
+      </div>
+    </div>
+  }
+</div>
+```
+
+**SCSS canónico de cards:**
+```scss
+.xx-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.xx-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem;
+  cursor: pointer;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+  border: 1px solid var(--sc-surface-border) !important;
+
+  &:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    border-color: var(--sc-primary) !important;
+    transform: translateY(-1px);
+  }
+}
+
+.xx-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.xx-card-nombre {
+  font-weight: 500;
+  font-size: 0.9375rem;
+  margin: 0;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  line-clamp: 2;
+}
+
+.xx-card-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.25rem;
+  border-top: 1px solid var(--sc-surface-border);
+  padding-top: 0.5rem;
+  margin-top: 0.25rem;
+}
+```
+
+### Persistencia de preferencia
+- **Clave localStorage:** `saisuite.[feature]View` (ej: `saisuite.actividadesView`, `saisuite.proyectosView`)
+- **Valores válidos:** `'list'` | `'cards'`
+- **Default cuando no existe:** `'list'`
+- La preferencia es por feature, no global.
+
+---
+
+## 9. Patrón: Quick Access Modal (componentes de administración)
+
+Para abrir vistas completas de administración (formularios de Terceros, Usuarios, etc.) dentro de un `MatDialog` sin salir de la pantalla actual, se usa el patrón **Quick Access**.
+
+### Cuándo usarlo
+- El usuario necesita crear/editar una entidad de catálogo desde un contexto diferente (ej: vincular un tercero a un proyecto → crear el tercero sin abandonar el proyecto).
+- El componente ya existe como página de ruta — se reutiliza dentro del dialog.
+
+### Arquitectura
+
+```
+sidebar.component → QuickAccessNavigatorService
+                  → QuickAccessDialogComponent
+                       └─ NgComponentOutlet (carga el componente destino)
+                       └─ quickAccessGuard (controla navegación interna)
+```
+
+**Archivos clave:**
+- `frontend/src/app/shared/components/quick-access-dialog/quick-access-dialog.component.ts`
+- `frontend/src/app/core/services/quick-access-navigator.service.ts`
+- `frontend/src/app/core/guards/quick-access.guard.ts`
+
+### Cómo agregar un nuevo acceso rápido al sidebar
+
+En `sidebar.component.ts`, en el array `PROYECTOS_NAV` (o el nav correspondiente), agregar:
+
+```typescript
+{
+  label: 'Nombre de la sección',
+  icon: 'icon_name',
+  action: () => this.openQuickAccess(
+    'Título del dialog',
+    () => import('path/al/componente').then(m => m.MiComponenteComponent),
+    [
+      {
+        path: '/ruta/nueva',
+        loadComponent: () => import('path/al/form').then(m => m.MiFormComponent),
+      },
+      {
+        path: '/ruta/:id/editar',
+        loadComponent: () => import('path/al/form').then(m => m.MiFormComponent),
+      },
+    ],
+  ),
+},
+```
+
+### Reglas
+- El componente que se carga en el dialog debe ser **standalone**.
+- Las rutas internas (`QuickAccessRoute[]`) manejan navegación dentro del dialog (ej: lista → form nuevo → form edición).
+- El dialog siempre tiene `width: '92vw', maxWidth: '92vw', height: '88vh'`.
+- **NUNCA** abrir un `MatDialog` genérico con un componente arbitrario para esto — siempre pasar por `QuickAccessDialogComponent`.
+
+---
+
+## 10. Checklist antes de entregar un componente
 
 - [ ] Página completa: usa `sc-page`, `sc-page-header`, filtros en `sc-card`
 - [ ] Tabla usa `mat-table` (no `table mat-table`) y `mat-header-cell`/`mat-cell`
@@ -292,3 +510,6 @@ this.snackBar.open('Advertencia.', 'Cerrar', { duration: 4000, panelClass: ['sna
 - [ ] Eliminaciones con `MatDialog` de confirmación, nunca `confirm()`
 - [ ] Feedback con `MatSnackBar` con panelClass correcto, nunca `alert()`
 - [ ] No hay suscripciones manuales sin `async pipe` o `takeUntilDestroyed`
+- [ ] Toggle Lista/Cards: un solo `mat-stroked-button` con el nombre de la vista alternativa (sección 8)
+- [ ] Toggle guarda preferencia en `localStorage` con clave `saisuite.[feature]View` (sección 8)
+- [ ] Quick Access modal: usa `QuickAccessDialogComponent`, no `MatDialog` genérico (sección 9)

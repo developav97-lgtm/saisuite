@@ -89,7 +89,8 @@ html, body {
 // ── Layout de página ──────────────────────────────────────────
 .sc-page {
   padding: 1.75rem 2rem;
-  max-width: 1400px;
+  width: 100%;
+  box-sizing: border-box;
   @media (max-width: 768px) { padding: 1rem; }
 }
 
@@ -450,7 +451,7 @@ mat-card.mat-mdc-card {
   text-align: center;
   color: var(--sc-text-muted);
 
-  mat-icon {
+  > mat-icon {
     font-size: 2.5rem;
     width: 2.5rem;
     height: 2.5rem;
@@ -475,6 +476,19 @@ mat-card.mat-mdc-card {
     display: flex !important;
     flex-direction: column !important;
     padding: 0 !important;
+  }
+}
+
+// ── Quick Access Dialog (acceso rápido desde sidebar) ─────────
+.sc-quick-access-dialog {
+  .mat-mdc-dialog-container,
+  .mat-mdc-dialog-surface {
+    height: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    padding: 0 !important;
+    border-radius: 12px !important;
+    overflow: hidden !important;
   }
 }
 

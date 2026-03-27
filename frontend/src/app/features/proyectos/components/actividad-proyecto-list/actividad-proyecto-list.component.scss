@@ -9,10 +9,8 @@
   &__total  { color: rgba(0,0,0,.6); font-size: 14px; }
 }
 
-.apl-loading {
-  display: flex;
-  justify-content: center;
-  padding: 48px 0;
+.apl-progress {
+  margin-bottom: 4px;
 }
 
 .apl-table {
@@ -61,20 +59,9 @@
 }
 
 .apl-empty {
-  margin-top: 8px;
-
-  mat-card-content {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 48px 24px;
-    gap: 8px;
-    color: rgba(0,0,0,.4);
-
-    mat-icon { font-size: 48px; width: 48px; height: 48px; }
-    p        { margin: 0; font-size: 16px; }
-    span     { font-size: 13px; }
-  }
+  background: var(--sc-surface-card);
+  border: 1px solid var(--sc-surface-border);
+  border-radius: var(--sc-radius);
 }
 
 // ── Formulario ──────────────────────────────

@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { quickAccessGuard } from '../../shared/guards/quick-access.guard';
 
 export const TERCEROS_ROUTES: Routes = [
   {
@@ -10,6 +11,7 @@ export const TERCEROS_ROUTES: Routes = [
   },
   {
     path: 'nuevo',
+    canActivate: [quickAccessGuard],
     loadComponent: () =>
       import('./pages/tercero-form/tercero-form.component').then(
         m => m.TerceroFormComponent,
@@ -17,6 +19,7 @@ export const TERCEROS_ROUTES: Routes = [
   },
   {
     path: ':id/editar',
+    canActivate: [quickAccessGuard],
     loadComponent: () =>
       import('./pages/tercero-form/tercero-form.component').then(
         m => m.TerceroFormComponent,

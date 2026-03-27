@@ -25,6 +25,14 @@ import { ConsecutivoConfig } from '../../../admin/models/consecutivo.model';
 
 interface SelectOption { label: string; value: TipoActividad | null; }
 
+/** Mapeo de TipoActividad (backend inglés) → subtipo de consecutivo (backend español) */
+const TIPO_TO_SUBTIPO: Record<TipoActividad, string> = {
+  labor:       'mano_obra',
+  material:    'material',
+  equipment:   'equipo',
+  subcontract: 'subcontrato',
+};
+
 const UNIDADES_MEDIDA = [
   'hora', 'día', 'semana', 'mes',
   'm²', 'm³', 'ml', 'km',
@@ -61,6 +69,15 @@ export class ActividadListComponent implements OnInit {
   readonly tipoFilter       = signal<TipoActividad | null>(null);
   readonly editingActividad = signal<ActividadDetail | null>(null);
 
+  readonly viewMode = signal<'list' | 'cards'>(
+    (localStorage.getItem('saisuite.actividadesView') as 'list' | 'cards') ?? 'list',
+  );
+
+  setViewMode(mode: 'list' | 'cards'): void {
+    this.viewMode.set(mode);
+    localStorage.setItem('saisuite.actividadesView', mode);
+  }
+
   // Unidad de medida autocomplete
   readonly unidadInputText    = signal('');
   readonly unidadesFiltradas  = computed(() => {
@@ -78,22 +95,24 @@ export class ActividadListComponent implements OnInit {
   readonly filteredConsecutivos = computed(() => {
     const tipo = this.selectedTipoForm();
     if (!tipo) return [];
+    const subtipo = TIPO_TO_SUBTIPO[tipo];
     return this.allConsecutivos().filter(
-      c => c.activo && c.tipo === 'actividad' && c.subtipo === tipo,
+      c => c.activo && c.tipo === 'actividad' && c.subtipo === subtipo,
     );
   });
   readonly consecutivoUnico           = computed(() => { const l = this.filteredConsecutivos(); return l.length === 1 ? l[0] : null; });
   readonly mostrarSelectorConsecutivo = computed(() => this.filteredConsecutivos().length > 1);
+  readonly sinConsecutivos            = computed(() => !!this.selectedTipoForm() && this.filteredConsecutivos().length === 0);
 
   readonly pageSize = 25;
   readonly displayedColumns = ['codigo', 'nombre', 'tipo', 'unidad_medida', 'costo_unitario_base', 'acciones'];
 
   readonly tipoOptions: SelectOption[] = [
     { value: null,          label: 'Todos los tipos' },
-    { value: 'mano_obra',   label: 'Mano de obra'    },
-    { value: 'material',    label: 'Material'         },
-    { value: 'equipo',      label: 'Equipo'           },
-    { value: 'subcontrato', label: 'Subcontrato'      },
+    { value: 'labor',       label: 'Mano de obra'    },
+    { value: 'material',    label: 'Material'        },
+    { value: 'equipment',   label: 'Equipo'          },
+    { value: 'subcontract', label: 'Subcontrato'     },
   ];
 
   readonly tipoOpciones = this.tipoOptions.filter(o => o.value !== null) as { value: TipoActividad; label: string }[];
@@ -215,6 +234,10 @@ export class ActividadListComponent implements OnInit {
 
   guardar(): void {
     if (this.form.invalid) { this.form.markAllAsTouched(); return; }
+    if (!this.editingActividad() && this.sinConsecutivos()) {
+      this.snackBar.open('No hay consecutivo configurado para este tipo de actividad. Créalo en Administración → Consecutivos.', 'Cerrar', { duration: 6000, panelClass: ['snack-error'] });
+      return;
+    }
     this.saving.set(true);
     const val = this.form.getRawValue();
 

@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { quickAccessGuard } from '../../shared/guards/quick-access.guard';
 
 export const ADMIN_ROUTES: Routes = [
   {
@@ -11,11 +12,13 @@ export const ADMIN_ROUTES: Routes = [
       },
       {
         path: 'usuarios/nuevo',
+        canActivate: [quickAccessGuard],
         loadComponent: () =>
           import('./user-form/user-form.component').then(m => m.UserFormComponent),
       },
       {
         path: 'usuarios/:id',
+        canActivate: [quickAccessGuard],
         loadComponent: () =>
           import('./user-form/user-form.component').then(m => m.UserFormComponent),
       },

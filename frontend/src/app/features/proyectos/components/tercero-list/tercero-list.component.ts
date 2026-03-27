@@ -66,7 +66,7 @@ export class TerceroListComponent implements OnInit {
   private dialogRef: MatDialogRef<unknown> | null = null;
 
   readonly form = this.fb.group({
-    rol:  ['' as RolTercero, Validators.required],
+    rol:  [null as RolTercero | null, Validators.required],
     fase: [null as string | null],
   });
 
@@ -112,7 +112,7 @@ export class TerceroListComponent implements OnInit {
     this.service.vincular(this.proyectoId(), {
       tercero_id:     this.terceroSeleccionado.numero_identificacion,
       tercero_nombre: this.terceroSeleccionado.nombre_completo,
-      rol:            val.rol as RolTercero,
+      rol:            val.rol!,
       fase:           val.fase ?? null,
       tercero_fk:     this.terceroSeleccionado.id,
     }).subscribe({

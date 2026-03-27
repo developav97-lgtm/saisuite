@@ -47,7 +47,7 @@
 // ── Chart wrapper ──────────────────────────────────────────────────────────────
 .gv-chart-wrapper {
   overflow-x: auto;
-  overflow-y: hidden;
+  overflow-y: visible;
   border: 1px solid var(--sc-border-color, #e0e0e0);
   border-radius: 8px;
   background: var(--sc-surface, #fff);
@@ -56,6 +56,7 @@
 .gv-chart {
   min-width: 100%;
   display: block;
+  // Frappe Gantt controla el height del SVG — no forzar aquí
 }
 
 // ── Frappe Gantt bar colors per estado ────────────────────────────────────────
