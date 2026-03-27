@@ -11,6 +11,7 @@ from apps.proyectos.models import (
     WorkSession, TimesheetEntry, TaskDependency, ModuleSettings,
     ProjectStatus, PhaseStatus, StakeholderRole, DocumentType,
     MeasurementMode, ActivityType, DependencyType,
+    ResourceAssignment, ResourceCapacity, ResourceAvailability, AvailabilityType,
 )
 
 logger = logging.getLogger(__name__)
@@ -1014,3 +1015,224 @@ class TimesheetEntryCreateSerializer(serializers.Serializer):
         return value
 
 
+# ===========================================================================
+# FEATURE #4 — RESOURCE MANAGEMENT SERIALIZERS
+# ===========================================================================
+
+class ResourceAssignmentListSerializer(serializers.ModelSerializer):
+    """
+    Serializer de listado para ResourceAssignment.
+    Campos mínimos para tablas y calendarios.
+    """
+    usuario_nombre = serializers.SerializerMethodField()
+    usuario_email  = serializers.SerializerMethodField()
+    tarea_codigo   = serializers.CharField(source='tarea.codigo', read_only=True)
+    tarea_nombre   = serializers.CharField(source='tarea.nombre', read_only=True)
+
+    class Meta:
+        model  = ResourceAssignment
+        fields = [
+            'id', 'tarea', 'tarea_codigo', 'tarea_nombre',
+            'usuario', 'usuario_nombre', 'usuario_email',
+            'porcentaje_asignacion', 'fecha_inicio', 'fecha_fin',
+            'activo', 'created_at',
+        ]
+        read_only_fields = ['id', 'created_at']
+
+    def get_usuario_nombre(self, obj: ResourceAssignment) -> str:
+        return obj.usuario.full_name or obj.usuario.email
+
+    def get_usuario_email(self, obj: ResourceAssignment) -> str:
+        return obj.usuario.email
+
+
+class ResourceAssignmentDetailSerializer(serializers.ModelSerializer):
+    """
+    Serializer de detalle para ResourceAssignment.
+    Incluye datos completos del usuario y la tarea para la vista de detalle.
+    """
+    usuario_detail = serializers.SerializerMethodField()
+    tarea_detail   = serializers.SerializerMethodField()
+
+    class Meta:
+        model  = ResourceAssignment
+        fields = [
+            'id', 'tarea', 'tarea_detail',
+            'usuario', 'usuario_detail',
+            'porcentaje_asignacion', 'fecha_inicio', 'fecha_fin',
+            'notas', 'activo', 'created_at', 'updated_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+    def get_usuario_detail(self, obj: ResourceAssignment) -> dict:
+        return {
+            'id':         str(obj.usuario.id),
+            'email':      obj.usuario.email,
+            'nombre':     obj.usuario.full_name or obj.usuario.email,
+        }
+
+    def get_tarea_detail(self, obj: ResourceAssignment) -> dict:
+        return {
+            'id':      str(obj.tarea.id),
+            'codigo':  obj.tarea.codigo,
+            'nombre':  obj.tarea.nombre,
+            'estado':  obj.tarea.estado,
+        }
+
+
+class ResourceAssignmentCreateSerializer(serializers.Serializer):
+    """
+    Serializer de escritura para crear/actualizar asignaciones de recursos.
+    La lógica de validación de solapamiento y conflictos va en ResourceService.
+    """
+    usuario_id            = serializers.UUIDField()
+    porcentaje_asignacion = serializers.DecimalField(max_digits=5, decimal_places=2)
+    fecha_inicio          = serializers.DateField()
+    fecha_fin             = serializers.DateField()
+    notas                 = serializers.CharField(required=False, allow_blank=True, default='')
+
+    def validate_porcentaje_asignacion(self, value):
+        if value <= 0:
+            raise serializers.ValidationError(
+                'El porcentaje de asignación debe ser mayor a 0.'
+            )
+        if value > 100:
+            raise serializers.ValidationError(
+                'El porcentaje de asignación no puede superar 100.'
+            )
+        return value
+
+    def validate(self, attrs):
+        inicio = attrs.get('fecha_inicio')
+        fin    = attrs.get('fecha_fin')
+        if inicio and fin and fin < inicio:
+            raise serializers.ValidationError({
+                'fecha_fin': 'La fecha de fin no puede ser anterior a la fecha de inicio.'
+            })
+        return attrs
+
+
+class ResourceCapacitySerializer(serializers.ModelSerializer):
+    """
+    Serializer para ResourceCapacity — lectura y escritura.
+    La validación de solapamiento de períodos va en ResourceCapacityService.
+    """
+    usuario_nombre = serializers.SerializerMethodField()
+
+    class Meta:
+        model  = ResourceCapacity
+        fields = [
+            'id', 'usuario', 'usuario_nombre',
+            'horas_por_semana', 'fecha_inicio', 'fecha_fin',
+            'activo', 'created_at', 'updated_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+    def get_usuario_nombre(self, obj: ResourceCapacity) -> str:
+        return obj.usuario.full_name or obj.usuario.email
+
+    def validate_horas_por_semana(self, value):
+        if value <= 0:
+            raise serializers.ValidationError(
+                'Las horas por semana deben ser mayores a 0.'
+            )
+        if value > 168:
+            raise serializers.ValidationError(
+                'Las horas por semana no pueden superar 168 (7 días × 24h).'
+            )
+        return value
+
+    def validate(self, attrs):
+        inicio = attrs.get('fecha_inicio')
+        fin    = attrs.get('fecha_fin')
+        if inicio and fin and fin <= inicio:
+            raise serializers.ValidationError({
+                'fecha_fin': 'La fecha de fin debe ser posterior a la fecha de inicio.'
+            })
+        return attrs
+
+
+class ResourceAvailabilitySerializer(serializers.ModelSerializer):
+    """
+    Serializer de lectura para ResourceAvailability.
+    """
+    usuario_nombre  = serializers.SerializerMethodField()
+    tipo_display    = serializers.CharField(source='get_tipo_display', read_only=True)
+    aprobado_por_nombre = serializers.SerializerMethodField()
+
+    class Meta:
+        model  = ResourceAvailability
+        fields = [
+            'id', 'usuario', 'usuario_nombre',
+            'tipo', 'tipo_display',
+            'fecha_inicio', 'fecha_fin', 'descripcion',
+            'aprobado', 'aprobado_por', 'aprobado_por_nombre', 'fecha_aprobacion',
+            'activo', 'created_at', 'updated_at',
+        ]
+        read_only_fields = [
+            'id', 'aprobado', 'aprobado_por', 'fecha_aprobacion',
+            'created_at', 'updated_at',
+        ]
+
+    def get_usuario_nombre(self, obj: ResourceAvailability) -> str:
+        return obj.usuario.full_name or obj.usuario.email
+
+    def get_aprobado_por_nombre(self, obj: ResourceAvailability) -> str | None:
+        if not obj.aprobado_por:
+            return None
+        return obj.aprobado_por.full_name or obj.aprobado_por.email
+
+
+class ResourceAvailabilityCreateSerializer(serializers.Serializer):
+    """
+    Serializer de escritura para registrar ausencias.
+    La validación de solapamiento del mismo tipo va en ResourceAvailabilityService.
+    """
+    usuario_id   = serializers.UUIDField()
+    tipo         = serializers.ChoiceField(choices=AvailabilityType.choices)
+    fecha_inicio = serializers.DateField()
+    fecha_fin    = serializers.DateField()
+    descripcion  = serializers.CharField(required=False, allow_blank=True, default='')
+
+    def validate(self, attrs):
+        inicio = attrs.get('fecha_inicio')
+        fin    = attrs.get('fecha_fin')
+        if inicio and fin and fin < inicio:
+            raise serializers.ValidationError({
+                'fecha_fin': 'La fecha de fin no puede ser anterior a la fecha de inicio.'
+            })
+        return attrs
+
+
+class WorkloadSummarySerializer(serializers.Serializer):
+    """
+    Serializer de solo lectura para el resumen de carga de un usuario.
+    Datos calculados por ResourceService.calculate_user_workload().
+    """
+    usuario_id           = serializers.UUIDField()
+    periodo_inicio       = serializers.DateField()
+    periodo_fin          = serializers.DateField()
+    horas_capacidad      = serializers.DecimalField(max_digits=10, decimal_places=2)
+    horas_asignadas      = serializers.DecimalField(max_digits=10, decimal_places=2)
+    horas_registradas    = serializers.DecimalField(max_digits=10, decimal_places=2)
+    porcentaje_utilizacion = serializers.DecimalField(max_digits=6, decimal_places=2)
+    conflictos           = serializers.ListField(child=serializers.DictField(), default=list)
+
+
+class TeamAvailabilityUserSerializer(serializers.Serializer):
+    """Entrada de un usuario en el timeline del equipo."""
+    usuario_id     = serializers.UUIDField()
+    usuario_nombre = serializers.CharField()
+    usuario_email  = serializers.EmailField()
+    asignaciones   = serializers.ListField(child=serializers.DictField())
+    ausencias      = serializers.ListField(child=serializers.DictField())
+
+
+class TeamAvailabilitySerializer(serializers.Serializer):
+    """
+    Serializer de solo lectura para el timeline del equipo de un proyecto.
+    Datos calculados por ResourceService.get_team_availability_timeline().
+    """
+    periodo_inicio = serializers.DateField()
+    periodo_fin    = serializers.DateField()
+    usuarios       = TeamAvailabilityUserSerializer(many=True)

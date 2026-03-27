@@ -244,6 +244,26 @@
         </div>
       </mat-tab>
 
+      <!-- Tab 8: Equipo -->
+      <mat-tab label="Equipo">
+        <div class="pd-tab-content">
+          <app-team-timeline [proyectoId]="p.id" />
+        </div>
+      </mat-tab>
+
+      <!-- Tab 9: Analytics — lazy con @defer on idle -->
+      <mat-tab label="Analytics">
+        <div class="pd-tab-content">
+          @defer (on idle) {
+            <app-project-analytics-dashboard [projectId]="p.id" />
+          } @placeholder {
+            <div class="sc-loading-state" style="height: 200px;">
+              <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+            </div>
+          }
+        </div>
+      </mat-tab>
+
     </mat-tab-group>
   </div>
 } @else {

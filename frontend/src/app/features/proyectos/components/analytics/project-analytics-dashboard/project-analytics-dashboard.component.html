@@ -1,0 +1,128 @@
+<div class="sc-page">
+
+  <!-- Header -->
+  <div class="sc-page-header">
+    <h2 class="sc-page-header__title">Analytics</h2>
+    <div class="sc-page-header__actions">
+      <button mat-icon-button (click)="loadData()" matTooltip="Actualizar datos">
+        <mat-icon>refresh</mat-icon>
+      </button>
+      <button mat-icon-button (click)="exportExcel()" matTooltip="Exportar a Excel">
+        <mat-icon>download</mat-icon>
+      </button>
+    </div>
+  </div>
+
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate" class="pad-progress"></mat-progress-bar>
+  }
+
+  @if (!loading() && kpis(); as k) {
+
+    <!-- KPI Cards -->
+    <div class="pad-kpi-grid">
+
+      <mat-card class="pad-kpi-card">
+        <mat-card-content>
+          <mat-icon class="pad-kpi__icon">task_alt</mat-icon>
+          <p class="pad-kpi__label">Completud</p>
+          <span class="pad-kpi__value">{{ k.completion_rate | number:'1.0-0' }}%</span>
+          <span [class]="'pad-kpi__trend ' + completionClass()">
+            {{ k.completed_tasks }} / {{ k.total_tasks }} tareas
+          </span>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="pad-kpi-card">
+        <mat-card-content>
+          <mat-icon class="pad-kpi__icon">schedule</mat-icon>
+          <p class="pad-kpi__label">On-Time</p>
+          <span class="pad-kpi__value">{{ k.on_time_rate | number:'1.0-0' }}%</span>
+          <span [class]="'pad-kpi__trend ' + onTimeClass()">
+            {{ k.overdue_tasks }} vencidas
+          </span>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="pad-kpi-card">
+        <mat-card-content>
+          <mat-icon class="pad-kpi__icon">trending_up</mat-icon>
+          <p class="pad-kpi__label">Velocidad</p>
+          <span class="pad-kpi__value">{{ k.velocity | number:'1.0-1' }}/sem</span>
+          <span class="pad-kpi__trend pad-kpi__trend--up">tareas completadas</span>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="pad-kpi-card">
+        <mat-card-content>
+          <mat-icon class="pad-kpi__icon">attach_money</mat-icon>
+          <p class="pad-kpi__label">Horas Burn Rate</p>
+          <span class="pad-kpi__value">{{ k.burn_rate | number:'1.0-1' }}h/sem</span>
+          <span [class]="'pad-kpi__trend ' + budgetClass_()">
+            Varianza: {{ budgetVarianceFmt() }}
+          </span>
+        </mat-card-content>
+      </mat-card>
+
+    </div>
+
+    <!-- Charts Grid -->
+    <div class="pad-charts-grid">
+
+      <mat-card class="pad-chart-card">
+        <mat-card-header>
+          <mat-card-title>Burn Down</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="pad-chart-container" role="img" aria-label="Gráfico burn down del proyecto">
+            <canvas #burnDownCanvas></canvas>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="pad-chart-card">
+        <mat-card-header>
+          <mat-card-title>Velocidad del equipo</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="pad-chart-container" role="img" aria-label="Gráfico de velocidad por semana">
+            <canvas #velocityCanvas></canvas>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="pad-chart-card">
+        <mat-card-header>
+          <mat-card-title>Distribución de tareas</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="pad-chart-container" role="img" aria-label="Distribución de tareas por estado">
+            <canvas #taskDistCanvas></canvas>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="pad-chart-card">
+        <mat-card-header>
+          <mat-card-title>Utilización de recursos</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="pad-chart-container" role="img" aria-label="Utilización de recursos del equipo">
+            <canvas #resourceCanvas></canvas>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+    </div>
+
+  }
+
+  @if (!loading() && !kpis()) {
+    <div class="sc-empty-state">
+      <mat-icon class="sc-empty-state__icon">analytics</mat-icon>
+      <p class="sc-empty-state__title">Sin datos de analytics</p>
+      <p class="sc-empty-state__subtitle">Este proyecto no tiene tareas o timesheet registrados.</p>
+    </div>
+  }
+
+</div>

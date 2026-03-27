@@ -182,7 +182,12 @@
       "Bash(sed -n '15,22p' /Users/juanandrade/Desktop/saisuite/frontend/src/app/features/proyectos/components/hito-list/hito-list.component.html)",
       "Bash(sed -n '8,14p' /Users/juanandrade/Desktop/saisuite/frontend/src/app/features/proyectos/components/actividad-proyecto-list/actividad-proyecto-list.component.html)",
       "Bash(curl -sv -X POST http://localhost:8000/api/v1/auth/token/ -H \"Content-Type: application/json\" -d '{\"\"\"\"email\"\"\"\":\"\"\"\"admin@andina.com\"\"\"\",\"\"\"\"password\"\"\"\":\"\"\"\"Admin1234!\"\"\"\"}')",
-      "Bash(curl -s -X POST http://localhost:8000/api/v1/auth/login/ -H \"Content-Type: application/json\" -d '{\"\"\"\"email\"\"\"\":\"\"\"\"admin@andina.com\"\"\"\",\"\"\"\"password\"\"\"\":\"\"\"\"Admin1234!\"\"\"\"}')"
+      "Bash(curl -s -X POST http://localhost:8000/api/v1/auth/login/ -H \"Content-Type: application/json\" -d '{\"\"\"\"email\"\"\"\":\"\"\"\"admin@andina.com\"\"\"\",\"\"\"\"password\"\"\"\":\"\"\"\"Admin1234!\"\"\"\"}')",
+      "Bash(docker exec:*)",
+      "Bash(node fase3.js)",
+      "Bash(ls /tmp/saisuite-test/fase3/*.png)",
+      "Bash(open:*)",
+      "Bash(/Users/juanandrade/Desktop/saisuite/ERRORS.md:*)"
     ]
   }
 }

@@ -1,0 +1,123 @@
+<!-- Team Timeline — Tab Equipo en ProyectoDetail -->
+
+@if (loading()) {
+  <mat-progress-bar mode="indeterminate" class="tt-progress" />
+}
+
+<div class="tt-container">
+
+  <!-- Filtro de fechas -->
+  <div class="tt-filters">
+    <mat-form-field appearance="outline" class="tt-date-field">
+      <mat-label>Desde</mat-label>
+      <input matInput [matDatepicker]="pickerDesde" [(ngModel)]="fechaInicio">
+      <mat-datepicker-toggle matIconSuffix [for]="pickerDesde" />
+      <mat-datepicker #pickerDesde />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="tt-date-field">
+      <mat-label>Hasta</mat-label>
+      <input matInput [matDatepicker]="pickerHasta" [(ngModel)]="fechaFin">
+      <mat-datepicker-toggle matIconSuffix [for]="pickerHasta" />
+      <mat-datepicker #pickerHasta />
+    </mat-form-field>
+
+    <button mat-stroked-button color="primary" (click)="cargar()" [disabled]="loading()">
+      <mat-icon>refresh</mat-icon>
+      Actualizar
+    </button>
+  </div>
+
+  <!-- Header con conteo -->
+  <div class="tt-header">
+    <span class="tt-title">
+      <mat-icon>people</mat-icon>
+      Equipo del proyecto
+      @if (totalMiembros() > 0) {
+        <span class="tt-badge">{{ totalMiembros() }}</span>
+      }
+    </span>
+  </div>
+
+  <!-- Lista de miembros -->
+  @if (!loading() && team().length > 0) {
+    <div class="tt-list">
+      @for (usuario of team(); track usuario.usuario_id) {
+        <div class="tt-card" [class.tt-card--sobrecargado]="totalPorcentaje(usuario) > 100">
+
+          <!-- Avatar + Nombre -->
+          <div class="tt-card-header">
+            <div class="tt-avatar">
+              {{ usuario.usuario_nombre.charAt(0).toUpperCase() }}
+            </div>
+            <div class="tt-user-info">
+              <span class="tt-nombre">{{ usuario.usuario_nombre }}</span>
+              @if (totalPorcentaje(usuario) > 100) {
+                <span class="tt-alerta" matTooltip="Sobrecarga de asignaciones en este período">
+                  <mat-icon>warning</mat-icon>
+                  Sobrecargado ({{ totalPorcentaje(usuario) }}%)
+                </span>
+              }
+            </div>
+            <span class="tt-carga-badge"
+              [class.tt-carga-badge--alto]="totalPorcentaje(usuario) >= 80"
+              [class.tt-carga-badge--sobrecargado]="totalPorcentaje(usuario) > 100">
+              {{ totalPorcentaje(usuario) }}%
+            </span>
+          </div>
+
+          <!-- Barra de carga total -->
+          <div class="tt-bar-track">
+            <div class="tt-bar-fill"
+              [style.width.%]="totalPorcentaje(usuario) > 100 ? 100 : totalPorcentaje(usuario)"
+              [class.tt-bar-fill--alto]="totalPorcentaje(usuario) >= 80"
+              [class.tt-bar-fill--sobrecargado]="totalPorcentaje(usuario) > 100">
+            </div>
+          </div>
+
+          <!-- Asignaciones -->
+          @if (usuario.asignaciones.length > 0) {
+            <div class="tt-asignaciones">
+              @for (a of usuario.asignaciones; track a.tarea_id) {
+                <div class="tt-asignacion-item"
+                  [matTooltip]="a.fecha_inicio + ' → ' + a.fecha_fin">
+                  <mat-icon class="tt-icon-task">task_alt</mat-icon>
+                  <span class="tt-tarea-nombre">{{ a.tarea_nombre }}</span>
+                  <span class="tt-tarea-pct">{{ a.porcentaje_asignacion }}%</span>
+                </div>
+              }
+            </div>
+          } @else {
+            <p class="tt-sin-tareas">Sin tareas asignadas en el período</p>
+          }
+
+          <!-- Ausencias -->
+          @if (usuario.ausencias.length > 0) {
+            <div class="tt-ausencias">
+              <span class="tt-ausencias-label">
+                <mat-icon class="tt-icon-small">event_busy</mat-icon>
+                Ausencias:
+              </span>
+              @for (aus of usuario.ausencias; track aus.fecha_inicio) {
+                <span class="tt-ausencia-badge"
+                  [matTooltip]="aus.descripcion">
+                  {{ aus.tipo_display }}: {{ aus.fecha_inicio | date:'dd/MM' }} → {{ aus.fecha_fin | date:'dd/MM' }}
+                </span>
+              }
+            </div>
+          }
+
+        </div>
+      }
+    </div>
+  }
+
+  <!-- Empty state -->
+  @if (!loading() && team().length === 0) {
+    <div class="sc-empty-state tt-empty">
+      <mat-icon>group_off</mat-icon>
+      <p>No hay miembros con asignaciones en este período.</p>
+    </div>
+  }
+
+</div>

@@ -1,0 +1,255 @@
+.tt-progress {
+  margin-bottom: 0.5rem;
+}
+
+.tt-container {
+  padding: 1rem 0;
+}
+
+.tt-filters {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.tt-date-field {
+  width: 160px;
+}
+
+.tt-header {
+  margin-bottom: 1rem;
+}
+
+.tt-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--sc-text-primary);
+
+  mat-icon {
+    color: var(--sc-primary);
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+  }
+}
+
+.tt-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: var(--sc-primary);
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.tt-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.tt-card {
+  padding: 1rem;
+  border: 1px solid var(--sc-border);
+  border-radius: 8px;
+  background: var(--sc-surface);
+  transition: box-shadow 0.15s ease;
+
+  &:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  }
+
+  &--sobrecargado {
+    border-color: var(--sc-error, #e53935);
+    background: rgba(229, 57, 53, 0.04);
+  }
+}
+
+.tt-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.tt-avatar {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--sc-primary-light, #e3f2fd);
+  color: var(--sc-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.tt-user-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.tt-nombre {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--sc-text-primary);
+}
+
+.tt-alerta {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--sc-error, #e53935);
+
+  mat-icon {
+    font-size: 14px;
+    width: 14px;
+    height: 14px;
+  }
+}
+
+.tt-carga-badge {
+  padding: 3px 10px;
+  border-radius: 12px;
+  background: var(--sc-primary-light, #e3f2fd);
+  color: var(--sc-primary);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+
+  &--alto {
+    background: rgba(239, 108, 0, 0.12);
+    color: var(--sc-warn, #ef6c00);
+  }
+
+  &--sobrecargado {
+    background: rgba(229, 57, 53, 0.12);
+    color: var(--sc-error, #e53935);
+  }
+}
+
+.tt-bar-track {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--sc-border);
+  overflow: hidden;
+  margin-bottom: 0.75rem;
+}
+
+.tt-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--sc-primary);
+  transition: width 0.3s ease;
+
+  &--alto {
+    background: var(--sc-warn, #ef6c00);
+  }
+
+  &--sobrecargado {
+    background: var(--sc-error, #e53935);
+  }
+}
+
+.tt-asignaciones {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.tt-asignacion-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 13px;
+  color: var(--sc-text-primary);
+  padding: 0.25rem 0;
+  border-bottom: 1px dashed var(--sc-border);
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.tt-icon-task {
+  font-size: 15px;
+  width: 15px;
+  height: 15px;
+  color: var(--sc-primary);
+  flex-shrink: 0;
+}
+
+.tt-tarea-nombre {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tt-tarea-pct {
+  font-weight: 600;
+  color: var(--sc-primary);
+  font-size: 12px;
+}
+
+.tt-sin-tareas {
+  font-size: 12px;
+  color: var(--sc-text-secondary);
+  font-style: italic;
+  margin: 0;
+}
+
+.tt-ausencias {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--sc-border);
+}
+
+.tt-ausencias-label {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 12px;
+  color: var(--sc-text-secondary);
+  font-weight: 600;
+}
+
+.tt-icon-small {
+  font-size: 14px;
+  width: 14px;
+  height: 14px;
+}
+
+.tt-ausencia-badge {
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: rgba(239, 108, 0, 0.1);
+  color: var(--sc-warn, #ef6c00);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: default;
+}
+
+.tt-empty {
+  margin-top: 2rem;
+}

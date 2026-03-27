@@ -1,0 +1,80 @@
+<!-- Resource Assignment Form Dialog -->
+<h2 mat-dialog-title>
+  <mat-icon>person_add</mat-icon>
+  Asignar recurso
+</h2>
+
+<mat-dialog-content>
+  <form [formGroup]="form" class="raf-form">
+
+    <!-- Usuario -->
+    <mat-form-field appearance="outline" class="raf-full">
+      <mat-label>Usuario</mat-label>
+      <mat-select formControlName="usuario_id">
+        @for (u of usuarios(); track u.id) {
+          <mat-option [value]="u.id">{{ u.full_name }} ({{ u.email }})</mat-option>
+        }
+      </mat-select>
+      <mat-icon matSuffix>person</mat-icon>
+      @if (form.get('usuario_id')?.hasError('required') && form.get('usuario_id')?.touched) {
+        <mat-error>Selecciona un usuario</mat-error>
+      }
+    </mat-form-field>
+
+    <!-- Porcentaje de asignación -->
+    <mat-form-field appearance="outline" class="raf-full">
+      <mat-label>Porcentaje de asignación</mat-label>
+      <input matInput type="number" formControlName="porcentaje_asignacion" min="0.01" max="100" step="5">
+      <span matSuffix>%</span>
+      @if (form.get('porcentaje_asignacion')?.hasError('required') && form.get('porcentaje_asignacion')?.touched) {
+        <mat-error>Campo requerido</mat-error>
+      }
+      @if (form.get('porcentaje_asignacion')?.hasError('min') || form.get('porcentaje_asignacion')?.hasError('max')) {
+        <mat-error>Debe estar entre 0.01 y 100</mat-error>
+      }
+    </mat-form-field>
+
+    <!-- Fechas -->
+    <div class="raf-row">
+      <mat-form-field appearance="outline" class="raf-half">
+        <mat-label>Fecha inicio</mat-label>
+        <input matInput [matDatepicker]="pickerInicio" formControlName="fecha_inicio">
+        <mat-datepicker-toggle matIconSuffix [for]="pickerInicio" />
+        <mat-datepicker #pickerInicio />
+        @if (form.get('fecha_inicio')?.hasError('required') && form.get('fecha_inicio')?.touched) {
+          <mat-error>Requerida</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="raf-half">
+        <mat-label>Fecha fin</mat-label>
+        <input matInput [matDatepicker]="pickerFin" formControlName="fecha_fin">
+        <mat-datepicker-toggle matIconSuffix [for]="pickerFin" />
+        <mat-datepicker #pickerFin />
+        @if (form.get('fecha_fin')?.hasError('required') && form.get('fecha_fin')?.touched) {
+          <mat-error>Requerida</mat-error>
+        }
+      </mat-form-field>
+    </div>
+
+    <!-- Notas -->
+    <mat-form-field appearance="outline" class="raf-full">
+      <mat-label>Notas (opcional)</mat-label>
+      <textarea matInput formControlName="notas" rows="3" maxlength="500"></textarea>
+      <mat-icon matSuffix>notes</mat-icon>
+    </mat-form-field>
+
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="cancelar()" [disabled]="saving()">Cancelar</button>
+  <button mat-raised-button color="primary" (click)="guardar()" [disabled]="saving()">
+    @if (saving()) {
+      <mat-spinner diameter="18" />
+    } @else {
+      <mat-icon>save</mat-icon>
+    }
+    Asignar
+  </button>
+</mat-dialog-actions>

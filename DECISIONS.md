@@ -34,6 +34,27 @@
 
 ---
 
+## DEC-025: Definición de Sobreasignación de Recursos — Feature #4
+**Fecha:** 2026-03-26
+**Estado:** ✅ Decidido
+
+**Contexto:** Feature #4 (Resource Management) requiere detectar cuándo un usuario tiene >100% de su capacidad asignada. Se evaluaron dos definiciones posibles.
+
+**Opciones consideradas:**
+- Opción A (Diaria): sobreasignado si la suma de `porcentaje_asignacion` en **cualquier día** del período supera 100%
+- Opción B (Semanal): sobreasignado si el promedio semanal supera 100%
+
+**Decisión:** Opción A — detección **diaria**.
+
+**Razón:**
+1. Dominio físico: en construcción, un recurso no puede estar en dos obras el mismo día. La sobreasignación diaria es un problema operativo real.
+2. El algoritmo aprobado (`detect_overallocation_conflicts`) ya trabaja por día — es la implementación natural sin lógica adicional.
+3. Conservador es mejor para MVP: mejor reportar conflictos de más (ignorables por el usuario) que ocultar conflictos reales.
+
+**Consecuencia:** La función `detect_overallocation_conflicts(user_id, company_id, start_date, end_date, threshold=100.00)` reporta cada día donde `SUM(porcentaje_asignacion) > threshold`. El parámetro `threshold` es configurable para permitir flexibilización futura por empresa (ej: 110% para permitir horas extra). Los tests de `BK-27` deben cubrir: solapamiento parcial de días, fin de semana (sin asignación), threshold exactamente en 100%, y múltiples proyectos simultáneos.
+
+---
+
 ## DEC-012: Terceros y Consecutivos como Módulos Transversales
 
 **Fecha:** 19 Marzo 2026

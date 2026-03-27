@@ -548,6 +548,19 @@
             </div>
           </mat-tab>
 
+          <!-- Tab: Recursos -->
+          <mat-tab>
+            <ng-template mat-tab-label>
+              <mat-icon class="td-tab-icon">people</mat-icon>
+              Recursos
+            </ng-template>
+            <div class="td-tab-content">
+              <app-resource-assignment-panel
+                [tareaId]="tarea()!.id"
+                [tareaEstado]="tarea()!.estado" />
+            </div>
+          </mat-tab>
+
           <!-- Tab: Comentarios -->
           <mat-tab>
             <ng-template mat-tab-label>

@@ -122,3 +122,32 @@ if (this.themeService.isDarkMode()) {  // ❌ Error
 ```typescript
 if (this.themeService.isDark) {  // ✅ Correcto
 ```
+## [2026-03-27] ERROR: get_full_name() no existe en modelo User personalizado
+
+**Síntoma:** `AttributeError: 'User' object has no attribute 'get_full_name'. Did you mean: 'full_name'?` al serializar ResourceCapacity/ResourceAssignment/ResourceAvailability.
+
+**Causa:** El modelo `User` de este proyecto es completamente personalizado y expone el nombre completo como propiedad `full_name` (no como método `get_full_name()` del AbstractUser de Django estándar).
+
+**Fix:** Reemplazar todas las llamadas `obj.usuario.get_full_name() or obj.usuario.email` por `obj.usuario.full_name or obj.usuario.email` en serializers.py y resource_services.py.
+
+**Prevención:** Al crear serializers con campos de usuario, usar siempre `user.full_name` en lugar de `user.get_full_name()`. Buscar en DECISIONS.md o en apps/users/models.py antes de asumir que existe `get_full_name()`.
+
+## [2026-03-27] ERROR: Campo usuario_id faltante en ResourceAvailabilityCreateSerializer
+
+**Síntoma:** `KeyError: 'usuario_id'` en `ResourceAvailabilityViewSet.create()` al llamar `d['usuario_id']`.
+
+**Causa:** El campo `usuario_id` se omitió por error en la definición de `ResourceAvailabilityCreateSerializer` (solo tenía `tipo`, `fecha_inicio`, `fecha_fin`, `descripcion`).
+
+**Fix:** Agregar `usuario_id = serializers.UUIDField()` como primer campo del serializer.
+
+**Prevención:** Al definir serializers de escritura que llaman a servicios con `usuario_id`, verificar que ese campo esté declarado en el serializer ANTES de la primera prueba.
+
+## [2026-03-27] ERROR: bool('False') == True — conversión de boolean en form data
+
+**Síntoma:** El endpoint `POST /resources/availability/{pk}/approve/` siempre aprobaba (`aprobado=True`) aunque el body enviara `{'aprobar': False}`.
+
+**Causa:** Cuando el test envía `{'aprobar': False}` como multipart form data, DRF recibe la cadena `'False'` (string). `bool('False')` en Python evalúa a `True` porque es un string no vacío.
+
+**Fix:** Normalizar el valor en la vista: `if isinstance(aprobar_raw, str): aprobar = aprobar_raw.lower() not in ('false', '0', 'no', '')`.
+
+**Prevención:** Cuando un endpoint recibe un boolean via form data (no JSON), nunca usar `bool(value)` directamente. Usar el patrón de normalización arriba, o enviar JSON explícito con `content_type='application/json'` en los tests.

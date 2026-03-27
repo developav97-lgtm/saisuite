@@ -57,6 +57,23 @@ from apps.proyectos.views import (
     TaskViewSet,
     TaskTagViewSet,
     TimesheetViewSet,
+    ResourceAssignmentViewSet,
+    ResourceCapacityViewSet,
+    ResourceAvailabilityViewSet,
+    WorkloadView,
+    TeamAvailabilityView,
+    UserCalendarView,
+)
+from apps.proyectos.analytics_views import (
+    ProjectKPIsView,
+    ProjectTaskDistributionView,
+    ProjectVelocityView,
+    ProjectBurnRateView,
+    ProjectBurnDownView,
+    ProjectResourceUtilizationView,
+    ProjectTimelineView,
+    CompareProjectsView,
+    ExportExcelView,
 )
 
 # ── Main project router ────────────────────────────────────────────────────────
@@ -154,6 +171,128 @@ urlpatterns = [
 
     # ── Module configuration ──────────────────────────────────────────────
     path('config/', ModuleSettingsView.as_view(), name='projects-config'),
+
+    # ── Resource Management — Feature #4 ─────────────────────────────────
+    # Assignments (nested under task)
+    path(
+        'tasks/<uuid:task_pk>/assignments/',
+        ResourceAssignmentViewSet.as_view({'get': 'list', 'post': 'create'}),
+        name='task-assignments-list',
+    ),
+    path(
+        'tasks/<uuid:task_pk>/assignments/<uuid:pk>/',
+        ResourceAssignmentViewSet.as_view({'get': 'retrieve', 'delete': 'destroy'}),
+        name='task-assignments-detail',
+    ),
+    path(
+        'tasks/<uuid:task_pk>/assignments/check-overallocation/',
+        ResourceAssignmentViewSet.as_view({'get': 'check_overallocation'}),
+        name='task-assignments-check-overallocation',
+    ),
+
+    # Capacity
+    path(
+        'resources/capacity/',
+        ResourceCapacityViewSet.as_view({'get': 'list', 'post': 'create'}),
+        name='resource-capacity-list',
+    ),
+    path(
+        'resources/capacity/<uuid:pk>/',
+        ResourceCapacityViewSet.as_view({
+            'get': 'retrieve',
+            'patch': 'partial_update',
+            'delete': 'destroy',
+        }),
+        name='resource-capacity-detail',
+    ),
+
+    # Availability (ausencias)
+    path(
+        'resources/availability/',
+        ResourceAvailabilityViewSet.as_view({'get': 'list', 'post': 'create'}),
+        name='resource-availability-list',
+    ),
+    path(
+        'resources/availability/<uuid:pk>/',
+        ResourceAvailabilityViewSet.as_view({'get': 'retrieve', 'delete': 'destroy'}),
+        name='resource-availability-detail',
+    ),
+    path(
+        'resources/availability/<uuid:pk>/approve/',
+        ResourceAvailabilityViewSet.as_view({'post': 'approve'}),
+        name='resource-availability-approve',
+    ),
+
+    # Workload summary
+    path(
+        'resources/workload/',
+        WorkloadView.as_view(),
+        name='resource-workload',
+    ),
+
+    # User calendar
+    path(
+        'resources/calendar/',
+        UserCalendarView.as_view(),
+        name='resource-calendar',
+    ),
+
+    # Team availability timeline (nested under project)
+    path(
+        '<uuid:proyecto_pk>/team-availability/',
+        TeamAvailabilityView.as_view(),
+        name='project-team-availability',
+    ),
+
+    # ── Analytics — Feature #5 ────────────────────────────────────────────
+    # Project-scoped analytics
+    path(
+        '<uuid:project_pk>/analytics/kpis/',
+        ProjectKPIsView.as_view(),
+        name='project-analytics-kpis',
+    ),
+    path(
+        '<uuid:project_pk>/analytics/task-distribution/',
+        ProjectTaskDistributionView.as_view(),
+        name='project-analytics-task-distribution',
+    ),
+    path(
+        '<uuid:project_pk>/analytics/velocity/',
+        ProjectVelocityView.as_view(),
+        name='project-analytics-velocity',
+    ),
+    path(
+        '<uuid:project_pk>/analytics/burn-rate/',
+        ProjectBurnRateView.as_view(),
+        name='project-analytics-burn-rate',
+    ),
+    path(
+        '<uuid:project_pk>/analytics/burn-down/',
+        ProjectBurnDownView.as_view(),
+        name='project-analytics-burn-down',
+    ),
+    path(
+        '<uuid:project_pk>/analytics/resource-utilization/',
+        ProjectResourceUtilizationView.as_view(),
+        name='project-analytics-resource-utilization',
+    ),
+    path(
+        '<uuid:project_pk>/analytics/timeline/',
+        ProjectTimelineView.as_view(),
+        name='project-analytics-timeline',
+    ),
+
+    # Cross-project analytics (no project_pk)
+    path(
+        'analytics/compare/',
+        CompareProjectsView.as_view(),
+        name='analytics-compare-projects',
+    ),
+    path(
+        'analytics/export-excel/',
+        ExportExcelView.as_view(),
+        name='analytics-export-excel',
+    ),
 
     # ── Main project router ───────────────────────────────────────────────
     path('', include(project_router.urls)),

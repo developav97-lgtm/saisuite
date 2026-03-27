@@ -26,6 +26,7 @@ openai==1.35.14
 Pillow==10.4.0
 python-dateutil==2.9.0
 pytz==2024.1
+openpyxl==3.1.5
 
 # Dev / Testing
 pytest==8.2.2

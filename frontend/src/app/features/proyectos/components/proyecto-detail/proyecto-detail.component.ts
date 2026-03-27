@@ -14,6 +14,9 @@ import { DocumentoListComponent } from '../documento-list/documento-list.compone
 import { HitoListComponent } from '../hito-list/hito-list.component';
 import { ActividadProyectoListComponent } from '../actividad-proyecto-list/actividad-proyecto-list.component';
 import { GanttViewComponent } from '../gantt-view/gantt-view.component';
+import { TeamTimelineComponent } from '../team-timeline/team-timeline.component';
+import { ProjectAnalyticsDashboardComponent } from '../analytics/project-analytics-dashboard/project-analytics-dashboard.component';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { ConfirmDialogComponent } from '../../../../shared/components/confirm-dialog/confirm-dialog.component';
 
 @Component({
@@ -24,13 +27,15 @@ import { ConfirmDialogComponent } from '../../../../shared/components/confirm-di
   imports: [
     CommonModule,
     RouterLink,
-    MatTabsModule, MatButtonModule, MatIconModule,
+    MatTabsModule, MatButtonModule, MatIconModule, MatProgressBarModule,
     FaseListComponent,
     TerceroListComponent,
     DocumentoListComponent,
     HitoListComponent,
     ActividadProyectoListComponent,
     GanttViewComponent,
+    TeamTimelineComponent,
+    ProjectAnalyticsDashboardComponent,
   ],
 })
 export class ProyectoDetailComponent implements OnInit {

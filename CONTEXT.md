@@ -1,7 +1,7 @@
 # CONTEXT.md - Estado del Proyecto Saicloud
 
-**Última actualización:** 26 Marzo 2026
-**Sesión:** Rename Inglés Completo — apps/proyectos (REFT-01 a REFT-21)
+**Última actualización:** 27 Marzo 2026
+**Sesión:** Feature #5 — Reporting & Analytics (Completa)
 
 ---
 
@@ -11,7 +11,80 @@
 - **Nombre:** Saicloud (SaiSuite)
 - **Stack:** Django 5 + Angular 18 + PostgreSQL 16 + n8n + AWS
 - **Fase:** Desarrollo activo
-- **Último milestone:** Refactor arquitectura Proyectos → Fases → Tareas + Actividades Saiopen
+- **Último milestone:** Feature #5 — Reporting & Analytics completa (9 endpoints, 4 gráficos Chart.js, exportación Excel)
+
+---
+
+## ✅ COMPLETADO (27 Marzo 2026) — Feature #5: Reporting & Analytics
+
+### Backend completado
+- ✅ **analytics_services.py**: 8 funciones — `get_project_kpis`, `get_task_distribution`, `get_velocity_data`, `get_burn_rate_data`, `get_burn_down_data`, `get_resource_utilization`, `compare_projects`, `get_project_timeline`
+- ✅ **analytics_views.py**: 9 APIViews — `ProjectKPIsView`, `ProjectTaskDistributionView`, `ProjectVelocityView`, `ProjectBurnRateView`, `ProjectBurnDownView`, `ProjectResourceUtilizationView`, `ProjectTimelineView`, `CompareProjectsView`, `ExportExcelView`
+- ✅ **analytics_serializers.py**: 13 serializers read-only + 2 request serializers (`CompareProjectsRequestSerializer`, `ExportExcelRequestSerializer`)
+- ✅ **urls.py**: 9 nuevas rutas bajo `# Analytics — Feature #5`
+- ✅ Zero nuevos modelos — todo calculado desde datos existentes
+- ✅ Exportación Excel con openpyxl (3 hojas: Summary, KPIs, Task Distribution)
+
+### Endpoints disponibles — Feature #5
+- `GET  /api/v1/projects/{id}/analytics/kpis/`
+- `GET  /api/v1/projects/{id}/analytics/task-distribution/`
+- `GET  /api/v1/projects/{id}/analytics/velocity/?periods=8`
+- `GET  /api/v1/projects/{id}/analytics/burn-rate/?periods=8`
+- `GET  /api/v1/projects/{id}/analytics/burn-down/?granularity=week`
+- `GET  /api/v1/projects/{id}/analytics/resource-utilization/`
+- `GET  /api/v1/projects/{id}/analytics/timeline/`
+- `POST /api/v1/projects/analytics/compare/`
+- `POST /api/v1/projects/analytics/export-excel/`
+
+### Frontend completado
+- ✅ **analytics.model.ts**: 13 interfaces TypeScript + 2 request interfaces
+- ✅ **analytics.service.ts**: 9 métodos (`getKPIs`, `getTaskDistribution`, `getVelocity`, `getBurnRate`, `getBurnDown`, `getResourceUtilization`, `getTimeline`, `compareProjects`, `exportExcel`)
+- ✅ **project-analytics-dashboard**: Componente OnPush con forkJoin paralelo + 4 gráficos Chart.js (burn down, velocity, task distribution doughnut, resource utilization horizontal bar)
+
+### Documentación generada — Feature #5
+- ✅ `docs/FEATURE-5-API-DOCS.md` — 9 endpoints documentados con ejemplos JSON
+- ✅ `docs/FEATURE-5-USER-GUIDE.md` — Guía para gerentes y coordinadores (español)
+- ✅ `docs/FEATURE-5-ARCHITECTURE.md` — Decisiones de diseño y cálculo de métricas
+
+### Decisiones de diseño — Feature #5
+- Sin nuevos modelos de BD — métricas calculadas on-the-fly desde `Task`, `TimesheetEntry`, `ResourceAssignment`, `ResourceCapacity`
+- Caché: Django file-based cuando sea necesario (Redis no requerido en MVP)
+- PDF: jsPDF en frontend (evita dependencias del servidor)
+- Excel: openpyxl en backend (streaming como Blob)
+- On-Time Rate usa `updated_at` como proxy de `fecha_completion` (limitación conocida MVP)
+- Burn Down usa `itertools.accumulate` en Python (evita window functions SQL no portables)
+
+---
+
+## ✅ COMPLETADO (27 Marzo 2026) — Feature #4: Resource Management
+
+### Backend completado
+- ✅ **Modelos** (migration 0015): `ResourceAssignment`, `ResourceCapacity`, `ResourceAvailability`, `AvailabilityType`
+- ✅ **Seed**: 3 registros `ResourceCapacity` (40h/semana) para usuarios existentes
+- ✅ **Django Admin**: 3 admin classes con fieldsets
+- ✅ **Serializers** (9 clases): List/Detail/Create para assignments; Capacity; Availability + Create; WorkloadSummary; TeamAvailability
+- ✅ **Services** (`resource_services.py`): BK-11 a BK-18 — assign, remove, overallocation, workload, team timeline, capacity, availability, approve
+- ✅ **Views** (6 clases): `ResourceAssignmentViewSet`, `ResourceCapacityViewSet`, `ResourceAvailabilityViewSet`, `WorkloadView`, `TeamAvailabilityView`, `UserCalendarView`
+- ✅ **URLs** (BK-25): 11 nuevas rutas bajo `/api/v1/projects/`
+- ✅ `python manage.py check` — 0 issues
+
+### Endpoints disponibles — Feature #4
+- `GET/POST   /api/v1/projects/tasks/{task_pk}/assignments/`
+- `GET/DEL    /api/v1/projects/tasks/{task_pk}/assignments/{pk}/`
+- `GET        /api/v1/projects/tasks/{task_pk}/assignments/check-overallocation/`
+- `GET/POST   /api/v1/projects/resources/capacity/`
+- `GET/PATCH/DEL /api/v1/projects/resources/capacity/{pk}/`
+- `GET/POST   /api/v1/projects/resources/availability/`
+- `GET/DEL    /api/v1/projects/resources/availability/{pk}/`
+- `POST       /api/v1/projects/resources/availability/{pk}/approve/`
+- `GET        /api/v1/projects/resources/workload/`
+- `GET        /api/v1/projects/resources/calendar/`
+- `GET        /api/v1/projects/{proyecto_pk}/team-availability/`
+
+### Pendiente — Feature #4 (deuda técnica)
+- [ ] Tests: BK-26 test_resource_models, BK-27 test_resource_services (85% min), BK-28 test_resource_views
+- [ ] Angular FE-1–FE-10: 8 componentes (ResourceAssignmentCard, ResourceCalendar, WorkloadChart, TeamTimeline, ResourcePanel, AvailabilityForm, CapacityForm, OverallocationBadge)
+- [ ] Integración: Tab "Recursos" en TareaDetail (IT-1), avatares en Gantt (IT-2), Tab "Equipo" en ProyectoDetail (IT-3)
 
 ---
 
@@ -201,18 +274,35 @@ frontend/src/app/proyectos/
 
 ---
 
-## 🎯 PRÓXIMA SESIÓN
+## 🎯 PRÓXIMA SESIÓN — Feature #6 sugerida
 
-**Objetivo sugerido:**
-1. Ejecutar pruebas del refactor (guía en Notion)
-2. Corregir bugs encontrados
-3. Implementar tabs de fases en proyecto-detail
-4. Documentar técnicamente el refactor
+### Opción A: Completar deuda técnica Feature #4
+Prioridad alta si el cliente va a usar el módulo de recursos pronto.
+
+1. Tests backend Feature #4: `test_resource_models`, `test_resource_services` (cobertura 85% mínimo), `test_resource_views`
+2. Componentes Angular Feature #4: `ResourceAssignmentCard`, `ResourceCalendar`, `WorkloadChart`, `TeamTimeline`
+3. Integración: Tab "Recursos" en TareaDetail, Tab "Equipo" en ProyectoDetail
 
 **Prerequisitos:**
-- Backend: `python manage.py migrate` + datos de prueba
-- Frontend: `ng serve`
-- Seguir scripts de la guía de pruebas
+- `python manage.py migrate` (ya ejecutado, solo verificar)
+- `ng serve`
+
+### Opción B: Feature #6 — Notificaciones y Alertas
+Notificaciones en tiempo real cuando: tarea vence, presupuesto supera umbral, recurso sobreasignado.
+
+**Stack sugerido:** Django Channels + WebSocket o polling periódico (más simple).
+**Decisión pendiente:** Redis para WebSockets vs. polling cada 60s (sin infraestructura adicional).
+
+### Opción C: Feature #6 — Portal de cliente / Stakeholders
+Vista de solo lectura para stakeholders externos: progreso del proyecto, hitos, documentos.
+Sin autenticación JWT propia — token de acceso público por proyecto.
+
+### Opción D: Completar Analytics — Mejoras MVP
+1. Agregar campo `Task.fecha_completion` (migration + signal) para On-Time Rate preciso
+2. Implementar granularidad `month` en burn-down
+3. Conectar parámetros `metrics` y `date_range` en export-excel
+
+**Recomendación:** Opción A primero (deuda técnica Feature #4), luego Feature #6 Notificaciones.
 
 ---
 
@@ -225,6 +315,6 @@ frontend/src/app/proyectos/
 
 ---
 
-*Última sesión: 26 Marzo 2026*
-*Estado: Rename Inglés completo — 365 tests backend OK, Angular compilando sin errores TS*
-*Listo para: REFT-22–27 (Angular features) o inicio de nueva feature*
+*Última sesión: 27 Marzo 2026*
+*Estado: Feature #5 Analytics completa — 9 endpoints, 4 gráficos Chart.js, exportación Excel, documentación FASE 4 generada*
+*Listo para: Feature #4 deuda técnica (tests + Angular FE) o Feature #6 nueva*

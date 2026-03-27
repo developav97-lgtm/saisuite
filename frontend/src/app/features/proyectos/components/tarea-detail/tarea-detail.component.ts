@@ -28,6 +28,7 @@ import { ConfirmDialogComponent } from '../../../../shared/components/confirm-di
 import { CronometroComponent } from '../../../../shared/components/cronometro/cronometro.component';
 import { ComentariosThreadComponent } from '../../../../shared/components/comentarios-thread/comentarios-thread.component';
 import { SelectorDependenciasComponent } from '../selector-dependencias/selector-dependencias.component';
+import { ResourceAssignmentPanelComponent } from '../resource-assignment-panel/resource-assignment-panel.component';
 import { Tarea, TareaEstado, TareaDependencia } from '../../models/tarea.model';
 import { TimesheetEntry } from '../../models/timesheet.model';
 import type { ModoMedicion } from '../../models/actividad-saiopen.model';
@@ -88,6 +89,7 @@ export const PRIORIDAD_COLORS: Record<string, string | undefined> = {
     CronometroComponent,
     ComentariosThreadComponent,
     SelectorDependenciasComponent,
+    ResourceAssignmentPanelComponent,
   ],
 })
 export class TareaDetailComponent implements OnInit {

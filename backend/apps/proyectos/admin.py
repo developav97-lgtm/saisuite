@@ -5,6 +5,7 @@ from django.contrib import admin
 from apps.proyectos.models import (
     Project, Phase, ProjectStakeholder, AccountingDocument, Milestone,
     Activity, ProjectActivity, Task, TaskTag, WorkSession,
+    ResourceAssignment, ResourceCapacity, ResourceAvailability,
 )
 
 
@@ -166,3 +167,78 @@ class WorkSessionAdmin(admin.ModelAdmin):
     raw_id_fields = ['tarea', 'usuario']
     readonly_fields = ['id', 'duracion_horas', 'created_at', 'updated_at']
     date_hierarchy = 'inicio'
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# FEATURE #4 — RESOURCE MANAGEMENT
+# ──────────────────────────────────────────────────────────────────────────────
+
+@admin.register(ResourceAssignment)
+class ResourceAssignmentAdmin(admin.ModelAdmin):
+    list_display   = ['usuario', 'tarea', 'porcentaje_asignacion', 'fecha_inicio', 'fecha_fin', 'activo']
+    list_filter    = ['activo', 'fecha_inicio']
+    search_fields  = ['usuario__email', 'usuario__first_name', 'tarea__codigo', 'tarea__nombre']
+    raw_id_fields  = ['tarea', 'usuario']
+    readonly_fields = ['id', 'created_at', 'updated_at']
+    date_hierarchy = 'fecha_inicio'
+
+    fieldsets = (
+        ('Asignación', {
+            'fields': ('id', 'company', 'tarea', 'usuario', 'porcentaje_asignacion', 'activo'),
+        }),
+        ('Período', {
+            'fields': ('fecha_inicio', 'fecha_fin', 'notas'),
+        }),
+        ('Metadatos', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',),
+        }),
+    )
+
+
+@admin.register(ResourceCapacity)
+class ResourceCapacityAdmin(admin.ModelAdmin):
+    list_display   = ['usuario', 'horas_por_semana', 'fecha_inicio', 'fecha_fin', 'activo']
+    list_filter    = ['activo']
+    search_fields  = ['usuario__email', 'usuario__first_name']
+    raw_id_fields  = ['usuario']
+    readonly_fields = ['id', 'created_at', 'updated_at']
+
+    fieldsets = (
+        ('Capacidad', {
+            'fields': ('id', 'company', 'usuario', 'horas_por_semana', 'activo'),
+        }),
+        ('Período', {
+            'fields': ('fecha_inicio', 'fecha_fin'),
+        }),
+        ('Metadatos', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',),
+        }),
+    )
+
+
+@admin.register(ResourceAvailability)
+class ResourceAvailabilityAdmin(admin.ModelAdmin):
+    list_display   = ['usuario', 'tipo', 'fecha_inicio', 'fecha_fin', 'aprobado', 'aprobado_por']
+    list_filter    = ['tipo', 'aprobado', 'activo']
+    search_fields  = ['usuario__email', 'usuario__first_name', 'descripcion']
+    raw_id_fields  = ['usuario', 'aprobado_por']
+    readonly_fields = ['id', 'created_at', 'updated_at']
+    date_hierarchy = 'fecha_inicio'
+
+    fieldsets = (
+        ('Ausencia', {
+            'fields': ('id', 'company', 'usuario', 'tipo', 'descripcion', 'activo'),
+        }),
+        ('Período', {
+            'fields': ('fecha_inicio', 'fecha_fin'),
+        }),
+        ('Aprobación', {
+            'fields': ('aprobado', 'aprobado_por', 'fecha_aprobacion'),
+        }),
+        ('Metadatos', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',),
+        }),
+    )

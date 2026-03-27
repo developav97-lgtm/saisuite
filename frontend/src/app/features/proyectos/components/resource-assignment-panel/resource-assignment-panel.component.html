@@ -1,0 +1,95 @@
+<!-- Resource Assignment Panel — Tab Recursos en TareaDetail -->
+
+@if (loading()) {
+  <mat-progress-bar mode="indeterminate" class="rap-progress" />
+}
+
+<div class="rap-container">
+
+  <!-- Header -->
+  <div class="rap-header">
+    <span class="rap-title">
+      <mat-icon>people</mat-icon>
+      Equipo asignado
+      @if (assignments().length) {
+        <span class="rap-badge">{{ assignments().length }}</span>
+      }
+    </span>
+    @if (tareaActiva()) {
+      <button mat-stroked-button color="primary" (click)="agregarAsignacion()">
+        <mat-icon>person_add</mat-icon>
+        Asignar recurso
+      </button>
+    }
+  </div>
+
+  <!-- Lista de asignaciones -->
+  @if (!loading() && assignments().length > 0) {
+    <div class="rap-list">
+      @for (a of assignments(); track a.id) {
+        <div class="rap-item" [class.rap-item--inactivo]="!a.activo">
+
+          <!-- Avatar -->
+          <div class="rap-avatar">
+            {{ a.usuario_nombre.charAt(0).toUpperCase() }}
+          </div>
+
+          <!-- Info -->
+          <div class="rap-info">
+            <span class="rap-nombre">{{ a.usuario_nombre }}</span>
+            <span class="rap-email">{{ a.usuario_email }}</span>
+            <div class="rap-meta">
+              <span class="rap-periodo">
+                {{ a.fecha_inicio | date:'dd/MM/yy' }} → {{ a.fecha_fin | date:'dd/MM/yy' }}
+              </span>
+              <span class="rap-porcentaje-badge">
+                <mat-icon class="rap-icon-small">schedule</mat-icon>
+                {{ a.porcentaje_asignacion | number:'1.0-0' }}%
+              </span>
+            </div>
+            @if (a.notas) {
+              <span class="rap-notas">{{ a.notas }}</span>
+            }
+          </div>
+
+          <!-- Barra de porcentaje -->
+          <div class="rap-bar-col">
+            <div class="rap-bar-track">
+              <div class="rap-bar-fill"
+                [style.width.%]="a.porcentaje_asignacion"
+                [class.rap-bar-fill--alto]="(+a.porcentaje_asignacion) >= 80">
+              </div>
+            </div>
+          </div>
+
+          <!-- Acciones -->
+          @if (!a.activo) {
+            <span class="rap-inactivo-label">Desasignado</span>
+          } @else if (tareaActiva()) {
+            <button mat-icon-button color="warn"
+              matTooltip="Desasignar"
+              (click)="eliminarAsignacion(a)">
+              <mat-icon>person_remove</mat-icon>
+            </button>
+          }
+
+        </div>
+      }
+    </div>
+  }
+
+  <!-- Empty state -->
+  @if (!loading() && assignments().length === 0) {
+    <div class="sc-empty-state rap-empty">
+      <mat-icon>group_off</mat-icon>
+      <p>No hay recursos asignados a esta tarea.</p>
+      @if (tareaActiva()) {
+        <button mat-raised-button color="primary" (click)="agregarAsignacion()">
+          <mat-icon>person_add</mat-icon>
+          Asignar primer recurso
+        </button>
+      }
+    </div>
+  }
+
+</div>

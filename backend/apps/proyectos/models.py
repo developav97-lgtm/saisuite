@@ -5,6 +5,7 @@ Gestión de ejecución de proyectos complementando la imputación contable de Sa
 import logging
 from decimal import Decimal
 from django.db import models
+from django.db.models import Q
 from django.conf import settings
 from django.core.validators import MinValueValidator, MaxValueValidator
 from apps.core.models import BaseModel
@@ -814,7 +815,7 @@ class WorkSession(BaseModel):
         ]
 
     def __str__(self):
-        return f'{self.usuario.get_full_name()} — {self.tarea.codigo} ({self.estado})'
+        return f'{self.usuario.full_name} — {self.tarea.codigo} ({self.estado})'
 
     @property
     def duracion_horas(self) -> Decimal:
@@ -934,3 +935,249 @@ class TaskDependency(BaseModel):
                 )
 
 
+# ===========================================================================
+# FEATURE #4 — RESOURCE MANAGEMENT
+# ===========================================================================
+
+class AvailabilityType(models.TextChoices):
+    VACATION   = 'vacation',   'Vacaciones'
+    SICK_LEAVE = 'sick_leave', 'Incapacidad'
+    HOLIDAY    = 'holiday',    'Festivo'
+    TRAINING   = 'training',   'Capacitación'
+    OTHER      = 'other',      'Otro'
+
+
+class ResourceAssignment(BaseModel):
+    """
+    Asignación formal de un usuario a una tarea con porcentaje de dedicación.
+
+    Un usuario solo puede tener una asignación activa por tarea (unique_together).
+    El porcentaje representa la fracción de su capacidad semanal dedicada a esta tarea.
+    Si la suma de porcentajes en cualquier día supera 100%, ResourceService detecta
+    el conflicto (DEC-025).
+
+    FK usuario → PROTECT: nunca eliminar usuario con asignaciones (preservar histórico).
+    Desactivar el usuario primero vía UserService.deactivate_user().
+    """
+    tarea = models.ForeignKey(
+        'Task',
+        on_delete=models.CASCADE,
+        related_name='resource_assignments',
+        verbose_name='Tarea',
+    )
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name='resource_assignments',
+        verbose_name='Usuario',
+    )
+    porcentaje_asignacion = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        verbose_name='Porcentaje de asignación',
+        validators=[
+            MinValueValidator(Decimal('0.01')),
+            MaxValueValidator(Decimal('100.00')),
+        ],
+        help_text='Fracción de la capacidad semanal del usuario dedicada a esta tarea (0.01–100).',
+    )
+    fecha_inicio = models.DateField(verbose_name='Fecha de inicio')
+    fecha_fin    = models.DateField(verbose_name='Fecha de fin')
+    notas        = models.TextField(blank=True, verbose_name='Notas')
+    activo       = models.BooleanField(default=True, db_index=True, verbose_name='Activo')
+
+    class Meta:
+        verbose_name        = 'Asignación de recurso'
+        verbose_name_plural = 'Asignaciones de recursos'
+        ordering            = ['fecha_inicio', 'usuario']
+        unique_together     = [('company', 'tarea', 'usuario')]
+        indexes = [
+            models.Index(
+                fields=['company', 'usuario', 'fecha_inicio', 'fecha_fin'],
+                name='idx_rassign_co_us_dates',
+            ),
+            models.Index(
+                fields=['tarea', 'fecha_inicio', 'fecha_fin'],
+                name='idx_rassign_tarea_dates',
+            ),
+            models.Index(
+                fields=['usuario', 'activo'],
+                name='idx_rassign_us_activo',
+            ),
+        ]
+        constraints = [
+            models.CheckConstraint(
+                check=Q(fecha_fin__gte=models.F('fecha_inicio')),
+                name='ck_rassign_fecha_fin_gte_inicio',
+            ),
+        ]
+
+    def __str__(self):
+        return (
+            f'{self.usuario.full_name} → {self.tarea.codigo} '
+            f'({self.porcentaje_asignacion}% | {self.fecha_inicio}–{self.fecha_fin})'
+        )
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        if self.fecha_inicio and self.fecha_fin:
+            if self.fecha_fin < self.fecha_inicio:
+                raise ValidationError({
+                    'fecha_fin': 'La fecha de fin debe ser igual o posterior a la fecha de inicio.',
+                })
+
+
+class ResourceCapacity(BaseModel):
+    """
+    Capacidad laboral semanal de un usuario para un período dado.
+
+    Los períodos del mismo usuario no deben solaparse: validar en
+    ResourceCapacityService.crear_capacidad() y actualizar_capacidad().
+    fecha_fin=None significa capacidad indefinida (sin fecha de expiración).
+    """
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='resource_capacities',
+        verbose_name='Usuario',
+    )
+    horas_por_semana = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        verbose_name='Horas por semana',
+        validators=[
+            MinValueValidator(Decimal('0.01')),
+            MaxValueValidator(Decimal('168.00')),
+        ],
+        help_text='Horas laborables por semana (máx. 168 = 7 días × 24h).',
+    )
+    fecha_inicio = models.DateField(verbose_name='Fecha de inicio')
+    fecha_fin    = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name='Fecha de fin',
+        help_text='Dejar en blanco para capacidad indefinida.',
+    )
+    activo = models.BooleanField(default=True, db_index=True, verbose_name='Activo')
+
+    class Meta:
+        verbose_name        = 'Capacidad de recurso'
+        verbose_name_plural = 'Capacidades de recursos'
+        ordering            = ['usuario', 'fecha_inicio']
+        indexes = [
+            models.Index(
+                fields=['company', 'usuario', 'activo', 'fecha_inicio'],
+                name='idx_rcap_co_us_active_start',
+            ),
+            models.Index(
+                fields=['company', 'usuario'],
+                name='idx_rcap_open_ended',
+                condition=Q(fecha_fin__isnull=True),
+            ),
+        ]
+        constraints = [
+            models.CheckConstraint(
+                check=Q(fecha_fin__isnull=True) | Q(fecha_fin__gt=models.F('fecha_inicio')),
+                name='ck_rcap_fecha_fin_gt_inicio',
+            ),
+            models.CheckConstraint(
+                check=Q(horas_por_semana__gt=0),
+                name='ck_rcap_horas_positivas',
+            ),
+        ]
+
+    def __str__(self):
+        fin = str(self.fecha_fin) if self.fecha_fin else 'indefinido'
+        return (
+            f'{self.usuario.full_name} — {self.horas_por_semana}h/semana '
+            f'({self.fecha_inicio} → {fin})'
+        )
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        if self.fecha_inicio and self.fecha_fin:
+            if self.fecha_fin <= self.fecha_inicio:
+                raise ValidationError({
+                    'fecha_fin': 'La fecha de fin debe ser posterior a la fecha de inicio.',
+                })
+
+
+class ResourceAvailability(BaseModel):
+    """
+    Ausencia o indisponibilidad de un usuario para un período.
+
+    Solo ausencias con aprobado=True se descuentan de la capacidad efectiva.
+    Ausencias del mismo tipo no pueden solaparse para el mismo usuario:
+    validar en ResourceAvailabilityService.registrar_ausencia().
+    Ausencias de distintos tipos sí pueden coexistir el mismo día
+    (ej: festivo + capacitación).
+    """
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='resource_availabilities',
+        verbose_name='Usuario',
+    )
+    tipo = models.CharField(
+        max_length=20,
+        choices=AvailabilityType.choices,
+        verbose_name='Tipo de ausencia',
+    )
+    fecha_inicio = models.DateField(verbose_name='Fecha de inicio')
+    fecha_fin    = models.DateField(verbose_name='Fecha de fin')
+    descripcion  = models.TextField(blank=True, verbose_name='Descripción')
+
+    aprobado         = models.BooleanField(default=False, db_index=True, verbose_name='Aprobado')
+    aprobado_por     = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='approved_absences',
+        verbose_name='Aprobado por',
+    )
+    fecha_aprobacion = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name='Fecha de aprobación',
+    )
+    activo = models.BooleanField(default=True, db_index=True, verbose_name='Activo')
+
+    class Meta:
+        verbose_name        = 'Disponibilidad de recurso'
+        verbose_name_plural = 'Disponibilidades de recursos'
+        ordering            = ['fecha_inicio', 'usuario']
+        indexes = [
+            models.Index(
+                fields=['company', 'usuario', 'aprobado', 'fecha_inicio', 'fecha_fin'],
+                name='idx_ravail_co_us_ap_dates',
+            ),
+            models.Index(
+                fields=['company', 'aprobado'],
+                name='idx_ravail_co_aprobado',
+            ),
+        ]
+        constraints = [
+            models.CheckConstraint(
+                check=Q(fecha_fin__gte=models.F('fecha_inicio')),
+                name='ck_ravail_fecha_fin_gte_inicio',
+            ),
+        ]
+
+    def __str__(self):
+        return (
+            f'{self.usuario.full_name} — {self.get_tipo_display()} '
+            f'({self.fecha_inicio} → {self.fecha_fin})'
+        )
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        if self.fecha_inicio and self.fecha_fin:
+            if self.fecha_fin < self.fecha_inicio:
+                raise ValidationError({
+                    'fecha_fin': 'La fecha de fin debe ser igual o posterior a la fecha de inicio.',
+                })
+        if self.aprobado and not self.aprobado_por_id:
+            raise ValidationError({
+                'aprobado_por': 'Debe especificar quién aprobó la ausencia.',
+            })

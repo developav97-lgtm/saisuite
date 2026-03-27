@@ -17,6 +17,7 @@ from apps.proyectos.models import (
     Project, Phase, ProjectStakeholder, AccountingDocument, Milestone,
     Activity, ProjectActivity, Task, TaskTag, WorkSession,
     SaiopenActivity, TaskDependency, TimesheetEntry,
+    ResourceAssignment, ResourceCapacity, ResourceAvailability,
 )
 from apps.proyectos.serializers import (
     ProjectListSerializer,
@@ -48,6 +49,13 @@ from apps.proyectos.serializers import (
     WorkSessionSerializer,
     TimesheetEntrySerializer,
     TimesheetEntryCreateSerializer,
+    ResourceAssignmentListSerializer,
+    ResourceAssignmentDetailSerializer,
+    ResourceAssignmentCreateSerializer,
+    ResourceCapacitySerializer,
+    ResourceAvailabilitySerializer,
+    ResourceAvailabilityCreateSerializer,
+    WorkloadSummarySerializer,
 )
 from apps.proyectos.services import (
     ProyectoService,
@@ -1096,4 +1104,550 @@ class TimesheetViewSet(viewsets.GenericViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         return Response(TimesheetEntrySerializer(entry).data)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# FEATURE #4 — RESOURCE MANAGEMENT VIEWS  (BK-19 a BK-24)
+# ──────────────────────────────────────────────────────────────────────────────
+
+from apps.proyectos.resource_services import (
+    assign_resource_to_task,
+    remove_resource_from_task,
+    detect_overallocation_conflicts,
+    calculate_user_workload,
+    get_team_availability_timeline,
+    set_user_capacity,
+    register_availability,
+    approve_availability,
+)
+
+
+def _parse_date(value: str, field_name: str):
+    """Parsea una fecha ISO 8601 y devuelve datetime.date. Lanza ValidationError si es inválida."""
+    from datetime import date as date_type
+    try:
+        return date_type.fromisoformat(value)
+    except (ValueError, TypeError):
+        raise ValidationError({field_name: f'Formato inválido. Use YYYY-MM-DD.'})
+
+
+class ResourceAssignmentViewSet(viewsets.ViewSet):
+    """
+    BK-19 — CRUD de asignaciones de recursos, anidado bajo una tarea.
+
+    Rutas:
+      GET    /api/v1/projects/tasks/{task_pk}/assignments/
+      POST   /api/v1/projects/tasks/{task_pk}/assignments/
+      GET    /api/v1/projects/tasks/{task_pk}/assignments/{pk}/
+      DELETE /api/v1/projects/tasks/{task_pk}/assignments/{pk}/
+      GET    /api/v1/projects/tasks/{task_pk}/assignments/check-overallocation/
+    """
+    permission_classes = [CanAccessProyectos]
+
+    def _get_tarea(self, request, task_pk):
+        company = getattr(request.user, 'company', None)
+        try:
+            return Task.objects.select_related('proyecto').get(
+                id=task_pk, company=company
+            )
+        except Task.DoesNotExist:
+            from rest_framework.exceptions import NotFound
+            raise NotFound('Tarea no encontrada.')
+
+    def list(self, request, task_pk=None):
+        """GET /api/v1/projects/tasks/{task_pk}/assignments/"""
+        tarea   = self._get_tarea(request, task_pk)
+        company = getattr(request.user, 'company', None)
+        qs = ResourceAssignment.objects.filter(
+            company=company, tarea=tarea
+        ).select_related('usuario').order_by('fecha_inicio')
+        return Response(ResourceAssignmentListSerializer(qs, many=True).data)
+
+    def create(self, request, task_pk=None):
+        """POST /api/v1/projects/tasks/{task_pk}/assignments/"""
+        tarea      = self._get_tarea(request, task_pk)
+        serializer = ResourceAssignmentCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        d = serializer.validated_data
+
+        try:
+            asignacion = assign_resource_to_task(
+                tarea=tarea,
+                usuario_id=str(d['usuario_id']),
+                porcentaje_asignacion=d['porcentaje_asignacion'],
+                fecha_inicio=d['fecha_inicio'],
+                fecha_fin=d['fecha_fin'],
+                notas=d.get('notas', ''),
+            )
+        except ValidationError as exc:
+            return Response(exc.message_dict, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(
+            ResourceAssignmentDetailSerializer(asignacion).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+    def retrieve(self, request, pk=None, task_pk=None):
+        """GET /api/v1/projects/tasks/{task_pk}/assignments/{pk}/"""
+        self._get_tarea(request, task_pk)
+        company = getattr(request.user, 'company', None)
+        try:
+            asignacion = ResourceAssignment.objects.select_related(
+                'usuario', 'tarea'
+            ).get(id=pk, company=company)
+        except ResourceAssignment.DoesNotExist:
+            from rest_framework.exceptions import NotFound
+            raise NotFound('Asignación no encontrada.')
+        return Response(ResourceAssignmentDetailSerializer(asignacion).data)
+
+    def destroy(self, request, pk=None, task_pk=None):
+        """DELETE /api/v1/projects/tasks/{task_pk}/assignments/{pk}/ — soft delete"""
+        self._get_tarea(request, task_pk)
+        company = getattr(request.user, 'company', None)
+        try:
+            remove_resource_from_task(
+                asignacion_id=str(pk),
+                company_id=str(company.id),
+            )
+        except ValidationError as exc:
+            return Response(exc.message_dict, status=status.HTTP_400_BAD_REQUEST)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=False, methods=['get'], url_path='check-overallocation')
+    def check_overallocation(self, request, task_pk=None):
+        """
+        GET /api/v1/projects/tasks/{task_pk}/assignments/check-overallocation/
+        Query params: usuario_id, start_date, end_date, threshold (opcional)
+        """
+        usuario_id  = request.query_params.get('usuario_id')
+        start_str   = request.query_params.get('start_date')
+        end_str     = request.query_params.get('end_date')
+        threshold   = request.query_params.get('threshold', '100.00')
+
+        if not all([usuario_id, start_str, end_str]):
+            return Response(
+                {'detail': 'Se requieren usuario_id, start_date y end_date.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            start_date = _parse_date(start_str, 'start_date')
+            end_date   = _parse_date(end_str,   'end_date')
+            th_decimal = Decimal(threshold)
+        except (ValidationError, InvalidOperation):
+            return Response(
+                {'detail': 'Parámetros inválidos.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        company    = getattr(request.user, 'company', None)
+        conflicts  = detect_overallocation_conflicts(
+            usuario_id=usuario_id,
+            company_id=str(company.id),
+            start_date=start_date,
+            end_date=end_date,
+            threshold=th_decimal,
+        )
+
+        data = [
+            {
+                'fecha':            str(c.fecha),
+                'porcentaje_total': str(c.porcentaje_total),
+                'asignaciones':     c.asignaciones,
+            }
+            for c in conflicts
+        ]
+        return Response({'conflictos': data, 'total': len(data)})
+
+
+class ResourceCapacityViewSet(viewsets.ViewSet):
+    """
+    BK-20 — CRUD de capacidad laboral de usuarios.
+
+    Rutas:
+      GET    /api/v1/projects/resources/capacity/
+      POST   /api/v1/projects/resources/capacity/
+      GET    /api/v1/projects/resources/capacity/{pk}/
+      PATCH  /api/v1/projects/resources/capacity/{pk}/
+      DELETE /api/v1/projects/resources/capacity/{pk}/
+    """
+    permission_classes = [CanAccessProyectos]
+
+    def _get_company(self, request):
+        return getattr(request.user, 'company', None)
+
+    def list(self, request):
+        """GET — filtra por usuario_id si se pasa como query param."""
+        company    = self._get_company(request)
+        qs = ResourceCapacity.objects.filter(
+            company=company
+        ).select_related('usuario').order_by('usuario__last_name', 'fecha_inicio')
+
+        usuario_id = request.query_params.get('usuario_id')
+        if usuario_id:
+            qs = qs.filter(usuario_id=usuario_id)
+
+        return Response(ResourceCapacitySerializer(qs, many=True).data)
+
+    def create(self, request):
+        company    = self._get_company(request)
+        serializer = ResourceCapacitySerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        d = serializer.validated_data
+
+        try:
+            capacidad = set_user_capacity(
+                usuario_id=str(d['usuario'].id),
+                company_id=str(company.id),
+                horas_por_semana=d['horas_por_semana'],
+                fecha_inicio=d['fecha_inicio'],
+                fecha_fin=d.get('fecha_fin'),
+            )
+        except ValidationError as exc:
+            return Response(exc.message_dict, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(
+            ResourceCapacitySerializer(capacidad).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+    def retrieve(self, request, pk=None):
+        company = self._get_company(request)
+        try:
+            capacidad = ResourceCapacity.objects.select_related('usuario').get(
+                id=pk, company=company
+            )
+        except ResourceCapacity.DoesNotExist:
+            from rest_framework.exceptions import NotFound
+            raise NotFound('Capacidad no encontrada.')
+        return Response(ResourceCapacitySerializer(capacidad).data)
+
+    def partial_update(self, request, pk=None):
+        company = self._get_company(request)
+        try:
+            ResourceCapacity.objects.get(id=pk, company=company)
+        except ResourceCapacity.DoesNotExist:
+            from rest_framework.exceptions import NotFound
+            raise NotFound('Capacidad no encontrada.')
+
+        serializer = ResourceCapacitySerializer(data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        d = serializer.validated_data
+
+        try:
+            capacidad = set_user_capacity(
+                usuario_id=str(d['usuario'].id) if 'usuario' in d else None,
+                company_id=str(company.id),
+                horas_por_semana=d.get('horas_por_semana'),
+                fecha_inicio=d.get('fecha_inicio'),
+                fecha_fin=d.get('fecha_fin'),
+                capacity_id=str(pk),
+            )
+        except ValidationError as exc:
+            return Response(exc.message_dict, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(ResourceCapacitySerializer(capacidad).data)
+
+    def destroy(self, request, pk=None):
+        company = self._get_company(request)
+        updated = ResourceCapacity.objects.filter(
+            id=pk, company=company
+        ).update(activo=False)
+        if not updated:
+            from rest_framework.exceptions import NotFound
+            raise NotFound('Capacidad no encontrada.')
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class ResourceAvailabilityViewSet(viewsets.ViewSet):
+    """
+    BK-21 — CRUD de ausencias + acción de aprobación.
+
+    Rutas:
+      GET    /api/v1/projects/resources/availability/
+      POST   /api/v1/projects/resources/availability/
+      GET    /api/v1/projects/resources/availability/{pk}/
+      DELETE /api/v1/projects/resources/availability/{pk}/
+      POST   /api/v1/projects/resources/availability/{pk}/approve/
+    """
+    permission_classes = [CanAccessProyectos]
+
+    def _get_company(self, request):
+        return getattr(request.user, 'company', None)
+
+    def list(self, request):
+        """GET — query params: usuario_id, aprobado, tipo."""
+        company = self._get_company(request)
+        qs = ResourceAvailability.objects.filter(
+            company=company
+        ).select_related('usuario', 'aprobado_por').order_by('-fecha_inicio')
+
+        usuario_id = request.query_params.get('usuario_id')
+        aprobado   = request.query_params.get('aprobado')
+        tipo       = request.query_params.get('tipo')
+
+        if usuario_id:
+            qs = qs.filter(usuario_id=usuario_id)
+        if aprobado is not None:
+            qs = qs.filter(aprobado=(aprobado.lower() == 'true'))
+        if tipo:
+            qs = qs.filter(tipo=tipo)
+
+        return Response(ResourceAvailabilitySerializer(qs, many=True).data)
+
+    def create(self, request):
+        company    = self._get_company(request)
+        serializer = ResourceAvailabilityCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        d = serializer.validated_data
+
+        try:
+            ausencia = register_availability(
+                usuario_id=str(d['usuario_id']),
+                company_id=str(company.id),
+                tipo=d['tipo'],
+                fecha_inicio=d['fecha_inicio'],
+                fecha_fin=d['fecha_fin'],
+                descripcion=d.get('descripcion', ''),
+            )
+        except ValidationError as exc:
+            return Response(exc.message_dict, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(
+            ResourceAvailabilitySerializer(ausencia).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+    def retrieve(self, request, pk=None):
+        company = self._get_company(request)
+        try:
+            ausencia = ResourceAvailability.objects.select_related(
+                'usuario', 'aprobado_por'
+            ).get(id=pk, company=company)
+        except ResourceAvailability.DoesNotExist:
+            from rest_framework.exceptions import NotFound
+            raise NotFound('Ausencia no encontrada.')
+        return Response(ResourceAvailabilitySerializer(ausencia).data)
+
+    def destroy(self, request, pk=None):
+        company = self._get_company(request)
+        updated = ResourceAvailability.objects.filter(
+            id=pk, company=company
+        ).update(activo=False)
+        if not updated:
+            from rest_framework.exceptions import NotFound
+            raise NotFound('Ausencia no encontrada.')
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, methods=['post'], url_path='approve')
+    def approve(self, request, pk=None):
+        """POST /api/v1/projects/resources/availability/{pk}/approve/
+        Body: { "aprobar": true|false }
+        """
+        company    = self._get_company(request)
+        aprobar_raw = request.data.get('aprobar', True)
+        # Normalizar: string 'false'/'0' → False; cualquier otro truthy → True
+        if isinstance(aprobar_raw, str):
+            aprobar = aprobar_raw.lower() not in ('false', '0', 'no', '')
+        else:
+            aprobar = bool(aprobar_raw)
+
+        try:
+            ausencia = approve_availability(
+                ausencia_id=str(pk),
+                company_id=str(company.id),
+                aprobador_id=str(request.user.id),
+                aprobar=aprobar,
+            )
+        except ValidationError as exc:
+            return Response(exc.message_dict, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(ResourceAvailabilitySerializer(ausencia).data)
+
+
+class WorkloadView(APIView):
+    """
+    BK-22 — Carga de trabajo de un usuario en un período.
+
+    GET /api/v1/projects/resources/workload/
+    Query params: usuario_id (req), start_date (req), end_date (req)
+    """
+    permission_classes = [CanAccessProyectos]
+
+    def get(self, request):
+        usuario_id = request.query_params.get('usuario_id')
+        start_str  = request.query_params.get('start_date')
+        end_str    = request.query_params.get('end_date')
+
+        if not all([usuario_id, start_str, end_str]):
+            return Response(
+                {'detail': 'Se requieren usuario_id, start_date y end_date.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            start_date = _parse_date(start_str, 'start_date')
+            end_date   = _parse_date(end_str,   'end_date')
+        except ValidationError as exc:
+            return Response(exc.message_dict, status=status.HTTP_400_BAD_REQUEST)
+
+        company = getattr(request.user, 'company', None)
+
+        try:
+            workload = calculate_user_workload(
+                usuario_id=usuario_id,
+                company_id=str(company.id),
+                start_date=start_date,
+                end_date=end_date,
+            )
+        except ValidationError as exc:
+            return Response(exc.message_dict, status=status.HTTP_400_BAD_REQUEST)
+
+        data = {
+            'usuario_id':            workload.usuario_id,
+            'periodo_inicio':        str(workload.periodo_inicio),
+            'periodo_fin':           str(workload.periodo_fin),
+            'horas_capacidad':       str(workload.horas_capacidad),
+            'horas_asignadas':       str(workload.horas_asignadas),
+            'horas_registradas':     str(workload.horas_registradas),
+            'porcentaje_utilizacion': str(workload.porcentaje_utilizacion),
+            'conflictos':            workload.conflictos,
+        }
+        serializer = WorkloadSummarySerializer(data=data)
+        serializer.is_valid()
+        return Response(serializer.data)
+
+
+class TeamAvailabilityView(APIView):
+    """
+    BK-23 — Timeline de disponibilidad del equipo de un proyecto.
+
+    GET /api/v1/projects/{proyecto_pk}/team-availability/
+    Query params: start_date (req), end_date (req)
+    """
+    permission_classes = [CanAccessProyectos]
+
+    def get(self, request, proyecto_pk=None):
+        start_str = request.query_params.get('start_date')
+        end_str   = request.query_params.get('end_date')
+
+        if not all([start_str, end_str]):
+            return Response(
+                {'detail': 'Se requieren start_date y end_date.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            start_date = _parse_date(start_str, 'start_date')
+            end_date   = _parse_date(end_str,   'end_date')
+        except ValidationError as exc:
+            return Response(exc.message_dict, status=status.HTTP_400_BAD_REQUEST)
+
+        company = getattr(request.user, 'company', None)
+
+        timeline = get_team_availability_timeline(
+            proyecto_id=str(proyecto_pk),
+            company_id=str(company.id),
+            start_date=start_date,
+            end_date=end_date,
+        )
+
+        data = [
+            {
+                'usuario_id':     t.usuario_id,
+                'usuario_nombre': t.usuario_nombre,
+                'usuario_email':  t.usuario_email,
+                'asignaciones':   t.asignaciones,
+                'ausencias':      t.ausencias,
+            }
+            for t in timeline
+        ]
+        return Response(data)
+
+
+class UserCalendarView(APIView):
+    """
+    BK-24 — Calendario de asignaciones y ausencias de un usuario.
+
+    GET /api/v1/projects/resources/calendar/
+    Query params: usuario_id (req), start_date (req), end_date (req)
+
+    Retorna los mismos datos que WorkloadView + la lista detallada de eventos
+    (asignaciones + ausencias) para renderizar en el calendario mensual.
+    """
+    permission_classes = [CanAccessProyectos]
+
+    def get(self, request):
+        usuario_id = request.query_params.get('usuario_id')
+        start_str  = request.query_params.get('start_date')
+        end_str    = request.query_params.get('end_date')
+
+        if not all([usuario_id, start_str, end_str]):
+            return Response(
+                {'detail': 'Se requieren usuario_id, start_date y end_date.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            start_date = _parse_date(start_str, 'start_date')
+            end_date   = _parse_date(end_str,   'end_date')
+        except ValidationError as exc:
+            return Response(exc.message_dict, status=status.HTTP_400_BAD_REQUEST)
+
+        company = getattr(request.user, 'company', None)
+
+        # Asignaciones activas en el período
+        asignaciones = list(
+            ResourceAssignment.objects.filter(
+                company=company,
+                usuario_id=usuario_id,
+                activo=True,
+                fecha_inicio__lte=end_date,
+                fecha_fin__gte=start_date,
+            ).select_related('tarea', 'tarea__proyecto').order_by('fecha_inicio')
+        )
+
+        # Ausencias aprobadas en el período
+        ausencias = list(
+            ResourceAvailability.objects.filter(
+                company=company,
+                usuario_id=usuario_id,
+                aprobado=True,
+                activo=True,
+                fecha_inicio__lte=end_date,
+                fecha_fin__gte=start_date,
+            ).order_by('fecha_inicio')
+        )
+
+        return Response({
+            'usuario_id':    usuario_id,
+            'periodo_inicio': str(start_date),
+            'periodo_fin':    str(end_date),
+            'asignaciones': [
+                {
+                    'id':                    str(a.id),
+                    'tarea_id':              str(a.tarea_id),
+                    'tarea_codigo':          a.tarea.codigo,
+                    'tarea_nombre':          a.tarea.nombre,
+                    'proyecto_id':           str(a.tarea.proyecto_id),
+                    'proyecto_codigo':       a.tarea.proyecto.codigo,
+                    'porcentaje_asignacion': str(a.porcentaje_asignacion),
+                    'fecha_inicio':          str(a.fecha_inicio),
+                    'fecha_fin':             str(a.fecha_fin),
+                    'notas':                 a.notas,
+                }
+                for a in asignaciones
+            ],
+            'ausencias': [
+                {
+                    'id':           str(av.id),
+                    'tipo':         av.tipo,
+                    'tipo_display': av.get_tipo_display(),
+                    'fecha_inicio': str(av.fecha_inicio),
+                    'fecha_fin':    str(av.fecha_fin),
+                    'descripcion':  av.descripcion,
+                }
+                for av in ausencias
+            ],
+        })
 
