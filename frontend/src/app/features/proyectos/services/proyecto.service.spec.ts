@@ -63,12 +63,12 @@ describe('ProyectoService', () => {
 
   // ── list ──────────────────────────────────────────────────────────────────
 
-  it('list() GET /api/v1/proyectos/ sin parámetros', () => {
+  it('list() GET /api/v1/projects/ sin parámetros', () => {
     service.list().subscribe(res => {
       expect(res.count).toBe(1);
       expect(res.results[0].codigo).toBe('PRY-001');
     });
-    const req = http.expectOne(r => r.url === '/api/v1/proyectos/');
+    const req = http.expectOne(r => r.url === '/api/v1/projects/');
     expect(req.request.method).toBe('GET');
     req.flush({ count: 1, next: null, previous: null, results: [mockProyectoList] });
   });
@@ -101,19 +101,19 @@ describe('ProyectoService', () => {
 
   // ── getById ───────────────────────────────────────────────────────────────
 
-  it('getById() GET /api/v1/proyectos/:id/', () => {
+  it('getById() GET /api/v1/projects/:id/', () => {
     service.getById('p-1').subscribe(p => {
       expect(p.id).toBe('p-1');
       expect(p.fases_count).toBe(0);
     });
-    const req = http.expectOne('/api/v1/proyectos/p-1/');
+    const req = http.expectOne('/api/v1/projects/p-1/');
     expect(req.request.method).toBe('GET');
     req.flush(mockProyectoDetail);
   });
 
   // ── create ────────────────────────────────────────────────────────────────
 
-  it('create() POST /api/v1/proyectos/', () => {
+  it('create() POST /api/v1/projects/', () => {
     const payload = {
       nombre: 'Nuevo Proyecto', tipo: 'servicios' as const,
       cliente_id: '9001', cliente_nombre: 'Cliente Test',
@@ -123,7 +123,7 @@ describe('ProyectoService', () => {
       presupuesto_total: '500000',
     };
     service.create(payload).subscribe(p => expect(p.nombre).toBe('Proyecto Test'));
-    const req = http.expectOne('/api/v1/proyectos/');
+    const req = http.expectOne('/api/v1/projects/');
     expect(req.request.method).toBe('POST');
     expect(req.request.body.nombre).toBe('Nuevo Proyecto');
     req.flush(mockProyectoDetail);
@@ -131,9 +131,9 @@ describe('ProyectoService', () => {
 
   // ── update ────────────────────────────────────────────────────────────────
 
-  it('update() PATCH /api/v1/proyectos/:id/', () => {
+  it('update() PATCH /api/v1/projects/:id/', () => {
     service.update('p-1', { nombre: 'Editado' }).subscribe();
-    const req = http.expectOne('/api/v1/proyectos/p-1/');
+    const req = http.expectOne('/api/v1/projects/p-1/');
     expect(req.request.method).toBe('PATCH');
     expect(req.request.body).toEqual({ nombre: 'Editado' });
     req.flush(mockProyectoDetail);
@@ -141,20 +141,20 @@ describe('ProyectoService', () => {
 
   // ── delete ────────────────────────────────────────────────────────────────
 
-  it('delete() DELETE /api/v1/proyectos/:id/', () => {
+  it('delete() DELETE /api/v1/projects/:id/', () => {
     service.delete('p-1').subscribe();
-    const req = http.expectOne('/api/v1/proyectos/p-1/');
+    const req = http.expectOne('/api/v1/projects/p-1/');
     expect(req.request.method).toBe('DELETE');
     req.flush(null, { status: 204, statusText: 'No Content' });
   });
 
   // ── cambiarEstado ─────────────────────────────────────────────────────────
 
-  it('cambiarEstado() POST /api/v1/proyectos/:id/cambiar-estado/ con forzar=false', () => {
+  it('cambiarEstado() POST /api/v1/projects/:id/cambiar-estado/ con forzar=false', () => {
     service.cambiarEstado('p-1', 'planificado').subscribe(p =>
       expect(p.estado).toBe('planificado')
     );
-    const req = http.expectOne('/api/v1/proyectos/p-1/cambiar-estado/');
+    const req = http.expectOne('/api/v1/projects/p-1/cambiar-estado/');
     expect(req.request.method).toBe('POST');
     expect(req.request.body).toEqual({ nuevo_estado: 'planificado', forzar: false });
     req.flush({ ...mockProyectoDetail, estado: 'planificado' });
@@ -162,19 +162,19 @@ describe('ProyectoService', () => {
 
   it('cambiarEstado() envía forzar=true cuando se especifica', () => {
     service.cambiarEstado('p-1', 'en_ejecucion', true).subscribe();
-    const req = http.expectOne('/api/v1/proyectos/p-1/cambiar-estado/');
+    const req = http.expectOne('/api/v1/projects/p-1/cambiar-estado/');
     expect(req.request.body.forzar).toBeTrue();
     req.flush(mockProyectoDetail);
   });
 
   // ── getEstadoFinanciero ───────────────────────────────────────────────────
 
-  it('getEstadoFinanciero() GET /api/v1/proyectos/:id/estado-financiero/', () => {
+  it('getEstadoFinanciero() GET /api/v1/projects/:id/estado-financiero/', () => {
     service.getEstadoFinanciero('p-1').subscribe(ef => {
       expect(ef.presupuesto_total).toBe('1000000.00');
       expect(ef.aiu.porcentaje_administracion).toBe('10');
     });
-    const req = http.expectOne('/api/v1/proyectos/p-1/estado-financiero/');
+    const req = http.expectOne('/api/v1/projects/p-1/estado-financiero/');
     expect(req.request.method).toBe('GET');
     req.flush(mockEstadoFinanciero);
   });

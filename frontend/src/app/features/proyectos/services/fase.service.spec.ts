@@ -49,12 +49,12 @@ describe('FaseService', () => {
 
   // ── listByProyecto ────────────────────────────────────────────────────────
 
-  it('listByProyecto() GET /api/v1/proyectos/:proyectoId/fases/ — respuesta paginada', () => {
+  it('listByProyecto() GET /api/v1/projects/:proyectoId/phases/ — respuesta paginada', () => {
     service.listByProyecto('p-1').subscribe(fases => {
       expect(fases.length).toBe(1);
       expect(fases[0].nombre).toBe('Fase Inicial');
     });
-    const req = http.expectOne('/api/v1/proyectos/p-1/fases/');
+    const req = http.expectOne('/api/v1/projects/p-1/phases/');
     expect(req.request.method).toBe('GET');
     req.flush({ count: 1, next: null, previous: null, results: [mockFaseList] });
   });
@@ -64,7 +64,7 @@ describe('FaseService', () => {
       expect(fases.length).toBe(1);
       expect(fases[0].id).toBe('f-1');
     });
-    const req = http.expectOne('/api/v1/proyectos/p-1/fases/');
+    const req = http.expectOne('/api/v1/projects/p-1/phases/');
     req.flush([mockFaseList]);
   });
 
@@ -72,25 +72,25 @@ describe('FaseService', () => {
     service.listByProyecto('p-1').subscribe(fases => {
       expect(fases).toEqual([]);
     });
-    const req = http.expectOne('/api/v1/proyectos/p-1/fases/');
+    const req = http.expectOne('/api/v1/projects/p-1/phases/');
     req.flush({ count: 0, next: null, previous: null, results: [] });
   });
 
   // ── getById ───────────────────────────────────────────────────────────────
 
-  it('getById() GET /api/v1/proyectos/fases/:id/', () => {
+  it('getById() GET /api/v1/projects/phases/:id/', () => {
     service.getById('f-1').subscribe(f => {
       expect(f.id).toBe('f-1');
       expect(f.presupuesto_mano_obra).toBe('200000.00');
     });
-    const req = http.expectOne('/api/v1/proyectos/fases/f-1/');
+    const req = http.expectOne('/api/v1/projects/phases/f-1/');
     expect(req.request.method).toBe('GET');
     req.flush(mockFaseDetail);
   });
 
   // ── create ────────────────────────────────────────────────────────────────
 
-  it('create() POST /api/v1/proyectos/:proyectoId/fases/', () => {
+  it('create() POST /api/v1/projects/:proyectoId/phases/', () => {
     const payload = {
       nombre: 'Nueva Fase',
       fecha_inicio_planificada: '2026-04-01',
@@ -98,7 +98,7 @@ describe('FaseService', () => {
       presupuesto_mano_obra: '100000',
     };
     service.create('p-1', payload).subscribe(f => expect(f.nombre).toBe('Fase Inicial'));
-    const req = http.expectOne('/api/v1/proyectos/p-1/fases/');
+    const req = http.expectOne('/api/v1/projects/p-1/phases/');
     expect(req.request.method).toBe('POST');
     expect(req.request.body.nombre).toBe('Nueva Fase');
     req.flush(mockFaseDetail);
@@ -106,9 +106,9 @@ describe('FaseService', () => {
 
   // ── update ────────────────────────────────────────────────────────────────
 
-  it('update() PATCH /api/v1/proyectos/fases/:id/', () => {
+  it('update() PATCH /api/v1/projects/phases/:id/', () => {
     service.update('f-1', { nombre: 'Fase Editada' }).subscribe();
-    const req = http.expectOne('/api/v1/proyectos/fases/f-1/');
+    const req = http.expectOne('/api/v1/projects/phases/f-1/');
     expect(req.request.method).toBe('PATCH');
     expect(req.request.body).toEqual({ nombre: 'Fase Editada' });
     req.flush(mockFaseDetail);
@@ -116,16 +116,16 @@ describe('FaseService', () => {
 
   it('update() actualiza porcentaje_avance', () => {
     service.update('f-1', { porcentaje_avance: '50.00' }).subscribe();
-    const req = http.expectOne('/api/v1/proyectos/fases/f-1/');
+    const req = http.expectOne('/api/v1/projects/phases/f-1/');
     expect(req.request.body).toEqual({ porcentaje_avance: '50.00' });
     req.flush(mockFaseDetail);
   });
 
   // ── delete ────────────────────────────────────────────────────────────────
 
-  it('delete() DELETE /api/v1/proyectos/fases/:id/', () => {
+  it('delete() DELETE /api/v1/projects/phases/:id/', () => {
     service.delete('f-1').subscribe();
-    const req = http.expectOne('/api/v1/proyectos/fases/f-1/');
+    const req = http.expectOne('/api/v1/projects/phases/f-1/');
     expect(req.request.method).toBe('DELETE');
     req.flush(null, { status: 204, statusText: 'No Content' });
   });

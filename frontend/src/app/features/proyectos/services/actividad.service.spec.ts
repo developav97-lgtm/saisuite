@@ -43,13 +43,13 @@ describe('ActividadService', () => {
 
   // ── list ──────────────────────────────────────────────────────────────────
 
-  it('list() GET /api/v1/proyectos/actividades/ con paginación por defecto', () => {
+  it('list() GET /api/v1/projects/activities/ con paginación por defecto', () => {
     service.list().subscribe(res => {
       expect(res.count).toBe(1);
       expect(res.results[0].codigo).toBe('ACT-001');
     });
     const req = http.expectOne(r =>
-      r.url === '/api/v1/proyectos/actividades/' &&
+      r.url === '/api/v1/projects/activities/' &&
       r.params.get('page') === '1' &&
       r.params.get('page_size') === '25'
     );
@@ -71,7 +71,7 @@ describe('ActividadService', () => {
 
   it('list() no envía parámetro tipo si no se especifica', () => {
     service.list().subscribe();
-    const req = http.expectOne(r => r.url === '/api/v1/proyectos/actividades/');
+    const req = http.expectOne(r => r.url === '/api/v1/projects/activities/');
     expect(req.request.params.has('tipo')).toBeFalse();
     req.flush({ count: 0, next: null, previous: null, results: [] });
   });
@@ -94,19 +94,19 @@ describe('ActividadService', () => {
 
   // ── getById ───────────────────────────────────────────────────────────────
 
-  it('getById() GET /api/v1/proyectos/actividades/:id/', () => {
+  it('getById() GET /api/v1/projects/activities/:id/', () => {
     service.getById('a-1').subscribe(a => {
       expect(a.id).toBe('a-1');
       expect(a.descripcion).toBe('Excavación manual');
     });
-    const req = http.expectOne('/api/v1/proyectos/actividades/a-1/');
+    const req = http.expectOne('/api/v1/projects/activities/a-1/');
     expect(req.request.method).toBe('GET');
     req.flush(mockActividadDetail);
   });
 
   // ── create ────────────────────────────────────────────────────────────────
 
-  it('create() POST /api/v1/proyectos/actividades/', () => {
+  it('create() POST /api/v1/projects/activities/', () => {
     const payload = {
       nombre: 'Nueva Actividad',
       tipo: 'equipo' as const,
@@ -114,7 +114,7 @@ describe('ActividadService', () => {
       costo_unitario_base: '75000',
     };
     service.create(payload).subscribe(a => expect(a.tipo).toBe('material'));
-    const req = http.expectOne('/api/v1/proyectos/actividades/');
+    const req = http.expectOne('/api/v1/projects/activities/');
     expect(req.request.method).toBe('POST');
     expect(req.request.body.nombre).toBe('Nueva Actividad');
     req.flush(mockActividadDetail);
@@ -122,9 +122,9 @@ describe('ActividadService', () => {
 
   // ── update ────────────────────────────────────────────────────────────────
 
-  it('update() PATCH /api/v1/proyectos/actividades/:id/', () => {
+  it('update() PATCH /api/v1/projects/activities/:id/', () => {
     service.update('a-1', { costo_unitario_base: '60000' }).subscribe();
-    const req = http.expectOne('/api/v1/proyectos/actividades/a-1/');
+    const req = http.expectOne('/api/v1/projects/activities/a-1/');
     expect(req.request.method).toBe('PATCH');
     expect(req.request.body).toEqual({ costo_unitario_base: '60000' });
     req.flush(mockActividadDetail);
@@ -132,9 +132,9 @@ describe('ActividadService', () => {
 
   // ── delete ────────────────────────────────────────────────────────────────
 
-  it('delete() DELETE /api/v1/proyectos/actividades/:id/', () => {
+  it('delete() DELETE /api/v1/projects/activities/:id/', () => {
     service.delete('a-1').subscribe();
-    const req = http.expectOne('/api/v1/proyectos/actividades/a-1/');
+    const req = http.expectOne('/api/v1/projects/activities/a-1/');
     expect(req.request.method).toBe('DELETE');
     req.flush(null, { status: 204, statusText: 'No Content' });
   });

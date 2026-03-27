@@ -19,7 +19,7 @@ const mockTag: TareaTag = {
   updated_at: '2026-03-22T10:00:00Z',
 };
 
-const BASE = '/api/v1/proyectos/tags';
+const BASE = '/api/v1/projects/tags';
 
 // ── Tests ──────────────────────────────────────────────────────────────────────
 

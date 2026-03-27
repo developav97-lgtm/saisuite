@@ -41,7 +41,7 @@ const mockTarea: Tarea = {
   updated_at: '2026-03-22T10:00:00Z',
 };
 
-const BASE = '/api/v1/proyectos/tareas';
+const BASE = '/api/v1/projects/tasks';
 
 // ── Tests ──────────────────────────────────────────────────────────────────────
 

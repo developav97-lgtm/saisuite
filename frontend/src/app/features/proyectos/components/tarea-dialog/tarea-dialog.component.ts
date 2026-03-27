@@ -44,21 +44,21 @@ export interface TareaDialogResult {
 }
 
 const ESTADO_LABELS: Record<string, string | undefined> = {
-  por_hacer:   'Por Hacer',
-  en_progreso: 'En Progreso',
-  en_revision: 'En Revisión',
-  bloqueada:   'Bloqueada',
-  completada:  'Completada',
-  cancelada:   'Cancelada',
+  todo:        'Por Hacer',
+  in_progress: 'En Progreso',
+  in_review:   'En Revisión',
+  blocked:     'Bloqueada',
+  completed:   'Completada',
+  cancelled:   'Cancelada',
 };
 
 const ESTADO_COLORS: Record<string, string | undefined> = {
-  por_hacer:   '#9e9e9e',
-  en_progreso: '#1e88e5',
-  en_revision: '#fb8c00',
-  bloqueada:   '#e53935',
-  completada:  '#43a047',
-  cancelada:   '#757575',
+  todo:        '#9e9e9e',
+  in_progress: '#1e88e5',
+  in_review:   '#fb8c00',
+  blocked:     '#e53935',
+  completed:   '#43a047',
+  cancelled:   '#757575',
 };
 
 const PRIORIDAD_LABELS: Record<string, string | undefined> = {

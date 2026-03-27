@@ -48,16 +48,16 @@ export class ProyectoDetailComponent implements OnInit {
   readonly TIPO_LABELS     = TIPO_LABELS;
 
   readonly ACCIONES_ESTADO: Partial<Record<EstadoProyecto, { label: string; estado: EstadoProyecto; color: 'primary' | 'warn' | 'accent' }[]>> = {
-    borrador:     [{ label: 'Planificar', estado: 'planificado', color: 'primary' }],
-    planificado:  [
-      { label: 'Iniciar ejecución', estado: 'en_ejecucion', color: 'primary' },
-      { label: 'Volver a borrador', estado: 'borrador', color: 'warn' },
+    draft:       [{ label: 'Planificar', estado: 'planned', color: 'primary' }],
+    planned:     [
+      { label: 'Iniciar ejecución', estado: 'in_progress', color: 'primary' },
+      { label: 'Volver a borrador', estado: 'draft', color: 'warn' },
     ],
-    en_ejecucion: [
-      { label: 'Suspender', estado: 'suspendido', color: 'warn' },
-      { label: 'Cerrar', estado: 'cerrado', color: 'accent' },
+    in_progress: [
+      { label: 'Suspender', estado: 'suspended', color: 'warn' },
+      { label: 'Cerrar', estado: 'closed', color: 'accent' },
     ],
-    suspendido: [{ label: 'Reactivar', estado: 'en_ejecucion', color: 'primary' }],
+    suspended: [{ label: 'Reactivar', estado: 'in_progress', color: 'primary' }],
   };
 
   ngOnInit(): void {

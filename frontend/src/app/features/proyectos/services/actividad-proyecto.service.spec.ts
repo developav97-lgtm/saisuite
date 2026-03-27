@@ -38,12 +38,12 @@ describe('ActividadProyectoService', () => {
 
   // ── listByProyecto ────────────────────────────────────────────────────────
 
-  it('listByProyecto() GET /api/v1/proyectos/:id/actividades/ — respuesta paginada', () => {
+  it('listByProyecto() GET /api/v1/projects/:id/activities/ — respuesta paginada', () => {
     service.listByProyecto('p-1').subscribe(items => {
       expect(items.length).toBe(1);
       expect(items[0].actividad_codigo).toBe('ACT-001');
     });
-    const req = http.expectOne('/api/v1/proyectos/p-1/actividades/');
+    const req = http.expectOne('/api/v1/projects/p-1/activities/');
     expect(req.request.method).toBe('GET');
     req.flush({ count: 1, next: null, previous: null, results: [mockActividadProyecto] });
   });
@@ -53,7 +53,7 @@ describe('ActividadProyectoService', () => {
       expect(items.length).toBe(1);
       expect(items[0].id).toBe('ap-1');
     });
-    const req = http.expectOne('/api/v1/proyectos/p-1/actividades/');
+    const req = http.expectOne('/api/v1/projects/p-1/activities/');
     req.flush([mockActividadProyecto]);
   });
 
@@ -61,20 +61,20 @@ describe('ActividadProyectoService', () => {
     service.listByProyecto('p-1', 'f-1').subscribe(items => {
       expect(items.length).toBe(1);
     });
-    const req = http.expectOne('/api/v1/proyectos/p-1/actividades/?fase=f-1');
+    const req = http.expectOne('/api/v1/projects/p-1/activities/?fase=f-1');
     req.flush([mockActividadProyecto]);
   });
 
   it('listByProyecto() sin faseId no envía parámetro fase', () => {
     service.listByProyecto('p-1').subscribe();
-    const req = http.expectOne('/api/v1/proyectos/p-1/actividades/');
+    const req = http.expectOne('/api/v1/projects/p-1/activities/');
     expect(req.request.url).not.toContain('fase=');
     req.flush([]);
   });
 
   // ── asignar ───────────────────────────────────────────────────────────────
 
-  it('asignar() POST /api/v1/proyectos/:id/actividades/', () => {
+  it('asignar() POST /api/v1/projects/:id/activities/', () => {
     const payload = {
       actividad: 'a-1',
       fase: 'f-1',
@@ -82,7 +82,7 @@ describe('ActividadProyectoService', () => {
       costo_unitario: '50000.00',
     };
     service.asignar('p-1', payload).subscribe(ap => expect(ap.id).toBe('ap-1'));
-    const req = http.expectOne('/api/v1/proyectos/p-1/actividades/');
+    const req = http.expectOne('/api/v1/projects/p-1/activities/');
     expect(req.request.method).toBe('POST');
     expect(req.request.body.actividad).toBe('a-1');
     req.flush(mockActividadProyecto);
@@ -91,16 +91,16 @@ describe('ActividadProyectoService', () => {
   it('asignar() permite omitir costo_unitario (backend usa costo_unitario_base)', () => {
     const payload = { actividad: 'a-1', cantidad_planificada: '5.00' };
     service.asignar('p-1', payload).subscribe();
-    const req = http.expectOne('/api/v1/proyectos/p-1/actividades/');
+    const req = http.expectOne('/api/v1/projects/p-1/activities/');
     expect(req.request.body).not.toEqual(jasmine.objectContaining({ costo_unitario: jasmine.anything() }));
     req.flush(mockActividadProyecto);
   });
 
   // ── update ────────────────────────────────────────────────────────────────
 
-  it('update() PATCH /api/v1/proyectos/:id/actividades/:apId/', () => {
+  it('update() PATCH /api/v1/projects/:id/activities/:apId/', () => {
     service.update('p-1', 'ap-1', { cantidad_ejecutada: '7.00' }).subscribe();
-    const req = http.expectOne('/api/v1/proyectos/p-1/actividades/ap-1/');
+    const req = http.expectOne('/api/v1/projects/p-1/activities/ap-1/');
     expect(req.request.method).toBe('PATCH');
     expect(req.request.body).toEqual({ cantidad_ejecutada: '7.00' });
     req.flush({ ...mockActividadProyecto, cantidad_ejecutada: '7.00' });
@@ -108,9 +108,9 @@ describe('ActividadProyectoService', () => {
 
   // ── desasignar ────────────────────────────────────────────────────────────
 
-  it('desasignar() DELETE /api/v1/proyectos/:id/actividades/:apId/', () => {
+  it('desasignar() DELETE /api/v1/projects/:id/activities/:apId/', () => {
     service.desasignar('p-1', 'ap-1').subscribe();
-    const req = http.expectOne('/api/v1/proyectos/p-1/actividades/ap-1/');
+    const req = http.expectOne('/api/v1/projects/p-1/activities/ap-1/');
     expect(req.request.method).toBe('DELETE');
     req.flush(null, { status: 204, statusText: 'No Content' });
   });

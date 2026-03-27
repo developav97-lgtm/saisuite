@@ -22,12 +22,12 @@ import { Tarea, TareaEstado, TareaPrioridad, TareaFilters } from '../../models/t
 import { ConfirmDialogComponent } from '../../../../shared/components/confirm-dialog/confirm-dialog.component';
 
 export const ESTADO_LABELS: Record<string, string> = {
-  por_hacer:   'Por Hacer',
-  en_progreso: 'En Progreso',
-  en_revision: 'En Revisión',
-  bloqueada:   'Bloqueada',
-  completada:  'Completada',
-  cancelada:   'Cancelada',
+  todo:        'Por Hacer',
+  in_progress: 'En Progreso',
+  in_review:   'En Revisión',
+  blocked:     'Bloqueada',
+  completed:   'Completada',
+  cancelled:   'Cancelada',
 };
 
 export const PRIORIDAD_LABELS: Record<string, string> = {

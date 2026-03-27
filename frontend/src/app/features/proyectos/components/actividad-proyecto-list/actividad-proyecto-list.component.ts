@@ -54,12 +54,12 @@ export class ActividadProyectoListComponent implements OnInit, OnDestroy {
 
   /** Cantidad ejecutada siempre deshabilitada — se calcula automáticamente desde tareas. */
   readonly puedeEjecutar = computed(() =>
-    ['en_ejecucion', 'suspendido'].includes(this.proyectoEstado())
+    ['in_progress', 'suspended'].includes(this.proyectoEstado())
   );
 
   /** Eliminar actividades solo permitido en estado borrador. */
   readonly puedeEliminar = computed(() =>
-    !['planificado', 'en_ejecucion'].includes(this.proyectoEstado())
+    !['planned', 'in_progress'].includes(this.proyectoEstado())
   );
 
   private actividadSub?: Subscription;
