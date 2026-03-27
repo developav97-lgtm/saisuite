@@ -37,32 +37,59 @@
       <div class="sc-nav__section-label">{{ section.sectionLabel }}</div>
       }
       @for (item of section.items; track item.label) {
-      @if (!item.children) {
-      <a class="sc-nav__item" [routerLink]="item.route" routerLinkActive="sc-nav__item--active"
-        [routerLinkActiveOptions]="{ exact: item.route === '/dashboard' }">
-        <mat-icon class="sc-nav__icon">{{ item.icon }}</mat-icon>
-        <span class="sc-nav__label">{{ item.label }}</span>
-        @if (item.badge) { <span class="sc-nav__badge">{{ item.badge }}</span> }
-      </a>
-      } @else {
-      <div class="sc-nav__item sc-nav__item--parent" [class.sc-nav__item--expanded]="isExpanded(item.label)"
-        (click)="toggleExpand(item.label)" role="button" [attr.aria-expanded]="isExpanded(item.label)">
-        <mat-icon class="sc-nav__icon">{{ item.icon }}</mat-icon>
-        <span class="sc-nav__label">{{ item.label }}</span>
-        @if (item.badge) { <span class="sc-nav__badge">{{ item.badge }}</span> }
-        <mat-icon class="sc-nav__chevron" [class.sc-nav__chevron--open]="isExpanded(item.label)">expand_more</mat-icon>
-      </div>
-      @if (isExpanded(item.label)) {
-      <div class="sc-nav__children">
-        @for (child of item.children; track child.label) {
-        <a class="sc-nav__child" [routerLink]="child.route" routerLinkActive="sc-nav__child--active">
-          <mat-icon class="sc-nav__child-icon">{{ child.icon }}</mat-icon>
-          <span>{{ child.label }}</span>
-        </a>
+
+        @if (item.action) {
+          <!-- Item con acción especial (ej: Tareas con localStorage) -->
+          <div
+            class="sc-nav__item"
+            [class.sc-nav__item--active]="isTareasActive()"
+            (click)="handleItemClick(item)"
+            role="button"
+          >
+            <mat-icon class="sc-nav__icon">{{ item.icon }}</mat-icon>
+            <span class="sc-nav__label">{{ item.label }}</span>
+            @if (item.badge) { <span class="sc-nav__badge">{{ item.badge }}</span> }
+          </div>
+
+        } @else if (!item.children) {
+          <!-- Item simple con ruta -->
+          <a
+            class="sc-nav__item"
+            [routerLink]="item.route"
+            routerLinkActive="sc-nav__item--active"
+            [routerLinkActiveOptions]="{ exact: item.exact ?? false }"
+          >
+            <mat-icon class="sc-nav__icon">{{ item.icon }}</mat-icon>
+            <span class="sc-nav__label">{{ item.label }}</span>
+            @if (item.badge) { <span class="sc-nav__badge">{{ item.badge }}</span> }
+          </a>
+
+        } @else {
+          <!-- Item con hijos (expandible) -->
+          <div
+            class="sc-nav__item sc-nav__item--parent"
+            [class.sc-nav__item--expanded]="isExpanded(item.label)"
+            (click)="handleItemClick(item)"
+            role="button"
+            [attr.aria-expanded]="isExpanded(item.label)"
+          >
+            <mat-icon class="sc-nav__icon">{{ item.icon }}</mat-icon>
+            <span class="sc-nav__label">{{ item.label }}</span>
+            @if (item.badge) { <span class="sc-nav__badge">{{ item.badge }}</span> }
+            <mat-icon class="sc-nav__chevron" [class.sc-nav__chevron--open]="isExpanded(item.label)">expand_more</mat-icon>
+          </div>
+          @if (isExpanded(item.label)) {
+          <div class="sc-nav__children">
+            @for (child of item.children; track child.label) {
+            <a class="sc-nav__child" [routerLink]="child.route" routerLinkActive="sc-nav__child--active">
+              <mat-icon class="sc-nav__child-icon">{{ child.icon }}</mat-icon>
+              <span>{{ child.label }}</span>
+            </a>
+            }
+          </div>
+          }
         }
-      </div>
-      }
-      }
+
       }
     </div>
     }

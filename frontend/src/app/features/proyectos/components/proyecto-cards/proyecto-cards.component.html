@@ -1,0 +1,132 @@
+<div class="sc-page">
+
+  <!-- Header -->
+  <div class="sc-page-header">
+    <h1 class="sc-page-header__title">Proyectos</h1>
+    <div class="pc-header-actions">
+      <!-- Toggle Lista / Cards -->
+      <button mat-stroked-button matTooltip="Ver como tabla" (click)="irALista()">
+        <mat-icon>view_list</mat-icon>
+        Lista
+      </button>
+      <button mat-raised-button color="primary" (click)="nuevoProyecto()">
+        <mat-icon>add</mat-icon>
+        Nuevo proyecto
+      </button>
+    </div>
+  </div>
+
+  <!-- Filtros (idénticos a la vista lista) -->
+  <div class="pl-filters-card sc-card">
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="pl-search">
+      <mat-label>Buscar por código, nombre o cliente…</mat-label>
+      <input matInput [ngModel]="searchText()"
+        (ngModelChange)="searchText.set($event)"
+        (keyup.enter)="onSearch()" />
+      <button mat-icon-button matSuffix (click)="onSearch()" aria-label="Buscar">
+        <mat-icon>search</mat-icon>
+      </button>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="pl-filter">
+      <mat-label>Estado</mat-label>
+      <mat-select [ngModel]="estadoFilter()"
+        (ngModelChange)="estadoFilter.set($event); onFilterChange()">
+        @for (opt of estadoOptions; track opt.value) {
+          <mat-option [value]="opt.value">{{ opt.label }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="pl-filter">
+      <mat-label>Tipo</mat-label>
+      <mat-select [ngModel]="tipoFilter()"
+        (ngModelChange)="tipoFilter.set($event); onFilterChange()">
+        @for (opt of tipoOptions; track opt.value) {
+          <mat-option [value]="opt.value">{{ opt.label }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+  </div>
+
+  <!-- Progress bar -->
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate" class="pl-progress" />
+  }
+
+  <!-- Cards grid -->
+  @if (!loading() && proyectos().length > 0) {
+    <div class="pc-grid">
+      @for (p of proyectos(); track p.id) {
+        <div class="pc-card sc-card" (click)="verDetalle(p.id)" role="button" tabindex="0">
+
+          <!-- Card header: código + estado -->
+          <div class="pc-card__head">
+            <span class="pc-card__codigo">{{ p.codigo }}</span>
+            <span [class]="estadoClass(p.estado)">{{ estadoLabel(p.estado) }}</span>
+          </div>
+
+          <!-- Nombre del proyecto -->
+          <h3 class="pc-card__nombre">{{ p.nombre }}</h3>
+
+          <!-- Tipo -->
+          <span class="pc-card__tipo">{{ tipoLabel(p.tipo) }}</span>
+
+          <!-- Progreso -->
+          <div class="pc-card__progress">
+            <div class="pc-card__progress-label">
+              <span>Avance</span>
+              <strong>{{ progressValue(p) | number:'1.0-0' }}%</strong>
+            </div>
+            <mat-progress-bar
+              [mode]="'determinate'"
+              [value]="progressValue(p)"
+              [color]="progressColor(p)"
+            />
+          </div>
+
+          <!-- Métricas -->
+          <div class="pc-card__metrics">
+            <div class="pc-card__metric">
+              <mat-icon>person</mat-icon>
+              <span>{{ p.gerente.full_name || p.gerente.email }}</span>
+            </div>
+            <div class="pc-card__metric">
+              <mat-icon>business</mat-icon>
+              <span>{{ p.cliente_nombre }}</span>
+            </div>
+            <div class="pc-card__metric">
+              <mat-icon>event</mat-icon>
+              <span>{{ formatDate(p.fecha_fin_planificada) }}</span>
+            </div>
+            <div class="pc-card__metric pc-card__metric--currency">
+              <mat-icon>payments</mat-icon>
+              <span>{{ formatCurrency(p.presupuesto_total) }}</span>
+            </div>
+          </div>
+
+          <!-- Acción -->
+          <div class="pc-card__footer">
+            <button mat-stroked-button class="pc-card__btn" (click)="$event.stopPropagation(); verDetalle(p.id)">
+              Ver detalle
+              <mat-icon iconPositionEnd>chevron_right</mat-icon>
+            </button>
+          </div>
+
+        </div>
+      }
+    </div>
+  }
+
+  <!-- Empty state -->
+  @if (!loading() && proyectos().length === 0) {
+    <div class="sc-empty-state">
+      <mat-icon>work_outline</mat-icon>
+      <p>No hay proyectos que coincidan con los filtros.</p>
+      <button mat-raised-button color="primary" (click)="nuevoProyecto()">
+        <mat-icon>add</mat-icon> Nuevo proyecto
+      </button>
+    </div>
+  }
+
+</div>

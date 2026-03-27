@@ -94,6 +94,7 @@ export class TareaListComponent implements OnInit {
   readonly PRIORIDAD_LABELS = PRIORIDAD_LABELS;
 
   ngOnInit(): void {
+    localStorage.setItem('saisuite.tareasView', 'list');
     const pid = this.route.snapshot.queryParamMap.get('proyecto');
     if (pid) this.proyectoId.set(pid);
     this.loadTareas();
@@ -125,7 +126,10 @@ export class TareaListComponent implements OnInit {
   onSearch(): void       { this.loadTareas(); }
   onFilterChange(): void { this.loadTareas(); }
   onPage(_event: PageEvent): void { /* paginación client-side vía mat-paginator */ }
-  irAKanban(): void      { this.router.navigate(['/proyectos/tareas/kanban']); }
+  irAKanban(): void {
+    localStorage.setItem('saisuite.tareasView', 'kanban');
+    this.router.navigate(['/proyectos/tareas/kanban']);
+  }
 
   nuevaTarea(): void {
     const extras = this.proyectoId()

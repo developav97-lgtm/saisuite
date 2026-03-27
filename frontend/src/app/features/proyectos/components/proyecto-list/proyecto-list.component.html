@@ -3,10 +3,16 @@
   <!-- Header -->
   <div class="sc-page-header">
     <h1 class="sc-page-header__title">Proyectos</h1>
-    <button mat-raised-button color="primary" (click)="nuevoProyecto()">
-      <mat-icon>add</mat-icon>
-      Nuevo proyecto
-    </button>
+    <div class="pl-header-actions">
+      <button mat-stroked-button matTooltip="Ver como tarjetas" (click)="irACards()">
+        <mat-icon>view_module</mat-icon>
+        Cards
+      </button>
+      <button mat-raised-button color="primary" (click)="nuevoProyecto()">
+        <mat-icon>add</mat-icon>
+        Nuevo proyecto
+      </button>
+    </div>
   </div>
 
   <!-- Filtros en card -->
@@ -65,7 +71,7 @@
     <ng-container matColumnDef="tipo">
       <mat-header-cell *matHeaderCellDef>Tipo</mat-header-cell>
       <mat-cell *matCellDef="let p">
-        <span class="pl-tipo-chip">{{ TIPO_LABELS[p.tipo] || p.tipo }}</span>
+        <span class="pl-tipo-chip">{{ tipoLabel(p.tipo) }}</span>
       </mat-cell>
     </ng-container>
 

@@ -82,7 +82,8 @@ export class ProyectoListComponent implements OnInit {
   onFilterChange(): void { this.loadProyectos(0, this.pageSize); }
   onPage(event: PageEvent): void { this.loadProyectos(event.pageIndex, event.pageSize); }
   verDetalle(id: string): void { this.router.navigate(['/proyectos', id]); }
-  nuevoProyecto(): void { this.router.navigate(['/proyectos', 'nuevo']); }
+  nuevoProyecto():        void { this.router.navigate(['/proyectos', 'nuevo']); }
+  irACards():             void { this.router.navigate(['/proyectos', 'cards']); }
 
   confirmarEliminar(proyecto: ProyectoList): void {
     const ref = this.dialog.open(ConfirmDialogComponent, {
@@ -109,6 +110,10 @@ export class ProyectoListComponent implements OnInit {
 
   estadoLabel(estado: string): string {
     return ESTADO_LABELS[estado as EstadoProyecto] ?? estado;
+  }
+
+  tipoLabel(tipo: string): string {
+    return TIPO_LABELS[tipo as TipoProyecto] ?? tipo;
   }
 
   estadoClass(estado: string): string {

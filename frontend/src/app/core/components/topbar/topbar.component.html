@@ -7,6 +7,13 @@
       <div class="sc-topbar__brand-icon"><mat-icon>cloud</mat-icon></div>
       <span class="sc-topbar__brand-name">Saicloud</span>
     </a>
+
+    @if (moduloActual()) {
+      <div class="sc-topbar__module">
+        <mat-icon class="sc-topbar__module-sep">chevron_right</mat-icon>
+        <span class="sc-topbar__module-name">{{ moduloActual() }}</span>
+      </div>
+    }
   </div>
 
   <div class="sc-topbar__right">
@@ -20,19 +27,28 @@
 
     <div class="sc-topbar__sep"></div>
 
-    <button class="sc-topbar__user" mat-button aria-label="Perfil">
+    <button class="sc-topbar__user" mat-button aria-label="Perfil"
+      [matMenuTriggerFor]="userMenu">
       <div class="sc-topbar__avatar">
         {{ (currentUser()?.full_name || currentUser()?.email || 'U').charAt(0).toUpperCase() }}
       </div>
       <div class="sc-topbar__user-info">
         <span class="sc-topbar__user-name">{{ currentUser()?.full_name || currentUser()?.email }}</span>
-        <span class="sc-topbar__user-role">{{ currentUser()?.role }}</span>
+        <span class="sc-topbar__user-role">{{ rolLabel() }}</span>
       </div>
       <mat-icon class="sc-topbar__user-chevron">expand_more</mat-icon>
     </button>
 
-    <button class="sc-topbar__action" mat-icon-button matTooltip="Cerrar sesión" (click)="authService.logout()">
-      <mat-icon>logout</mat-icon>
-    </button>
+    <mat-menu #userMenu="matMenu" xPosition="before">
+      <button mat-menu-item [routerLink]="perfilUrl()">
+        <mat-icon>manage_accounts</mat-icon>
+        <span>Mi perfil</span>
+      </button>
+      <mat-divider />
+      <button mat-menu-item (click)="authService.logout()">
+        <mat-icon>logout</mat-icon>
+        <span>Cerrar sesión</span>
+      </button>
+    </mat-menu>
   </div>
 </header>

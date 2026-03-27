@@ -52,6 +52,14 @@ export const PROYECTOS_ROUTES: Routes = [
       ),
   },
   {
+    // Vista cards — debe ir ANTES de :id
+    path: 'cards',
+    loadComponent: () =>
+      import('./components/proyecto-cards/proyecto-cards.component').then(
+        (m) => m.ProyectoCardsComponent
+      ),
+  },
+  {
     // Debe ir ANTES de :id para que no sea capturado como UUID
     path: 'actividades',
     loadComponent: () =>

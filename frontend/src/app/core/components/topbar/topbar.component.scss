@@ -54,6 +54,29 @@
     letter-spacing: -0.01em;
   }
 
+  &__module {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+
+    @media (max-width: 640px) {
+      display: none;
+    }
+  }
+
+  &__module-sep {
+    font-size: 1rem !important;
+    width: 1rem !important;
+    height: 1rem !important;
+    color: var(--sc-text-muted);
+  }
+
+  &__module-name {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--sc-primary);
+  }
+
   &__action {
     color: var(--sc-text-muted) !important;
   }
@@ -66,13 +89,17 @@
   }
 
   &__user {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
     padding: 0 0.5rem !important;
     border-radius: 8px !important;
     height: 40px;
     min-width: unset !important;
+
+    // mat-button wraps content in an inline span — force it to flex
+    ::ng-deep .mdc-button__label {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
   }
 
   &__avatar {

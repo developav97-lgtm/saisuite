@@ -113,6 +113,7 @@ export class TareaKanbanComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    localStorage.setItem('saisuite.tareasView', 'kanban');
     const snap = this.route.snapshot.queryParamMap;
     const pid  = snap.get('proyecto');
     if (pid) {
@@ -374,5 +375,8 @@ export class TareaKanbanComponent implements OnInit {
     }
     this.loadTareas();
   }
-  irALista(): void                          { this.router.navigate(['/proyectos/tareas']); }
+  irALista(): void {
+    localStorage.setItem('saisuite.tareasView', 'list');
+    this.router.navigate(['/proyectos/tareas']);
+  }
 }

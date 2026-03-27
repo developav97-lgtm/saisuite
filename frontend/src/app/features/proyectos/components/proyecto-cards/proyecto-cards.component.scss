@@ -1,0 +1,173 @@
+// ── Grid de cards ────────────────────────────────────────────
+.pc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+// ── Card individual ──────────────────────────────────────────
+.pc-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  padding: 1.125rem;
+  cursor: pointer;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+  border: 1px solid var(--sc-surface-border) !important;
+
+  &:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    border-color: var(--sc-primary) !important;
+    transform: translateY(-1px);
+  }
+
+  &__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  &__codigo {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--sc-primary);
+    background: var(--sc-primary-light);
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+    font-family: monospace;
+    letter-spacing: 0.03em;
+  }
+
+  &__nombre {
+    font-size: 0.975rem;
+    font-weight: 600;
+    color: var(--sc-text-color);
+    margin: 0;
+    line-height: 1.3;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  &__tipo {
+    font-size: 0.775rem;
+    color: var(--sc-text-muted);
+    background: var(--sc-surface-border);
+    padding: 0.1rem 0.45rem;
+    border-radius: 4px;
+    align-self: flex-start;
+  }
+
+  &__progress {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+
+  &__progress-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.775rem;
+    color: var(--sc-text-muted);
+
+    strong {
+      color: var(--sc-text-color);
+      font-weight: 600;
+    }
+  }
+
+  &__metrics {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.35rem 0.5rem;
+    padding-top: 0.375rem;
+    border-top: 1px solid var(--sc-surface-border);
+  }
+
+  &__metric {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.775rem;
+    color: var(--sc-text-muted);
+    overflow: hidden;
+
+    mat-icon {
+      font-size: 0.875rem !important;
+      width: 0.875rem !important;
+      height: 0.875rem !important;
+      flex-shrink: 0;
+    }
+
+    span {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    &--currency span {
+      font-weight: 600;
+      color: var(--sc-text-color);
+    }
+  }
+
+  &__footer {
+    padding-top: 0.375rem;
+  }
+
+  &__btn {
+    width: 100%;
+    font-size: 0.825rem;
+  }
+}
+
+// ── Estado badges ────────────────────────────────────────────
+.pc-estado {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.2rem 0.5rem;
+  border-radius: 1rem;
+  white-space: nowrap;
+
+  &--draft       { background: #e3f2fd; color: #1565c0; }
+  &--planned     { background: #e8f5e9; color: #2e7d32; }
+  &--in_progress { background: #fff8e1; color: #f57f17; }
+  &--suspended   { background: #fce4ec; color: #c62828; }
+  &--closed      { background: #ede7f6; color: #4527a0; }
+  &--cancelled   { background: #efebe9; color: #4e342e; }
+}
+
+// ── Filtros (igual a proyecto-list, línea única) ─────────────
+.pl-filters-card {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.875rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.pl-search  { flex: 1; min-width: 0; }
+.pl-filter  { width: 170px; flex-shrink: 0; }
+.pl-progress { margin-bottom: -4px; }
+
+// ── Header actions ───────────────────────────────────────────
+.pc-header-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+// ── Responsive ──────────────────────────────────────────────
+@media (max-width: 600px) {
+  .pc-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pc-card__metrics {
+    grid-template-columns: 1fr;
+  }
+}

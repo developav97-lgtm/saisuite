@@ -1,0 +1,48 @@
+<div class="ms-page">
+
+  <!-- Header -->
+  <div class="ms-header">
+    <div class="ms-header__logo">
+      <mat-icon class="ms-header__logo-icon">hub</mat-icon>
+    </div>
+    <div>
+      <h1 class="ms-header__title">Saicloud</h1>
+      <p class="ms-header__subtitle">Selecciona el módulo con el que deseas trabajar</p>
+    </div>
+  </div>
+
+  <!-- Grid de módulos -->
+  <div class="ms-grid">
+    @for (mod of modulos; track mod.key) {
+      <div
+        class="ms-card"
+        [class.ms-card--disabled]="!mod.available"
+        (click)="goTo(mod)"
+        matRipple
+        [matRippleDisabled]="!mod.available"
+        [matTooltip]="mod.available ? '' : 'Módulo no disponible aún'"
+      >
+        <div class="ms-card__icon-wrap" [style.background]="mod.available ? mod.color + '18' : 'var(--sc-surface-border)'">
+          <mat-icon class="ms-card__icon" [style.color]="mod.available ? mod.color : 'var(--sc-text-muted)'">
+            {{ mod.icon }}
+          </mat-icon>
+        </div>
+
+        <div class="ms-card__body">
+          <div class="ms-card__header">
+            <span class="ms-card__label">{{ mod.label }}</span>
+            @if (mod.badge) {
+              <span class="ms-card__badge">{{ mod.badge }}</span>
+            }
+          </div>
+          <p class="ms-card__desc">{{ mod.description }}</p>
+        </div>
+
+        @if (mod.available) {
+          <mat-icon class="ms-card__arrow">chevron_right</mat-icon>
+        }
+      </div>
+    }
+  </div>
+
+</div>

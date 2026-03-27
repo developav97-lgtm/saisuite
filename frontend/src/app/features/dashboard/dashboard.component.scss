@@ -1,0 +1,150 @@
+.ms-page {
+  padding: 2rem;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+// ── Header ──────────────────────────────────────────────────
+.ms-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 2.5rem;
+
+  &__logo {
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+    background: var(--sc-primary-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  &__logo-icon {
+    font-size: 1.75rem !important;
+    width: 1.75rem !important;
+    height: 1.75rem !important;
+    color: var(--sc-primary);
+  }
+
+  &__title {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--sc-text-color);
+    margin: 0 0 0.2rem;
+  }
+
+  &__subtitle {
+    font-size: 0.925rem;
+    color: var(--sc-text-muted);
+    margin: 0;
+  }
+}
+
+// ── Grid ────────────────────────────────────────────────────
+.ms-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1rem;
+}
+
+// ── Card ────────────────────────────────────────────────────
+.ms-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.125rem 1rem;
+  border-radius: 12px;
+  background: var(--sc-surface-card);
+  border: 1px solid var(--sc-surface-border);
+  cursor: pointer;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+  position: relative;
+  overflow: hidden;
+
+  &:hover:not(.ms-card--disabled) {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    border-color: var(--sc-primary);
+    transform: translateY(-1px);
+  }
+
+  &--disabled {
+    cursor: default;
+    opacity: 0.55;
+  }
+
+  &__icon-wrap {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  &__icon {
+    font-size: 1.5rem !important;
+    width: 1.5rem !important;
+    height: 1.5rem !important;
+  }
+
+  &__body {
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.2rem;
+  }
+
+  &__label {
+    font-size: 0.925rem;
+    font-weight: 600;
+    color: var(--sc-text-color);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__badge {
+    font-size: 0.65rem;
+    font-weight: 600;
+    padding: 0.15rem 0.45rem;
+    border-radius: 1rem;
+    background: var(--sc-surface-border);
+    color: var(--sc-text-muted);
+    white-space: nowrap;
+  }
+
+  &__desc {
+    font-size: 0.8rem;
+    color: var(--sc-text-muted);
+    margin: 0;
+    line-height: 1.4;
+  }
+
+  &__arrow {
+    font-size: 1.25rem !important;
+    width: 1.25rem !important;
+    height: 1.25rem !important;
+    color: var(--sc-text-muted);
+    flex-shrink: 0;
+  }
+}
+
+// ── Responsive ──────────────────────────────────────────────
+@media (max-width: 600px) {
+  .ms-page {
+    padding: 1rem;
+  }
+
+  .ms-grid {
+    grid-template-columns: 1fr;
+  }
+}
