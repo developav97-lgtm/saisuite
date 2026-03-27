@@ -8,7 +8,7 @@ from rest_framework import status
 from django.contrib.auth import get_user_model
 
 from apps.companies.models import Company, CompanyModule
-from apps.proyectos.models import Proyecto, Fase
+from apps.proyectos.models import Project, Phase
 
 User = get_user_model()
 
@@ -27,20 +27,20 @@ def crear_usuario(company, email='gfv@test.com', role='company_admin'):
 
 def crear_proyecto_db(company, gerente, codigo='FV-PRY-001', **kwargs):
     defaults = dict(
-        nombre='Proyecto FV', tipo='civil_works',
+        nombre='Project FV', tipo='civil_works',
         cliente_id='900111', cliente_nombre='Cliente',
         fecha_inicio_planificada='2026-04-01',
         fecha_fin_planificada='2026-12-31',
         presupuesto_total=Decimal('1000000'),
     )
     defaults.update(kwargs)
-    return Proyecto.all_objects.create(company=company, gerente=gerente, codigo=codigo, **defaults)
+    return Project.all_objects.create(company=company, gerente=gerente, codigo=codigo, **defaults)
 
 
 def crear_fase_db(company, proyecto, orden=1, nombre=None, **kwargs):
-    return Fase.all_objects.create(
+    return Phase.all_objects.create(
         company=company, proyecto=proyecto,
-        nombre=nombre or f'Fase {orden}', orden=orden,
+        nombre=nombre or f'Phase {orden}', orden=orden,
         fecha_inicio_planificada='2026-04-01',
         fecha_fin_planificada='2026-06-30',
         presupuesto_mano_obra=Decimal('200000'),
@@ -100,7 +100,7 @@ class FaseListOrdenamientoTest(APITestCase):
     def test_solo_fases_activas_en_listado(self):
         crear_fase_db(self.company, self.proyecto, orden=1, nombre='Activa')
         f_inactiva = crear_fase_db(self.company, self.proyecto, orden=2, nombre='Inactiva')
-        Fase.all_objects.filter(id=f_inactiva.id).update(activo=False)
+        Phase.all_objects.filter(id=f_inactiva.id).update(activo=False)
         resp = self.client.get(self.url)
         nombres = [f['nombre'] for f in self._results(resp)]
         self.assertIn('Activa', nombres)

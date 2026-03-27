@@ -7,7 +7,7 @@ Cubre:
 - Solo incluye tareas con fecha_inicio y fecha_fin
 - Tareas ordenadas por fecha_inicio
 - custom_class se genera con el estado
-- Proyecto vacío retorna lista vacía
+- Project vacío retorna lista vacía
 """
 from datetime import date, timedelta
 from decimal import Decimal
@@ -19,7 +19,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import get_user_model
 
 from apps.companies.models import Company, CompanyModule
-from apps.proyectos.models import Proyecto, Fase, Tarea
+from apps.proyectos.models import Project, Phase, Task
 
 User = get_user_model()
 
@@ -52,10 +52,10 @@ def make_user(company):
 
 
 def make_proyecto(company, gerente):
-    return Proyecto.all_objects.create(
+    return Project.all_objects.create(
         company=company, gerente=gerente,
         codigo=f'PRY-{_nit()}',
-        nombre='Proyecto Gantt Test',
+        nombre='Project Gantt Test',
         tipo='civil_works',
         estado='in_progress',
         cliente_id='888', cliente_nombre='Cliente Gantt',
@@ -66,9 +66,9 @@ def make_proyecto(company, gerente):
 
 
 def make_fase(company, proyecto):
-    return Fase.all_objects.create(
+    return Phase.all_objects.create(
         company=company, proyecto=proyecto,
-        nombre='Fase Gantt', orden=1,
+        nombre='Phase Gantt', orden=1,
         fecha_inicio_planificada=date.today(),
         fecha_fin_planificada=date.today() + timedelta(days=60),
         presupuesto_mano_obra=Decimal('500000'),
@@ -76,7 +76,7 @@ def make_fase(company, proyecto):
 
 
 def make_tarea(company, proyecto, fase, nombre, fi, ff, estado='todo', progreso=0):
-    return Tarea.objects.create(
+    return Task.objects.create(
         company=company, proyecto=proyecto, fase=fase,
         nombre=nombre, estado=estado,
         fecha_inicio=fi, fecha_fin=ff,
@@ -98,17 +98,17 @@ class TestGanttDataEndpoint(APITestCase):
         self.url = f'/api/v1/projects/{self.proyecto.id}/gantt-data/'
         hoy = date.today()
         self.t1 = make_tarea(
-            self.company, self.proyecto, self.fase, 'Tarea A',
+            self.company, self.proyecto, self.fase, 'Task A',
             fi=hoy, ff=hoy + timedelta(days=5),
             estado='in_progress', progreso=40,
         )
         self.t2 = make_tarea(
-            self.company, self.proyecto, self.fase, 'Tarea B',
+            self.company, self.proyecto, self.fase, 'Task B',
             fi=hoy + timedelta(days=5), ff=hoy + timedelta(days=10),
             estado='todo', progreso=0,
         )
         self.t3 = make_tarea(
-            self.company, self.proyecto, self.fase, 'Tarea C',
+            self.company, self.proyecto, self.fase, 'Task C',
             fi=hoy + timedelta(days=2), ff=hoy + timedelta(days=7),
             estado='completed', progreso=100,
         )
@@ -152,7 +152,7 @@ class TestGanttDataEndpoint(APITestCase):
 
     def test_excluye_tareas_sin_fechas(self):
         # Crear tarea sin fecha_inicio ni fecha_fin
-        Tarea.objects.create(
+        Task.objects.create(
             company=self.company, proyecto=self.proyecto, fase=self.fase,
             nombre='Sin fechas', estado='todo',
         )

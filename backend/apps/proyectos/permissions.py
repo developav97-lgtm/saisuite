@@ -81,6 +81,3 @@ class TaskPermission(CanAccessProyectos):
             return obj.responsable_id == user.id
         return False
 
-
-# ALIASES DE COMPATIBILIDAD — eliminar en REFT-10
-TareaPermission = TaskPermission

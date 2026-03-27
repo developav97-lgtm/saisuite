@@ -1,5 +1,5 @@
 """
-SaiSuite — Tests: Hito model
+SaiSuite — Tests: Milestone model
 """
 import pytest
 from decimal import Decimal
@@ -8,14 +8,14 @@ from django.contrib.auth import get_user_model
 
 from apps.companies.models import Company, CompanyModule
 from apps.proyectos.models import (
-    Proyecto, Fase, DocumentoContable, Hito,
+    Project, Phase, AccountingDocument, Milestone,
 )
 
 User = get_user_model()
 
 
 def make_company(nit='907001001'):
-    c = Company.objects.create(name='Hito Test Co', nit=nit)
+    c = Company.objects.create(name='Milestone Test Co', nit=nit)
     CompanyModule.objects.create(company=c, module='proyectos', is_active=True)
     return c
 
@@ -27,9 +27,9 @@ def make_user(company, email='ghito@test.com'):
 
 
 def make_proyecto(company, gerente, codigo='HIT-PRY-001'):
-    return Proyecto.all_objects.create(
+    return Project.all_objects.create(
         company=company, gerente=gerente, codigo=codigo,
-        nombre='Hito Proyecto', tipo='civil_works',
+        nombre='Milestone Project', tipo='civil_works',
         cliente_id='111', cliente_nombre='C',
         fecha_inicio_planificada=date.today(),
         fecha_fin_planificada=date.today() + timedelta(days=180),
@@ -38,21 +38,21 @@ def make_proyecto(company, gerente, codigo='HIT-PRY-001'):
 
 
 def make_fase(proyecto, orden=1):
-    return Fase.all_objects.create(
+    return Phase.all_objects.create(
         company=proyecto.company,
-        proyecto=proyecto, nombre=f'Fase {orden}', orden=orden,
+        proyecto=proyecto, nombre=f'Phase {orden}', orden=orden,
         fecha_inicio_planificada=date.today(),
         fecha_fin_planificada=date.today() + timedelta(days=60),
     )
 
 
-def make_hito(proyecto, nombre='Hito 1', fase=None, **kwargs):
+def make_hito(proyecto, nombre='Milestone 1', fase=None, **kwargs):
     defaults = dict(
         porcentaje_proyecto=Decimal('25.00'),
         valor_facturar=Decimal('2500000.00'),
     )
     defaults.update(kwargs)
-    return Hito.all_objects.create(
+    return Milestone.all_objects.create(
         company=proyecto.company,
         proyecto=proyecto,
         fase=fase,
@@ -70,7 +70,7 @@ class TestHitoModel:
         p = make_proyecto(c, g)
         h = make_hito(p)
         assert h.id is not None
-        assert h.nombre == 'Hito 1'
+        assert h.nombre == 'Milestone 1'
         assert h.proyecto_id == p.id
 
     def test_facturable_por_defecto_true(self):
@@ -135,10 +135,10 @@ class TestHitoModel:
         c = make_company('907001010')
         g = make_user(c, 'gh10@test.com')
         p = make_proyecto(c, g, 'HIT-PRY-010')
-        make_hito(p, 'Hito 1', porcentaje_proyecto=Decimal('25.00'), valor_facturar=Decimal('2500000'))
-        make_hito(p, 'Hito 2', porcentaje_proyecto=Decimal('25.00'), valor_facturar=Decimal('2500000'))
-        make_hito(p, 'Hito 3', porcentaje_proyecto=Decimal('50.00'), valor_facturar=Decimal('5000000'))
-        assert Hito.all_objects.filter(proyecto=p).count() == 3
+        make_hito(p, 'Milestone 1', porcentaje_proyecto=Decimal('25.00'), valor_facturar=Decimal('2500000'))
+        make_hito(p, 'Milestone 2', porcentaje_proyecto=Decimal('25.00'), valor_facturar=Decimal('2500000'))
+        make_hito(p, 'Milestone 3', porcentaje_proyecto=Decimal('50.00'), valor_facturar=Decimal('5000000'))
+        assert Milestone.all_objects.filter(proyecto=p).count() == 3
 
     def test_str_pendiente_cuando_no_facturado(self):
         c = make_company('907001011')
@@ -155,7 +155,7 @@ class TestHitoModel:
         g = make_user(c, 'gh12@test.com')
         p = make_proyecto(c, g, 'HIT-PRY-012')
         h = make_hito(p, 'Primer corte')
-        Hito.all_objects.filter(id=h.id).update(facturado=True)
+        Milestone.all_objects.filter(id=h.id).update(facturado=True)
         h.refresh_from_db()
         s = str(h)
         assert 'Facturado' in s
@@ -164,7 +164,7 @@ class TestHitoModel:
         c = make_company('907001013')
         g = make_user(c, 'gh13@test.com')
         p = make_proyecto(c, g, 'HIT-PRY-013')
-        doc = DocumentoContable.all_objects.create(
+        doc = AccountingDocument.all_objects.create(
             company=c, proyecto=p,
             saiopen_doc_id='DOC-HITO-001',
             tipo_documento='sales_invoice',
@@ -173,8 +173,8 @@ class TestHitoModel:
             tercero_id='111', tercero_nombre='Cliente',
             valor_bruto=Decimal('2500000'), valor_neto=Decimal('2500000'),
         )
-        h = make_hito(p, 'Hito con documento')
-        Hito.all_objects.filter(id=h.id).update(
+        h = make_hito(p, 'Milestone con documento')
+        Milestone.all_objects.filter(id=h.id).update(
             facturado=True,
             documento_factura=doc,
             fecha_facturacion=date.today(),

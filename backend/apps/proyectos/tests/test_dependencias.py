@@ -1,6 +1,6 @@
 """
 SaiSuite — Tests: Feature Dependencias entre Tareas
-Cubre: modelo TareaDependencia, DependenciaService (ciclos, CPM, cascada)
+Cubre: modelo TaskDependency, DependenciaService (ciclos, CPM, cascada)
        y los endpoints crear-dependencia, eliminar-dependencia, camino-critico.
 
 Cobertura objetivo: >= 85%
@@ -18,8 +18,8 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import get_user_model
 
 from apps.companies.models import Company, CompanyModule
-from apps.proyectos.models import Proyecto, Fase, Tarea, TareaDependencia
-from apps.proyectos.tarea_services import DependenciaService
+from apps.proyectos.models import Project, Phase, Task, TaskDependency
+from apps.proyectos.tarea_services import DependencyService
 
 User = get_user_model()
 
@@ -54,10 +54,10 @@ def make_user(company, role='company_admin'):
 
 
 def make_proyecto(company, gerente):
-    return Proyecto.all_objects.create(
+    return Project.all_objects.create(
         company=company, gerente=gerente,
         codigo=f'PRY-{_nit()}',
-        nombre='Proyecto Dep Test',
+        nombre='Project Dep Test',
         tipo='civil_works',
         estado='in_progress',
         cliente_id='999', cliente_nombre='Cliente Dep',
@@ -68,23 +68,23 @@ def make_proyecto(company, gerente):
 
 
 def make_fase(company, proyecto, orden=1):
-    return Fase.all_objects.create(
+    return Phase.all_objects.create(
         company=company, proyecto=proyecto,
-        nombre=f'Fase {orden}', orden=orden,
+        nombre=f'Phase {orden}', orden=orden,
         fecha_inicio_planificada=date.today(),
         fecha_fin_planificada=date.today() + timedelta(days=60),
         presupuesto_mano_obra=Decimal('500000'),
     )
 
 
-def make_tarea(company, proyecto, fase, nombre='Tarea', **kwargs):
-    return Tarea.objects.create(
+def make_tarea(company, proyecto, fase, nombre='Task', **kwargs):
+    return Task.objects.create(
         company=company, proyecto=proyecto, fase=fase,
         nombre=nombre, estado='todo', **kwargs
     )
 
 
-# ── Modelo TareaDependencia ───────────────────────────────────────────────────
+# ── Modelo TaskDependency ───────────────────────────────────────────────────
 
 class TestTareaDependenciaModelo(TestCase):
 
@@ -97,7 +97,7 @@ class TestTareaDependenciaModelo(TestCase):
         self.t2 = make_tarea(self.company, self.proyecto, self.fase, 'T2')
 
     def test_crear_dependencia_valida(self):
-        dep = TareaDependencia.objects.create(
+        dep = TaskDependency.objects.create(
             company=self.company,
             tarea_predecesora=self.t1,
             tarea_sucesora=self.t2,
@@ -108,7 +108,7 @@ class TestTareaDependenciaModelo(TestCase):
         self.assertIn('→', str(dep))
 
     def test_unique_together_previene_duplicados(self):
-        TareaDependencia.objects.create(
+        TaskDependency.objects.create(
             company=self.company,
             tarea_predecesora=self.t1,
             tarea_sucesora=self.t2,
@@ -116,7 +116,7 @@ class TestTareaDependenciaModelo(TestCase):
         )
         from django.db import IntegrityError
         with self.assertRaises(IntegrityError):
-            TareaDependencia.objects.create(
+            TaskDependency.objects.create(
                 company=self.company,
                 tarea_predecesora=self.t1,
                 tarea_sucesora=self.t2,
@@ -124,7 +124,7 @@ class TestTareaDependenciaModelo(TestCase):
             )
 
     def test_clean_rechaza_autoreferencia(self):
-        dep = TareaDependencia(
+        dep = TaskDependency(
             company=self.company,
             tarea_predecesora=self.t1,
             tarea_sucesora=self.t1,
@@ -133,7 +133,7 @@ class TestTareaDependenciaModelo(TestCase):
             dep.clean()
 
     def test_clean_acepta_tareas_diferentes(self):
-        dep = TareaDependencia(
+        dep = TaskDependency(
             company=self.company,
             tarea_predecesora=self.t1,
             tarea_sucesora=self.t2,
@@ -155,7 +155,7 @@ class TestDependenciaServiceCrear(TestCase):
         self.tc = make_tarea(self.company, self.proyecto, self.fase, 'C')
 
     def test_crear_dependencia_fs(self):
-        dep = DependenciaService.crear_dependencia(
+        dep = DependencyService.crear_dependencia(
             predecesora_id=str(self.ta.id),
             sucesora_id=str(self.tb.id),
             company=self.company,
@@ -167,7 +167,7 @@ class TestDependenciaServiceCrear(TestCase):
         self.assertEqual(dep.tarea_sucesora_id, self.tb.id)
 
     def test_crear_dependencia_ss(self):
-        dep = DependenciaService.crear_dependencia(
+        dep = DependencyService.crear_dependencia(
             predecesora_id=str(self.ta.id),
             sucesora_id=str(self.tb.id),
             company=self.company,
@@ -176,7 +176,7 @@ class TestDependenciaServiceCrear(TestCase):
         self.assertEqual(dep.tipo_dependencia, 'SS')
 
     def test_crear_dependencia_ff(self):
-        dep = DependenciaService.crear_dependencia(
+        dep = DependencyService.crear_dependencia(
             predecesora_id=str(self.ta.id),
             sucesora_id=str(self.tb.id),
             company=self.company,
@@ -186,7 +186,7 @@ class TestDependenciaServiceCrear(TestCase):
 
     def test_crear_dependencia_autoreferencia_lanza_error(self):
         with self.assertRaises(ValidationError):
-            DependenciaService.crear_dependencia(
+            DependencyService.crear_dependencia(
                 predecesora_id=str(self.ta.id),
                 sucesora_id=str(self.ta.id),
                 company=self.company,
@@ -195,20 +195,20 @@ class TestDependenciaServiceCrear(TestCase):
     def test_crear_dependencia_tarea_no_existe_lanza_error(self):
         import uuid
         with self.assertRaises(ValidationError):
-            DependenciaService.crear_dependencia(
+            DependencyService.crear_dependencia(
                 predecesora_id=str(uuid.uuid4()),
                 sucesora_id=str(self.tb.id),
                 company=self.company,
             )
 
     def test_crear_dependencia_ya_existe_lanza_error(self):
-        DependenciaService.crear_dependencia(
+        DependencyService.crear_dependencia(
             predecesora_id=str(self.ta.id),
             sucesora_id=str(self.tb.id),
             company=self.company,
         )
         with self.assertRaises(ValidationError):
-            DependenciaService.crear_dependencia(
+            DependencyService.crear_dependencia(
                 predecesora_id=str(self.ta.id),
                 sucesora_id=str(self.tb.id),
                 company=self.company,
@@ -219,7 +219,7 @@ class TestDependenciaServiceCrear(TestCase):
         fase2     = make_fase(self.company, proyecto2, 1)
         tx        = make_tarea(self.company, proyecto2, fase2, 'TX')
         with self.assertRaises(ValidationError):
-            DependenciaService.crear_dependencia(
+            DependencyService.crear_dependencia(
                 predecesora_id=str(self.ta.id),
                 sucesora_id=str(tx.id),
                 company=self.company,
@@ -239,38 +239,38 @@ class TestDependenciaServiceCiclos(TestCase):
 
     def test_detectar_ciclo_directo(self):
         # A → B (existe)
-        DependenciaService.crear_dependencia(
+        DependencyService.crear_dependencia(
             str(self.ta.id), str(self.tb.id), self.company
         )
         # Intentar B → A debe detectar ciclo
-        ciclo = DependenciaService._detectar_ciclo(
+        ciclo = DependencyService._detectar_ciclo(
             str(self.tb.id), str(self.ta.id), self.company
         )
         self.assertTrue(ciclo)
 
     def test_detectar_ciclo_indirecto(self):
         # A → B → C
-        DependenciaService.crear_dependencia(str(self.ta.id), str(self.tb.id), self.company)
-        DependenciaService.crear_dependencia(str(self.tb.id), str(self.tc.id), self.company)
+        DependencyService.crear_dependencia(str(self.ta.id), str(self.tb.id), self.company)
+        DependencyService.crear_dependencia(str(self.tb.id), str(self.tc.id), self.company)
         # Intentar C → A: ciclo A→B→C→A
-        ciclo = DependenciaService._detectar_ciclo(
+        ciclo = DependencyService._detectar_ciclo(
             str(self.tc.id), str(self.ta.id), self.company
         )
         self.assertTrue(ciclo)
 
     def test_no_ciclo_arista_valida(self):
         # A → B (existe). A → C es válido, no hay ciclo
-        DependenciaService.crear_dependencia(str(self.ta.id), str(self.tb.id), self.company)
-        ciclo = DependenciaService._detectar_ciclo(
+        DependencyService.crear_dependencia(str(self.ta.id), str(self.tb.id), self.company)
+        ciclo = DependencyService._detectar_ciclo(
             str(self.ta.id), str(self.tc.id), self.company
         )
         self.assertFalse(ciclo)
 
     def test_crear_dependencia_con_ciclo_lanza_error(self):
-        DependenciaService.crear_dependencia(str(self.ta.id), str(self.tb.id), self.company)
-        DependenciaService.crear_dependencia(str(self.tb.id), str(self.tc.id), self.company)
+        DependencyService.crear_dependencia(str(self.ta.id), str(self.tb.id), self.company)
+        DependencyService.crear_dependencia(str(self.tb.id), str(self.tc.id), self.company)
         with self.assertRaises(ValidationError) as ctx:
-            DependenciaService.crear_dependencia(
+            DependencyService.crear_dependencia(
                 str(self.tc.id), str(self.ta.id), self.company
             )
         self.assertIn('ciclo', str(ctx.exception).lower())
@@ -306,13 +306,13 @@ class TestDependenciaServiceCPM(TestCase):
             fecha_fin=hoy + timedelta(days=10),
         )
         # Crear dependencias: A→B, A→C, B→D, C→D
-        DependenciaService.crear_dependencia(str(self.ta.id), str(self.tb.id), self.company)
-        DependenciaService.crear_dependencia(str(self.ta.id), str(self.tc.id), self.company)
-        DependenciaService.crear_dependencia(str(self.tb.id), str(self.td.id), self.company)
-        DependenciaService.crear_dependencia(str(self.tc.id), str(self.td.id), self.company)
+        DependencyService.crear_dependencia(str(self.ta.id), str(self.tb.id), self.company)
+        DependencyService.crear_dependencia(str(self.ta.id), str(self.tc.id), self.company)
+        DependencyService.crear_dependencia(str(self.tb.id), str(self.td.id), self.company)
+        DependencyService.crear_dependencia(str(self.tc.id), str(self.td.id), self.company)
 
     def test_camino_critico_contiene_tareas_esperadas(self):
-        criticas = DependenciaService.calcular_camino_critico(
+        criticas = DependencyService.calcular_camino_critico(
             str(self.proyecto.id), self.company
         )
         criticas_set = set(criticas)
@@ -323,7 +323,7 @@ class TestDependenciaServiceCPM(TestCase):
 
     def test_camino_critico_proyecto_sin_tareas(self):
         proyecto_vacio = make_proyecto(self.company, self.user)
-        criticas = DependenciaService.calcular_camino_critico(
+        criticas = DependencyService.calcular_camino_critico(
             str(proyecto_vacio.id), self.company
         )
         self.assertEqual(criticas, [])
@@ -336,7 +336,7 @@ class TestDependenciaServiceCPM(TestCase):
             self.company, proyecto_nuevo, fase_nueva, 'Solo',
             fecha_inicio=hoy, fecha_fin=hoy + timedelta(days=3),
         )
-        criticas = DependenciaService.calcular_camino_critico(
+        criticas = DependencyService.calcular_camino_critico(
             str(proyecto_nuevo.id), self.company
         )
         self.assertEqual(len(criticas), 1)
@@ -360,7 +360,7 @@ class TestDependenciaServiceReprogramacion(TestCase):
             fecha_inicio=hoy + timedelta(days=5),
             fecha_fin=hoy + timedelta(days=8),
         )
-        DependenciaService.crear_dependencia(
+        DependencyService.crear_dependencia(
             str(self.pred.id), str(self.suc.id), self.company, tipo='FS', retraso_dias=0
         )
 
@@ -370,7 +370,7 @@ class TestDependenciaServiceReprogramacion(TestCase):
         self.pred.fecha_fin = hoy + timedelta(days=10)
         self.pred.save()
 
-        DependenciaService.reprogramar_en_cascada(str(self.pred.id), self.company)
+        DependencyService.reprogramar_en_cascada(str(self.pred.id), self.company)
 
         self.suc.refresh_from_db()
         # Sucesora debe iniciar el día después de la nueva fecha_fin de predecesora
@@ -386,7 +386,7 @@ class TestDependenciaServiceReprogramacion(TestCase):
         self.pred.fecha_fin = hoy + timedelta(days=2)
         self.pred.save()
 
-        DependenciaService.reprogramar_en_cascada(str(self.pred.id), self.company)
+        DependencyService.reprogramar_en_cascada(str(self.pred.id), self.company)
 
         self.suc.refresh_from_db()
         # fecha_inicio NO debe cambiar
@@ -399,7 +399,7 @@ class TestDependenciaServiceReprogramacion(TestCase):
             fecha_inicio=hoy + timedelta(days=8),
             fecha_fin=hoy + timedelta(days=11),
         )
-        DependenciaService.crear_dependencia(
+        DependencyService.crear_dependencia(
             str(self.suc.id), str(suc2.id), self.company, tipo='FS'
         )
 
@@ -407,7 +407,7 @@ class TestDependenciaServiceReprogramacion(TestCase):
         self.pred.fecha_fin = hoy + timedelta(days=10)
         self.pred.save()
 
-        DependenciaService.reprogramar_en_cascada(str(self.pred.id), self.company)
+        DependencyService.reprogramar_en_cascada(str(self.pred.id), self.company)
 
         suc2.refresh_from_db()
         # suc2 debe haberse reprogramado también
@@ -415,16 +415,16 @@ class TestDependenciaServiceReprogramacion(TestCase):
         self.assertGreaterEqual(suc2.fecha_inicio, self.suc.fecha_inicio)
 
     def test_reprogramacion_tarea_sin_fecha_fin_no_falla(self):
-        # Tarea sin fecha_fin no debe lanzar error
+        # Task sin fecha_fin no debe lanzar error
         self.pred.fecha_fin = None
         self.pred.save()
         # No debe levantar excepciones
-        DependenciaService.reprogramar_en_cascada(str(self.pred.id), self.company)
+        DependencyService.reprogramar_en_cascada(str(self.pred.id), self.company)
 
     def test_reprogramacion_tarea_no_existe_no_falla(self):
         import uuid
         # ID inválido no debe lanzar error
-        DependenciaService.reprogramar_en_cascada(str(uuid.uuid4()), self.company)
+        DependencyService.reprogramar_en_cascada(str(uuid.uuid4()), self.company)
 
 
 # ── API: TareaViewSet acciones de dependencia ─────────────────────────────────
@@ -494,7 +494,7 @@ class TestEliminarDependenciaEndpoint(DependenciaBaseTest):
 
     def setUp(self):
         super().setUp()
-        self.dep = TareaDependencia.objects.create(
+        self.dep = TaskDependency.objects.create(
             company=self.company,
             tarea_predecesora=self.ta,
             tarea_sucesora=self.tb,
@@ -508,7 +508,7 @@ class TestEliminarDependenciaEndpoint(DependenciaBaseTest):
             QUERY_STRING=f'dependencia_id={self.dep.id}',
         )
         self.assertEqual(resp.status_code, status.HTTP_204_NO_CONTENT)
-        self.assertFalse(TareaDependencia.objects.filter(id=self.dep.id).exists())
+        self.assertFalse(TaskDependency.objects.filter(id=self.dep.id).exists())
 
     def test_eliminar_dependencia_sin_id_retorna_400(self):
         resp = self.client.delete(
@@ -529,7 +529,7 @@ class TestCaminoCriticoEndpoint(DependenciaBaseTest):
 
     def test_camino_critico_retorna_lista(self):
         # Crear dependencia A → B
-        DependenciaService.crear_dependencia(
+        DependencyService.crear_dependencia(
             str(self.ta.id), str(self.tb.id), self.company
         )
         resp = self.client.get(
@@ -552,7 +552,7 @@ class TestTareaSerializerDependencias(DependenciaBaseTest):
     """Verifica que el TareaSerializer incluya predecesoras_detail y es_camino_critico."""
 
     def test_tarea_detail_incluye_predecesoras(self):
-        DependenciaService.crear_dependencia(
+        DependencyService.crear_dependencia(
             str(self.ta.id), str(self.tb.id), self.company
         )
         resp = self.client.get(f'/api/v1/projects/tasks/{self.tb.id}/')
@@ -561,7 +561,7 @@ class TestTareaSerializerDependencias(DependenciaBaseTest):
         self.assertEqual(len(resp.data['predecesoras_detail']), 1)
 
     def test_tarea_detail_incluye_sucesoras(self):
-        DependenciaService.crear_dependencia(
+        DependencyService.crear_dependencia(
             str(self.ta.id), str(self.tb.id), self.company
         )
         resp = self.client.get(f'/api/v1/projects/tasks/{self.ta.id}/')

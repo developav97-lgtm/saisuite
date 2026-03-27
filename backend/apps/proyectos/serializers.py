@@ -11,11 +11,6 @@ from apps.proyectos.models import (
     WorkSession, TimesheetEntry, TaskDependency, ModuleSettings,
     ProjectStatus, PhaseStatus, StakeholderRole, DocumentType,
     MeasurementMode, ActivityType, DependencyType,
-    # Aliases de compatibilidad — eliminar en REFT-10
-    Proyecto, Fase, TerceroProyecto, DocumentoContable, Hito,
-    TipoProyecto, EstadoProyecto, RolTercero, TipoDocumento,
-    Actividad, ActividadProyecto, TipoActividad, ConfiguracionModulo,
-    Tarea, TareaTag, SesionTrabajo, ActividadSaiopen, TareaDependencia,
 )
 
 logger = logging.getLogger(__name__)
@@ -752,7 +747,7 @@ class TaskDetailSerializer(serializers.ModelSerializer):
         Calcula si esta tarea está en el camino crítico de su proyecto.
         Se cachea en el contexto del request para no recalcular por cada tarea.
         """
-        from apps.proyectos.tarea_services import DependenciaService
+        from apps.proyectos.tarea_services import DependencyService
 
         request = self.context.get('request')
         company = getattr(request.user, 'company', None) if request else None
@@ -763,7 +758,7 @@ class TaskDetailSerializer(serializers.ModelSerializer):
         cache = self.context.setdefault('_cache', {})
 
         if cache_key not in cache:
-            criticas = DependenciaService.calcular_camino_critico(
+            criticas = DependencyService.calcular_camino_critico(
                 str(obj.proyecto_id), company
             )
             cache[cache_key] = set(criticas)
@@ -1019,40 +1014,3 @@ class TimesheetEntryCreateSerializer(serializers.Serializer):
         return value
 
 
-# ============================================================
-# ALIASES DE COMPATIBILIDAD — eliminar en REFT-10
-# ============================================================
-ProyectoListSerializer = ProjectListSerializer
-ProyectoDetailSerializer = ProjectDetailSerializer
-ProyectoCreateUpdateSerializer = ProjectCreateUpdateSerializer
-CambiarEstadoSerializer = ChangeStatusSerializer
-FaseListSerializer = PhaseListSerializer
-FaseDetailSerializer = PhaseDetailSerializer
-FaseCreateUpdateSerializer = PhaseCreateUpdateSerializer
-TerceroProyectoSerializer = ProjectStakeholderSerializer
-TerceroProyectoCreateSerializer = ProjectStakeholderCreateSerializer
-DocumentoContableListSerializer = AccountingDocumentListSerializer
-DocumentoContableDetailSerializer = AccountingDocumentDetailSerializer
-HitoSerializer = MilestoneSerializer
-HitoCreateSerializer = MilestoneCreateSerializer
-GenerarFacturaSerializer = GenerateInvoiceSerializer
-ActividadListSerializer = ActivityListSerializer
-ActividadDetailSerializer = ActivityDetailSerializer
-ActividadCreateUpdateSerializer = ActivityCreateUpdateSerializer
-ActividadProyectoSerializer = ProjectActivitySerializer
-ActividadProyectoCreateSerializer = ProjectActivityCreateSerializer
-ActividadSaiopenSerializer = SaiopenActivitySerializer
-TareaTagSerializer = TaskTagSerializer
-TareaListSerializer = TaskListSerializer
-TareaDetailSerializer = TaskDetailSerializer
-TareaCreateUpdateSerializer = TaskCreateUpdateSerializer
-TareaKanbanSerializer = TaskKanbanSerializer
-SesionTrabajoSerializer = WorkSessionSerializer
-TareaDependenciaSerializer = TaskDependencySerializer
-TareaDependenciaCreateSerializer = TaskDependencyCreateSerializer
-ConfiguracionModuloSerializer = ModuleSettingsSerializer
-# TareaSerializer alias apunta al serializer de detalle completo
-TareaSerializer = TaskDetailSerializer
-ActividadSaiopenListSerializer = SaiopenActivitySerializer
-ActividadSaiopenDetailSerializer = SaiopenActivityDetailSerializer
-ActividadSaiopenCreateUpdateSerializer = SaiopenActivityCreateUpdateSerializer

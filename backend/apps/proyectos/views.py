@@ -63,8 +63,8 @@ from apps.proyectos.services import (
 )
 from apps.proyectos.tarea_services import TimesheetService, DependencyService, TimesheetEntryService
 from apps.notifications.services import NotificacionService
-from apps.proyectos.filters import ProyectoFilter, TareaFilter
-from apps.proyectos.permissions import CanAccessProyectos, CanEditProyecto, TareaPermission
+from apps.proyectos.filters import ProjectFilter, TaskFilter
+from apps.proyectos.permissions import CanAccessProyectos, CanEditProyecto, TaskPermission
 
 logger = logging.getLogger(__name__)
 
@@ -74,7 +74,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
     CRUD de proyectos + acciones de cambio de estado y reporte financiero.
     """
     filter_backends  = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    filterset_class  = ProyectoFilter
+    filterset_class  = ProjectFilter
     search_fields    = ['codigo', 'nombre', 'cliente_nombre']
     ordering_fields  = ['codigo', 'nombre', 'estado', 'fecha_inicio_planificada', 'created_at']
     ordering         = ['-created_at']
@@ -532,9 +532,9 @@ class TaskViewSet(viewsets.ModelViewSet):
     """
 
     serializer_class   = TaskDetailSerializer
-    permission_classes = [TareaPermission]
+    permission_classes = [TaskPermission]
     filter_backends    = [DjangoFilterBackend, OrderingFilter]
-    filterset_class    = TareaFilter
+    filterset_class    = TaskFilter
     ordering_fields    = ['prioridad', 'fecha_limite', 'created_at', 'nombre']
     ordering           = ['-prioridad', 'fecha_limite']
 
@@ -1097,20 +1097,3 @@ class TimesheetViewSet(viewsets.GenericViewSet):
             )
         return Response(TimesheetEntrySerializer(entry).data)
 
-
-# ============================================================
-# ALIASES DE COMPATIBILIDAD — eliminar en REFT-10
-# ============================================================
-ProyectoViewSet = ProjectViewSet
-FaseViewSet = PhaseViewSet
-TerceroProyectoViewSet = ProjectStakeholderViewSet
-DocumentoContableViewSet = AccountingDocumentViewSet
-HitoViewSet = MilestoneViewSet
-ActividadViewSet = ActivityViewSet
-ActividadProyectoViewSet = ProjectActivityViewSet
-ActividadSaiopenViewSet = SaiopenActivityViewSet
-TareaTagViewSet = TaskTagViewSet
-TareaViewSet = TaskViewSet
-SesionTrabajoViewSet = None  # WorkSession no tiene ViewSet independiente
-TareaDependenciaViewSet = None  # TaskDependency no tiene ViewSet independiente
-ConfiguracionModuloViewSet = None  # Usa ModuleSettingsView (APIView), no ViewSet

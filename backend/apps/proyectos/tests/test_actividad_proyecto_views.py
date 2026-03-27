@@ -9,7 +9,7 @@ from django.contrib.auth import get_user_model
 
 from apps.companies.models import Company, CompanyModule
 from apps.proyectos.models import (ProjectStatus, PhaseStatus, ActivityType, MeasurementMode,
-    Proyecto, Fase, Actividad, ActividadProyecto, EstadoProyecto,
+    Project, Phase, Activity, ProjectActivity, ProjectStatus,
 )
 
 User = get_user_model()
@@ -29,20 +29,20 @@ def crear_usuario(company, email='gapv@test.com', role='company_admin'):
 
 def crear_proyecto_db(company, gerente, codigo='APV-PRY-001', **kwargs):
     defaults = dict(
-        nombre='Proyecto APV', tipo='civil_works',
+        nombre='Project APV', tipo='civil_works',
         cliente_id='900111', cliente_nombre='Cliente',
         fecha_inicio_planificada='2026-04-01',
         fecha_fin_planificada='2026-12-31',
         presupuesto_total=Decimal('1000000'),
     )
     defaults.update(kwargs)
-    return Proyecto.all_objects.create(company=company, gerente=gerente, codigo=codigo, **defaults)
+    return Project.all_objects.create(company=company, gerente=gerente, codigo=codigo, **defaults)
 
 
 def crear_fase_db(company, proyecto, orden=1):
-    return Fase.all_objects.create(
+    return Phase.all_objects.create(
         company=company, proyecto=proyecto,
-        nombre=f'Fase {orden}', orden=orden,
+        nombre=f'Phase {orden}', orden=orden,
         fecha_inicio_planificada='2026-04-01',
         fecha_fin_planificada='2026-06-30',
         presupuesto_mano_obra=Decimal('500000'),
@@ -50,9 +50,9 @@ def crear_fase_db(company, proyecto, orden=1):
 
 
 def crear_actividad_db(company, codigo='ACT-APV-001'):
-    return Actividad.all_objects.create(
+    return Activity.all_objects.create(
         company=company, codigo=codigo,
-        nombre='Actividad APV', unidad_medida='m2', tipo='material',
+        nombre='Activity APV', unidad_medida='m2', tipo='material',
         costo_unitario_base=Decimal('10000'),
     )
 
@@ -74,7 +74,7 @@ class ActividadProyectoListCreateTest(APITestCase):
         self.assertEqual(resp.data, [])
 
     def test_listar_actividades_proyecto(self):
-        ActividadProyecto.all_objects.create(
+        ProjectActivity.all_objects.create(
             company=self.company, proyecto=self.proyecto, actividad=self.actividad,
             cantidad_planificada=Decimal('10'), costo_unitario=Decimal('5000'),
         )
@@ -85,12 +85,12 @@ class ActividadProyectoListCreateTest(APITestCase):
     def test_filtrar_por_fase(self):
         f2 = crear_fase_db(self.company, self.proyecto, orden=2)
         a2 = crear_actividad_db(self.company, 'ACT-APV-002')
-        ActividadProyecto.all_objects.create(
+        ProjectActivity.all_objects.create(
             company=self.company, proyecto=self.proyecto,
             actividad=self.actividad, fase=self.fase,
             cantidad_planificada=Decimal('10'), costo_unitario=Decimal('1000'),
         )
-        ActividadProyecto.all_objects.create(
+        ProjectActivity.all_objects.create(
             company=self.company, proyecto=self.proyecto,
             actividad=a2, fase=f2,
             cantidad_planificada=Decimal('5'), costo_unitario=Decimal('2000'),
@@ -100,7 +100,7 @@ class ActividadProyectoListCreateTest(APITestCase):
         self.assertEqual(len(resp.data), 1)
 
     def test_listado_incluye_presupuesto_total(self):
-        ActividadProyecto.all_objects.create(
+        ProjectActivity.all_objects.create(
             company=self.company, proyecto=self.proyecto, actividad=self.actividad,
             cantidad_planificada=Decimal('10'), costo_unitario=Decimal('5000'),
         )
@@ -173,7 +173,7 @@ class ActividadProyectoListCreateTest(APITestCase):
         self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
 
     def test_signal_recalcula_avance_al_crear(self):
-        """Crear ActividadProyecto actualiza porcentaje_avance de la fase."""
+        """Crear ProjectActivity actualiza porcentaje_avance de la fase."""
         data = {
             'actividad': str(self.actividad.id),
             'fase': str(self.fase.id),
@@ -197,7 +197,7 @@ class ActividadProyectoUpdateDeleteTest(APITestCase):
         )
         self.fase      = crear_fase_db(self.company, self.proyecto)
         self.actividad = crear_actividad_db(self.company, 'ACT-APV-UPD')
-        self.ap = ActividadProyecto.all_objects.create(
+        self.ap = ProjectActivity.all_objects.create(
             company=self.company, proyecto=self.proyecto,
             actividad=self.actividad, fase=self.fase,
             cantidad_planificada=Decimal('10'), costo_unitario=Decimal('5000'),
@@ -225,7 +225,7 @@ class ActividadProyectoUpdateDeleteTest(APITestCase):
             estado=ProjectStatus.DRAFT,
         )
         fase_draft = crear_fase_db(self.company, proyecto_draft)
-        ap_draft = ActividadProyecto.all_objects.create(
+        ap_draft = ProjectActivity.all_objects.create(
             company=self.company, proyecto=proyecto_draft,
             actividad=self.actividad, fase=fase_draft,
             cantidad_planificada=Decimal('5'), costo_unitario=Decimal('1000'),
@@ -234,12 +234,12 @@ class ActividadProyectoUpdateDeleteTest(APITestCase):
         resp = self.client.delete(url)
         self.assertEqual(resp.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(
-            ActividadProyecto.all_objects.filter(id=ap_draft.id).exists()
+            ProjectActivity.all_objects.filter(id=ap_draft.id).exists()
         )
 
     def test_eliminar_recalcula_avance_fase_a_cero(self):
         # Establecer algo de ejecución primero
-        ActividadProyecto.all_objects.filter(id=self.ap.id).update(
+        ProjectActivity.all_objects.filter(id=self.ap.id).update(
             cantidad_ejecutada=Decimal('10')
         )
         self.client.delete(self.url)

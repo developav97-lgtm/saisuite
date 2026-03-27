@@ -8,7 +8,7 @@ from rest_framework import status
 from django.contrib.auth import get_user_model
 
 from apps.companies.models import Company, CompanyModule
-from apps.proyectos.models import Proyecto, Actividad, ActividadProyecto
+from apps.proyectos.models import Project, Activity, ProjectActivity
 
 User = get_user_model()
 
@@ -30,13 +30,13 @@ def crear_usuario(company, email='gav@test.com', role='company_admin'):
 def crear_actividad_db(company, codigo='ACT-AV-001', **kwargs):
     defaults = dict(nombre='Excavación', unidad_medida='m3', tipo='material')
     defaults.update(kwargs)
-    return Actividad.all_objects.create(company=company, codigo=codigo, **defaults)
+    return Activity.all_objects.create(company=company, codigo=codigo, **defaults)
 
 
 def crear_proyecto_db(company, gerente, codigo='AV-PRY-001'):
-    return Proyecto.all_objects.create(
+    return Project.all_objects.create(
         company=company, gerente=gerente, codigo=codigo,
-        nombre='Proyecto AV', tipo='civil_works',
+        nombre='Project AV', tipo='civil_works',
         cliente_id='900111', cliente_nombre='Cliente',
         fecha_inicio_planificada='2026-04-01',
         fecha_fin_planificada='2026-12-31',
@@ -166,7 +166,7 @@ class ActividadDetailTest(APITestCase):
     def test_eliminar_con_asignaciones_retorna_400(self):
         gerente = self.user
         p = crear_proyecto_db(self.company, gerente, 'AV-PRY-DEL')
-        ActividadProyecto.all_objects.create(
+        ProjectActivity.all_objects.create(
             company=self.company, proyecto=p, actividad=self.actividad,
             cantidad_planificada=Decimal('10'), costo_unitario=Decimal('1000'),
         )

@@ -14,8 +14,6 @@ from apps.proyectos.models import (
     Project, Phase, ProjectStakeholder, AccountingDocument, Milestone,
     ProjectStatus, PhaseStatus, Activity, ProjectActivity, ModuleSettings,
     ActivityType, MeasurementMode,
-    Proyecto, Fase, TerceroProyecto, DocumentoContable, Hito,
-    EstadoProyecto, EstadoFase, Actividad, ActividadProyecto, ConfiguracionModulo,
 )
 
 logger = logging.getLogger(__name__)
@@ -51,8 +49,8 @@ def calcular_avance_fase_desde_tareas(fase_id) -> Decimal:
     Fórmula: promedio de progreso_porcentaje de tareas activas (excluye canceladas).
     Devuelve el porcentaje calculado.
     """
-    from apps.proyectos.models import Tarea
-    tareas = Tarea.all_objects.filter(
+    from apps.proyectos.models import Task
+    tareas = Task.all_objects.filter(
         fase_id=fase_id,
     ).exclude(estado='cancelled')
 
@@ -63,7 +61,7 @@ def calcular_avance_fase_desde_tareas(fase_id) -> Decimal:
         completadas = tareas.filter(estado='completed').count()
         pct = (Decimal(completadas) / Decimal(total) * Decimal('100')).quantize(Decimal('0.01'))
 
-    Fase.objects.filter(id=fase_id).update(porcentaje_avance=pct)
+    Phase.objects.filter(id=fase_id).update(porcentaje_avance=pct)
     logger.info(
         'Avance fase recalculado desde tareas',
         extra={'fase_id': str(fase_id), 'porcentaje': str(pct)},
@@ -77,7 +75,7 @@ def calcular_avance_fase(fase_id) -> Decimal:
     Fórmula: Σ(ejecutado × costo) / Σ(planificado × costo) × 100.
     Devuelve el porcentaje calculado.
     """
-    agg = ActividadProyecto.all_objects.filter(fase_id=fase_id).aggregate(
+    agg = ProjectActivity.all_objects.filter(fase_id=fase_id).aggregate(
         planificado=Sum(ExpressionWrapper(
             F('cantidad_planificada') * F('costo_unitario'),
             output_field=DbDecimalField(),
@@ -98,7 +96,7 @@ def calcular_avance_fase(fase_id) -> Decimal:
     else:
         pct = Decimal('0')
 
-    Fase.objects.filter(id=fase_id).update(porcentaje_avance=pct)
+    Phase.objects.filter(id=fase_id).update(porcentaje_avance=pct)
     logger.info('Avance fase recalculado', extra={'fase_id': str(fase_id), 'porcentaje': str(pct)})
     return pct
 
@@ -108,13 +106,13 @@ def calcular_avance_proyecto(proyecto_id) -> Decimal:
     Recalcula y persiste porcentaje_avance del proyecto como promedio de sus fases activas.
     Devuelve el porcentaje calculado.
     """
-    result = Fase.objects.filter(proyecto_id=proyecto_id, activo=True).aggregate(
+    result = Phase.objects.filter(proyecto_id=proyecto_id, activo=True).aggregate(
         avg=Avg('porcentaje_avance')
     )
     avg = result['avg']
     pct = (avg.quantize(Decimal('0.01')) if avg is not None else Decimal('0'))
 
-    Proyecto.objects.filter(id=proyecto_id).update(porcentaje_avance=pct)
+    Project.objects.filter(id=proyecto_id).update(porcentaje_avance=pct)
     logger.info('Avance proyecto recalculado', extra={'proyecto_id': str(proyecto_id), 'porcentaje': str(pct)})
     return pct
 
@@ -132,12 +130,12 @@ def recalcular_cantidad_ejecutada_ap(actividad_proyecto_id) -> Decimal:
     - Otros: suma cantidad_registrada de las tareas
     """
     try:
-        ap = ActividadProyecto.objects.select_related('actividad').get(id=actividad_proyecto_id)
-    except ActividadProyecto.DoesNotExist:
+        ap = ProjectActivity.objects.select_related('actividad').get(id=actividad_proyecto_id)
+    except ProjectActivity.DoesNotExist:
         return Decimal('0')
 
-    from apps.proyectos.models import Tarea
-    tareas = Tarea.all_objects.filter(actividad_proyecto_id=actividad_proyecto_id)
+    from apps.proyectos.models import Task
+    tareas = Task.all_objects.filter(actividad_proyecto_id=actividad_proyecto_id)
 
     unidad = (ap.actividad.unidad_medida or '').lower().strip()
     if unidad in ('hora', 'horas'):
@@ -152,7 +150,7 @@ def recalcular_cantidad_ejecutada_ap(actividad_proyecto_id) -> Decimal:
     else:
         pct = Decimal('0')
 
-    ActividadProyecto.objects.filter(id=actividad_proyecto_id).update(
+    ProjectActivity.objects.filter(id=actividad_proyecto_id).update(
         cantidad_ejecutada=cantidad,
         porcentaje_avance=pct,
     )
@@ -170,17 +168,17 @@ def recalcular_cantidad_ejecutada_ap(actividad_proyecto_id) -> Decimal:
 class ConfiguracionModuloService:
 
     @staticmethod
-    def get_or_create(company) -> ConfiguracionModulo:
-        obj, _ = ConfiguracionModulo.objects.get_or_create(company=company)
+    def get_or_create(company) -> ModuleSettings:
+        obj, _ = ModuleSettings.objects.get_or_create(company=company)
         return obj
 
     @staticmethod
-    def update(company, data: dict) -> ConfiguracionModulo:
-        obj, _ = ConfiguracionModulo.objects.get_or_create(company=company)
+    def update(company, data: dict) -> ModuleSettings:
+        obj, _ = ModuleSettings.objects.get_or_create(company=company)
         for key, val in data.items():
             setattr(obj, key, val)
         obj.save()
-        logger.info('ConfiguracionModulo actualizada', extra={'company_id': str(company.id)})
+        logger.info('ModuleSettings actualizada', extra={'company_id': str(company.id)})
         return obj
 
 
@@ -216,7 +214,7 @@ class ProyectoService:
         aislamiento multi-tenant con JWT (el middleware no intercepta DRF auth).
         """
         qs = (
-            Proyecto.all_objects
+            Project.all_objects
             .filter(activo=True)
             .select_related('gerente', 'coordinador', 'company')
             .annotate(fases_count=Count('phases', filter=Q(phases__activo=True)))
@@ -226,10 +224,10 @@ class ProyectoService:
         return qs
 
     @staticmethod
-    def get_proyecto(proyecto_id: str) -> Proyecto:
+    def get_proyecto(proyecto_id: str) -> Project:
         """Retorna proyecto con relaciones cargadas."""
         return (
-            Proyecto.objects
+            Project.objects
             .select_related('gerente', 'coordinador', 'company')
             .prefetch_related('phases')
             .get(id=proyecto_id)
@@ -239,7 +237,7 @@ class ProyectoService:
     def _generar_codigo(company) -> str:
         """Genera código autoincremental por empresa: PRY-001, PRY-002, ..."""
         ultimo = (
-            Proyecto.all_objects
+            Project.all_objects
             .filter(company=company)
             .order_by('-created_at')
             .values_list('codigo', flat=True)
@@ -282,7 +280,7 @@ class ProyectoService:
             )
 
     @staticmethod
-    def create_proyecto(data: dict, user) -> Proyecto:
+    def create_proyecto(data: dict, user) -> Project:
         """Crea un nuevo proyecto validando reglas de negocio."""
         company = user.company
         gerente_id     = data.pop('gerente')
@@ -302,7 +300,7 @@ class ProyectoService:
                 codigo = ProyectoService._generar_codigo(company)
             data['codigo'] = codigo
 
-        proyecto = Proyecto(
+        proyecto = Project(
             company=company,
             gerente=gerente,
             coordinador=coordinador,
@@ -318,7 +316,7 @@ class ProyectoService:
         return proyecto
 
     @staticmethod
-    def update_proyecto(proyecto: Proyecto, data: dict) -> Proyecto:
+    def update_proyecto(proyecto: Project, data: dict) -> Project:
         """Actualiza proyecto — solo permitido en estados editables."""
         if proyecto.estado not in ESTADOS_EDITABLES:
             raise ProyectoNoEditableException(
@@ -343,7 +341,7 @@ class ProyectoService:
         return proyecto
 
     @staticmethod
-    def soft_delete_proyecto(proyecto: Proyecto) -> None:
+    def soft_delete_proyecto(proyecto: Project) -> None:
         """Soft delete: marca proyecto y todas sus fases como inactivos."""
         proyecto.activo = False
         proyecto.save(update_fields=['activo', 'updated_at'])
@@ -351,7 +349,7 @@ class ProyectoService:
         logger.info('Proyecto eliminado (soft)', extra={'proyecto_id': str(proyecto.id)})
 
     @staticmethod
-    def cambiar_estado(proyecto: Proyecto, nuevo_estado: str, forzar: bool = False) -> Proyecto:
+    def cambiar_estado(proyecto: Project, nuevo_estado: str, forzar: bool = False) -> Project:
         """
         Cambia el estado del proyecto con validación de transiciones y precondiciones.
         """
@@ -380,9 +378,9 @@ class ProyectoService:
 
         if estado_actual == ProjectStatus.PLANNED and nuevo_estado == ProjectStatus.IN_PROGRESS:
             try:
-                config = ConfiguracionModulo.objects.get(company=proyecto.company)
+                config = ModuleSettings.objects.get(company=proyecto.company)
                 requiere_sync = config.requiere_sync_saiopen_para_ejecucion
-            except ConfiguracionModulo.DoesNotExist:
+            except ModuleSettings.DoesNotExist:
                 requiere_sync = False
             if requiere_sync and not proyecto.sincronizado_con_saiopen:
                 raise TransicionEstadoInvalidaException(
@@ -421,7 +419,7 @@ class ProyectoService:
         return proyecto
 
     @staticmethod
-    def get_estado_financiero(proyecto: Proyecto) -> dict:
+    def get_estado_financiero(proyecto: Project) -> dict:
         """
         Calcula el estado financiero del proyecto:
         presupuesto, ejecutado (docs contables), AIU y desviaciones.
@@ -506,12 +504,12 @@ class ProyectoService:
 class FaseService:
 
     @staticmethod
-    def list_fases(proyecto: Proyecto) -> QuerySet:
+    def list_fases(proyecto: Project) -> QuerySet:
         """Retorna fases activas del proyecto, ordenadas."""
         return proyecto.phases.filter(activo=True).order_by('orden')
 
     @staticmethod
-    def _calcular_presupuesto_fases(proyecto: Proyecto, excluir_fase_id=None) -> Decimal:
+    def _calcular_presupuesto_fases(proyecto: Project, excluir_fase_id=None) -> Decimal:
         """Suma el presupuesto total de todas las fases activas del proyecto."""
         qs = proyecto.phases.filter(activo=True)
         if excluir_fase_id:
@@ -528,7 +526,7 @@ class FaseService:
 
     @staticmethod
     @transaction.atomic
-    def create_fase(proyecto: Proyecto, data: dict) -> Fase:
+    def create_fase(proyecto: Project, data: dict) -> Phase:
         """Crea una fase validando presupuesto y orden."""
         if proyecto.estado in {ProjectStatus.CLOSED, ProjectStatus.CANCELLED}:
             raise ProyectoNoEditableException(
@@ -536,7 +534,7 @@ class FaseService:
             )
 
         # Bloquear fila del proyecto para evitar race conditions
-        proyecto_locked = Proyecto.all_objects.select_for_update().get(id=proyecto.id)
+        proyecto_locked = Project.all_objects.select_for_update().get(id=proyecto.id)
 
         # Calcular presupuesto de nueva fase
         nueva_fase_presupuesto = (
@@ -565,7 +563,7 @@ class FaseService:
             )
             data['orden'] = (ultimo_orden or 0) + 1
 
-        fase = Fase(
+        fase = Phase(
             proyecto=proyecto_locked,
             company=proyecto_locked.company,
             **data,
@@ -581,9 +579,9 @@ class FaseService:
 
     @staticmethod
     @transaction.atomic
-    def update_fase(fase: Fase, data: dict) -> Fase:
+    def update_fase(fase: Phase, data: dict) -> Phase:
         """Actualiza una fase validando presupuesto."""
-        proyecto_locked = Proyecto.all_objects.select_for_update().get(id=fase.proyecto_id)
+        proyecto_locked = Project.all_objects.select_for_update().get(id=fase.proyecto_id)
 
         # Calcular nuevo presupuesto de la fase
         nueva_mano_obra    = data.get('presupuesto_mano_obra',    fase.presupuesto_mano_obra)
@@ -618,7 +616,7 @@ class FaseService:
 
     @staticmethod
     @transaction.atomic
-    def activar_fase(fase: Fase) -> Fase:
+    def activar_fase(fase: Phase) -> Phase:
         """
         Activa una fase (estado → activa).
         Solo puede haber una fase activa por proyecto a la vez.
@@ -630,7 +628,7 @@ class FaseService:
             raise ProyectoException('No se puede activar una fase cancelada.')
 
         # Desactivar cualquier otra fase activa del mismo proyecto
-        Fase.objects.filter(
+        Phase.objects.filter(
             proyecto=fase.proyecto,
             estado=PhaseStatus.ACTIVE,
         ).exclude(id=fase.id).update(
@@ -648,7 +646,7 @@ class FaseService:
 
     @staticmethod
     @transaction.atomic
-    def completar_fase(fase: Fase) -> Fase:
+    def completar_fase(fase: Phase) -> Phase:
         """Marca una fase como completada y registra fecha real de fin."""
         if fase.estado not in (PhaseStatus.ACTIVE, PhaseStatus.PLANNED):
             raise ProyectoException(
@@ -668,7 +666,7 @@ class FaseService:
         return fase
 
     @staticmethod
-    def soft_delete_fase(fase: Fase) -> None:
+    def soft_delete_fase(fase: Phase) -> None:
         """Soft delete de la fase."""
         fase.activo = False
         fase.save(update_fields=['activo', 'updated_at'])
@@ -682,10 +680,10 @@ class FaseService:
 class TerceroProyectoService:
 
     @staticmethod
-    def list_terceros(proyecto: Proyecto, fase_id: str | None = None) -> QuerySet:
+    def list_terceros(proyecto: Project, fase_id: str | None = None) -> QuerySet:
         """Retorna terceros activos del proyecto. Filtra por fase si se provee fase_id."""
         qs = (
-            TerceroProyecto.all_objects
+            ProjectStakeholder.all_objects
             .filter(proyecto=proyecto, activo=True)
             .select_related('fase', 'tercero_fk')
             .order_by('rol', 'tercero_nombre')
@@ -696,14 +694,14 @@ class TerceroProyectoService:
 
     @staticmethod
     @transaction.atomic
-    def vincular_tercero(proyecto: Proyecto, data: dict) -> TerceroProyecto:
+    def vincular_tercero(proyecto: Project, data: dict) -> ProjectStakeholder:
         """
         Vincula un tercero al proyecto.
         Regla: un tercero puede tener múltiples roles en el mismo proyecto,
         pero no el mismo rol+fase duplicado (unique_together).
         """
         # Validación explícita de duplicado (unique_together no captura NULL en SQL)
-        if TerceroProyecto.all_objects.filter(
+        if ProjectStakeholder.all_objects.filter(
             proyecto=proyecto,
             tercero_id=data.get('tercero_id'),
             rol=data.get('rol'),
@@ -713,7 +711,7 @@ class TerceroProyectoService:
                 {'non_field_errors': 'Este tercero ya tiene el mismo rol en esta fase.'}
             )
 
-        tercero = TerceroProyecto(
+        tercero = ProjectStakeholder(
             proyecto=proyecto,
             company=proyecto.company,
             **data,
@@ -737,7 +735,7 @@ class TerceroProyectoService:
         return tercero
 
     @staticmethod
-    def desvincular_tercero(tercero: TerceroProyecto) -> None:
+    def desvincular_tercero(tercero: ProjectStakeholder) -> None:
         """Soft delete del tercero vinculado."""
         tercero.activo = False
         tercero.save(update_fields=['activo', 'updated_at'])
@@ -754,13 +752,13 @@ class TerceroProyectoService:
 class DocumentoContableService:
 
     @staticmethod
-    def list_documentos(proyecto: Proyecto, fase_id: str | None = None) -> QuerySet:
+    def list_documentos(proyecto: Project, fase_id: str | None = None) -> QuerySet:
         """
         Retorna documentos contables del proyecto.
         Opcionalmente filtra por fase.
         """
         qs = (
-            DocumentoContable.all_objects
+            AccountingDocument.all_objects
             .filter(proyecto=proyecto)
             .select_related('fase')
             .order_by('-fecha_documento')
@@ -770,9 +768,9 @@ class DocumentoContableService:
         return qs
 
     @staticmethod
-    def get_documento(documento_id: str) -> DocumentoContable:
+    def get_documento(documento_id: str) -> AccountingDocument:
         return (
-            DocumentoContable.objects
+            AccountingDocument.objects
             .select_related('proyecto', 'fase')
             .get(id=documento_id)
         )
@@ -785,10 +783,10 @@ class DocumentoContableService:
 class HitoService:
 
     @staticmethod
-    def list_hitos(proyecto: Proyecto) -> QuerySet:
+    def list_hitos(proyecto: Project) -> QuerySet:
         """Retorna hitos del proyecto ordenados por fecha de creación."""
         return (
-            Hito.all_objects
+            Milestone.all_objects
             .filter(proyecto=proyecto)
             .select_related('fase', 'documento_factura')
             .order_by('created_at')
@@ -796,7 +794,7 @@ class HitoService:
 
     @staticmethod
     @transaction.atomic
-    def create_hito(proyecto: Proyecto, data: dict) -> Hito:
+    def create_hito(proyecto: Project, data: dict) -> Milestone:
         """
         Crea un hito facturable validando que el porcentaje total
         de hitos no supere el 100% del proyecto.
@@ -806,10 +804,10 @@ class HitoService:
         porcentaje_nuevo = data.get('porcentaje_proyecto', Decimal('0'))
 
         # Bloquear proyecto para evitar race conditions
-        proyecto_locked = Proyecto.all_objects.select_for_update().get(id=proyecto.id)
+        proyecto_locked = Project.all_objects.select_for_update().get(id=proyecto.id)
 
         porcentaje_existente = (
-            Hito.all_objects
+            Milestone.all_objects
             .filter(proyecto=proyecto_locked)
             .aggregate(total=DbSum('porcentaje_proyecto'))
             .get('total') or Decimal('0')
@@ -822,7 +820,7 @@ class HitoService:
                 f'Disponible: {disponible}%. Solicitado: {porcentaje_nuevo}%.'
             )
 
-        hito = Hito(
+        hito = Milestone(
             proyecto=proyecto_locked,
             company=proyecto_locked.company,
             **data,
@@ -831,7 +829,7 @@ class HitoService:
         hito.save()
 
         logger.info(
-            'Hito creado',
+            'Milestone creado',
             extra={
                 'hito_id': str(hito.id),
                 'proyecto_id': str(proyecto.id),
@@ -842,7 +840,7 @@ class HitoService:
 
     @staticmethod
     @transaction.atomic
-    def generar_factura(hito: Hito, user) -> Hito:
+    def generar_factura(hito: Milestone, user) -> Milestone:
         """
         Marca el hito como facturado y registra la solicitud.
         El agente Go procesará la solicitud y creará la factura en Saiopen.
@@ -880,18 +878,18 @@ class ActividadService:
 
     @staticmethod
     def list_actividades(company=None) -> QuerySet:
-        qs = Actividad.all_objects.filter(activo=True)
+        qs = Activity.all_objects.filter(activo=True)
         if company is not None:
             qs = qs.filter(company=company)
         return qs
 
     @staticmethod
-    def get_actividad(pk) -> Actividad:
-        return Actividad.all_objects.get(id=pk)
+    def get_actividad(pk) -> Activity:
+        return Activity.all_objects.get(id=pk)
 
     @staticmethod
     @transaction.atomic
-    def create_actividad(data: dict, user) -> Actividad:
+    def create_actividad(data: dict, user) -> Activity:
         company = user.company
 
         # Auto-generar código: usar consecutivo seleccionado por el usuario, fallback a secuencial
@@ -900,11 +898,11 @@ class ActividadService:
             from apps.core.services import generar_consecutivo
             codigo = generar_consecutivo(str(consecutivo_id)) if consecutivo_id else None
             if not codigo:
-                count = Actividad.all_objects.filter(company=company).count()
+                count = Activity.all_objects.filter(company=company).count()
                 codigo = f'ACT-{str(count + 1).zfill(3)}'
             data = {**data, 'codigo': codigo}
 
-        actividad = Actividad(company=company, **data)
+        actividad = Activity(company=company, **data)
         actividad.full_clean()
         actividad.save()
 
@@ -915,7 +913,7 @@ class ActividadService:
         return actividad
 
     @staticmethod
-    def update_actividad(actividad: Actividad, data: dict) -> Actividad:
+    def update_actividad(actividad: Activity, data: dict) -> Activity:
         for key, value in data.items():
             setattr(actividad, key, value)
         actividad.full_clean()
@@ -924,9 +922,9 @@ class ActividadService:
         return actividad
 
     @staticmethod
-    def soft_delete_actividad(actividad: Actividad) -> None:
+    def soft_delete_actividad(actividad: Activity) -> None:
         # Verificar que no tenga asignaciones activas antes de eliminar
-        asignaciones = ActividadProyecto.all_objects.filter(actividad=actividad).count()
+        asignaciones = ProjectActivity.all_objects.filter(actividad=actividad).count()
         if asignaciones > 0:
             raise ValidationError(
                 f'No se puede eliminar la actividad "{actividad.codigo}" porque está '
@@ -944,9 +942,9 @@ class ActividadService:
 class ActividadProyectoService:
 
     @staticmethod
-    def list_actividades_proyecto(proyecto: Proyecto, fase_id: str | None = None) -> QuerySet:
+    def list_actividades_proyecto(proyecto: Project, fase_id: str | None = None) -> QuerySet:
         qs = (
-            ActividadProyecto.all_objects
+            ProjectActivity.all_objects
             .filter(proyecto=proyecto)
             .select_related('actividad', 'fase')
         )
@@ -956,13 +954,13 @@ class ActividadProyectoService:
 
     @staticmethod
     @transaction.atomic
-    def asignar_actividad(proyecto: Proyecto, data: dict) -> ActividadProyecto:
+    def asignar_actividad(proyecto: Project, data: dict) -> ProjectActivity:
         # Si no se especifica costo_unitario, usar el base del catálogo
         actividad: Actividad = data['actividad']
         if not data.get('costo_unitario'):
             data = {**data, 'costo_unitario': actividad.costo_unitario_base}
 
-        ap = ActividadProyecto(
+        ap = ProjectActivity(
             company=proyecto.company,
             proyecto=proyecto,
             **data,
@@ -981,7 +979,7 @@ class ActividadProyectoService:
         return ap
 
     @staticmethod
-    def update_actividad_proyecto(ap: ActividadProyecto, data: dict) -> ActividadProyecto:
+    def update_actividad_proyecto(ap: ProjectActivity, data: dict) -> ProjectActivity:
         for key, value in data.items():
             setattr(ap, key, value)
         ap.full_clean()
@@ -990,7 +988,7 @@ class ActividadProyectoService:
         return ap
 
     @staticmethod
-    def desasignar_actividad(ap: ActividadProyecto) -> None:
+    def desasignar_actividad(ap: ProjectActivity) -> None:
         estados_bloqueados = [ProjectStatus.PLANNED, ProjectStatus.IN_PROGRESS]
         if ap.proyecto.estado in estados_bloqueados:
             raise ValidationError(

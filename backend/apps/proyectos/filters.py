@@ -105,7 +105,3 @@ class TaskFilter(django_filters.FilterSet):
             return queryset.filter(tarea_padre__isnull=True)
         return queryset
 
-
-# ALIASES DE COMPATIBILIDAD — eliminar en REFT-10
-ProyectoFilter = ProjectFilter
-TareaFilter = TaskFilter

@@ -934,27 +934,3 @@ class TaskDependency(BaseModel):
                 )
 
 
-# ============================================================
-# ALIASES DE COMPATIBILIDAD — eliminar en REFT-10
-# ============================================================
-TipoProyecto = ProjectType
-EstadoProyecto = ProjectStatus
-RolTercero = StakeholderRole
-TipoDocumento = DocumentType
-EstadoFase = PhaseStatus
-ModoMedicion = MeasurementMode
-TipoActividad = ActivityType
-TipoDependencia = DependencyType
-Proyecto = Project
-ConfiguracionModulo = ModuleSettings
-Fase = Phase
-TerceroProyecto = ProjectStakeholder
-DocumentoContable = AccountingDocument
-Actividad = Activity
-ActividadProyecto = ProjectActivity
-ActividadSaiopen = SaiopenActivity
-Hito = Milestone
-TareaTag = TaskTag
-Tarea = Task
-SesionTrabajo = WorkSession
-TareaDependencia = TaskDependency

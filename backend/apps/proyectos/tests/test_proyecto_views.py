@@ -1,5 +1,5 @@
 """
-SaiSuite — Proyectos: Tests de Views — Proyecto
+SaiSuite — Proyectos: Tests de Views — Project
 Cubre: iniciar-ejecucion, filtros de estado, ConfiguracionModuloView.
 """
 from decimal import Decimal
@@ -8,7 +8,7 @@ from rest_framework import status
 from django.contrib.auth import get_user_model
 
 from apps.companies.models import Company, CompanyModule
-from apps.proyectos.models import Proyecto, Fase, ProjectStatus, EstadoProyecto, ConfiguracionModulo
+from apps.proyectos.models import Project, Phase, ProjectStatus, ProjectStatus, ModuleSettings
 
 User = get_user_model()
 
@@ -27,20 +27,20 @@ def crear_usuario(company, email='gpv@test.com', role='company_admin'):
 
 def crear_proyecto_db(company, gerente, codigo='PV-PRY-001', **kwargs):
     defaults = dict(
-        nombre='Proyecto PV', tipo='civil_works',
+        nombre='Project PV', tipo='civil_works',
         cliente_id='900111', cliente_nombre='Cliente',
         fecha_inicio_planificada='2026-04-01',
         fecha_fin_planificada='2026-12-31',
         presupuesto_total=Decimal('1000000'),
     )
     defaults.update(kwargs)
-    return Proyecto.all_objects.create(company=company, gerente=gerente, codigo=codigo, **defaults)
+    return Project.all_objects.create(company=company, gerente=gerente, codigo=codigo, **defaults)
 
 
 def crear_fase_db(company, proyecto, orden=1):
-    return Fase.all_objects.create(
+    return Phase.all_objects.create(
         company=company, proyecto=proyecto,
-        nombre=f'Fase {orden}', orden=orden,
+        nombre=f'Phase {orden}', orden=orden,
         fecha_inicio_planificada='2026-04-01',
         fecha_fin_planificada='2026-06-30',
     )
@@ -76,7 +76,7 @@ class IniciarEjecucionViewTest(APITestCase):
             estado=ProjectStatus.PLANNED,
             sincronizado_con_saiopen=False,
         )
-        ConfiguracionModulo.objects.create(
+        ModuleSettings.objects.create(
             company=self.company,
             requiere_sync_saiopen_para_ejecucion=True,
         )
@@ -90,7 +90,7 @@ class IniciarEjecucionViewTest(APITestCase):
             estado=ProjectStatus.PLANNED,
             sincronizado_con_saiopen=True,
         )
-        ConfiguracionModulo.objects.create(
+        ModuleSettings.objects.create(
             company=self.company,
             requiere_sync_saiopen_para_ejecucion=True,
         )
@@ -216,7 +216,7 @@ class ConfiguracionModuloViewTest(APITestCase):
         self.client.patch(
             self.url, {'dias_alerta_vencimiento': 7}, format='json'
         )
-        config = ConfiguracionModulo.objects.get(company=self.company)
+        config = ModuleSettings.objects.get(company=self.company)
         self.assertEqual(config.dias_alerta_vencimiento, 7)
 
     def test_viewer_puede_get_config(self):

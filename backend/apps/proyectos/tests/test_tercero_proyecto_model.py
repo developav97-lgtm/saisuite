@@ -1,5 +1,5 @@
 """
-SaiSuite — Tests: TerceroProyecto model
+SaiSuite — Tests: ProjectStakeholder model
 """
 import pytest
 from decimal import Decimal
@@ -8,7 +8,7 @@ from django.db import IntegrityError
 from django.contrib.auth import get_user_model
 
 from apps.companies.models import Company, CompanyModule
-from apps.proyectos.models import Proyecto, Fase, TerceroProyecto, RolTercero
+from apps.proyectos.models import Project, Phase, ProjectStakeholder, StakeholderRole
 
 User = get_user_model()
 
@@ -26,9 +26,9 @@ def make_user(company, email='gtp@test.com'):
 
 
 def make_proyecto(company, gerente, codigo='TP-PRY-001'):
-    return Proyecto.all_objects.create(
+    return Project.all_objects.create(
         company=company, gerente=gerente, codigo=codigo,
-        nombre='TP Proyecto', tipo='civil_works',
+        nombre='TP Project', tipo='civil_works',
         cliente_id='111', cliente_nombre='C',
         fecha_inicio_planificada=date.today(),
         fecha_fin_planificada=date.today() + timedelta(days=90),
@@ -37,16 +37,16 @@ def make_proyecto(company, gerente, codigo='TP-PRY-001'):
 
 
 def make_fase(proyecto, orden=1):
-    return Fase.all_objects.create(
+    return Phase.all_objects.create(
         company=proyecto.company,
-        proyecto=proyecto, nombre=f'Fase {orden}', orden=orden,
+        proyecto=proyecto, nombre=f'Phase {orden}', orden=orden,
         fecha_inicio_planificada=date.today(),
         fecha_fin_planificada=date.today() + timedelta(days=60),
     )
 
 
 def make_tp(proyecto, tercero_id='900111222', rol='client', fase=None, **kwargs):
-    return TerceroProyecto.all_objects.create(
+    return ProjectStakeholder.all_objects.create(
         company=proyecto.company,
         proyecto=proyecto,
         tercero_id=tercero_id,
@@ -90,7 +90,7 @@ class TestTerceroProyectoModel:
         assert tp.tercero_fk is None
 
     def test_roles_disponibles(self):
-        roles = [r.value for r in RolTercero]
+        roles = [r.value for r in StakeholderRole]
         assert 'client' in roles
         assert 'subcontractor' in roles
         assert 'vendor' in roles
@@ -104,7 +104,7 @@ class TestTerceroProyectoModel:
         p = make_proyecto(c, g, 'TP-PRY-005')
         make_tp(p, '900111222', rol='client')
         make_tp(p, '900111222', rol='vendor')
-        assert TerceroProyecto.all_objects.filter(
+        assert ProjectStakeholder.all_objects.filter(
             proyecto=p, tercero_id='900111222'
         ).count() == 2
 
@@ -116,7 +116,7 @@ class TestTerceroProyectoModel:
         f = make_fase(p, orden=1)
         make_tp(p, '900111333', rol='client', fase=f)
         with pytest.raises(IntegrityError):
-            TerceroProyecto.all_objects.create(
+            ProjectStakeholder.all_objects.create(
                 company=c, proyecto=p,
                 tercero_id='900111333', tercero_nombre='X',
                 rol='client', fase=f,

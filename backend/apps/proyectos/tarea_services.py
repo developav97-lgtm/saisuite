@@ -18,8 +18,6 @@ from apps.proyectos.models import (
     Project, Phase, Task, TaskTag, WorkSession, TimesheetEntry,
     TaskDependency, SaiopenActivity, ProjectActivity, Activity,
     ProjectStatus, PhaseStatus, MeasurementMode, DependencyType,
-    # Aliases de compatibilidad (eliminar en REFT-10)
-    Proyecto, Tarea, Fase, SesionTrabajo, TareaDependencia,
 )
 
 logger = logging.getLogger(__name__)
@@ -1002,9 +1000,3 @@ class TimesheetEntryService:
 
         return qs
 
-
-# ============================================================
-# ALIASES DE COMPATIBILIDAD — eliminar en REFT-10
-# ============================================================
-TareaService = TaskService
-DependenciaService = DependencyService

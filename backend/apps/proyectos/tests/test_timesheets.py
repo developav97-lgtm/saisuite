@@ -4,7 +4,7 @@ Cubre:
 - Modelo TimesheetEntry (unique_together, clean, validadores)
 - TimesheetEntryService: registrar_horas, eliminar_entry, validar_timesheet, recalcular_horas_tarea
 - TimesheetViewSet: list, create, partial_update, destroy, mis_horas, validar
-- Flujo timer existente: iniciar → pausar → reanudar → detener (SesionTrabajo)
+- Flujo timer existente: iniciar → pausar → reanudar → detener (WorkSession)
 """
 from datetime import date, timedelta
 from decimal import Decimal
@@ -17,7 +17,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import get_user_model
 
 from apps.companies.models import Company, CompanyModule
-from apps.proyectos.models import Proyecto, Fase, Tarea, TimesheetEntry
+from apps.proyectos.models import Project, Phase, Task, TimesheetEntry
 from apps.proyectos.tarea_services import TimesheetEntryService, TimesheetService
 
 User = get_user_model()
@@ -52,10 +52,10 @@ def make_user(company, role='company_admin'):
 
 
 def make_proyecto(company, gerente):
-    return Proyecto.all_objects.create(
+    return Project.all_objects.create(
         company=company, gerente=gerente,
         codigo=f'TS-{_nit()}',
-        nombre='Proyecto Timesheet',
+        nombre='Project Timesheet',
         tipo='services',
         estado='in_progress',
         cliente_id='777', cliente_nombre='Cliente TS',
@@ -66,17 +66,17 @@ def make_proyecto(company, gerente):
 
 
 def make_fase(company, proyecto):
-    return Fase.all_objects.create(
+    return Phase.all_objects.create(
         company=company, proyecto=proyecto,
-        nombre='Fase TS', orden=1,
+        nombre='Phase TS', orden=1,
         fecha_inicio_planificada=date.today(),
         fecha_fin_planificada=date.today() + timedelta(days=60),
         presupuesto_mano_obra=Decimal('1000000'),
     )
 
 
-def make_tarea(company, proyecto, fase, nombre='Tarea TS'):
-    return Tarea.objects.create(
+def make_tarea(company, proyecto, fase, nombre='Task TS'):
+    return Task.objects.create(
         company=company, proyecto=proyecto, fase=fase,
         nombre=nombre, estado='in_progress',
         horas_estimadas=Decimal('8'),
@@ -412,7 +412,7 @@ class TestTimesheetViewSet(APITestCase):
         self.assertEqual(len(resp.data), 0)
 
 
-# ── Tests: Timer (SesionTrabajo) ──────────────────────────────────────────────
+# ── Tests: Timer (WorkSession) ──────────────────────────────────────────────
 
 class TestTimerFlujo(APITestCase):
     """Flujo completo del cronómetro usando los endpoints existentes."""

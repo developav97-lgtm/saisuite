@@ -1,13 +1,13 @@
 """
 SaiSuite — Proyectos: Tests de Signals
-Verifica que post_save/post_delete en ActividadProyecto recalculan avance.
+Verifica que post_save/post_delete en ProjectActivity recalculan avance.
 """
 from decimal import Decimal
 from django.test import TestCase
 from django.contrib.auth import get_user_model
 
 from apps.companies.models import Company, CompanyModule
-from apps.proyectos.models import Proyecto, Fase, Actividad, ActividadProyecto
+from apps.proyectos.models import Project, Phase, Activity, ProjectActivity
 
 User = get_user_model()
 
@@ -25,9 +25,9 @@ def crear_usuario(company, email='gsig@test.com'):
 
 
 def crear_proyecto(company, gerente, codigo='SIG-PRY-001'):
-    return Proyecto.all_objects.create(
+    return Project.all_objects.create(
         company=company, gerente=gerente, codigo=codigo,
-        nombre='Sig Proyecto', tipo='civil_works',
+        nombre='Sig Project', tipo='civil_works',
         cliente_id='111', cliente_nombre='C',
         fecha_inicio_planificada='2026-04-01',
         fecha_fin_planificada='2026-12-31',
@@ -36,9 +36,9 @@ def crear_proyecto(company, gerente, codigo='SIG-PRY-001'):
 
 
 def crear_fase(company, proyecto, orden=1):
-    return Fase.all_objects.create(
+    return Phase.all_objects.create(
         company=company, proyecto=proyecto,
-        nombre=f'Fase {orden}', orden=orden,
+        nombre=f'Phase {orden}', orden=orden,
         fecha_inicio_planificada='2026-04-01',
         fecha_fin_planificada='2026-06-30',
         presupuesto_mano_obra=Decimal('500000'),
@@ -46,9 +46,9 @@ def crear_fase(company, proyecto, orden=1):
 
 
 def crear_actividad(company, codigo='SIG-ACT-001'):
-    return Actividad.all_objects.create(
+    return Activity.all_objects.create(
         company=company, codigo=codigo,
-        nombre='Actividad Señal', unidad_medida='m2', tipo='material',
+        nombre='Activity Señal', unidad_medida='m2', tipo='material',
     )
 
 
@@ -62,7 +62,7 @@ class SignalPostSaveTest(TestCase):
         self.actividad = crear_actividad(self.company)
 
     def test_create_recalcula_avance_fase(self):
-        ActividadProyecto.all_objects.create(
+        ProjectActivity.all_objects.create(
             company=self.company, proyecto=self.proyecto,
             actividad=self.actividad, fase=self.fase,
             cantidad_planificada=Decimal('10'), cantidad_ejecutada=Decimal('5'),
@@ -72,7 +72,7 @@ class SignalPostSaveTest(TestCase):
         self.assertEqual(self.fase.porcentaje_avance, Decimal('50.00'))
 
     def test_create_recalcula_avance_proyecto(self):
-        ActividadProyecto.all_objects.create(
+        ProjectActivity.all_objects.create(
             company=self.company, proyecto=self.proyecto,
             actividad=self.actividad, fase=self.fase,
             cantidad_planificada=Decimal('10'), cantidad_ejecutada=Decimal('10'),
@@ -82,7 +82,7 @@ class SignalPostSaveTest(TestCase):
         self.assertEqual(self.proyecto.porcentaje_avance, Decimal('100.00'))
 
     def test_save_con_cantidad_actualizada_recalcula(self):
-        ap = ActividadProyecto.all_objects.create(
+        ap = ProjectActivity.all_objects.create(
             company=self.company, proyecto=self.proyecto,
             actividad=self.actividad, fase=self.fase,
             cantidad_planificada=Decimal('10'), cantidad_ejecutada=Decimal('0'),
@@ -101,7 +101,7 @@ class SignalPostSaveTest(TestCase):
     def test_signal_con_fase_none_no_falla(self):
         """Signal sin fase solo recalcula el proyecto, no la fase."""
         a2 = crear_actividad(self.company, 'SIG-ACT-NOFASE')
-        ap = ActividadProyecto.all_objects.create(
+        ap = ProjectActivity.all_objects.create(
             company=self.company, proyecto=self.proyecto,
             actividad=a2, fase=None,
             cantidad_planificada=Decimal('5'), cantidad_ejecutada=Decimal('5'),
@@ -122,7 +122,7 @@ class SignalPostDeleteTest(TestCase):
         self.actividad = crear_actividad(self.company, 'SIG-ACT-DEL')
 
     def test_delete_recalcula_avance_fase_a_cero(self):
-        ap = ActividadProyecto.all_objects.create(
+        ap = ProjectActivity.all_objects.create(
             company=self.company, proyecto=self.proyecto,
             actividad=self.actividad, fase=self.fase,
             cantidad_planificada=Decimal('10'), cantidad_ejecutada=Decimal('10'),
@@ -137,7 +137,7 @@ class SignalPostDeleteTest(TestCase):
         self.assertEqual(self.fase.porcentaje_avance, Decimal('0'))
 
     def test_delete_recalcula_avance_proyecto_a_cero(self):
-        ap = ActividadProyecto.all_objects.create(
+        ap = ProjectActivity.all_objects.create(
             company=self.company, proyecto=self.proyecto,
             actividad=self.actividad, fase=self.fase,
             cantidad_planificada=Decimal('10'), cantidad_ejecutada=Decimal('10'),
@@ -153,13 +153,13 @@ class SignalPostDeleteTest(TestCase):
 
     def test_delete_con_otras_actividades_recalcula_parcial(self):
         a2 = crear_actividad(self.company, 'SIG-ACT-DEL2')
-        ap1 = ActividadProyecto.all_objects.create(
+        ap1 = ProjectActivity.all_objects.create(
             company=self.company, proyecto=self.proyecto,
             actividad=self.actividad, fase=self.fase,
             cantidad_planificada=Decimal('10'), cantidad_ejecutada=Decimal('10'),
             costo_unitario=Decimal('1000'),
         )
-        ActividadProyecto.all_objects.create(
+        ProjectActivity.all_objects.create(
             company=self.company, proyecto=self.proyecto,
             actividad=a2, fase=self.fase,
             cantidad_planificada=Decimal('10'), cantidad_ejecutada=Decimal('0'),

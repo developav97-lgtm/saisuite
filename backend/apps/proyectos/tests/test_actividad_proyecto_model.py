@@ -1,5 +1,5 @@
 """
-SaiSuite — Tests: ActividadProyecto model + signals
+SaiSuite — Tests: ProjectActivity model + signals
 """
 import pytest
 from decimal import Decimal
@@ -9,7 +9,7 @@ from django.contrib.auth import get_user_model
 
 from apps.companies.models import Company, CompanyModule
 from apps.proyectos.models import (
-    Proyecto, Fase, Actividad, ActividadProyecto,
+    Project, Phase, Activity, ProjectActivity,
 )
 
 User = get_user_model()
@@ -30,9 +30,9 @@ def make_user(company, email='gap@test.com'):
 
 
 def make_proyecto(company, gerente, codigo='AP-PRY-001'):
-    return Proyecto.all_objects.create(
+    return Project.all_objects.create(
         company=company, gerente=gerente, codigo=codigo,
-        nombre='AP Proyecto', tipo='civil_works',
+        nombre='AP Project', tipo='civil_works',
         cliente_id='111', cliente_nombre='C',
         fecha_inicio_planificada=date.today(),
         fecha_fin_planificada=date.today() + timedelta(days=90),
@@ -41,9 +41,9 @@ def make_proyecto(company, gerente, codigo='AP-PRY-001'):
 
 
 def make_fase(proyecto, orden=1):
-    return Fase.all_objects.create(
+    return Phase.all_objects.create(
         company=proyecto.company,
-        proyecto=proyecto, nombre=f'Fase {orden}', orden=orden,
+        proyecto=proyecto, nombre=f'Phase {orden}', orden=orden,
         fecha_inicio_planificada=date.today(),
         fecha_fin_planificada=date.today() + timedelta(days=60),
         presupuesto_mano_obra=Decimal('1000000'),
@@ -51,7 +51,7 @@ def make_fase(proyecto, orden=1):
 
 
 def make_actividad(company, codigo='ACT-001'):
-    return Actividad.all_objects.create(
+    return Activity.all_objects.create(
         company=company, codigo=codigo,
         nombre='Excavación', unidad_medida='m3', tipo='material',
         costo_unitario_base=Decimal('50000'),
@@ -65,7 +65,7 @@ def make_ap(company, proyecto, actividad, fase=None, **kwargs):
         costo_unitario=Decimal('50000'),
     )
     defaults.update(kwargs)
-    return ActividadProyecto.all_objects.create(
+    return ProjectActivity.all_objects.create(
         company=company,
         proyecto=proyecto,
         actividad=actividad,
@@ -129,7 +129,7 @@ class TestActividadProyectoModel:
         f = make_fase(p, orden=1)
         make_ap(c, p, a, fase=f)
         with pytest.raises(IntegrityError):
-            ActividadProyecto.all_objects.create(
+            ProjectActivity.all_objects.create(
                 company=c, proyecto=p, actividad=a, fase=f,
                 cantidad_planificada=Decimal('5'),
             )
@@ -175,7 +175,7 @@ class TestActividadProyectoSignals:
         f = make_fase(p, orden=1)
 
         # Crear una actividad con 50% ejecutado — signal recalcula al crear
-        ap = ActividadProyecto.all_objects.create(
+        ap = ProjectActivity.all_objects.create(
             company=c, proyecto=p, actividad=make_actividad(c, 'SIG-ACT-001'),
             fase=f,
             cantidad_planificada=Decimal('10'),
@@ -184,7 +184,7 @@ class TestActividadProyectoSignals:
         )
 
         f.refresh_from_db()
-        # Fase debe tener avance > 0 (50%)
+        # Phase debe tener avance > 0 (50%)
         assert f.porcentaje_avance == Decimal('50.00')
 
     def test_signal_post_save_recalcula_avance_proyecto(self):
@@ -193,7 +193,7 @@ class TestActividadProyectoSignals:
         p = make_proyecto(c, g, 'SIG-PRY-002')
         f = make_fase(p, orden=1)
 
-        ActividadProyecto.all_objects.create(
+        ProjectActivity.all_objects.create(
             company=c, proyecto=p, actividad=make_actividad(c, 'SIG-ACT-002'),
             fase=f,
             cantidad_planificada=Decimal('10'),
@@ -202,7 +202,7 @@ class TestActividadProyectoSignals:
         )
 
         p.refresh_from_db()
-        # Proyecto debe reflejar avance = 100%
+        # Project debe reflejar avance = 100%
         assert p.porcentaje_avance == Decimal('100.00')
 
     def test_signal_avance_cero_sin_ejecucion(self):
@@ -211,7 +211,7 @@ class TestActividadProyectoSignals:
         p = make_proyecto(c, g, 'SIG-PRY-003')
         f = make_fase(p, orden=1)
 
-        ActividadProyecto.all_objects.create(
+        ProjectActivity.all_objects.create(
             company=c, proyecto=p, actividad=make_actividad(c, 'SIG-ACT-003'),
             fase=f,
             cantidad_planificada=Decimal('10'),
@@ -228,7 +228,7 @@ class TestActividadProyectoSignals:
         p = make_proyecto(c, g, 'SIG-PRY-004')
         f = make_fase(p, orden=1)
 
-        ActividadProyecto.all_objects.create(
+        ProjectActivity.all_objects.create(
             company=c, proyecto=p, actividad=make_actividad(c, 'SIG-ACT-004'),
             fase=f,
             cantidad_planificada=Decimal('8'),
@@ -240,24 +240,24 @@ class TestActividadProyectoSignals:
         assert f.porcentaje_avance == Decimal('100.00')
 
     def test_signal_avance_ponderado_por_costo(self):
-        """Actividad costosa 100% ejecutada vs actividad barata 0% → avance ponderado."""
+        """Activity costosa 100% ejecutada vs actividad barata 0% → avance ponderado."""
         c = make_company('904002005')
         g = make_user(c, 'sig5@test.com')
         p = make_proyecto(c, g, 'SIG-PRY-005')
         f = make_fase(p, orden=1)
 
-        # Actividad cara: 10u × $10000 = $100000 planificado, 10 ejecutado
+        # Activity cara: 10u × $10000 = $100000 planificado, 10 ejecutado
         a1 = make_actividad(c, 'SIG-ACT-005A')
-        ActividadProyecto.all_objects.create(
+        ProjectActivity.all_objects.create(
             company=c, proyecto=p, actividad=a1, fase=f,
             cantidad_planificada=Decimal('10'),
             cantidad_ejecutada=Decimal('10'),
             costo_unitario=Decimal('10000'),
         )
 
-        # Actividad barata: 10u × $1000 = $1000 planificado, 0 ejecutado
+        # Activity barata: 10u × $1000 = $1000 planificado, 0 ejecutado
         a2 = make_actividad(c, 'SIG-ACT-005B')
-        ActividadProyecto.all_objects.create(
+        ProjectActivity.all_objects.create(
             company=c, proyecto=p, actividad=a2, fase=f,
             cantidad_planificada=Decimal('10'),
             cantidad_ejecutada=Decimal('0'),
@@ -277,7 +277,7 @@ class TestActividadProyectoSignals:
         p = make_proyecto(c, g, 'SIG-PRY-006')
         f = make_fase(p, orden=1)
 
-        ap = ActividadProyecto.all_objects.create(
+        ap = ProjectActivity.all_objects.create(
             company=c, proyecto=p, actividad=make_actividad(c, 'SIG-ACT-006'),
             fase=f,
             cantidad_planificada=Decimal('10'),
@@ -300,7 +300,7 @@ class TestActividadProyectoSignals:
         p = make_proyecto(c, g, 'SIG-PRY-007')
         f = make_fase(p, orden=1)
 
-        ActividadProyecto.all_objects.create(
+        ProjectActivity.all_objects.create(
             company=c, proyecto=p, actividad=make_actividad(c, 'SIG-ACT-007'),
             fase=f,
             cantidad_planificada=Decimal('10'),

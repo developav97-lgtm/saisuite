@@ -1,5 +1,5 @@
 """
-SaiSuite — Tests: Proyecto model
+SaiSuite — Tests: Project model
 """
 import pytest
 from decimal import Decimal
@@ -9,7 +9,7 @@ from django.contrib.auth import get_user_model
 
 from apps.companies.models import Company, CompanyModule
 from apps.proyectos.models import (ProjectStatus, PhaseStatus, ActivityType, MeasurementMode,
-    Proyecto, EstadoProyecto, TipoProyecto,
+    Project, ProjectStatus, ProjectType,
 )
 
 User = get_user_model()
@@ -33,7 +33,7 @@ def make_user(company, email='g@test.com'):
 def make_proyecto(company, gerente, **kwargs):
     defaults = dict(
         codigo='PRY-001',
-        nombre='Proyecto Test',
+        nombre='Project Test',
         tipo='civil_works',
         cliente_id='900111222',
         cliente_nombre='Cliente SA',
@@ -42,7 +42,7 @@ def make_proyecto(company, gerente, **kwargs):
         presupuesto_total=Decimal('1000000.00'),
     )
     defaults.update(kwargs)
-    return Proyecto.all_objects.create(company=company, gerente=gerente, **defaults)
+    return Project.all_objects.create(company=company, gerente=gerente, **defaults)
 
 
 # ── Tests ─────────────────────────────────────────────────────────────────────
@@ -55,7 +55,7 @@ class TestProyectoModel:
         g = make_user(c)
         p = make_proyecto(c, g)
         assert p.id is not None
-        assert p.nombre == 'Proyecto Test'
+        assert p.nombre == 'Project Test'
         assert p.codigo == 'PRY-001'
 
     def test_estado_default_borrador(self):
@@ -65,7 +65,7 @@ class TestProyectoModel:
         assert p.estado == ProjectStatus.DRAFT
 
     def test_estados_disponibles(self):
-        estados = [e.value for e in EstadoProyecto]
+        estados = [e.value for e in ProjectStatus]
         assert 'draft' in estados
         assert 'planned' in estados
         assert 'in_progress' in estados
@@ -74,7 +74,7 @@ class TestProyectoModel:
         assert 'cancelled' in estados
 
     def test_tipos_disponibles(self):
-        tipos = [t.value for t in TipoProyecto]
+        tipos = [t.value for t in ProjectType]
         assert 'civil_works' in tipos
         assert 'consulting' in tipos
         assert 'manufacturing' in tipos
@@ -109,7 +109,7 @@ class TestProyectoModel:
         g = make_user(c, 'g7@test.com')
         make_proyecto(c, g, codigo='PRY-DUP')
         with pytest.raises(IntegrityError):
-            Proyecto.all_objects.create(
+            Project.all_objects.create(
                 company=c, gerente=g,
                 codigo='PRY-DUP',
                 nombre='Otro proyecto',
@@ -180,7 +180,7 @@ class TestProyectoModel:
         c = make_company('901001017')
         g = make_user(c, 'g17@test.com')
         p = make_proyecto(c, g, codigo='PRY-017')
-        Proyecto.all_objects.filter(id=p.id).update(porcentaje_avance=Decimal('50.00'))
+        Project.all_objects.filter(id=p.id).update(porcentaje_avance=Decimal('50.00'))
         p.refresh_from_db()
         assert p.porcentaje_avance == Decimal('50.00')
 

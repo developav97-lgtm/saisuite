@@ -8,7 +8,7 @@ from decimal import Decimal
 import pytest
 
 from apps.companies.models import Company, CompanyModule
-from apps.proyectos.models import Proyecto, Fase, Tarea
+from apps.proyectos.models import Project, Phase, Task
 
 
 # ── Helpers locales ───────────────────────────────────────────────────────────
@@ -54,12 +54,12 @@ def user(company):
 
 @pytest.fixture
 def proyecto(company, user):
-    """Proyecto en estado 'in_progress' listo para crear tareas."""
-    return Proyecto.all_objects.create(
+    """Project en estado 'in_progress' listo para crear tareas."""
+    return Project.all_objects.create(
         company=company,
         gerente=user,
         codigo=f'PRY-{_nit()}',
-        nombre='Proyecto Test Services',
+        nombre='Project Test Services',
         tipo='civil_works',
         estado='in_progress',
         cliente_id='111',
@@ -72,11 +72,11 @@ def proyecto(company, user):
 
 @pytest.fixture
 def fase(proyecto):
-    """Fase activa del proyecto de prueba (DEC-021)."""
-    return Fase.all_objects.create(
+    """Phase activa del proyecto de prueba (DEC-021)."""
+    return Phase.all_objects.create(
         company=proyecto.company,
         proyecto=proyecto,
-        nombre='Fase General',
+        nombre='Phase General',
         orden=1,
         fecha_inicio_planificada=date.today(),
         fecha_fin_planificada=date.today() + timedelta(days=90),
@@ -86,12 +86,12 @@ def fase(proyecto):
 
 @pytest.fixture
 def tarea_simple(proyecto, fase, user):
-    """Tarea sin subtareas en estado 'todo'."""
-    return Tarea.objects.create(
+    """Task sin subtareas en estado 'todo'."""
+    return Task.objects.create(
         company=proyecto.company,
         proyecto=proyecto,
         fase=fase,
-        nombre='Tarea simple',
+        nombre='Task simple',
         responsable=user,
         estado='todo',
     )
@@ -104,7 +104,7 @@ def tarea_con_subtareas(proyecto, fase, tarea_simple):
     El fixture se llama 'tarea_con_subtareas' para mayor claridad en los tests.
     """
     for i in range(3):
-        Tarea.objects.create(
+        Task.objects.create(
             company=proyecto.company,
             proyecto=proyecto,
             fase=fase,

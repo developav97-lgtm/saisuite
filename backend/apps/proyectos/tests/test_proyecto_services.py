@@ -9,8 +9,8 @@ from django.contrib.auth import get_user_model
 
 from apps.companies.models import Company, CompanyModule
 from apps.proyectos.models import (
-    Proyecto, Fase, EstadoProyecto, ConfiguracionModulo,
-    Actividad, ActividadProyecto, TerceroProyecto,
+    Project, Phase, ProjectStatus, ModuleSettings,
+    Activity, ProjectActivity, ProjectStakeholder,
 )
 from apps.proyectos.services import (
     calcular_avance_fase,
@@ -43,31 +43,31 @@ def crear_usuario(company, email='gsvc@test.com', role='company_admin'):
 
 def crear_proyecto(company, gerente, codigo='SVC-PRY-001', **kwargs):
     defaults = dict(
-        nombre='Proyecto SVC', tipo='civil_works',
+        nombre='Project SVC', tipo='civil_works',
         cliente_id='900111', cliente_nombre='Cliente',
         fecha_inicio_planificada='2026-04-01',
         fecha_fin_planificada='2026-12-31',
         presupuesto_total=Decimal('1000000.00'),
     )
     defaults.update(kwargs)
-    return Proyecto.all_objects.create(company=company, gerente=gerente, codigo=codigo, **defaults)
+    return Project.all_objects.create(company=company, gerente=gerente, codigo=codigo, **defaults)
 
 
 def crear_fase(company, proyecto, orden=1, **kwargs):
     defaults = dict(
-        nombre=f'Fase {orden}', orden=orden,
+        nombre=f'Phase {orden}', orden=orden,
         fecha_inicio_planificada='2026-04-01',
         fecha_fin_planificada='2026-06-30',
         presupuesto_mano_obra=Decimal('200000'),
     )
     defaults.update(kwargs)
-    return Fase.all_objects.create(company=company, proyecto=proyecto, **defaults)
+    return Phase.all_objects.create(company=company, proyecto=proyecto, **defaults)
 
 
 def crear_actividad(company, codigo='ACT-SVC-001', **kwargs):
     defaults = dict(nombre='Excavación', unidad_medida='m3', tipo='material')
     defaults.update(kwargs)
-    return Actividad.all_objects.create(company=company, codigo=codigo, **defaults)
+    return Activity.all_objects.create(company=company, codigo=codigo, **defaults)
 
 
 # ── calcular_avance_fase ───────────────────────────────────────────────────────
@@ -86,7 +86,7 @@ class CalcularAvanceFaseTest(TestCase):
 
     def test_fase_actividades_sin_ejecutar_retorna_cero(self):
         a = crear_actividad(self.company, 'ACT-F-001')
-        ActividadProyecto.all_objects.create(
+        ProjectActivity.all_objects.create(
             company=self.company, proyecto=self.proyecto, actividad=a, fase=self.fase,
             cantidad_planificada=Decimal('10'), cantidad_ejecutada=Decimal('0'),
             costo_unitario=Decimal('5000'),
@@ -96,7 +96,7 @@ class CalcularAvanceFaseTest(TestCase):
 
     def test_fase_actividades_50_ejecutadas(self):
         a = crear_actividad(self.company, 'ACT-F-002')
-        ActividadProyecto.all_objects.create(
+        ProjectActivity.all_objects.create(
             company=self.company, proyecto=self.proyecto, actividad=a, fase=self.fase,
             cantidad_planificada=Decimal('10'), cantidad_ejecutada=Decimal('5'),
             costo_unitario=Decimal('1000'),
@@ -106,7 +106,7 @@ class CalcularAvanceFaseTest(TestCase):
 
     def test_fase_actividades_100_ejecutadas(self):
         a = crear_actividad(self.company, 'ACT-F-003')
-        ActividadProyecto.all_objects.create(
+        ProjectActivity.all_objects.create(
             company=self.company, proyecto=self.proyecto, actividad=a, fase=self.fase,
             cantidad_planificada=Decimal('8'), cantidad_ejecutada=Decimal('8'),
             costo_unitario=Decimal('2000'),
@@ -116,18 +116,18 @@ class CalcularAvanceFaseTest(TestCase):
 
     def test_ponderacion_por_costo_75_pct(self):
         """
-        Actividad A: 10 × $100 = $1000 planificado, 5 ejecutadas = $500
-        Actividad B: 5 × $200 = $1000 planificado, 5 ejecutadas = $1000
+        Activity A: 10 × $100 = $1000 planificado, 5 ejecutadas = $500
+        Activity B: 5 × $200 = $1000 planificado, 5 ejecutadas = $1000
         Total: $2000 planificado, $1500 ejecutado → 75.00%
         """
         a1 = crear_actividad(self.company, 'ACT-F-004A')
         a2 = crear_actividad(self.company, 'ACT-F-004B')
-        ActividadProyecto.all_objects.create(
+        ProjectActivity.all_objects.create(
             company=self.company, proyecto=self.proyecto, actividad=a1, fase=self.fase,
             cantidad_planificada=Decimal('10'), cantidad_ejecutada=Decimal('5'),
             costo_unitario=Decimal('100'),
         )
-        ActividadProyecto.all_objects.create(
+        ProjectActivity.all_objects.create(
             company=self.company, proyecto=self.proyecto, actividad=a2, fase=self.fase,
             cantidad_planificada=Decimal('5'), cantidad_ejecutada=Decimal('5'),
             costo_unitario=Decimal('200'),
@@ -137,7 +137,7 @@ class CalcularAvanceFaseTest(TestCase):
 
     def test_costo_unitario_cero_no_divide_por_cero(self):
         a = crear_actividad(self.company, 'ACT-F-005')
-        ActividadProyecto.all_objects.create(
+        ProjectActivity.all_objects.create(
             company=self.company, proyecto=self.proyecto, actividad=a, fase=self.fase,
             cantidad_planificada=Decimal('10'), cantidad_ejecutada=Decimal('10'),
             costo_unitario=Decimal('0'),
@@ -147,7 +147,7 @@ class CalcularAvanceFaseTest(TestCase):
 
     def test_persiste_porcentaje_en_db(self):
         a = crear_actividad(self.company, 'ACT-F-006')
-        ActividadProyecto.all_objects.create(
+        ProjectActivity.all_objects.create(
             company=self.company, proyecto=self.proyecto, actividad=a, fase=self.fase,
             cantidad_planificada=Decimal('10'), cantidad_ejecutada=Decimal('10'),
             costo_unitario=Decimal('1000'),
@@ -159,7 +159,7 @@ class CalcularAvanceFaseTest(TestCase):
     def test_resultado_no_supera_100(self):
         """Aunque ejecutado > planificado, el techo es 100."""
         a = crear_actividad(self.company, 'ACT-F-007')
-        ActividadProyecto.all_objects.create(
+        ProjectActivity.all_objects.create(
             company=self.company, proyecto=self.proyecto, actividad=a, fase=self.fase,
             cantidad_planificada=Decimal('5'), cantidad_ejecutada=Decimal('10'),
             costo_unitario=Decimal('1000'),
@@ -184,14 +184,14 @@ class CalcularAvanceProyectoTest(TestCase):
     def test_proyecto_promedio_de_fases(self):
         f1 = crear_fase(self.company, self.proyecto, orden=1)
         f2 = crear_fase(self.company, self.proyecto, orden=2)
-        Fase.all_objects.filter(id=f1.id).update(porcentaje_avance=Decimal('50'))
-        Fase.all_objects.filter(id=f2.id).update(porcentaje_avance=Decimal('100'))
+        Phase.all_objects.filter(id=f1.id).update(porcentaje_avance=Decimal('50'))
+        Phase.all_objects.filter(id=f2.id).update(porcentaje_avance=Decimal('100'))
         pct = calcular_avance_proyecto(self.proyecto.id)
         self.assertEqual(pct, Decimal('75.00'))
 
     def test_proyecto_persiste_en_db(self):
         f = crear_fase(self.company, self.proyecto, orden=1)
-        Fase.all_objects.filter(id=f.id).update(porcentaje_avance=Decimal('40'))
+        Phase.all_objects.filter(id=f.id).update(porcentaje_avance=Decimal('40'))
         calcular_avance_proyecto(self.proyecto.id)
         self.proyecto.refresh_from_db()
         self.assertEqual(self.proyecto.porcentaje_avance, Decimal('40.00'))
@@ -199,8 +199,8 @@ class CalcularAvanceProyectoTest(TestCase):
     def test_fases_inactivas_no_cuentan(self):
         f1 = crear_fase(self.company, self.proyecto, orden=1)
         f2 = crear_fase(self.company, self.proyecto, orden=2)
-        Fase.all_objects.filter(id=f1.id).update(porcentaje_avance=Decimal('100'))
-        Fase.all_objects.filter(id=f2.id).update(activo=False, porcentaje_avance=Decimal('0'))
+        Phase.all_objects.filter(id=f1.id).update(porcentaje_avance=Decimal('100'))
+        Phase.all_objects.filter(id=f2.id).update(activo=False, porcentaje_avance=Decimal('0'))
         pct = calcular_avance_proyecto(self.proyecto.id)
         self.assertEqual(pct, Decimal('100.00'))
 
@@ -218,9 +218,9 @@ class ConfiguracionModuloServiceTest(TestCase):
         self.assertEqual(config.company, self.company)
 
     def test_get_or_create_devuelve_existente(self):
-        ConfiguracionModulo.objects.create(company=self.company)
+        ModuleSettings.objects.create(company=self.company)
         config = ConfiguracionModuloService.get_or_create(self.company)
-        self.assertEqual(ConfiguracionModulo.objects.filter(company=self.company).count(), 1)
+        self.assertEqual(ModuleSettings.objects.filter(company=self.company).count(), 1)
         self.assertIsNotNone(config.id)
 
     def test_update_requiere_sync(self):
@@ -238,7 +238,7 @@ class ConfiguracionModuloServiceTest(TestCase):
         self.assertEqual(config.dias_alerta_vencimiento, 30)
 
     def test_update_crea_si_no_existe(self):
-        self.assertFalse(ConfiguracionModulo.objects.filter(company=self.company).exists())
+        self.assertFalse(ModuleSettings.objects.filter(company=self.company).exists())
         config = ConfiguracionModuloService.update(self.company, {'dias_alerta_vencimiento': 7})
         self.assertIsNotNone(config.id)
 
@@ -338,7 +338,7 @@ class TerceroProyectoServiceGapTest(TestCase):
         self.proyecto = crear_proyecto(self.company, self.user, 'TP-SVC-001')
 
     def test_list_terceros_todos(self):
-        TerceroProyecto.all_objects.create(
+        ProjectStakeholder.all_objects.create(
             company=self.company, proyecto=self.proyecto,
             tercero_id='111', tercero_nombre='A', rol='client',
         )
@@ -347,11 +347,11 @@ class TerceroProyectoServiceGapTest(TestCase):
 
     def test_list_terceros_filtra_por_fase(self):
         fase = crear_fase(self.company, self.proyecto)
-        TerceroProyecto.all_objects.create(
+        ProjectStakeholder.all_objects.create(
             company=self.company, proyecto=self.proyecto,
             tercero_id='111', tercero_nombre='A', rol='client', fase=fase,
         )
-        TerceroProyecto.all_objects.create(
+        ProjectStakeholder.all_objects.create(
             company=self.company, proyecto=self.proyecto,
             tercero_id='222', tercero_nombre='B', rol='vendor', fase=None,
         )
@@ -360,7 +360,7 @@ class TerceroProyectoServiceGapTest(TestCase):
         self.assertEqual(qs.first().tercero_id, '111')
 
     def test_vincular_tercero_duplicado_lanza_error(self):
-        TerceroProyecto.all_objects.create(
+        ProjectStakeholder.all_objects.create(
             company=self.company, proyecto=self.proyecto,
             tercero_id='333', tercero_nombre='C', rol='client', fase=None,
         )
@@ -433,7 +433,7 @@ class ActividadServiceTest(TestCase):
     def test_soft_delete_con_asignaciones_falla(self):
         a = crear_actividad(self.company, 'ACT-DEL-002')
         p = crear_proyecto(self.company, self.user, 'ACT-PRY-DEL')
-        ActividadProyecto.all_objects.create(
+        ProjectActivity.all_objects.create(
             company=self.company, proyecto=p, actividad=a,
             cantidad_planificada=Decimal('10'), costo_unitario=Decimal('1000'),
         )
@@ -461,7 +461,7 @@ class ActividadProyectoServiceTest(TestCase):
         self.actividad = crear_actividad(self.company, 'ACT-AP-001')
 
     def test_list_actividades_proyecto(self):
-        ActividadProyecto.all_objects.create(
+        ProjectActivity.all_objects.create(
             company=self.company, proyecto=self.proyecto, actividad=self.actividad,
             cantidad_planificada=Decimal('10'), costo_unitario=Decimal('1000'),
         )
@@ -470,12 +470,12 @@ class ActividadProyectoServiceTest(TestCase):
 
     def test_list_actividades_proyecto_filtra_por_fase(self):
         a2 = crear_actividad(self.company, 'ACT-AP-002')
-        ActividadProyecto.all_objects.create(
+        ProjectActivity.all_objects.create(
             company=self.company, proyecto=self.proyecto,
             actividad=self.actividad, fase=self.fase,
             cantidad_planificada=Decimal('10'), costo_unitario=Decimal('1000'),
         )
-        ActividadProyecto.all_objects.create(
+        ProjectActivity.all_objects.create(
             company=self.company, proyecto=self.proyecto,
             actividad=a2, fase=None,
             cantidad_planificada=Decimal('5'), costo_unitario=Decimal('500'),
@@ -512,7 +512,7 @@ class ActividadProyectoServiceTest(TestCase):
         self.assertEqual(ap.company_id, self.company.id)
 
     def test_update_actividad_proyecto(self):
-        ap = ActividadProyecto.all_objects.create(
+        ap = ProjectActivity.all_objects.create(
             company=self.company, proyecto=self.proyecto, actividad=self.actividad,
             cantidad_planificada=Decimal('10'), costo_unitario=Decimal('1000'),
         )
@@ -522,7 +522,7 @@ class ActividadProyectoServiceTest(TestCase):
         self.assertEqual(updated.cantidad_ejecutada, Decimal('5'))
 
     def test_update_persiste_en_db(self):
-        ap = ActividadProyecto.all_objects.create(
+        ap = ProjectActivity.all_objects.create(
             company=self.company, proyecto=self.proyecto, actividad=self.actividad,
             cantidad_planificada=Decimal('10'), costo_unitario=Decimal('1000'),
         )
@@ -531,10 +531,10 @@ class ActividadProyectoServiceTest(TestCase):
         self.assertEqual(ap.costo_unitario, Decimal('2000'))
 
     def test_desasignar_actividad(self):
-        ap = ActividadProyecto.all_objects.create(
+        ap = ProjectActivity.all_objects.create(
             company=self.company, proyecto=self.proyecto, actividad=self.actividad,
             cantidad_planificada=Decimal('10'), costo_unitario=Decimal('1000'),
         )
         ap_id = ap.id
         ActividadProyectoService.desasignar_actividad(ap)
-        self.assertFalse(ActividadProyecto.all_objects.filter(id=ap_id).exists())
+        self.assertFalse(ProjectActivity.all_objects.filter(id=ap_id).exists())

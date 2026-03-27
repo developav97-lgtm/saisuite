@@ -1,6 +1,6 @@
 """
-SaiSuite — Tests: Tarea model
-Cobertura objetivo: >= 85% de apps.proyectos.models (clases Tarea y TareaTag)
+SaiSuite — Tests: Task model
+Cobertura objetivo: >= 85% de apps.proyectos.models (clases Task y TaskTag)
 """
 import pytest
 from decimal import Decimal
@@ -10,7 +10,7 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 
 from apps.companies.models import Company, CompanyModule
-from apps.proyectos.models import Proyecto, Fase, Tarea, TareaTag
+from apps.proyectos.models import Project, Phase, Task, TaskTag
 
 User = get_user_model()
 
@@ -35,7 +35,7 @@ def next_email():
 
 def make_company(nit=None):
     nit = nit or next_nit()
-    c = Company.objects.create(name=f'Tarea Test Co {nit}', nit=nit)
+    c = Company.objects.create(name=f'Task Test Co {nit}', nit=nit)
     CompanyModule.objects.create(company=c, module='proyectos', is_active=True)
     return c
 
@@ -52,11 +52,11 @@ def make_user(company, email=None):
 
 def make_proyecto(company, gerente, codigo=None):
     codigo = codigo or f'PRY-{next_nit()}'
-    return Proyecto.all_objects.create(
+    return Project.all_objects.create(
         company=company,
         gerente=gerente,
         codigo=codigo,
-        nombre='Proyecto Test Tarea',
+        nombre='Project Test Task',
         tipo='civil_works',
         cliente_id='111',
         cliente_nombre='Cliente',
@@ -68,12 +68,12 @@ def make_proyecto(company, gerente, codigo=None):
 
 def make_fase(proyecto, orden=None):
     if orden is None:
-        max_ord = Fase.all_objects.filter(proyecto=proyecto).order_by('-orden').values_list('orden', flat=True).first()
+        max_ord = Phase.all_objects.filter(proyecto=proyecto).order_by('-orden').values_list('orden', flat=True).first()
         orden = (max_ord or 0) + 1
-    return Fase.all_objects.create(
+    return Phase.all_objects.create(
         company=proyecto.company,
         proyecto=proyecto,
-        nombre=f'Fase {orden}',
+        nombre=f'Phase {orden}',
         orden=orden,
         fecha_inicio_planificada=date.today(),
         fecha_fin_planificada=date.today() + timedelta(days=60),
@@ -85,16 +85,16 @@ def make_tarea(company, proyecto, **kwargs):
     # fase es obligatoria desde DEC-021; crear una por defecto si no se provee
     if 'fase' not in kwargs:
         kwargs['fase'] = make_fase(proyecto)
-    defaults = dict(nombre='Tarea de prueba', estado='todo')
+    defaults = dict(nombre='Task de prueba', estado='todo')
     defaults.update(kwargs)
-    return Tarea.all_objects.create(company=company, proyecto=proyecto, **defaults)
+    return Task.all_objects.create(company=company, proyecto=proyecto, **defaults)
 
 
 def make_tag(company, nombre='bug', color='red'):
-    return TareaTag.all_objects.create(company=company, nombre=nombre, color=color)
+    return TaskTag.all_objects.create(company=company, nombre=nombre, color=color)
 
 
-# ── Tests: TareaTag ───────────────────────────────────────────────────────────
+# ── Tests: TaskTag ───────────────────────────────────────────────────────────
 
 @pytest.mark.django_db
 class TestTareaTagModel:
@@ -116,7 +116,7 @@ class TestTareaTagModel:
         c = make_company()
         make_tag(c, nombre='duplicado')
         with pytest.raises(IntegrityError):
-            TareaTag.all_objects.create(company=c, nombre='duplicado', color='blue')
+            TaskTag.all_objects.create(company=c, nombre='duplicado', color='blue')
 
     def test_mismo_nombre_diferente_empresa(self):
         c1 = make_company()
@@ -127,11 +127,11 @@ class TestTareaTagModel:
 
     def test_color_default_blue(self):
         c = make_company()
-        tag = TareaTag.all_objects.create(company=c, nombre='sin-color')
+        tag = TaskTag.all_objects.create(company=c, nombre='sin-color')
         assert tag.color == 'blue'
 
 
-# ── Tests: Tarea — Básico ─────────────────────────────────────────────────────
+# ── Tests: Task — Básico ─────────────────────────────────────────────────────
 
 @pytest.mark.django_db
 class TestTareaModelBasico:
@@ -173,15 +173,15 @@ class TestTareaModelBasico:
         c = make_company()
         g = make_user(c)
         p = make_proyecto(c, g)
-        t = make_tarea(c, p, nombre='Mi Tarea')
+        t = make_tarea(c, p, nombre='Mi Task')
         assert t.codigo in str(t)
-        assert 'Mi Tarea' in str(t)
+        assert 'Mi Task' in str(t)
 
     def test_str_sin_codigo(self):
         c = make_company()
         g = make_user(c)
         p = make_proyecto(c, g)
-        t = Tarea(company=c, proyecto=p, nombre='Sin Código')
+        t = Task(company=c, proyecto=p, nombre='Sin Código')
         assert str(t) == 'Sin Código'
 
     def test_estado_default_por_hacer(self):
@@ -253,7 +253,7 @@ class TestTareaModelBasico:
         assert t.actividad_proyecto_id is None
 
 
-# ── Tests: Tarea — Jerarquía ──────────────────────────────────────────────────
+# ── Tests: Task — Jerarquía ──────────────────────────────────────────────────
 
 @pytest.mark.django_db
 class TestTareaJerarquia:
@@ -307,10 +307,10 @@ class TestTareaJerarquia:
         padre_id = padre.id
         hijo_id = hijo.id
         padre.delete()
-        assert not Tarea.all_objects.filter(id=hijo_id).exists()
+        assert not Task.all_objects.filter(id=hijo_id).exists()
 
 
-# ── Tests: Tarea — Validaciones ───────────────────────────────────────────────
+# ── Tests: Task — Validaciones ───────────────────────────────────────────────
 
 @pytest.mark.django_db
 class TestTareaValidaciones:
@@ -319,10 +319,10 @@ class TestTareaValidaciones:
         c = make_company()
         g = make_user(c)
         p = make_proyecto(c, g)
-        t = Tarea(
+        t = Task(
             company=c,
             proyecto=p,
-            nombre='Tarea inválida',
+            nombre='Task inválida',
             fecha_inicio=date.today(),
             fecha_fin=date.today() - timedelta(days=1),
         )
@@ -335,10 +335,10 @@ class TestTareaValidaciones:
         g = make_user(c)
         p = make_proyecto(c, g)
         hoy = date.today()
-        t = Tarea(
+        t = Task(
             company=c,
             proyecto=p,
-            nombre='Tarea igual',
+            nombre='Task igual',
             fecha_inicio=hoy,
             fecha_fin=hoy,
         )
@@ -350,10 +350,10 @@ class TestTareaValidaciones:
         c = make_company()
         g = make_user(c)
         p = make_proyecto(c, g)
-        t = Tarea(
+        t = Task(
             company=c,
             proyecto=p,
-            nombre='Tarea válida',
+            nombre='Task válida',
             fecha_inicio=date.today(),
             fecha_fin=date.today() + timedelta(days=1),
         )
@@ -365,7 +365,7 @@ class TestTareaValidaciones:
         p1 = make_proyecto(c, g, codigo='PRY-VAL-001')
         p2 = make_proyecto(c, g, codigo='PRY-VAL-002')
         padre = make_tarea(c, p1, nombre='Padre P1')
-        hijo = Tarea(
+        hijo = Task(
             company=c,
             proyecto=p2,
             nombre='Hijo P2',
@@ -389,7 +389,7 @@ class TestTareaValidaciones:
         n4 = make_tarea(c, p, nombre='Nivel 4', tarea_padre=n3)
 
         # Nivel 5 debería fallar clean()
-        n5 = Tarea(
+        n5 = Task(
             company=c,
             proyecto=p,
             nombre='Nivel 5 inválido',
@@ -403,11 +403,11 @@ class TestTareaValidaciones:
         c = make_company()
         g = make_user(c)
         p = make_proyecto(c, g)
-        t = Tarea(company=c, proyecto=p, nombre='Raíz')
+        t = Task(company=c, proyecto=p, nombre='Raíz')
         t.clean()  # No debe lanzar excepción
 
 
-# ── Tests: Tarea — Properties ─────────────────────────────────────────────────
+# ── Tests: Task — Properties ─────────────────────────────────────────────────
 
 @pytest.mark.django_db
 class TestTareaProperties:
@@ -460,7 +460,7 @@ class TestTareaProperties:
         assert t.es_vencida is False
 
 
-# ── Tests: Tarea — Recurrencia ────────────────────────────────────────────────
+# ── Tests: Task — Recurrencia ────────────────────────────────────────────────
 
 @pytest.mark.django_db
 class TestTareaRecurrencia:
@@ -489,7 +489,7 @@ class TestTareaRecurrencia:
         assert t.proxima_generacion == prox
 
 
-# ── Tests: Tarea — Ordering y Meta ───────────────────────────────────────────
+# ── Tests: Task — Ordering y Meta ───────────────────────────────────────────
 
 @pytest.mark.django_db
 class TestTareaOrdering:
@@ -501,13 +501,13 @@ class TestTareaOrdering:
         t_normal = make_tarea(c, p, nombre='Normal', prioridad=2)
         t_urgente = make_tarea(c, p, nombre='Urgente', prioridad=4)
         t_baja = make_tarea(c, p, nombre='Baja', prioridad=1)
-        tareas = list(Tarea.all_objects.filter(proyecto=p))
+        tareas = list(Task.all_objects.filter(proyecto=p))
         prioridades = [t.prioridad for t in tareas]
         assert prioridades == sorted(prioridades, reverse=True)
 
     def test_verbose_name(self):
-        assert Tarea._meta.verbose_name == 'Tarea'
-        assert Tarea._meta.verbose_name_plural == 'Tareas'
+        assert Task._meta.verbose_name == 'Task'
+        assert Task._meta.verbose_name_plural == 'Tareas'
 
     def test_tareatag_verbose_name(self):
-        assert TareaTag._meta.verbose_name == 'Etiqueta de Tarea'
+        assert TaskTag._meta.verbose_name == 'Etiqueta de Task'

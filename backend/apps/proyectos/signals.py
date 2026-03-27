@@ -44,7 +44,7 @@ def tarea_post_save(sender, instance: Task, created: bool, **kwargs):
     - Tiene padre: recalcula avance del padre.
     - Siempre: recalcula avance de la Fase y del Proyecto (DEC-021).
     """
-    from apps.proyectos.tarea_services import TareaService
+    from apps.proyectos.tarea_services import TaskService
     from apps.proyectos.services import calcular_avance_fase_desde_tareas, calcular_avance_proyecto
 
     if created:
@@ -54,13 +54,13 @@ def tarea_post_save(sender, instance: Task, created: bool, **kwargs):
     else:
         # Generar nueva tarea si es recurrente y se acaba de completar
         if instance.estado == 'completed' and instance.es_recurrente:
-            TareaService.generar_tarea_recurrente(instance)
+            TaskService.generar_tarea_recurrente(instance)
 
         # Recalcular avance de la tarea padre (si existe)
         if instance.tarea_padre_id:
             try:
                 tarea_padre = Task.objects.get(id=instance.tarea_padre_id)
-                TareaService.recalcular_avance_tarea_padre(tarea_padre)
+                TaskService.recalcular_avance_tarea_padre(tarea_padre)
             except Task.DoesNotExist:
                 pass
 
