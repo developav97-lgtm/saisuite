@@ -65,7 +65,7 @@
     <ng-container matColumnDef="tipo">
       <mat-header-cell *matHeaderCellDef>Tipo</mat-header-cell>
       <mat-cell *matCellDef="let p">
-        <span class="pl-tipo-chip">{{ p.tipo }}</span>
+        <span class="pl-tipo-chip">{{ TIPO_LABELS[p.tipo] || p.tipo }}</span>
       </mat-cell>
     </ng-container>
 
