@@ -38,7 +38,7 @@ import {
   ProjectExpenseWrite,
   ExpenseCategory,
 } from '../../models/budget.model';
-import { ConfirmDialogComponent } from '../../../../../shared/components/confirm-dialog/confirm-dialog.component';
+import { ConfirmDialogComponent } from '../../../../shared/components/confirm-dialog/confirm-dialog.component';
 
 @Component({
   selector: 'app-budget-dashboard',
