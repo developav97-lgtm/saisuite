@@ -2,8 +2,8 @@ import {
   Component,
   OnInit,
   OnDestroy,
+  AfterViewChecked,
   ChangeDetectionStrategy,
-  ChangeDetectorRef,
   signal,
   computed,
   input,
@@ -43,10 +43,9 @@ import {
   templateUrl: './project-analytics-dashboard.component.html',
   styleUrl: './project-analytics-dashboard.component.scss',
 })
-export class ProjectAnalyticsDashboardComponent implements OnInit, OnDestroy {
+export class ProjectAnalyticsDashboardComponent implements OnInit, OnDestroy, AfterViewChecked {
   private readonly analyticsService = inject(AnalyticsService);
   private readonly snackBar = inject(MatSnackBar);
-  private readonly cdr = inject(ChangeDetectorRef);
 
   readonly projectId = input.required<string>();
 
@@ -73,9 +72,19 @@ export class ProjectAnalyticsDashboardComponent implements OnInit, OnDestroy {
   private charts: Chart[] = [];
   private loadSub: Subscription | null = null;
   private exportSub: Subscription | null = null;
+  private chartsBuilt = false;
 
   ngOnInit(): void {
     this.loadData();
+  }
+
+  ngAfterViewChecked(): void {
+    // Build charts the first time after the @if block renders the canvas elements.
+    // @ViewChild refs inside @if are only available after AfterViewChecked runs.
+    if (!this.chartsBuilt && this.burnDownCanvas?.nativeElement && this.burnDownData()) {
+      this.chartsBuilt = true;
+      this.buildCharts();
+    }
   }
 
   ngOnDestroy(): void {
@@ -87,6 +96,8 @@ export class ProjectAnalyticsDashboardComponent implements OnInit, OnDestroy {
   loadData(): void {
     this.loadSub?.unsubscribe();
     this.loading.set(true);
+    this.chartsBuilt = false;
+    this.destroyCharts();
     const id = this.projectId();
 
     this.loadSub = forkJoin({
@@ -104,9 +115,7 @@ export class ProjectAnalyticsDashboardComponent implements OnInit, OnDestroy {
         this.burnDownData.set(data.burnDown);
         this.resourceUtilization.set(data.resources);
         this.loading.set(false);
-        this.cdr.detectChanges();
-        // Build charts after data arrives — use setTimeout to let template render
-        setTimeout(() => this.buildCharts(), 0);
+        // ngAfterViewChecked will build charts once canvas refs are available
       },
       error: () => {
         this.loading.set(false);
