@@ -116,3 +116,19 @@ export const TIPO_TERCERO_LABELS: Partial<Record<TipoTercero, string>> = {
   empleado:       'Empleado',
   otro:           'Otro',
 };
+
+const LEGACY_TIPO_MAP: Record<string, string> = {
+  'CUSTOMER':      'cliente',
+  'CLIENT':        'cliente',
+  'SUPPLIER':      'proveedor',
+  'VENDOR':        'proveedor',
+  'SUBCONTRACTOR': 'subcontratista',
+  'INSPECTOR':     'interventor',
+  'CONSULTANT':    'consultor',
+  'EMPLOYEE':      'empleado',
+};
+
+export function getTipoTerceroLabel(tipo: string): string {
+  const normalized = LEGACY_TIPO_MAP[tipo?.toUpperCase()] ?? tipo?.toLowerCase();
+  return TIPO_TERCERO_LABELS[normalized as TipoTercero] ?? normalized;
+}

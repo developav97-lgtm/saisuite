@@ -20,8 +20,15 @@
 <!-- ── Empty state ── -->
 @if (!loading() && asignaciones().length === 0) {
   <div class="sc-empty-state apl-empty">
-    <mat-icon>playlist_add</mat-icon>
-    <p>No hay actividades asignadas a este proyecto.</p>
+    <mat-icon class="sc-empty-state__icon">construction</mat-icon>
+    <p class="sc-empty-state__title">Sin actividades de obra asignadas</p>
+    <p class="sc-empty-state__subtitle">Este tab gestiona el catálogo de actividades (m², m³, unidades) para control de avance físico. Las tareas del equipo están en el tab <strong>Fases</strong>.</p>
+    @if (puedeEliminar()) {
+      <button mat-raised-button color="primary" (click)="abrirDialogAsignar()">
+        <mat-icon>add</mat-icon>
+        Asignar actividad
+      </button>
+    }
   </div>
 }
 

@@ -97,6 +97,30 @@ class TerceroDireccionService:
 
 # ── Saiopen Integration (skeleton) ────────────────────────────────────────────
 
+# Mapa de normalización de tipo_tercero desde valores Saiopen (inglés) al
+# vocabulario español del modelo.  Se aplica en recibir_tercero_desde_saiopen.
+SAIOPEN_TIPO_MAP: dict[str, str] = {
+    'CUSTOMER':      'cliente',
+    'CLIENT':        'cliente',
+    'SUPPLIER':      'proveedor',
+    'VENDOR':        'proveedor',
+    'SUBCONTRACTOR': 'subcontratista',
+    'INSPECTOR':     'interventor',
+    'CONSULTANT':    'consultor',
+    'EMPLOYEE':      'empleado',
+    'OTHER':         'otro',
+}
+
+
+def _normalizar_tipo_tercero(valor: str) -> str:
+    """
+    Convierte el tipo_tercero recibido desde Saiopen al vocabulario español
+    del modelo.  Si no hay match en el mapa, retorna el valor original en
+    minúsculas para máxima compatibilidad.
+    """
+    return SAIOPEN_TIPO_MAP.get(valor.upper(), valor.lower())
+
+
 def recibir_tercero_desde_saiopen(company, payload: dict[str, Any]) -> Tercero:
     """
     Crea o actualiza un Tercero a partir de datos enviados por el agente Saiopen.
@@ -117,7 +141,7 @@ def recibir_tercero_desde_saiopen(company, payload: dict[str, Any]) -> Tercero:
         'primer_apellido':       payload.get('primer_apellido', ''),
         'segundo_apellido':      payload.get('segundo_apellido', ''),
         'tipo_persona':          payload.get('tipo_persona', 'juridica'),
-        'tipo_tercero':          payload.get('tipo_tercero', ''),
+        'tipo_tercero':          _normalizar_tipo_tercero(payload.get('tipo_tercero', '')),
         'email':                 payload.get('email', ''),
         'telefono':              payload.get('telefono', ''),
         'celular':               payload.get('celular', ''),

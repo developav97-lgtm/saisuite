@@ -3,6 +3,7 @@ import {
   OnInit,
   OnDestroy,
   ChangeDetectionStrategy,
+  ChangeDetectorRef,
   signal,
   computed,
   input,
@@ -45,6 +46,7 @@ import {
 export class ProjectAnalyticsDashboardComponent implements OnInit, OnDestroy {
   private readonly analyticsService = inject(AnalyticsService);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   readonly projectId = input.required<string>();
 
@@ -65,8 +67,8 @@ export class ProjectAnalyticsDashboardComponent implements OnInit, OnDestroy {
   // Computed signals for KPI display state
   readonly completionClass  = computed(() => this.kpiClass(this.kpis()?.completion_rate ?? 0));
   readonly onTimeClass      = computed(() => this.kpiClass(this.kpis()?.on_time_rate ?? 0));
-  readonly budgetClass_     = computed(() => this.budgetClass(this.kpis()?.budget_variance ?? 0));
-  readonly budgetVarianceFmt = computed(() => this.formatVariance(this.kpis()?.budget_variance ?? 0));
+  readonly budgetClass_     = computed(() => this.budgetClass(this.kpis()?.budget_variance ?? null));
+  readonly budgetVarianceFmt = computed(() => this.formatVariance(this.kpis()?.budget_variance ?? null));
 
   private charts: Chart[] = [];
   private loadSub: Subscription | null = null;
@@ -102,6 +104,7 @@ export class ProjectAnalyticsDashboardComponent implements OnInit, OnDestroy {
         this.burnDownData.set(data.burnDown);
         this.resourceUtilization.set(data.resources);
         this.loading.set(false);
+        this.cdr.detectChanges();
         // Build charts after data arrives — use setTimeout to let template render
         setTimeout(() => this.buildCharts(), 0);
       },
@@ -123,14 +126,16 @@ export class ProjectAnalyticsDashboardComponent implements OnInit, OnDestroy {
     return 'pad-kpi__trend--danger';
   }
 
-  budgetClass(variance: number): string {
+  budgetClass(variance: number | null): string {
+    if (variance === null) return 'pad-kpi__trend--neutral';
     // Negative = under budget (good); Positive = over budget (bad)
     if (variance <= 0) return 'pad-kpi__trend--up';
     if (variance <= 10) return 'pad-kpi__trend--warn';
     return 'pad-kpi__trend--danger';
   }
 
-  formatVariance(v: number): string {
+  formatVariance(v: number | null): string {
+    if (v === null) return 'N/A';
     return v >= 0 ? `+${v.toFixed(1)}%` : `${v.toFixed(1)}%`;
   }
 

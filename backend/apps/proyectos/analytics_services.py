@@ -112,17 +112,24 @@ def get_project_kpis(project_id: str, company_id: str) -> dict:
 
     # Desviación presupuestaria (budget_variance)
     # Calculado como: (horas_registradas - horas_estimadas) / horas_estimadas * 100
+    # Retorna None cuando no hay datos suficientes para calcular una varianza real:
+    #   - horas_estimadas_total == 0: no hay línea base, división imposible.
+    #   - horas_registradas_total == 0 y horas_estimadas_total > 0: sin timesheets
+    #     registrados el resultado matemático sería -100 %, lo cual es engañoso
+    #     porque el proyecto puede estar en etapas tempranas sin entradas aún.
     horas_estimadas_total = totals['horas_estimadas_total'] or Decimal('0')
     horas_registradas_total = totals['horas_registradas_total'] or Decimal('0')
 
-    if horas_estimadas_total > 0:
-        budget_variance = float(
-            (horas_registradas_total - horas_estimadas_total)
-            / horas_estimadas_total * 100
+    if horas_estimadas_total > 0 and horas_registradas_total > 0:
+        budget_variance: Optional[float] = round(
+            float(
+                (horas_registradas_total - horas_estimadas_total)
+                / horas_estimadas_total * 100
+            ),
+            2,
         )
-        budget_variance = round(budget_variance, 2)
     else:
-        budget_variance = 0.0
+        budget_variance = None
 
     # Velocidad: promedio de tareas completadas por semana (últimas 4 semanas)
     four_weeks_ago = today - timedelta(weeks=4)

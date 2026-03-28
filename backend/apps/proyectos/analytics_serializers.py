@@ -22,7 +22,9 @@ class ProjectKPIsSerializer(serializers.Serializer):
     overdue_tasks    = serializers.IntegerField(read_only=True)
     completion_rate  = serializers.FloatField(read_only=True)
     on_time_rate     = serializers.FloatField(read_only=True)
-    budget_variance  = serializers.FloatField(read_only=True)
+    # allow_null=True: el servicio retorna None cuando no hay timesheets o
+    # no hay horas estimadas, evitando el falso -100 % de "sin datos".
+    budget_variance  = serializers.FloatField(read_only=True, allow_null=True)
     velocity         = serializers.FloatField(read_only=True)
     burn_rate        = serializers.FloatField(read_only=True)
 
@@ -133,7 +135,9 @@ class ProjectComparisonSerializer(serializers.Serializer):
     project_code    = serializers.CharField(read_only=True)
     completion_rate = serializers.FloatField(read_only=True)
     on_time_rate    = serializers.FloatField(read_only=True)
-    budget_variance = serializers.FloatField(read_only=True)
+    # allow_null=True: consistente con ProjectKPIsSerializer — sin datos
+    # suficientes el servicio retorna None en lugar de -100.
+    budget_variance = serializers.FloatField(read_only=True, allow_null=True)
     velocity        = serializers.FloatField(read_only=True)
     total_tasks     = serializers.IntegerField(read_only=True)
     completed_tasks = serializers.IntegerField(read_only=True)

@@ -3,8 +3,16 @@ SaiSuite — Proyectos: Serializers
 Los serializers SOLO transforman datos. Sin lógica de negocio.
 """
 import logging
+import re
 from decimal import Decimal
 from rest_framework import serializers
+
+# Patrón compartido con el management command fix_cliente_id.
+# Detecta UUIDs v4 que no deben guardarse en cliente_id.
+_UUID_PATTERN = re.compile(
+    r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+    re.IGNORECASE,
+)
 from apps.proyectos.models import (
     Project, Phase, ProjectStakeholder, AccountingDocument, Milestone,
     Activity, ProjectActivity, SaiopenActivity, TaskTag, Task,
@@ -182,6 +190,20 @@ class ProjectCreateUpdateSerializer(serializers.ModelSerializer):
             'porcentaje_administracion', 'porcentaje_imprevistos', 'porcentaje_utilidad',
             'consecutivo_id',
         ]
+
+    def validate_cliente_id(self, value: str) -> str:
+        """
+        Rechaza valores con formato UUID en cliente_id.
+        El campo debe contener el número de identificación del cliente (NIT,
+        cédula, etc.), no el UUID interno del Tercero en la BD.
+        Solo valida cuando el campo tiene contenido (admite blank/null según modelo).
+        """
+        if value and _UUID_PATTERN.match(value):
+            raise serializers.ValidationError(
+                'cliente_id debe ser el número de identificación del cliente '
+                '(NIT, cédula, etc.), no un UUID interno.'
+            )
+        return value
 
     def validate(self, attrs):
         inicio = attrs.get('fecha_inicio_planificada')

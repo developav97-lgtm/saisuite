@@ -58,9 +58,13 @@
           <mat-icon class="pad-kpi__icon">attach_money</mat-icon>
           <p class="pad-kpi__label">Horas Burn Rate</p>
           <span class="pad-kpi__value">{{ k.burn_rate | number:'1.0-1' }}h/sem</span>
-          <span [class]="'pad-kpi__trend ' + budgetClass_()">
-            Varianza: {{ budgetVarianceFmt() }}
-          </span>
+          @if (k.budget_variance !== null && k.budget_variance !== undefined) {
+            <span [class]="'pad-kpi__trend ' + budgetClass_()">
+              Varianza: {{ budgetVarianceFmt() }}
+            </span>
+          } @else {
+            <span class="sc-text-muted">Sin datos</span>
+          }
         </mat-card-content>
       </mat-card>
 

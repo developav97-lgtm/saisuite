@@ -1,11 +1,11 @@
 // Interfaces that mirror exactly the backend serializers
 
 export interface ProjectKPIs {
-  completion_rate: number;      // 0-100
-  on_time_rate: number;         // 0-100
-  budget_variance: number;      // negative = under budget
-  velocity: number;             // tasks/week average
-  burn_rate: number;            // hours/week average
+  completion_rate: number;           // 0-100
+  on_time_rate: number;              // 0-100
+  budget_variance: number | null;    // negative = under budget; null = insufficient data
+  velocity: number;                  // tasks/week average
+  burn_rate: number;                 // hours/week average
   total_tasks: number;
   completed_tasks: number;
   overdue_tasks: number;

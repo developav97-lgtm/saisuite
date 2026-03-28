@@ -46,7 +46,9 @@ class ProyectoNoEditableException(ProyectoException):
 def calcular_avance_fase_desde_tareas(fase_id) -> Decimal:
     """
     Recalcula porcentaje_avance de la fase basándose en el progreso de sus tareas.
-    Fórmula: promedio de progreso_porcentaje de tareas activas (excluye canceladas).
+    Fórmula: promedio de porcentaje_completado de todas las tareas activas
+    (excluye canceladas). Tareas in_progress con progreso parcial contribuyen
+    correctamente a diferencia del conteo de completadas.
     Devuelve el porcentaje calculado.
     """
     from apps.proyectos.models import Task
@@ -54,12 +56,13 @@ def calcular_avance_fase_desde_tareas(fase_id) -> Decimal:
         fase_id=fase_id,
     ).exclude(estado='cancelled')
 
-    total = tareas.count()
-    if total == 0:
+    resultado = tareas.aggregate(promedio=Avg('porcentaje_completado'))
+    promedio = resultado.get('promedio')
+
+    if promedio is None:
         pct = Decimal('0')
     else:
-        completadas = tareas.filter(estado='completed').count()
-        pct = (Decimal(completadas) / Decimal(total) * Decimal('100')).quantize(Decimal('0.01'))
+        pct = Decimal(str(promedio)).quantize(Decimal('0.01'))
 
     Phase.objects.filter(id=fase_id).update(porcentaje_avance=pct)
     logger.info(
