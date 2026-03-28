@@ -24,6 +24,9 @@ import { AutoScheduleDialogComponent } from '../scheduling/auto-schedule-dialog/
 import { BaselineComparisonComponent } from '../scheduling/baseline-comparison/baseline-comparison.component';
 import { WhatIfScenarioBuilderComponent } from '../scheduling/what-if-scenario-builder/what-if-scenario-builder.component';
 import { BudgetDashboardComponent } from '../budget-dashboard/budget-dashboard.component';
+import { TareaListComponent } from '../tarea-list/tarea-list.component';
+import { TareaKanbanComponent } from '../tarea-kanban/tarea-kanban.component';
+import { ProyectoTimesheetTabComponent } from './proyecto-timesheet-tab/proyecto-timesheet-tab.component';
 
 @Component({
   selector: 'app-proyecto-detail',
@@ -44,10 +47,12 @@ import { BudgetDashboardComponent } from '../budget-dashboard/budget-dashboard.c
     ProjectAnalyticsDashboardComponent,
     MatMenuModule,
     MatTooltipModule,
-    AutoScheduleDialogComponent,
     BaselineComparisonComponent,
     WhatIfScenarioBuilderComponent,
     BudgetDashboardComponent,
+    TareaListComponent,
+    TareaKanbanComponent,
+    ProyectoTimesheetTabComponent,
   ],
 })
 export class ProyectoDetailComponent implements OnInit {
@@ -60,10 +65,14 @@ export class ProyectoDetailComponent implements OnInit {
   readonly proyecto = signal<ProyectoDetail | null>(null);
   readonly loading  = signal(true);
   readonly selectedTab = signal(0);
-  readonly analyticsTabActive    = computed(() => this.selectedTab() === 8);
-  readonly baselinesTabLoaded    = computed(() => this.selectedTab() >= 9);
-  readonly escenariosTabLoaded   = computed(() => this.selectedTab() >= 10);
-  readonly presupuestoTabLoaded  = computed(() => this.selectedTab() >= 11);
+  // Tab indices:
+  // General(0) Fases(1) Terceros(2) Docs(3) Hitos(4) Tareas(5) Kanban(6)
+  // Actividades(7) Gantt(8) Equipo(9) Timesheets(10)
+  // Analytics(11) Baselines(12) Escenarios(13) Presupuesto(14)
+  readonly analyticsTabActive    = computed(() => this.selectedTab() === 11);
+  readonly baselinesTabLoaded    = computed(() => this.selectedTab() >= 12);
+  readonly escenariosTabLoaded   = computed(() => this.selectedTab() >= 13);
+  readonly presupuestoTabLoaded  = computed(() => this.selectedTab() >= 14);
 
   readonly ESTADO_LABELS   = ESTADO_LABELS;
   readonly ESTADO_SEVERITY = ESTADO_SEVERITY;

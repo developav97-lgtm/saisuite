@@ -20,7 +20,7 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatListModule } from '@angular/material/list';
 import { SchedulingService } from '../../../services/scheduling.service';
-import { AutoScheduleResult } from '../../../models/scheduling.model';
+import { AutoScheduleResult, LevelResourcesResult } from '../../../models/scheduling.model';
 
 export interface AutoScheduleDialogData {
   projectId: string;
@@ -54,6 +54,11 @@ export class AutoScheduleDialogComponent {
   readonly dryRunOnly = signal(false);
   readonly loading = signal(false);
   readonly preview = signal<AutoScheduleResult | null>(null);
+
+  // ── Resource Leveling ──────────────────────────────────────────────────────
+  readonly levelingLoading = signal(false);
+  readonly levelingPreview = signal<LevelResourcesResult | null>(null);
+  readonly levelingDryRun  = signal(true);
 
   calculate(): void {
     this.loading.set(true);
@@ -96,5 +101,24 @@ export class AutoScheduleDialogComponent {
 
   cancel(): void {
     this.dialogRef.close(null);
+  }
+
+  // ── Resource Leveling ──────────────────────────────────────────────────────
+
+  levelResources(): void {
+    this.levelingLoading.set(true);
+    this.levelingPreview.set(null);
+
+    this.schedulingService.levelResources(this.data.projectId, {
+      dry_run: this.levelingDryRun(),
+    }).subscribe({
+      next: (result) => {
+        this.levelingPreview.set(result);
+        this.levelingLoading.set(false);
+      },
+      error: () => {
+        this.levelingLoading.set(false);
+      },
+    });
   }
 }

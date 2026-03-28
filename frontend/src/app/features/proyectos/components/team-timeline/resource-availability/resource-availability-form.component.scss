@@ -1,0 +1,35 @@
+// SaiSuite — ResourceAvailabilityFormComponent
+
+.raf-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+
+  mat-icon {
+    color: var(--sc-warn, #ef6c00);
+  }
+}
+
+.raf-content {
+  min-width: 440px;
+  padding-top: 0.5rem !important;
+}
+
+.raf-field-full {
+  width: 100%;
+  margin-bottom: 0.25rem;
+}
+
+.raf-dates-row {
+  display: flex;
+  gap: 1rem;
+
+  .raf-field {
+    flex: 1;
+  }
+}
+
+.raf-actions {
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem 1rem !important;
+}

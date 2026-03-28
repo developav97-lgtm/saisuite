@@ -4,6 +4,7 @@
   <mat-progress-bar mode="indeterminate" class="tt-progress" />
 }
 
+
 <div class="tt-container">
 
   <!-- Filtro de fechas -->
@@ -132,5 +133,27 @@
       </button>
     </div>
   }
+
+  <!-- ── Capacidades del equipo ─────────────────────────────────────────── -->
+  <mat-expansion-panel class="tt-panel">
+    <mat-expansion-panel-header>
+      <mat-panel-title class="tt-panel-title">
+        <mat-icon>schedule</mat-icon>
+        Capacidades del equipo
+      </mat-panel-title>
+    </mat-expansion-panel-header>
+    <app-resource-capacity [proyectoId]="proyectoId()" />
+  </mat-expansion-panel>
+
+  <!-- ── Ausencias y disponibilidad ─────────────────────────────────────── -->
+  <mat-expansion-panel class="tt-panel">
+    <mat-expansion-panel-header>
+      <mat-panel-title class="tt-panel-title">
+        <mat-icon>event_busy</mat-icon>
+        Ausencias y disponibilidad
+      </mat-panel-title>
+    </mat-expansion-panel-header>
+    <app-resource-availability [proyectoId]="proyectoId()" />
+  </mat-expansion-panel>
 
 </div>

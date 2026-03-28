@@ -1,0 +1,35 @@
+// SaiSuite — ResourceCapacityFormComponent
+
+.rcf-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+
+  mat-icon {
+    color: var(--sc-primary);
+  }
+}
+
+.rcf-content {
+  min-width: 420px;
+  padding-top: 0.5rem !important;
+}
+
+.rcf-field-full {
+  width: 100%;
+  margin-bottom: 0.25rem;
+}
+
+.rcf-dates-row {
+  display: flex;
+  gap: 1rem;
+
+  .rcf-field {
+    flex: 1;
+  }
+}
+
+.rcf-actions {
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem 1rem !important;
+}

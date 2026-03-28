@@ -15,6 +15,7 @@ import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ActividadService } from '../../services/actividad.service';
@@ -51,7 +52,7 @@ const UNIDADES_MEDIDA = [
     MatFormFieldModule, MatInputModule, MatSelectModule,
     MatAutocompleteModule,
     MatPaginatorModule, MatProgressBarModule, MatProgressSpinnerModule,
-    MatTooltipModule, MatDialogModule,
+    MatTooltipModule, MatSlideToggleModule, MatDialogModule,
   ],
 })
 export class ActividadListComponent implements OnInit {
@@ -105,7 +106,7 @@ export class ActividadListComponent implements OnInit {
   readonly sinConsecutivos            = computed(() => !!this.selectedTipoForm() && this.filteredConsecutivos().length === 0);
 
   readonly pageSize = 25;
-  readonly displayedColumns = ['codigo', 'nombre', 'tipo', 'unidad_medida', 'costo_unitario_base', 'acciones'];
+  readonly displayedColumns = ['codigo', 'nombre', 'tipo', 'unidad_medida', 'costo_unitario_base', 'activo', 'acciones'];
 
   readonly tipoOptions: SelectOption[] = [
     { value: null,          label: 'Todos los tipos' },
@@ -273,6 +274,21 @@ export class ActividadListComponent implements OnInit {
         const e = err as { error?: Record<string, string[]> };
         const firstError = e.error ? Object.values(e.error).flat()[0] : null;
         this.snackBar.open(firstError ?? 'Error al guardar la actividad.', 'Cerrar', { duration: 5000, panelClass: ['snack-error'] });
+      },
+    });
+  }
+
+  toggleActivo(actividad: ActividadList, checked: boolean): void {
+    this.actividadService.toggleActivo(actividad.id, checked).subscribe({
+      next: () => {
+        this.actividades.update(list =>
+          list.map(a => a.id === actividad.id ? { ...a, activo: checked } : a),
+        );
+        const msg = checked ? 'Actividad activada.' : 'Actividad desactivada.';
+        this.snackBar.open(msg, 'Cerrar', { duration: 3000, panelClass: ['snack-success'] });
+      },
+      error: () => {
+        this.snackBar.open('No se pudo actualizar el estado de la actividad.', 'Cerrar', { duration: 4000, panelClass: ['snack-error'] });
       },
     });
   }

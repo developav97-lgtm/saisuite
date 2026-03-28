@@ -1,0 +1,71 @@
+<!-- SaiSuite — ResourceCapacityFormComponent -->
+<h2 mat-dialog-title class="rcf-title">
+  <mat-icon>{{ isEdit() ? 'edit' : 'add_circle' }}</mat-icon>
+  {{ isEdit() ? 'Editar capacidad' : 'Nueva capacidad' }}
+</h2>
+
+<mat-dialog-content class="rcf-content">
+  <form [formGroup]="form" id="rcf-form" (ngSubmit)="onSubmit()">
+
+    <!-- Usuario -->
+    <mat-form-field appearance="outline" class="rcf-field-full">
+      <mat-label>Usuario</mat-label>
+      <mat-select formControlName="usuario">
+        @for (u of users; track u.id) {
+          <mat-option [value]="u.id">{{ u.full_name || u.email }}</mat-option>
+        }
+      </mat-select>
+      @if (form.get('usuario')?.hasError('required') && form.get('usuario')?.touched) {
+        <mat-error>El usuario es obligatorio</mat-error>
+      }
+    </mat-form-field>
+
+    <!-- Horas por semana -->
+    <mat-form-field appearance="outline" class="rcf-field-full">
+      <mat-label>Horas por semana</mat-label>
+      <input matInput type="number" formControlName="horas_por_semana" min="1" max="168" />
+      @if (form.get('horas_por_semana')?.hasError('required') && form.get('horas_por_semana')?.touched) {
+        <mat-error>Las horas son obligatorias</mat-error>
+      }
+      @if (form.get('horas_por_semana')?.hasError('min')) {
+        <mat-error>Mínimo 1 hora por semana</mat-error>
+      }
+      @if (form.get('horas_por_semana')?.hasError('max')) {
+        <mat-error>Máximo 168 horas por semana</mat-error>
+      }
+    </mat-form-field>
+
+    <!-- Fechas -->
+    <div class="rcf-dates-row">
+      <mat-form-field appearance="outline" class="rcf-field">
+        <mat-label>Fecha inicio</mat-label>
+        <input matInput [matDatepicker]="pickerInicio" formControlName="fecha_inicio" />
+        <mat-datepicker-toggle matIconSuffix [for]="pickerInicio" />
+        <mat-datepicker #pickerInicio />
+        @if (form.get('fecha_inicio')?.hasError('required') && form.get('fecha_inicio')?.touched) {
+          <mat-error>La fecha de inicio es obligatoria</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="rcf-field">
+        <mat-label>Fecha fin (opcional)</mat-label>
+        <input matInput [matDatepicker]="pickerFin" formControlName="fecha_fin" />
+        <mat-datepicker-toggle matIconSuffix [for]="pickerFin" />
+        <mat-datepicker #pickerFin />
+      </mat-form-field>
+    </div>
+
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end" class="rcf-actions">
+  <button mat-stroked-button type="button" (click)="onCancel()" [disabled]="saving()">
+    Cancelar
+  </button>
+  <button mat-raised-button color="primary" type="submit" form="rcf-form" [disabled]="form.invalid || saving()">
+    @if (saving()) {
+      <mat-progress-spinner diameter="18" mode="indeterminate" />
+    }
+    Guardar
+  </button>
+</mat-dialog-actions>

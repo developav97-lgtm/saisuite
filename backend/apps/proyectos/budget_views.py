@@ -312,13 +312,21 @@ class CostByResourceView(APIView):
     BG-15 — Desglose de costos por recurso.
 
     GET <project_pk>/costs/by-resource/
+    Retorna lista vacía si el proyecto no tiene timesheets o ante cualquier error.
     """
     permission_classes = [CanAccessProyectos]
 
     def get(self, request, project_pk=None):
-        items = CostCalculationService.get_cost_by_resource(str(project_pk))
-        serializer = CostBreakdownResourceSerializer(items, many=True)
-        return Response(serializer.data)
+        try:
+            items = CostCalculationService.get_cost_by_resource(str(project_pk))
+            serializer = CostBreakdownResourceSerializer(items, many=True)
+            return Response(serializer.data)
+        except Exception as exc:
+            logger.error(
+                "CostByResourceView: error inesperado",
+                extra={"project_pk": str(project_pk), "error": str(exc)},
+            )
+            return Response([], status=status.HTTP_200_OK)
 
 
 class CostByTaskView(APIView):
@@ -326,13 +334,21 @@ class CostByTaskView(APIView):
     BG-15 — Desglose de costos por tarea.
 
     GET <project_pk>/costs/by-task/
+    Retorna lista vacía si el proyecto no tiene timesheets o ante cualquier error.
     """
     permission_classes = [CanAccessProyectos]
 
     def get(self, request, project_pk=None):
-        items = CostCalculationService.get_cost_by_task(str(project_pk))
-        serializer = CostBreakdownTaskSerializer(items, many=True)
-        return Response(serializer.data)
+        try:
+            items = CostCalculationService.get_cost_by_task(str(project_pk))
+            serializer = CostBreakdownTaskSerializer(items, many=True)
+            return Response(serializer.data)
+        except Exception as exc:
+            logger.error(
+                "CostByTaskView: error inesperado",
+                extra={"project_pk": str(project_pk), "error": str(exc)},
+            )
+            return Response([], status=status.HTTP_200_OK)
 
 
 class EVMMetricsView(APIView):

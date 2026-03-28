@@ -86,6 +86,17 @@
           </mat-cell>
         </ng-container>
 
+        <ng-container matColumnDef="activo">
+          <mat-header-cell *matHeaderCellDef>Activo</mat-header-cell>
+          <mat-cell *matCellDef="let row">
+            <mat-slide-toggle
+              [checked]="row.activo"
+              (change)="toggleActivo(row, $event.checked)"
+              color="primary">
+            </mat-slide-toggle>
+          </mat-cell>
+        </ng-container>
+
         <ng-container matColumnDef="acciones">
           <mat-header-cell *matHeaderCellDef class="al-col-acciones"></mat-header-cell>
           <mat-cell *matCellDef="let row" class="al-col-acciones">

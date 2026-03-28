@@ -1,0 +1,90 @@
+<!-- SaiSuite — ResourceCapacityComponent -->
+
+<!-- Header -->
+<div class="rc-header">
+  <span class="rc-title">
+    <mat-icon>schedule</mat-icon>
+    Capacidades del equipo
+    @if (capacities().length > 0) {
+      <span class="rc-badge">{{ capacities().length }}</span>
+    }
+  </span>
+  <button mat-stroked-button color="primary" (click)="openForm()">
+    <mat-icon>add</mat-icon>
+    Agregar capacidad
+  </button>
+</div>
+
+<!-- Progress bar -->
+@if (loading()) {
+  <mat-progress-bar mode="indeterminate" class="rc-progress" />
+}
+
+<!-- Tabla -->
+@if (!loading() && capacities().length > 0) {
+  <mat-table [dataSource]="capacities()" class="rc-table">
+
+    <!-- Columna: Usuario -->
+    <ng-container matColumnDef="usuario">
+      <mat-header-cell *matHeaderCellDef>Usuario</mat-header-cell>
+      <mat-cell *matCellDef="let row">{{ row.usuario_nombre }}</mat-cell>
+    </ng-container>
+
+    <!-- Columna: Horas/Semana -->
+    <ng-container matColumnDef="horas_por_semana">
+      <mat-header-cell *matHeaderCellDef>Horas/semana</mat-header-cell>
+      <mat-cell *matCellDef="let row">
+        <span class="rc-hours-badge">{{ row.horas_por_semana }} h</span>
+      </mat-cell>
+    </ng-container>
+
+    <!-- Columna: Desde -->
+    <ng-container matColumnDef="fecha_inicio">
+      <mat-header-cell *matHeaderCellDef>Desde</mat-header-cell>
+      <mat-cell *matCellDef="let row">{{ row.fecha_inicio | date:'dd/MM/yyyy' }}</mat-cell>
+    </ng-container>
+
+    <!-- Columna: Hasta -->
+    <ng-container matColumnDef="fecha_fin">
+      <mat-header-cell *matHeaderCellDef>Hasta</mat-header-cell>
+      <mat-cell *matCellDef="let row">
+        @if (row.fecha_fin) {
+          {{ row.fecha_fin | date:'dd/MM/yyyy' }}
+        } @else {
+          <span class="rc-indefinido">Indefinido</span>
+        }
+      </mat-cell>
+    </ng-container>
+
+    <!-- Columna: Acciones -->
+    <ng-container matColumnDef="acciones">
+      <mat-header-cell *matHeaderCellDef class="rc-col-acciones">Acciones</mat-header-cell>
+      <mat-cell *matCellDef="let row" class="rc-col-acciones">
+        <button mat-icon-button matTooltip="Editar" (click)="openForm(row)">
+          <mat-icon>edit</mat-icon>
+        </button>
+        <button mat-icon-button color="warn" matTooltip="Eliminar" (click)="confirmDelete(row)">
+          <mat-icon>delete_outline</mat-icon>
+        </button>
+      </mat-cell>
+    </ng-container>
+
+    <mat-header-row *matHeaderRowDef="displayedColumns" />
+    <mat-row *matRowDef="let row; columns: displayedColumns;" />
+  </mat-table>
+}
+
+<!-- Empty state -->
+@if (!loading() && capacities().length === 0) {
+  <div class="sc-empty-state rc-empty">
+    <mat-icon>event_available</mat-icon>
+    <p class="sc-empty-state__title">No hay capacidades configuradas</p>
+    <p class="sc-empty-state__subtitle">
+      Configura las horas semanales disponibles de cada miembro del equipo.
+    </p>
+    <button mat-stroked-button color="primary" (click)="openForm()">
+      <mat-icon>add</mat-icon>
+      Agregar capacidad
+    </button>
+  </div>
+}

@@ -16,10 +16,13 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
+import { MatExpansionModule } from '@angular/material/expansion';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { FormsModule } from '@angular/forms';
 import { ResourceService } from '../../services/resource.service';
 import { TeamAvailabilityUser } from '../../models/resource.model';
+import { ResourceCapacityComponent } from './resource-capacity/resource-capacity.component';
+import { ResourceAvailabilityComponent } from './resource-availability/resource-availability.component';
 
 @Component({
   selector: 'app-team-timeline',
@@ -37,6 +40,9 @@ import { TeamAvailabilityUser } from '../../models/resource.model';
     MatInputModule,
     MatDatepickerModule,
     MatNativeDateModule,
+    MatExpansionModule,
+    ResourceCapacityComponent,
+    ResourceAvailabilityComponent,
   ],
 })
 export class TeamTimelineComponent implements OnInit {

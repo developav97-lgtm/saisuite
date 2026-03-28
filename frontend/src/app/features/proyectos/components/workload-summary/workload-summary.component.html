@@ -1,0 +1,74 @@
+<!-- SaiSuite — WorkloadSummaryComponent — Semáforo de carga de trabajo -->
+
+@if (loading()) {
+  <mat-progress-bar mode="indeterminate" class="ws-progress" />
+}
+
+@if (!loading() && error()) {
+  <div class="ws-error">
+    <mat-icon>error_outline</mat-icon>
+    <span>No se pudo cargar la carga de trabajo.</span>
+  </div>
+}
+
+@if (!loading() && !error() && workload(); as w) {
+  <div class="ws-card" [class]="'ws-card--' + semaforo()">
+
+    <!-- Indicador de semáforo -->
+    <div class="ws-semaforo" [class]="'ws-semaforo--' + semaforo()"
+         [matTooltip]="semaforo() === 'verde' ? 'Carga normal'
+                     : semaforo() === 'amarillo' ? 'Carga alta (80–100%)'
+                     : 'Sobrecargado (>100%)'">
+      @if (semaforo() === 'verde') {
+        <mat-icon>check_circle</mat-icon>
+      } @else if (semaforo() === 'amarillo') {
+        <mat-icon>warning_amber</mat-icon>
+      } @else {
+        <mat-icon>error</mat-icon>
+      }
+    </div>
+
+    <!-- Porcentaje destacado -->
+    <div class="ws-pct" [class]="'ws-pct--' + semaforo()">
+      {{ utilizacionNum() | number:'1.0-1' }}%
+    </div>
+    <p class="ws-pct-label">utilización</p>
+
+    <!-- Barra de progreso con color semáforo -->
+    <div class="ws-bar-track">
+      <div class="ws-bar-fill"
+           [class]="'ws-bar-fill--' + semaforo()"
+           [style.width.%]="barraWidth()">
+      </div>
+    </div>
+
+    <!-- Métricas secundarias -->
+    <div class="ws-metrics">
+      <div class="ws-metric">
+        <span class="ws-metric__value">{{ w.horas_capacidad }}</span>
+        <span class="ws-metric__label">h capacidad</span>
+      </div>
+      <div class="ws-metric">
+        <span class="ws-metric__value">{{ w.horas_asignadas }}</span>
+        <span class="ws-metric__label">h asignadas</span>
+      </div>
+      <div class="ws-metric">
+        <span class="ws-metric__value">{{ w.horas_registradas }}</span>
+        <span class="ws-metric__label">h registradas</span>
+      </div>
+    </div>
+
+    <!-- Período -->
+    <p class="ws-periodo">
+      Período: {{ w.periodo_inicio | date:'dd/MM/yy' }} — {{ w.periodo_fin | date:'dd/MM/yy' }}
+    </p>
+
+    <!-- Conflictos (si hay sobrecarga) -->
+    @if (w.conflictos.length > 0) {
+      <div class="ws-conflictos">
+        <mat-icon class="ws-conflictos__icon">event_busy</mat-icon>
+        <span>{{ w.conflictos.length }} día(s) con sobrecarga</span>
+      </div>
+    }
+  </div>
+}

@@ -1,0 +1,78 @@
+<!-- SaiSuite — ResourceAvailabilityFormComponent -->
+<h2 mat-dialog-title class="raf-title">
+  <mat-icon>event_busy</mat-icon>
+  Registrar ausencia
+</h2>
+
+<mat-dialog-content class="raf-content">
+  <form [formGroup]="form" id="raf-form" (ngSubmit)="onSubmit()">
+
+    <!-- Usuario -->
+    <mat-form-field appearance="outline" class="raf-field-full">
+      <mat-label>Usuario</mat-label>
+      <mat-select formControlName="usuario_id">
+        @for (u of users; track u.id) {
+          <mat-option [value]="u.id">{{ u.full_name || u.email }}</mat-option>
+        }
+      </mat-select>
+      @if (form.get('usuario_id')?.hasError('required') && form.get('usuario_id')?.touched) {
+        <mat-error>El usuario es obligatorio</mat-error>
+      }
+    </mat-form-field>
+
+    <!-- Tipo de ausencia -->
+    <mat-form-field appearance="outline" class="raf-field-full">
+      <mat-label>Tipo de ausencia</mat-label>
+      <mat-select formControlName="tipo">
+        @for (t of availabilityTypes; track t.value) {
+          <mat-option [value]="t.value">{{ t.label }}</mat-option>
+        }
+      </mat-select>
+      @if (form.get('tipo')?.hasError('required') && form.get('tipo')?.touched) {
+        <mat-error>El tipo es obligatorio</mat-error>
+      }
+    </mat-form-field>
+
+    <!-- Fechas -->
+    <div class="raf-dates-row">
+      <mat-form-field appearance="outline" class="raf-field">
+        <mat-label>Fecha inicio</mat-label>
+        <input matInput [matDatepicker]="pickerInicio" formControlName="fecha_inicio" />
+        <mat-datepicker-toggle matIconSuffix [for]="pickerInicio" />
+        <mat-datepicker #pickerInicio />
+        @if (form.get('fecha_inicio')?.hasError('required') && form.get('fecha_inicio')?.touched) {
+          <mat-error>Fecha de inicio obligatoria</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="raf-field">
+        <mat-label>Fecha fin</mat-label>
+        <input matInput [matDatepicker]="pickerFin" formControlName="fecha_fin" />
+        <mat-datepicker-toggle matIconSuffix [for]="pickerFin" />
+        <mat-datepicker #pickerFin />
+        @if (form.get('fecha_fin')?.hasError('required') && form.get('fecha_fin')?.touched) {
+          <mat-error>Fecha de fin obligatoria</mat-error>
+        }
+      </mat-form-field>
+    </div>
+
+    <!-- Descripción / Motivo -->
+    <mat-form-field appearance="outline" class="raf-field-full">
+      <mat-label>Motivo (opcional)</mat-label>
+      <textarea matInput formControlName="descripcion" rows="3" maxlength="500"></textarea>
+    </mat-form-field>
+
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end" class="raf-actions">
+  <button mat-stroked-button type="button" (click)="onCancel()" [disabled]="saving()">
+    Cancelar
+  </button>
+  <button mat-raised-button color="primary" type="submit" form="raf-form" [disabled]="form.invalid || saving()">
+    @if (saving()) {
+      <mat-progress-spinner diameter="18" mode="indeterminate" />
+    }
+    Registrar
+  </button>
+</mat-dialog-actions>

@@ -16,6 +16,7 @@ export interface ProyectoListParams {
   search?: string;
   estado?: EstadoProyecto;
   tipo?: string;
+  gerente_id?: string;
   ordering?: string;
   activo?: boolean;
 }
@@ -27,12 +28,13 @@ export class ProyectoService {
 
   list(params: ProyectoListParams = {}): Observable<PaginatedResponse<ProyectoList>> {
     let httpParams = new HttpParams();
-    if (params.page)      httpParams = httpParams.set('page', params.page.toString());
-    if (params.page_size) httpParams = httpParams.set('page_size', params.page_size.toString());
-    if (params.search)    httpParams = httpParams.set('search', params.search);
-    if (params.estado)    httpParams = httpParams.set('estado', params.estado);
-    if (params.tipo)      httpParams = httpParams.set('tipo', params.tipo);
-    if (params.ordering)  httpParams = httpParams.set('ordering', params.ordering);
+    if (params.page)       httpParams = httpParams.set('page', params.page.toString());
+    if (params.page_size)  httpParams = httpParams.set('page_size', params.page_size.toString());
+    if (params.search)     httpParams = httpParams.set('search', params.search);
+    if (params.estado)     httpParams = httpParams.set('estado', params.estado);
+    if (params.tipo)       httpParams = httpParams.set('tipo', params.tipo);
+    if (params.gerente_id) httpParams = httpParams.set('gerente_id', params.gerente_id);
+    if (params.ordering)   httpParams = httpParams.set('ordering', params.ordering);
     if (params.activo !== undefined) httpParams = httpParams.set('activo', params.activo.toString());
 
     return this.http.get<PaginatedResponse<ProyectoList>>(

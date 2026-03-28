@@ -59,6 +59,11 @@
               <mat-icon>play_circle</mat-icon>
             </button>
           }
+          @if (f.estado === 'active') {
+            <button mat-icon-button matTooltip="Completar fase" color="accent" (click)="completarFase(f)">
+              <mat-icon>check_circle</mat-icon>
+            </button>
+          }
           <button mat-icon-button matTooltip="Editar" (click)="abrirDialogEditar(f)">
             <mat-icon>edit</mat-icon>
           </button>

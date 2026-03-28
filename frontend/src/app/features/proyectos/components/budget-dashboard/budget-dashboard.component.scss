@@ -149,6 +149,20 @@
   width: 100%;
 }
 
+// ── User cell (cost rates table) ─────────────────────────────────────────────
+
+.bd-user-name {
+  display: block;
+  font-weight: 500;
+  color: var(--sc-text-primary, rgba(0,0,0,.87));
+}
+
+.bd-user-email {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--sc-text-secondary, rgba(0,0,0,.54));
+}
+
 // ── Empty state hint ──────────────────────────────────────────────────────────
 
 .bd-empty-hint {

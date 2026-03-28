@@ -2,7 +2,9 @@
 
   <!-- Header -->
   <div class="sc-page-header">
-    <h1 class="sc-page-header__title">Tareas</h1>
+    <h1 class="sc-page-header__title">
+      @if (esMisTareas()) { Mis Tareas } @else { Tareas }
+    </h1>
     <div class="tl-header-actions">
       <button mat-stroked-button (click)="irAKanban()" matTooltip="Vista Kanban">
         <mat-icon>view_kanban</mat-icon>
@@ -49,6 +51,20 @@
         }
       </mat-select>
     </mat-form-field>
+
+    @if (fases().length > 0) {
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="tl-filter">
+        <mat-label>Fase</mat-label>
+        <mat-select
+          [ngModel]="faseFilter()"
+          (ngModelChange)="faseFilter.set($event); onFilterChange()">
+          <mat-option [value]="null">Todas las fases</mat-option>
+          @for (fase of fases(); track fase.id) {
+            <mat-option [value]="fase.id">{{ fase.nombre }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    }
   </div>
 
   <!-- Progress bar -->

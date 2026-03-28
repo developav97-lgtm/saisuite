@@ -6,7 +6,7 @@
  */
 import {
   ChangeDetectionStrategy, ChangeDetectorRef,
-  Component, OnInit, inject, signal,
+  Component, OnInit, effect, inject, input, signal,
 } from '@angular/core';
 import { Router, ActivatedRoute } from '@angular/router';
 import { CommonModule } from '@angular/common';
@@ -82,6 +82,12 @@ export class TareaKanbanComponent implements OnInit {
   private readonly adminService    = inject(AdminService);
   private readonly authService     = inject(AuthService);
 
+  /**
+   * Input para uso embebido (ej: tab dentro de proyecto-detail).
+   * Tiene prioridad sobre el query param ?proyecto= de la ruta.
+   */
+  readonly proyectoIdInput = input<string | null>(null);
+
   readonly loading          = signal(false);
   readonly searchText       = signal('');
   readonly prioridadFilter  = signal<number | null>(null);
@@ -96,6 +102,19 @@ export class TareaKanbanComponent implements OnInit {
 
   /** Conservado para compatibilidad con nuevaTarea() */
   private get proyectoId(): string | null { return this.proyectoFilter(); }
+
+  constructor() {
+    // Reaccionar a cambios del input proyectoIdInput (modo embebido).
+    effect(() => {
+      const inputId = this.proyectoIdInput();
+      if (inputId !== null) {
+        this.proyectoFilter.set(inputId);
+        this.faseFilter.set(null);
+        this.loadFasesByProyecto(inputId);
+        this.loadTareas();
+      }
+    });
+  }
 
   /** Estado mutable (no signal) porque CDK muta los arrays in-place. */
   columnas: KanbanColumn[] = COLUMNAS_DEF.map(d => ({ ...d, tareas: [] }));
@@ -114,8 +133,10 @@ export class TareaKanbanComponent implements OnInit {
 
   ngOnInit(): void {
     localStorage.setItem('saisuite.tareasView', 'kanban');
-    const snap = this.route.snapshot.queryParamMap;
-    const pid  = snap.get('proyecto');
+    const snap    = this.route.snapshot.queryParamMap;
+    const inputId = this.proyectoIdInput();
+    // El input tiene prioridad sobre el query param (modo embebido vs. ruta directa).
+    const pid = inputId ?? snap.get('proyecto');
     if (pid) {
       this.proyectoFilter.set(pid);
       this.loadFasesByProyecto(pid);
@@ -123,7 +144,11 @@ export class TareaKanbanComponent implements OnInit {
 
     this.loadProyectos();
     this.loadUsuarios();
-    this.loadTareas();
+    // Solo cargar aquí cuando no hay inputId: el effect() maneja el caso embebido
+    // para evitar una carga duplicada en la inicialización.
+    if (!inputId) {
+      this.loadTareas();
+    }
 
     // Auto-abrir modal si la URL contiene ?tarea=<uuid>
     const tid = snap.get('tarea');

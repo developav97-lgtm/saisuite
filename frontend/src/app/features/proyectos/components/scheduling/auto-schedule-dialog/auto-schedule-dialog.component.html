@@ -51,6 +51,89 @@
     <mat-progress-bar mode="indeterminate" class="asd-progress" />
   }
 
+  <!-- ── Nivelación de Recursos ─────────────────────────────────────────── -->
+  <section class="asd-section asd-section--leveling">
+    <h3 class="asd-section__title">
+      <mat-icon class="asd-section__title-icon">balance</mat-icon>
+      Nivelación de Recursos
+    </h3>
+    <p class="asd-section__desc">
+      Redistribuye tareas con holgura positiva para eliminar sobrecargas de asignación.
+    </p>
+    <div class="asd-leveling-controls">
+      <mat-checkbox
+        [ngModel]="levelingDryRun()"
+        (ngModelChange)="levelingDryRun.set($event)"
+      >
+        Solo simular nivelación
+      </mat-checkbox>
+      <button
+        mat-stroked-button
+        color="accent"
+        type="button"
+        (click)="levelResources()"
+        [disabled]="levelingLoading()"
+        class="asd-level-btn"
+      >
+        @if (levelingLoading()) {
+          <mat-icon class="asd-spin">autorenew</mat-icon>
+        } @else {
+          <mat-icon>balance</mat-icon>
+        }
+        Nivelar recursos
+      </button>
+    </div>
+
+    @if (levelingLoading()) {
+      <mat-progress-bar mode="indeterminate" class="asd-progress" />
+    }
+
+    @if (levelingPreview(); as lr) {
+      <div class="asd-leveling-result"
+           [class.asd-leveling-result--effective]="lr.leveling_effective"
+           [class.asd-leveling-result--warn]="!lr.leveling_effective">
+        <div class="asd-leveling-stats">
+          <div class="asd-stat">
+            <span class="asd-stat__value">{{ lr.tasks_moved }}</span>
+            <span class="asd-stat__label">tareas movidas</span>
+          </div>
+          <div class="asd-stat">
+            <span class="asd-stat__value">{{ lr.iterations_used }}</span>
+            <span class="asd-stat__label">iteraciones</span>
+          </div>
+          <div class="asd-stat"
+               [class.asd-stat--ok]="lr.max_overload_after === 0"
+               [class.asd-stat--warn]="lr.max_overload_after > 0">
+            <span class="asd-stat__value">{{ lr.max_overload_before }}% → {{ lr.max_overload_after }}%</span>
+            <span class="asd-stat__label">sobrecarga máx.</span>
+          </div>
+        </div>
+        @if (!lr.leveling_effective) {
+          <p class="asd-leveling-no-effect">
+            <mat-icon>info</mat-icon>
+            La nivelación no pudo reducir todas las sobrecargas. Revisa las restricciones.
+          </p>
+        }
+        @if (lr.warnings.length > 0) {
+          <div class="asd-warnings">
+            <p class="asd-warnings__header">
+              <mat-icon class="asd-warnings__icon">warning_amber</mat-icon>
+              Advertencias
+            </p>
+            <mat-list class="asd-warnings__list">
+              @for (warn of lr.warnings; track warn) {
+                <mat-list-item class="asd-warning-item">
+                  <mat-icon matListItemIcon class="asd-warning-item__icon">warning_amber</mat-icon>
+                  <span matListItemTitle>{{ warn }}</span>
+                </mat-list-item>
+              }
+            </mat-list>
+          </div>
+        }
+      </div>
+    }
+  </section>
+
   <!-- Sección de vista previa -->
   @if (preview(); as result) {
     <section class="asd-preview sc-card">

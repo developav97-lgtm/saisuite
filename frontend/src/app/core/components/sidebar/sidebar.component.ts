@@ -94,6 +94,8 @@ export class SidebarComponent implements OnInit, OnDestroy {
             icon: 'task_alt',
             action: () => this.navigateToTareas(),
           },
+          { label: 'Timesheets',    icon: 'schedule',     route: '/proyectos/timesheets' },
+          { label: 'Mis Tareas',    icon: 'person',       route: '/proyectos/mis-tareas' },
           { label: 'Configuración', icon: 'tune',         route: '/proyectos/configuracion' },
         ],
       },

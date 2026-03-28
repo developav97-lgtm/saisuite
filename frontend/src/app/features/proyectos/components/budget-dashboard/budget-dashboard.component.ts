@@ -23,10 +23,12 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatDividerModule } from '@angular/material/divider';
+import { MatExpansionModule } from '@angular/material/expansion';
 import { forkJoin } from 'rxjs';
 
 import { BudgetService } from '../../services/budget.service';
 import { ExpenseService } from '../../services/expense.service';
+import { CostRateService } from '../../services/cost-rate.service';
 import {
   ProjectBudget,
   ProjectBudgetWrite,
@@ -37,8 +39,10 @@ import {
   ProjectExpense,
   ProjectExpenseWrite,
   ExpenseCategory,
+  ResourceCostRate,
 } from '../../models/budget.model';
-import { ConfirmDialogComponent } from '../../../../shared/components/confirm-dialog/confirm-dialog.component';
+import { ConfirmDialogComponent, ConfirmDialogData } from '../../../../shared/components/confirm-dialog/confirm-dialog.component';
+import { CostRateFormComponent, CostRateFormData } from './cost-rate-form/cost-rate-form.component';
 
 @Component({
   selector: 'app-budget-dashboard',
@@ -60,26 +64,30 @@ import { ConfirmDialogComponent } from '../../../../shared/components/confirm-di
     MatSelectModule,
     MatDatepickerModule,
     MatDividerModule,
+    MatExpansionModule,
   ],
 })
 export class BudgetDashboardComponent implements OnInit {
   readonly projectId = input.required<string>();
 
-  private readonly budgetService  = inject(BudgetService);
-  private readonly expenseService = inject(ExpenseService);
-  private readonly snackBar       = inject(MatSnackBar);
-  private readonly dialog         = inject(MatDialog);
-  private readonly fb             = inject(FormBuilder);
+  private readonly budgetService   = inject(BudgetService);
+  private readonly expenseService  = inject(ExpenseService);
+  private readonly costRateService = inject(CostRateService);
+  private readonly snackBar        = inject(MatSnackBar);
+  private readonly dialog          = inject(MatDialog);
+  private readonly fb              = inject(FormBuilder);
 
   // ── State signals ──────────────────────────────────────────────────────────
-  readonly loading        = signal(true);
-  readonly budget         = signal<ProjectBudget | null>(null);
-  readonly alerts         = signal<BudgetAlert[]>([]);
-  readonly evm            = signal<EvmMetrics | null>(null);
-  readonly costByResource = signal<CostBreakdownByResource[]>([]);
-  readonly costByTask     = signal<CostBreakdownByTask[]>([]);
-  readonly expenses       = signal<ProjectExpense[]>([]);
-  readonly showBudgetForm = signal(false);
+  readonly loading         = signal(true);
+  readonly budget          = signal<ProjectBudget | null>(null);
+  readonly alerts          = signal<BudgetAlert[]>([]);
+  readonly evm             = signal<EvmMetrics | null>(null);
+  readonly costByResource  = signal<CostBreakdownByResource[]>([]);
+  readonly costByTask      = signal<CostBreakdownByTask[]>([]);
+  readonly expenses        = signal<ProjectExpense[]>([]);
+  readonly costRates       = signal<ResourceCostRate[]>([]);
+  readonly loadingRates    = signal(false);
+  readonly showBudgetForm  = signal(false);
   readonly showExpenseForm = signal(false);
 
   // ── Computed ───────────────────────────────────────────────────────────────
@@ -131,14 +139,16 @@ export class BudgetDashboardComponent implements OnInit {
     { value: 'other',         label: 'Otro' },
   ];
 
-  readonly RESOURCE_COLUMNS  = ['user', 'hours', 'rate', 'cost', 'pct'];
-  readonly TASK_COLUMNS      = ['task', 'hours', 'labor_cost', 'total_cost'];
-  readonly EXPENSE_COLUMNS   = ['date', 'category', 'description', 'amount', 'billable', 'approved', 'actions'];
+  readonly RESOURCE_COLUMNS   = ['user', 'hours', 'rate', 'cost', 'pct'];
+  readonly TASK_COLUMNS       = ['task', 'hours', 'labor_cost', 'total_cost'];
+  readonly EXPENSE_COLUMNS    = ['date', 'category', 'description', 'amount', 'billable', 'approved', 'actions'];
+  readonly COST_RATE_COLUMNS  = ['user', 'hourly_rate', 'start_date', 'end_date', 'status', 'actions'];
 
   // ── Lifecycle ──────────────────────────────────────────────────────────────
 
   ngOnInit(): void {
     this.loadAll();
+    this.loadCostRates();
   }
 
   private loadAll(): void {
@@ -292,6 +302,61 @@ export class BudgetDashboardComponent implements OnInit {
         },
         error: (err) => {
           const msg = err?.error?.detail ?? 'Error al eliminar el gasto.';
+          this.snackBar.open(msg, 'OK', { duration: 4000, panelClass: ['snack-error'] });
+        },
+      });
+    });
+  }
+
+  // ── Cost Rate actions ──────────────────────────────────────────────────────
+
+  private loadCostRates(): void {
+    this.loadingRates.set(true);
+    this.costRateService.getRates().subscribe({
+      next: rates => {
+        this.costRates.set(rates);
+        this.loadingRates.set(false);
+      },
+      error: () => this.loadingRates.set(false),
+    });
+  }
+
+  openCostRateForm(rate?: ResourceCostRate): void {
+    const data: CostRateFormData = { rate };
+    const ref = this.dialog.open(CostRateFormComponent, {
+      data,
+      width: '520px',
+      disableClose: true,
+    });
+    ref.afterClosed().subscribe((saved: ResourceCostRate | null | undefined) => {
+      if (!saved) return;
+      if (rate) {
+        this.costRates.update(list => list.map(r => r.id === saved.id ? saved : r));
+      } else {
+        this.costRates.update(list => [saved, ...list]);
+      }
+    });
+  }
+
+  deleteCostRate(rate: ResourceCostRate): void {
+    const data: ConfirmDialogData = {
+      header:      'Eliminar tarifa',
+      message:     `¿Eliminar la tarifa de ${rate.user_full_name}? Esta acción no se puede deshacer.`,
+      acceptLabel: 'Eliminar',
+      acceptColor: 'warn',
+    };
+    const ref = this.dialog.open(ConfirmDialogComponent, { data });
+    ref.afterClosed().subscribe((confirmed: boolean) => {
+      if (!confirmed) return;
+      this.costRateService.deleteRate(rate.id).subscribe({
+        next: () => {
+          this.costRates.update(list => list.filter(r => r.id !== rate.id));
+          this.snackBar.open('Tarifa eliminada.', 'OK', {
+            duration: 3000, panelClass: ['snack-success'],
+          });
+        },
+        error: (err: { error?: { detail?: string } }) => {
+          const msg = err?.error?.detail ?? 'Error al eliminar la tarifa.';
           this.snackBar.open(msg, 'OK', { duration: 4000, panelClass: ['snack-error'] });
         },
       });

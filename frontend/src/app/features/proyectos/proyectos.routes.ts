@@ -68,6 +68,23 @@ export const PROYECTOS_ROUTES: Routes = [
       ),
   },
   {
+    // Debe ir ANTES de :id para que no sea capturado como UUID
+    path: 'timesheets',
+    loadComponent: () =>
+      import('./components/timesheet-semanal/timesheet-semanal.component').then(
+        (m) => m.TimesheetSemanalComponent
+      ),
+  },
+  {
+    // Vista "Mis Tareas" — debe ir ANTES de :id
+    path: 'mis-tareas',
+    loadComponent: () =>
+      import('./components/tarea-list/tarea-list.component').then(
+        (m) => m.TareaListComponent
+      ),
+    data: { misTareas: true },
+  },
+  {
     path: 'nuevo',
     loadComponent: () =>
       import('./components/proyecto-form/proyecto-form.component').then(

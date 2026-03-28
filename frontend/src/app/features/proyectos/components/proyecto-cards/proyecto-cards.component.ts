@@ -29,6 +29,8 @@ import {
   ESTADO_LABELS,
   TIPO_LABELS,
 } from '../../models/proyecto.model';
+import { AdminService } from '../../../admin/services/admin.service';
+import { AdminUser } from '../../../admin/models/admin.models';
 
 @Component({
   selector: 'app-proyecto-cards',
@@ -45,16 +47,19 @@ import {
 })
 export class ProyectoCardsComponent implements OnInit {
   private readonly proyectoService = inject(ProyectoService);
+  private readonly adminService    = inject(AdminService);
   private readonly router          = inject(Router);
   private readonly snackBar        = inject(MatSnackBar);
 
-  readonly proyectos    = signal<ProyectoList[]>([]);
-  readonly totalCount   = signal(0);
-  readonly loading      = signal(false);
-  readonly searchText   = signal('');
-  readonly estadoFilter = signal<EstadoProyecto | null>(null);
-  readonly tipoFilter   = signal<TipoProyecto | null>(null);
-  readonly pageSize     = 25;
+  readonly proyectos     = signal<ProyectoList[]>([]);
+  readonly totalCount    = signal(0);
+  readonly loading       = signal(false);
+  readonly searchText    = signal('');
+  readonly estadoFilter  = signal<EstadoProyecto | null>(null);
+  readonly tipoFilter    = signal<TipoProyecto | null>(null);
+  readonly gerenteFilter = signal<string | null>(null);
+  readonly usuarios      = signal<AdminUser[]>([]);
+  readonly pageSize      = 25;
 
   readonly estadoOptions: { label: string; value: EstadoProyecto | null }[] = [
     { label: 'Todos los estados', value: null },
@@ -67,15 +72,24 @@ export class ProyectoCardsComponent implements OnInit {
   ];
 
   ngOnInit(): void {
+    this.loadUsuarios();
     this.load(0);
+  }
+
+  private loadUsuarios(): void {
+    this.adminService.listUsers().subscribe({
+      next: (users) => this.usuarios.set(users),
+      error: () => { /* silencioso: el filtro de gerente simplemente no muestra opciones */ },
+    });
   }
 
   load(pageIndex: number): void {
     this.loading.set(true);
     const params: ProyectoListParams = { page: pageIndex + 1, page_size: this.pageSize };
-    if (this.searchText())   params.search = this.searchText();
-    if (this.estadoFilter()) params.estado  = this.estadoFilter()!;
-    if (this.tipoFilter())   params.tipo    = this.tipoFilter()!;
+    if (this.searchText())    params.search     = this.searchText();
+    if (this.estadoFilter())  params.estado     = this.estadoFilter()!;
+    if (this.tipoFilter())    params.tipo       = this.tipoFilter()!;
+    if (this.gerenteFilter()) params.gerente_id = this.gerenteFilter()!;
 
     this.proyectoService.list(params).subscribe({
       next: (res) => {

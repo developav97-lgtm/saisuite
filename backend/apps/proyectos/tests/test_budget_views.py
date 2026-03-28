@@ -37,6 +37,7 @@ from apps.proyectos.models import (
     ProjectExpense,
     ResourceCostRate,
     Task,
+    TimesheetEntry,
 )
 
 User = get_user_model()
@@ -132,6 +133,40 @@ def make_cost_rate(company, user, start=None, end=None, rate='80000.00'):
         end_date=end,
         hourly_rate=Decimal(rate),
         currency='COP',
+    )
+
+
+def make_phase(company, project):
+    return Phase.all_objects.create(
+        company=company,
+        proyecto=project,
+        nombre='Phase BV',
+        orden=1,
+        fecha_inicio_planificada=date.today() - timedelta(days=30),
+        fecha_fin_planificada=date.today() + timedelta(days=60),
+        presupuesto_mano_obra=Decimal('500000.00'),
+    )
+
+
+def make_task(company, project, phase):
+    return Task.objects.create(
+        company=company,
+        proyecto=project,
+        fase=phase,
+        nombre='Task BV',
+        estado='in_progress',
+        horas_estimadas=Decimal('8'),
+    )
+
+
+def make_timesheet_entry(company, task, user, horas=Decimal('4')):
+    return TimesheetEntry.objects.create(
+        company=company,
+        tarea=task,
+        usuario=user,
+        fecha=date.today(),
+        horas=horas,
+        descripcion='Trabajo de prueba',
     )
 
 
@@ -369,6 +404,51 @@ class TestCostByResourceView(AuthMixin, APITestCase):
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         self.assertIsInstance(resp.data, list)
 
+    def test_no_timesheets_returns_200_empty_list(self):
+        """Proyecto sin timesheets debe retornar [] con HTTP 200, nunca 404 ni 500."""
+        resp = self.client.get(self.url)
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(resp.data, [])
+
+    def test_timesheets_without_rates_returns_200_with_zero_cost(self):
+        """
+        Proyecto con timesheets pero sin tarifas definidas:
+        retorna los recursos con costo 0 y HTTP 200.
+        """
+        phase = make_phase(self.company, self.project)
+        task  = make_task(self.company, self.project, phase)
+        make_timesheet_entry(self.company, task, self.admin, horas=Decimal('3'))
+
+        # Sin ResourceCostRate → tarifa = 0
+        resp = self.client.get(self.url)
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertIsInstance(resp.data, list)
+        self.assertEqual(len(resp.data), 1)
+        self.assertEqual(Decimal(resp.data[0]['total_cost']), Decimal('0.00'))
+        self.assertEqual(Decimal(resp.data[0]['hours']), Decimal('3.00'))
+
+    def test_timesheets_with_rates_returns_200_with_calculated_cost(self):
+        """
+        Proyecto con timesheets y tarifas definidas:
+        retorna costo calculado correctamente (horas × tarifa).
+        """
+        phase = make_phase(self.company, self.project)
+        task  = make_task(self.company, self.project, phase)
+        make_timesheet_entry(self.company, task, self.admin, horas=Decimal('4'))
+        make_cost_rate(self.company, self.admin, rate='100000.00')
+
+        resp = self.client.get(self.url)
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertIsInstance(resp.data, list)
+        self.assertEqual(len(resp.data), 1)
+        self.assertEqual(Decimal(resp.data[0]['total_cost']), Decimal('400000.00'))
+        self.assertEqual(Decimal(resp.data[0]['pct']), Decimal('100.00'))
+
+    def test_get_unauthenticated_returns_401(self):
+        self.client.credentials()
+        resp = self.client.get(self.url)
+        self.assertEqual(resp.status_code, status.HTTP_401_UNAUTHORIZED)
+
 
 # =============================================================================
 # CostByTaskView  —  <project_pk>/costs/by-task/
@@ -387,6 +467,53 @@ class TestCostByTaskView(AuthMixin, APITestCase):
         resp = self.client.get(self.url)
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         self.assertIsInstance(resp.data, list)
+
+    def test_no_timesheets_returns_200_empty_list(self):
+        """Proyecto sin timesheets debe retornar [] con HTTP 200, nunca 404 ni 500."""
+        resp = self.client.get(self.url)
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(resp.data, [])
+
+    def test_timesheets_without_rates_returns_200_with_zero_cost(self):
+        """
+        Proyecto con timesheets pero sin tarifas definidas:
+        retorna las tareas con costo 0 y HTTP 200.
+        """
+        phase = make_phase(self.company, self.project)
+        task  = make_task(self.company, self.project, phase)
+        make_timesheet_entry(self.company, task, self.admin, horas=Decimal('5'))
+
+        # Sin ResourceCostRate → tarifa = 0
+        resp = self.client.get(self.url)
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertIsInstance(resp.data, list)
+        self.assertEqual(len(resp.data), 1)
+        self.assertEqual(Decimal(resp.data[0]['total_cost']), Decimal('0.00'))
+        self.assertEqual(Decimal(resp.data[0]['hours']), Decimal('5.00'))
+        self.assertEqual(resp.data[0]['task_name'], task.nombre)
+
+    def test_timesheets_with_rates_returns_200_with_calculated_cost(self):
+        """
+        Proyecto con timesheets y tarifas definidas:
+        retorna costo calculado correctamente por tarea (horas × tarifa).
+        """
+        phase = make_phase(self.company, self.project)
+        task  = make_task(self.company, self.project, phase)
+        make_timesheet_entry(self.company, task, self.admin, horas=Decimal('2'))
+        make_cost_rate(self.company, self.admin, rate='50000.00')
+
+        resp = self.client.get(self.url)
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertIsInstance(resp.data, list)
+        self.assertEqual(len(resp.data), 1)
+        self.assertEqual(Decimal(resp.data[0]['labor_cost']), Decimal('100000.00'))
+        self.assertEqual(Decimal(resp.data[0]['total_cost']), Decimal('100000.00'))
+        self.assertEqual(Decimal(resp.data[0]['expense_cost']), Decimal('0.00'))
+
+    def test_get_unauthenticated_returns_401(self):
+        self.client.credentials()
+        resp = self.client.get(self.url)
+        self.assertEqual(resp.status_code, status.HTTP_401_UNAUTHORIZED)
 
 
 # =============================================================================

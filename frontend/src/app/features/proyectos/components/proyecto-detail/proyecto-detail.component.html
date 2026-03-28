@@ -243,28 +243,65 @@
         </div>
       </mat-tab>
 
-      <!-- Tab 6: Actividades -->
+      <!-- Tab 5: Tareas -->
+      <mat-tab label="Tareas">
+        <div class="pd-tab-content">
+          @defer (on viewport) {
+            <app-tarea-list [proyectoIdInput]="p.id" />
+          } @placeholder {
+            <div class="sc-loading-state" style="height: 200px;">
+              <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+            </div>
+          }
+        </div>
+      </mat-tab>
+
+      <!-- Tab 6: Kanban -->
+      <mat-tab label="Kanban">
+        <div class="pd-tab-content">
+          @defer (on viewport) {
+            <app-tarea-kanban [proyectoIdInput]="p.id" />
+          } @placeholder {
+            <div class="sc-loading-state" style="height: 200px;">
+              <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+            </div>
+          }
+        </div>
+      </mat-tab>
+
+      <!-- Tab 7: Actividades -->
       <mat-tab label="Actividades de obra">
         <div class="pd-tab-content">
           <app-actividad-proyecto-list [proyectoId]="p.id" [proyectoEstado]="p.estado" />
         </div>
       </mat-tab>
 
-      <!-- Tab 7: Gantt -->
+      <!-- Tab 8: Gantt -->
       <mat-tab label="Gantt">
         <div class="pd-tab-content">
           <app-gantt-view [proyectoId]="p.id" />
         </div>
       </mat-tab>
 
-      <!-- Tab 8: Equipo -->
+      <!-- Tab 9: Equipo -->
       <mat-tab label="Equipo">
         <div class="pd-tab-content">
           <app-team-timeline [proyectoId]="p.id" />
         </div>
       </mat-tab>
 
-      <!-- Tab 9: Analytics — defer until tab is selected so canvas dimensions are valid -->
+      <!-- Tab 10: Timesheets -->
+      <mat-tab label="Timesheets">
+        <div class="pd-tab-content">
+          @defer (on viewport) {
+            <app-proyecto-timesheet-tab [proyectoId]="p.id" />
+          } @placeholder {
+            <mat-progress-bar mode="indeterminate" />
+          }
+        </div>
+      </mat-tab>
+
+      <!-- Tab 11: Analytics — defer until tab is selected so canvas dimensions are valid -->
       <mat-tab label="Analytics">
         <div class="pd-tab-content">
           @defer (when analyticsTabActive()) {
@@ -277,7 +314,7 @@
         </div>
       </mat-tab>
 
-      <!-- Tab 10: Baselines — SK-43 -->
+      <!-- Tab 11: Baselines — SK-43 -->
       <mat-tab label="Baselines">
         <div class="pd-tab-content">
           @defer (when baselinesTabLoaded()) {
@@ -290,7 +327,7 @@
         </div>
       </mat-tab>
 
-      <!-- Tab 11: Escenarios What-If — SK-43 -->
+      <!-- Tab 12: Escenarios What-If — SK-43 -->
       <mat-tab label="Escenarios">
         <div class="pd-tab-content">
           @defer (when escenariosTabLoaded()) {
@@ -303,7 +340,7 @@
         </div>
       </mat-tab>
 
-      <!-- Tab 12: Presupuesto & Costos — Feature #7 -->
+      <!-- Tab 13: Presupuesto & Costos — Feature #7 -->
       <mat-tab label="Presupuesto">
         <div class="pd-tab-content">
           @defer (when presupuestoTabLoaded()) {

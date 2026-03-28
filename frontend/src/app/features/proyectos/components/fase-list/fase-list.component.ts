@@ -217,6 +217,32 @@ export class FaseListComponent implements OnInit {
     });
   }
 
+  completarFase(fase: FaseList): void {
+    const ref = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        header: 'Completar fase',
+        message: `¿Marcar como completada la fase "${fase.nombre}"? Esta acción no se puede deshacer.`,
+        acceptLabel: 'Completar',
+        acceptColor: 'accent',
+      },
+      width: '420px',
+    });
+    ref.afterClosed().subscribe(confirmed => {
+      if (!confirmed) return;
+      this.faseService.completar(fase.id).subscribe({
+        next: () => {
+          this.loadFases();
+          this.snackBar.open('Fase completada correctamente.', 'Cerrar', { duration: 3000, panelClass: ['snack-success'] });
+        },
+        error: (err) => {
+          const e = err as { error?: { detail?: string } };
+          const msg = e.error?.detail ?? 'No se pudo completar la fase.';
+          this.snackBar.open(msg, 'Cerrar', { duration: 4000, panelClass: ['snack-error'] });
+        },
+      });
+    });
+  }
+
   readonly ESTADO_LABELS: Record<string, string> = {
     planned:   'Planificada',
     active:    'Activa',

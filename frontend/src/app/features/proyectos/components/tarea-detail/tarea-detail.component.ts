@@ -32,6 +32,8 @@ import { CronometroComponent } from '../../../../shared/components/cronometro/cr
 import { ComentariosThreadComponent } from '../../../../shared/components/comentarios-thread/comentarios-thread.component';
 import { SelectorDependenciasComponent } from '../selector-dependencias/selector-dependencias.component';
 import { ResourceAssignmentPanelComponent } from '../resource-assignment-panel/resource-assignment-panel.component';
+import { TaskConstraintsPanelComponent } from '../scheduling/task-constraints-panel/task-constraints-panel.component';
+import { FloatIndicatorComponent } from '../scheduling/float-indicator/float-indicator.component';
 import { Tarea, TareaEstado, TareaDependencia } from '../../models/tarea.model';
 import { TimesheetEntry } from '../../models/timesheet.model';
 import type { ModoMedicion } from '../../models/actividad-saiopen.model';
@@ -94,6 +96,8 @@ export const PRIORIDAD_COLORS: Record<string, string | undefined> = {
     ComentariosThreadComponent,
     SelectorDependenciasComponent,
     ResourceAssignmentPanelComponent,
+    TaskConstraintsPanelComponent,
+    FloatIndicatorComponent,
   ],
 })
 export class TareaDetailComponent implements OnInit {

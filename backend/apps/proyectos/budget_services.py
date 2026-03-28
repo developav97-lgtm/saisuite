@@ -344,59 +344,76 @@ class CostCalculationService:
         Desglosa el costo de mano de obra por recurso (usuario).
 
         Retorna lista de dicts ordenada por total_cost DESC.
+        Retorna [] si no hay timesheets o si ocurre cualquier error inesperado.
         """
-        entries = (
-            TimesheetEntry.objects
-            .filter(tarea__proyecto_id=project_id)
-            .select_related('usuario', 'tarea__proyecto')
-        )
-        if not entries.exists():
+        try:
+            entries = (
+                TimesheetEntry.objects
+                .filter(tarea__proyecto_id=project_id)
+                .select_related('usuario', 'tarea', 'tarea__proyecto')
+            )
+            if not entries.exists():
+                return []
+
+            entries_list = list(entries)
+            first = entries_list[0]
+            if not hasattr(first.tarea, 'proyecto') or first.tarea.proyecto is None:
+                logger.error(
+                    "get_cost_by_resource: tarea sin proyecto cargado",
+                    extra={"project_id": project_id},
+                )
+                return []
+
+            company_id = str(first.tarea.proyecto.company_id)
+
+            # Pre-cargar tarifas una sola vez
+            user_ids   = list({str(e.usuario_id) for e in entries_list})
+            rate_index = CostCalculationService._build_rate_index(user_ids, company_id)
+
+            # Acumular por usuario
+            user_data: dict = {}
+            for entry in entries_list:
+                uid  = str(entry.usuario_id)
+                rate = CostCalculationService._resolve_rate(uid, entry.fecha, rate_index)
+                cost = entry.horas * rate
+                if uid not in user_data:
+                    user_data[uid] = {
+                        'user_id':    uid,
+                        'user_name':  entry.usuario.full_name or entry.usuario.email,
+                        'user_email': entry.usuario.email,
+                        'hours':      _ZERO,
+                        'total_cost': _ZERO,
+                    }
+                user_data[uid]['hours']      += entry.horas
+                user_data[uid]['total_cost'] += cost
+
+            total_labor = sum(u['total_cost'] for u in user_data.values()) or _ZERO
+
+            result = []
+            for u in user_data.values():
+                hours      = _q2(u['hours'])
+                total_cost = _q2(u['total_cost'])
+                avg_rate   = _q2(total_cost / hours) if hours > _ZERO else _ZERO
+                pct        = _q2(total_cost / total_labor * 100) if total_labor > _ZERO else _ZERO
+                result.append({
+                    'user_id':         u['user_id'],
+                    'user_name':       u['user_name'],
+                    'user_email':      u['user_email'],
+                    'hours':           hours,
+                    'hourly_rate_avg': avg_rate,
+                    'total_cost':      total_cost,
+                    'pct':             pct,
+                })
+
+            result.sort(key=lambda x: x['total_cost'], reverse=True)
+            return result
+
+        except Exception as exc:
+            logger.error(
+                "get_cost_by_resource: error inesperado calculando costos por recurso",
+                extra={"project_id": project_id, "error": str(exc)},
+            )
             return []
-
-        company_id = str(entries.first().tarea.proyecto.company_id)
-        entries    = list(entries)
-
-        # Pre-cargar tarifas una sola vez
-        user_ids   = list({str(e.usuario_id) for e in entries})
-        rate_index = CostCalculationService._build_rate_index(user_ids, company_id)
-
-        # Acumular por usuario
-        user_data: dict = {}
-        for entry in entries:
-            uid  = str(entry.usuario_id)
-            rate = CostCalculationService._resolve_rate(uid, entry.fecha, rate_index)
-            cost = entry.horas * rate
-            if uid not in user_data:
-                user_data[uid] = {
-                    'user_id':    uid,
-                    'user_name':  entry.usuario.full_name or entry.usuario.email,
-                    'user_email': entry.usuario.email,
-                    'hours':      _ZERO,
-                    'total_cost': _ZERO,
-                }
-            user_data[uid]['hours']      += entry.horas
-            user_data[uid]['total_cost'] += cost
-
-        total_labor = sum(u['total_cost'] for u in user_data.values()) or _ZERO
-
-        result = []
-        for u in user_data.values():
-            hours      = _q2(u['hours'])
-            total_cost = _q2(u['total_cost'])
-            avg_rate   = _q2(total_cost / hours) if hours > _ZERO else _ZERO
-            pct        = _q2(total_cost / total_labor * 100) if total_labor > _ZERO else _ZERO
-            result.append({
-                'user_id':         u['user_id'],
-                'user_name':       u['user_name'],
-                'user_email':      u['user_email'],
-                'hours':           hours,
-                'hourly_rate_avg': avg_rate,
-                'total_cost':      total_cost,
-                'pct':             pct,
-            })
-
-        result.sort(key=lambda x: x['total_cost'], reverse=True)
-        return result
 
     @staticmethod
     def get_cost_by_task(project_id: str) -> list:
@@ -406,59 +423,76 @@ class CostCalculationService:
 
         Retorna lista de dicts ordenada por total_cost DESC,
         incluyendo solo tareas con hours > 0.
+        Retorna [] si no hay timesheets o si ocurre cualquier error inesperado.
         """
-        entries = (
-            TimesheetEntry.objects
-            .filter(tarea__proyecto_id=project_id)
-            .select_related('usuario', 'tarea', 'tarea__proyecto')
-        )
-        if not entries.exists():
-            return []
-
-        company_id = str(entries.first().tarea.proyecto.company_id)
-        entries    = list(entries)
-
-        user_ids   = list({str(e.usuario_id) for e in entries})
-        rate_index = CostCalculationService._build_rate_index(user_ids, company_id)
-
-        # Acumular por tarea
-        task_data: dict = {}
-        for entry in entries:
-            tid  = str(entry.tarea_id)
-            rate = CostCalculationService._resolve_rate(
-                str(entry.usuario_id), entry.fecha, rate_index
+        try:
+            entries = (
+                TimesheetEntry.objects
+                .filter(tarea__proyecto_id=project_id)
+                .select_related('usuario', 'tarea', 'tarea__proyecto')
             )
-            cost = entry.horas * rate
-            if tid not in task_data:
-                task_data[tid] = {
-                    'task_id':       tid,
-                    'task_code':     entry.tarea.codigo or '',
-                    'task_name':     entry.tarea.nombre,
-                    'hours':         _ZERO,
-                    'labor_cost':    _ZERO,
-                    'expense_cost':  _ZERO,
-                    'total_cost':    _ZERO,
-                }
-            task_data[tid]['hours']      += entry.horas
-            task_data[tid]['labor_cost'] += cost
+            if not entries.exists():
+                return []
 
-        result = []
-        for t in task_data.values():
-            hours       = _q2(t['hours'])
-            labor_cost  = _q2(t['labor_cost'])
-            total_cost  = labor_cost  # expense_cost por tarea = 0 en v1
-            result.append({
-                'task_id':      t['task_id'],
-                'task_code':    t['task_code'],
-                'task_name':    t['task_name'],
-                'hours':        hours,
-                'labor_cost':   labor_cost,
-                'expense_cost': _ZERO,
-                'total_cost':   total_cost,
-            })
+            entries_list = list(entries)
+            first = entries_list[0]
+            if not hasattr(first.tarea, 'proyecto') or first.tarea.proyecto is None:
+                logger.error(
+                    "get_cost_by_task: tarea sin proyecto cargado",
+                    extra={"project_id": project_id},
+                )
+                return []
 
-        result.sort(key=lambda x: x['total_cost'], reverse=True)
-        return result
+            company_id = str(first.tarea.proyecto.company_id)
+
+            user_ids   = list({str(e.usuario_id) for e in entries_list})
+            rate_index = CostCalculationService._build_rate_index(user_ids, company_id)
+
+            # Acumular por tarea
+            task_data: dict = {}
+            for entry in entries_list:
+                tid  = str(entry.tarea_id)
+                rate = CostCalculationService._resolve_rate(
+                    str(entry.usuario_id), entry.fecha, rate_index
+                )
+                cost = entry.horas * rate
+                if tid not in task_data:
+                    task_data[tid] = {
+                        'task_id':       tid,
+                        'task_code':     entry.tarea.codigo or '',
+                        'task_name':     entry.tarea.nombre,
+                        'hours':         _ZERO,
+                        'labor_cost':    _ZERO,
+                        'expense_cost':  _ZERO,
+                        'total_cost':    _ZERO,
+                    }
+                task_data[tid]['hours']      += entry.horas
+                task_data[tid]['labor_cost'] += cost
+
+            result = []
+            for t in task_data.values():
+                hours       = _q2(t['hours'])
+                labor_cost  = _q2(t['labor_cost'])
+                total_cost  = labor_cost  # expense_cost por tarea = 0 en v1
+                result.append({
+                    'task_id':      t['task_id'],
+                    'task_code':    t['task_code'],
+                    'task_name':    t['task_name'],
+                    'hours':        hours,
+                    'labor_cost':   labor_cost,
+                    'expense_cost': _ZERO,
+                    'total_cost':   total_cost,
+                })
+
+            result.sort(key=lambda x: x['total_cost'], reverse=True)
+            return result
+
+        except Exception as exc:
+            logger.error(
+                "get_cost_by_task: error inesperado calculando costos por tarea",
+                extra={"project_id": project_id, "error": str(exc)},
+            )
+            return []
 
 
 # ─────────────────────────────────────────────────────────────────────────────

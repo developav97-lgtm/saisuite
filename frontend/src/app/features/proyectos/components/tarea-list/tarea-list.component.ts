@@ -1,8 +1,9 @@
 /**
  * SaiSuite — TareaListComponent
  * Lista de tareas con filtros server-side, paginación client-side y acciones CRUD.
+ * Soporta modo "Mis Tareas" cuando la ruta lleva data.misTareas = true.
  */
-import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, effect, inject, input, signal } from '@angular/core';
 import { Router, ActivatedRoute } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -19,6 +20,8 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { TareaService } from '../../services/tarea.service';
 import { Tarea, TareaEstado, TareaPrioridad, TareaFilters } from '../../models/tarea.model';
+import { FaseService } from '../../services/fase.service';
+import { FaseList } from '../../models/fase.model';
 import { ConfirmDialogComponent } from '../../../../shared/components/confirm-dialog/confirm-dialog.component';
 
 export const ESTADO_LABELS: Record<string, string> = {
@@ -53,21 +56,46 @@ interface SelectOption<T> { label: string; value: T; }
 })
 export class TareaListComponent implements OnInit {
   private readonly tareaService = inject(TareaService);
+  private readonly faseService  = inject(FaseService);
   private readonly router       = inject(Router);
   private readonly route        = inject(ActivatedRoute);
   private readonly dialog       = inject(MatDialog);
   private readonly snackBar     = inject(MatSnackBar);
 
-  readonly tareas         = signal<Tarea[]>([]);
-  readonly totalCount     = signal(0);
-  readonly loading        = signal(false);
-  readonly searchText     = signal('');
-  readonly estadoFilter   = signal<TareaEstado | null>(null);
+  /**
+   * Input para uso embebido (ej: tab dentro de proyecto-detail).
+   * Tiene prioridad sobre el query param ?proyecto= de la ruta.
+   */
+  readonly proyectoIdInput = input<string | null>(null);
+
+  readonly tareas          = signal<Tarea[]>([]);
+  readonly totalCount      = signal(0);
+  readonly loading         = signal(false);
+  readonly searchText      = signal('');
+  readonly estadoFilter    = signal<TareaEstado | null>(null);
   readonly prioridadFilter = signal<TareaPrioridad | null>(null);
-  /** Preseleccionado desde query param cuando se llega desde proyecto-detail. */
-  readonly proyectoId     = signal<string | null>(null);
+  readonly faseFilter      = signal<string | null>(null);
+  /** Preseleccionado desde query param o desde proyectoIdInput. */
+  readonly proyectoId      = signal<string | null>(null);
+  /** true cuando la ruta tiene data.misTareas = true */
+  readonly esMisTareas     = signal(false);
+  /** Lista de fases disponibles para el selector (se carga cuando hay proyectoId) */
+  readonly fases           = signal<FaseList[]>([]);
 
   readonly pageSize = 25;
+
+  constructor() {
+    // Reaccionar a cambios del input proyectoIdInput (modo embebido).
+    // Se ejecuta en injection context, por lo que el effect es válido aquí.
+    effect(() => {
+      const inputId = this.proyectoIdInput();
+      if (inputId !== null) {
+        this.proyectoId.set(inputId);
+        this.loadFases(inputId);
+        this.loadTareas();
+      }
+    });
+  }
 
   readonly displayedColumns = [
     'codigo', 'nombre', 'responsable', 'estado', 'prioridad',
@@ -95,18 +123,44 @@ export class TareaListComponent implements OnInit {
 
   ngOnInit(): void {
     localStorage.setItem('saisuite.tareasView', 'list');
-    const pid = this.route.snapshot.queryParamMap.get('proyecto');
-    if (pid) this.proyectoId.set(pid);
-    this.loadTareas();
+
+    // Detectar modo "Mis Tareas" desde route data
+    const routeData = this.route.snapshot.data;
+    if (routeData['misTareas'] === true) {
+      this.esMisTareas.set(true);
+    }
+
+    // El input tiene prioridad; si no hay input, leer el query param de la ruta.
+    const inputId = this.proyectoIdInput();
+    const pid = inputId ?? this.route.snapshot.queryParamMap.get('proyecto');
+    if (pid) {
+      this.proyectoId.set(pid);
+      this.loadFases(pid);
+    }
+
+    // Solo cargar aquí cuando no hay inputId: el effect() maneja el caso embebido
+    // para evitar una carga duplicada en la inicialización.
+    if (!inputId) {
+      this.loadTareas();
+    }
+  }
+
+  private loadFases(proyectoId: string): void {
+    this.faseService.listByProyecto(proyectoId).subscribe({
+      next: (fases) => this.fases.set(fases),
+      error: () => { /* silencioso: el filtro de fase simplemente no muestra opciones */ },
+    });
   }
 
   loadTareas(): void {
     this.loading.set(true);
     const filters: TareaFilters = {};
-    if (this.proyectoId())     filters.proyecto  = this.proyectoId()!;
-    if (this.estadoFilter())   filters.estado    = this.estadoFilter()!;
-    if (this.prioridadFilter()) filters.prioridad = this.prioridadFilter()!;
-    if (this.searchText())     filters.search    = this.searchText();
+    if (this.proyectoId())      filters.proyecto       = this.proyectoId()!;
+    if (this.estadoFilter())    filters.estado         = this.estadoFilter()!;
+    if (this.prioridadFilter()) filters.prioridad      = this.prioridadFilter()!;
+    if (this.faseFilter())      filters.fase           = this.faseFilter()!;
+    if (this.searchText())      filters.search         = this.searchText();
+    if (this.esMisTareas())     filters.solo_mis_tareas = true;
 
     this.tareaService.list(filters).subscribe({
       next: (tareas) => {

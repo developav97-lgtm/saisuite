@@ -1,0 +1,114 @@
+// SaiSuite — ResourceAvailabilityComponent
+
+.ra-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.ra-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--sc-text-primary);
+
+  mat-icon {
+    color: var(--sc-warn, #ef6c00);
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+}
+
+.ra-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: var(--sc-warn, #ef6c00);
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.ra-progress {
+  margin-bottom: -4px;
+  border-radius: var(--sc-radius) var(--sc-radius) 0 0;
+}
+
+.ra-table {
+  width: 100%;
+  border-radius: var(--sc-radius);
+}
+
+.ra-tipo-chip {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--sc-text-muted);
+  background: var(--sc-surface-ground);
+  border: 1px solid var(--sc-surface-border);
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+}
+
+.ra-descripcion {
+  max-width: 160px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: inline-block;
+  cursor: default;
+  font-size: 0.8125rem;
+  color: var(--sc-text-primary);
+}
+
+.ra-sin-motivo {
+  color: var(--sc-text-muted);
+}
+
+// Estado chips
+.ra-chip {
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+
+  &--aprobado {
+    background: var(--sc-success-light, rgba(46, 125, 50, 0.12)) !important;
+    color: var(--sc-success, #2e7d32) !important;
+  }
+
+  &--pendiente {
+    background: rgba(239, 108, 0, 0.12) !important;
+    color: var(--sc-warn, #ef6c00) !important;
+  }
+}
+
+.ra-chip-icon {
+  font-size: 14px;
+  width: 14px;
+  height: 14px;
+}
+
+.ra-col-acciones {
+  width: 64px;
+  justify-content: flex-end !important;
+}
+
+.ra-empty {
+  border: 1px solid var(--sc-surface-border);
+  border-top: none;
+  border-radius: 0 0 var(--sc-radius) var(--sc-radius);
+}

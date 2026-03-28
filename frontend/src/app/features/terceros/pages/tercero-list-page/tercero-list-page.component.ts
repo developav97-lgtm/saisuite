@@ -21,7 +21,8 @@ import { ConfirmDialogComponent } from '../../../../shared/components/confirm-di
 import {
   TerceroList,
   TipoIdentificacion, TipoTercero,
-  TIPO_IDENTIFICACION_LABELS, TIPO_TERCERO_LABELS,
+  TIPO_IDENTIFICACION_LABELS,
+  getTipoTerceroLabel as getTipoTerceroLabelFn,
 } from '../../../../core/models/tercero.model';
 
 @Component({
@@ -159,7 +160,7 @@ export class TerceroListPageComponent implements OnInit {
   }
 
   getTipoTerceroLabel(tipo: string): string {
-    return TIPO_TERCERO_LABELS[tipo as TipoTercero] ?? tipo;
+    return getTipoTerceroLabelFn(tipo);
   }
 
   getTipoIdentificacionLabel(tipo: string): string {

@@ -1,0 +1,77 @@
+// SaiSuite — ResourceCapacityComponent
+
+.rc-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.rc-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--sc-text-primary);
+
+  mat-icon {
+    color: var(--sc-primary);
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+}
+
+.rc-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: var(--sc-primary);
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.rc-progress {
+  margin-bottom: -4px;
+  border-radius: var(--sc-radius) var(--sc-radius) 0 0;
+}
+
+.rc-table {
+  width: 100%;
+  border-radius: var(--sc-radius);
+}
+
+.rc-hours-badge {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--sc-primary);
+  background: var(--sc-primary-light);
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+}
+
+.rc-indefinido {
+  font-style: italic;
+  color: var(--sc-text-muted);
+  font-size: 0.8125rem;
+}
+
+.rc-col-acciones {
+  width: 96px;
+  justify-content: flex-end !important;
+}
+
+.rc-empty {
+  border: 1px solid var(--sc-surface-border);
+  border-top: none;
+  border-radius: 0 0 var(--sc-radius) var(--sc-radius);
+}

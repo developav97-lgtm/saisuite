@@ -34,4 +34,8 @@ export class ActividadService {
   delete(id: string): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/${id}/`);
   }
+
+  toggleActivo(id: string, activo: boolean): Observable<ActividadDetail> {
+    return this.http.patch<ActividadDetail>(`${this.baseUrl}/${id}/`, { activo });
+  }
 }

@@ -26,6 +26,11 @@ export class TimesheetService {
     return this.http.get<TimesheetEntry[]>(`${this.baseUrl}/`, { params });
   }
 
+  listByProyecto(proyectoId: string): Observable<TimesheetEntry[]> {
+    const params = new HttpParams().set('proyecto', proyectoId);
+    return this.http.get<TimesheetEntry[]>(`${this.baseUrl}/`, { params });
+  }
+
   create(data: TimesheetEntryCreate): Observable<TimesheetEntry> {
     return this.http.post<TimesheetEntry>(`${this.baseUrl}/`, data);
   }

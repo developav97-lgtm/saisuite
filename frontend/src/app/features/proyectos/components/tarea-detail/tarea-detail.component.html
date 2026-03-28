@@ -26,6 +26,9 @@
         <div class="td-header-info">
           <span class="td-codigo">{{ tarea()!.codigo }}</span>
           <h1 class="sc-page-header__title">{{ tarea()!.nombre }}</h1>
+          <sc-float-indicator
+            [isCritical]="tarea()!.es_camino_critico"
+            [floatDays]="null" />
         </div>
       </div>
       <div class="td-header-actions">
@@ -565,6 +568,17 @@
                   (dependenciaEliminada)="onDependenciaEliminada($event)" />
               </div>
 
+            </div>
+          </mat-tab>
+
+          <!-- Tab: Restricciones -->
+          <mat-tab>
+            <ng-template mat-tab-label>
+              <mat-icon class="td-tab-icon">lock_clock</mat-icon>
+              Restricciones
+            </ng-template>
+            <div class="td-tab-content">
+              <app-task-constraints-panel [taskId]="tarea()!.id" />
             </div>
           </mat-tab>
 

@@ -1,0 +1,111 @@
+<!-- SaiSuite — ResourceAvailabilityComponent -->
+
+<!-- Header -->
+<div class="ra-header">
+  <span class="ra-title">
+    <mat-icon>event_busy</mat-icon>
+    Ausencias y disponibilidad
+    @if (availabilities().length > 0) {
+      <span class="ra-badge">{{ availabilities().length }}</span>
+    }
+  </span>
+  <button mat-stroked-button color="primary" (click)="openForm()">
+    <mat-icon>add</mat-icon>
+    Registrar ausencia
+  </button>
+</div>
+
+<!-- Progress bar -->
+@if (loading()) {
+  <mat-progress-bar mode="indeterminate" class="ra-progress" />
+}
+
+<!-- Tabla -->
+@if (!loading() && availabilities().length > 0) {
+  <mat-table [dataSource]="availabilities()" class="ra-table">
+
+    <!-- Columna: Usuario -->
+    <ng-container matColumnDef="usuario">
+      <mat-header-cell *matHeaderCellDef>Usuario</mat-header-cell>
+      <mat-cell *matCellDef="let row">{{ row.usuario_nombre }}</mat-cell>
+    </ng-container>
+
+    <!-- Columna: Tipo -->
+    <ng-container matColumnDef="tipo">
+      <mat-header-cell *matHeaderCellDef>Tipo</mat-header-cell>
+      <mat-cell *matCellDef="let row">
+        <span class="ra-tipo-chip">{{ row.tipo_display }}</span>
+      </mat-cell>
+    </ng-container>
+
+    <!-- Columna: Desde -->
+    <ng-container matColumnDef="fecha_inicio">
+      <mat-header-cell *matHeaderCellDef>Desde</mat-header-cell>
+      <mat-cell *matCellDef="let row">{{ row.fecha_inicio | date:'dd/MM/yyyy' }}</mat-cell>
+    </ng-container>
+
+    <!-- Columna: Hasta -->
+    <ng-container matColumnDef="fecha_fin">
+      <mat-header-cell *matHeaderCellDef>Hasta</mat-header-cell>
+      <mat-cell *matCellDef="let row">{{ row.fecha_fin | date:'dd/MM/yyyy' }}</mat-cell>
+    </ng-container>
+
+    <!-- Columna: Motivo -->
+    <ng-container matColumnDef="descripcion">
+      <mat-header-cell *matHeaderCellDef>Motivo</mat-header-cell>
+      <mat-cell *matCellDef="let row">
+        @if (row.descripcion) {
+          <span class="ra-descripcion" [matTooltip]="row.descripcion">{{ row.descripcion }}</span>
+        } @else {
+          <span class="ra-sin-motivo">—</span>
+        }
+      </mat-cell>
+    </ng-container>
+
+    <!-- Columna: Estado -->
+    <ng-container matColumnDef="estado">
+      <mat-header-cell *matHeaderCellDef>Estado</mat-header-cell>
+      <mat-cell *matCellDef="let row">
+        @if (row.aprobado) {
+          <mat-chip class="ra-chip ra-chip--aprobado">
+            <mat-icon class="ra-chip-icon">check_circle</mat-icon>
+            Aprobado
+          </mat-chip>
+        } @else {
+          <mat-chip class="ra-chip ra-chip--pendiente">
+            <mat-icon class="ra-chip-icon">hourglass_empty</mat-icon>
+            Pendiente
+          </mat-chip>
+        }
+      </mat-cell>
+    </ng-container>
+
+    <!-- Columna: Acciones -->
+    <ng-container matColumnDef="acciones">
+      <mat-header-cell *matHeaderCellDef class="ra-col-acciones">Acciones</mat-header-cell>
+      <mat-cell *matCellDef="let row" class="ra-col-acciones">
+        <button mat-icon-button color="warn" matTooltip="Eliminar" (click)="confirmDelete(row)">
+          <mat-icon>delete_outline</mat-icon>
+        </button>
+      </mat-cell>
+    </ng-container>
+
+    <mat-header-row *matHeaderRowDef="displayedColumns" />
+    <mat-row *matRowDef="let row; columns: displayedColumns;" />
+  </mat-table>
+}
+
+<!-- Empty state -->
+@if (!loading() && availabilities().length === 0) {
+  <div class="sc-empty-state ra-empty">
+    <mat-icon>event_available</mat-icon>
+    <p class="sc-empty-state__title">No hay ausencias registradas</p>
+    <p class="sc-empty-state__subtitle">
+      Registra vacaciones, incapacidades u otras ausencias del equipo.
+    </p>
+    <button mat-stroked-button color="primary" (click)="openForm()">
+      <mat-icon>add</mat-icon>
+      Registrar ausencia
+    </button>
+  </div>
+}

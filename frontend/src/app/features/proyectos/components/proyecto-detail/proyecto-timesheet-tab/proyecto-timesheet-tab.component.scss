@@ -1,0 +1,140 @@
+// ── Contenedor principal ────────────────────────────────────────
+.ts-tab {
+  padding: 1rem 0;
+}
+
+// ── Progress bar ───────────────────────────────────────────────
+.ts-progress {
+  margin-bottom: -4px;
+  border-radius: var(--sc-radius) var(--sc-radius) 0 0;
+}
+
+// ── Tabla ──────────────────────────────────────────────────────
+.ts-table {
+  width: 100%;
+  border-radius: var(--sc-radius);
+}
+
+.ts-row {
+  &:hover {
+    background: var(--sc-surface-hover, rgba(0, 0, 0, 0.04));
+  }
+}
+
+// ── Columna Horas ─────────────────────────────────────────────
+.ts-col-horas {
+  width: 90px;
+  text-align: right !important;
+  justify-content: flex-end !important;
+}
+
+// ── Badge de horas ────────────────────────────────────────────
+.ts-horas-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.55rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  background: var(--sc-primary-light, rgba(var(--sc-primary-rgb, 25, 118, 210), 0.12));
+  color: var(--sc-primary);
+  white-space: nowrap;
+}
+
+// ── Nombre de usuario ─────────────────────────────────────────
+.ts-usuario {
+  font-weight: 500;
+  color: var(--sc-text);
+}
+
+// ── Celda tarea ───────────────────────────────────────────────
+.ts-tarea-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  overflow: hidden;
+}
+
+.ts-tarea-codigo {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--sc-primary);
+  background: var(--sc-primary-light, rgba(var(--sc-primary-rgb, 25, 118, 210), 0.12));
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.ts-tarea-nombre {
+  font-size: 0.875rem;
+  color: var(--sc-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 220px;
+}
+
+// ── Descripción ───────────────────────────────────────────────
+.ts-descripcion {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 260px;
+  display: block;
+  color: var(--sc-text-muted);
+  font-size: 0.875rem;
+}
+
+// ── Empty state ────────────────────────────────────────────────
+.ts-empty {
+  border: 1px solid var(--sc-surface-border);
+  border-top: none;
+  border-radius: 0 0 var(--sc-radius) var(--sc-radius);
+}
+
+// ── Footer con total ───────────────────────────────────────────
+.ts-footer {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: var(--sc-surface-alt, rgba(0, 0, 0, 0.02));
+  border: 1px solid var(--sc-surface-border);
+  border-top: none;
+  font-size: 0.875rem;
+
+  &__label {
+    color: var(--sc-text-muted);
+  }
+
+  &__total {
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--sc-primary);
+  }
+
+  &__count {
+    color: var(--sc-text-muted);
+    margin-left: auto;
+    font-size: 0.8rem;
+  }
+}
+
+// ── Responsive ────────────────────────────────────────────────
+@media (max-width: 960px) {
+  .mat-column-descripcion {
+    display: none !important;
+  }
+}
+
+@media (max-width: 680px) {
+  .mat-column-tarea {
+    display: none !important;
+  }
+
+  .ts-tarea-nombre {
+    max-width: none;
+  }
+}

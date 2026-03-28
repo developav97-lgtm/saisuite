@@ -47,6 +47,17 @@
         }
       </mat-select>
     </mat-form-field>
+
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="pl-filter">
+      <mat-label>Gerente</mat-label>
+      <mat-select [ngModel]="gerenteFilter()"
+        (ngModelChange)="gerenteFilter.set($event); onFilterChange()">
+        <mat-option [value]="null">Todos los gerentes</mat-option>
+        @for (u of usuarios(); track u.id) {
+          <mat-option [value]="u.id">{{ u.full_name || u.email }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
   </div>
 
   <!-- Progress bar -->

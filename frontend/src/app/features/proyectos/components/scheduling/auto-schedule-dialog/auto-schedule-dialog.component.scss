@@ -153,6 +153,94 @@
   }
 }
 
+// ── Nivelación de Recursos ────────────────────────────────────────────────────
+.asd-section--leveling {
+  padding: 0.875rem;
+  border: 1px solid var(--sc-border);
+  border-radius: 8px;
+  background: var(--sc-surface);
+}
+
+.asd-section__title-icon {
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
+  vertical-align: middle;
+  margin-right: 0.25rem;
+  color: var(--sc-primary);
+}
+
+.asd-section__desc {
+  margin: -0.5rem 0 0.75rem;
+  font-size: 0.8rem;
+  color: var(--sc-text-muted);
+}
+
+.asd-leveling-controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+}
+
+.asd-level-btn {
+  margin-left: auto;
+}
+
+.asd-spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+.asd-leveling-result {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  border-radius: 6px;
+  border: 1px solid var(--sc-border);
+
+  &--effective {
+    border-color: var(--sc-success, #2e7d32);
+    background: rgba(46, 125, 50, 0.05);
+  }
+
+  &--warn {
+    border-color: var(--sc-warn, #ef6c00);
+    background: rgba(239, 108, 0, 0.05);
+  }
+}
+
+.asd-leveling-stats {
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+}
+
+.asd-stat {
+  &--ok .asd-stat__value  { color: var(--sc-success, #2e7d32); }
+  &--warn .asd-stat__value { color: var(--sc-warn, #ef6c00); }
+}
+
+.asd-leveling-no-effect {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.8rem;
+  color: var(--sc-warn, #ef6c00);
+  margin: 0.5rem 0 0;
+
+  mat-icon {
+    font-size: 15px;
+    width: 15px;
+    height: 15px;
+  }
+}
+
 // ── Acciones ──────────────────────────────────────────────────────────────────
 .asd-actions {
   gap: 0.5rem;

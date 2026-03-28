@@ -1,0 +1,85 @@
+<div class="ts-tab">
+
+  <!-- Progress bar — encima de la tabla, nunca spinner centrado -->
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate" class="ts-progress" />
+  }
+
+  <!-- Tabla -->
+  <mat-table [dataSource]="pagedTimesheets()" class="ts-table">
+
+    <!-- Fecha -->
+    <ng-container matColumnDef="fecha">
+      <mat-header-cell *matHeaderCellDef>Fecha</mat-header-cell>
+      <mat-cell *matCellDef="let e">{{ formatDate(e.fecha) }}</mat-cell>
+    </ng-container>
+
+    <!-- Usuario -->
+    <ng-container matColumnDef="usuario">
+      <mat-header-cell *matHeaderCellDef>Usuario</mat-header-cell>
+      <mat-cell *matCellDef="let e">
+        <span class="ts-usuario">{{ e.usuario_detail.nombre }}</span>
+      </mat-cell>
+    </ng-container>
+
+    <!-- Tarea -->
+    <ng-container matColumnDef="tarea">
+      <mat-header-cell *matHeaderCellDef>Tarea</mat-header-cell>
+      <mat-cell *matCellDef="let e">
+        <div class="ts-tarea-cell">
+          <span class="ts-tarea-codigo">{{ e.tarea_detail.codigo }}</span>
+          <span class="ts-tarea-nombre" [matTooltip]="e.tarea_detail.nombre">
+            {{ e.tarea_detail.nombre }}
+          </span>
+        </div>
+      </mat-cell>
+    </ng-container>
+
+    <!-- Horas -->
+    <ng-container matColumnDef="horas">
+      <mat-header-cell *matHeaderCellDef class="ts-col-horas">Horas</mat-header-cell>
+      <mat-cell *matCellDef="let e" class="ts-col-horas">
+        <span class="ts-horas-badge">{{ formatHoras(e.horas) }}</span>
+      </mat-cell>
+    </ng-container>
+
+    <!-- Descripción -->
+    <ng-container matColumnDef="descripcion">
+      <mat-header-cell *matHeaderCellDef>Descripción</mat-header-cell>
+      <mat-cell *matCellDef="let e">
+        <span class="ts-descripcion" [matTooltip]="e.descripcion">
+          {{ e.descripcion || '—' }}
+        </span>
+      </mat-cell>
+    </ng-container>
+
+    <mat-header-row *matHeaderRowDef="displayedColumns" />
+    <mat-row *matRowDef="let row; columns: displayedColumns;" class="ts-row" />
+
+  </mat-table>
+
+  <!-- Empty state — FUERA del mat-table, según estándares UI/UX -->
+  @if (!loading() && totalItems() === 0) {
+    <div class="sc-empty-state ts-empty">
+      <mat-icon>schedule</mat-icon>
+      <p>No hay horas registradas para este proyecto.</p>
+    </div>
+  }
+
+  <!-- Footer con total de horas -->
+  @if (!loading() && totalItems() > 0) {
+    <div class="ts-footer">
+      <span class="ts-footer__label">Total registrado:</span>
+      <span class="ts-footer__total">{{ formatHoras(totalHoras()) }}</span>
+      <span class="ts-footer__count">{{ totalItems() }} {{ totalItems() === 1 ? 'entrada' : 'entradas' }}</span>
+    </div>
+  }
+
+  <mat-paginator
+    [length]="totalItems()"
+    [pageSize]="pageSize()"
+    [pageSizeOptions]="[25, 50, 100]"
+    (page)="onPage($event)"
+    showFirstLastButtons />
+
+</div>

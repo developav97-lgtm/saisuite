@@ -257,22 +257,31 @@ class CostSummarySerializer(serializers.Serializer):
 
 
 class CostBreakdownResourceSerializer(serializers.Serializer):
-    """Un ítem de /costs/by-resource/"""
-    user_id             = serializers.UUIDField()
-    user_full_name      = serializers.CharField()
-    hours_worked        = serializers.DecimalField(max_digits=10, decimal_places=2)
-    cost                = serializers.DecimalField(max_digits=15, decimal_places=2)
-    percentage_of_total = serializers.DecimalField(max_digits=5, decimal_places=2)
+    """
+    Un ítem de /costs/by-resource/
+    Espeja exactamente el dict retornado por CostCalculationService.get_cost_by_resource().
+    """
+    user_id          = serializers.UUIDField()
+    user_name        = serializers.CharField()
+    user_email       = serializers.EmailField()
+    hours            = serializers.DecimalField(max_digits=10, decimal_places=2)
+    hourly_rate_avg  = serializers.DecimalField(max_digits=15, decimal_places=2)
+    total_cost       = serializers.DecimalField(max_digits=15, decimal_places=2)
+    pct              = serializers.DecimalField(max_digits=6, decimal_places=2)
 
 
 class CostBreakdownTaskSerializer(serializers.Serializer):
-    """Un ítem de /costs/by-task/"""
-    task_id         = serializers.UUIDField()
-    task_name       = serializers.CharField()
-    estimated_hours = serializers.DecimalField(max_digits=10, decimal_places=2)
-    actual_hours    = serializers.DecimalField(max_digits=10, decimal_places=2)
-    actual_cost     = serializers.DecimalField(max_digits=15, decimal_places=2)
-    hours_variance  = serializers.DecimalField(max_digits=10, decimal_places=2)
+    """
+    Un ítem de /costs/by-task/
+    Espeja exactamente el dict retornado por CostCalculationService.get_cost_by_task().
+    """
+    task_id      = serializers.UUIDField()
+    task_code    = serializers.CharField(allow_blank=True)
+    task_name    = serializers.CharField()
+    hours        = serializers.DecimalField(max_digits=10, decimal_places=2)
+    labor_cost   = serializers.DecimalField(max_digits=15, decimal_places=2)
+    expense_cost = serializers.DecimalField(max_digits=15, decimal_places=2)
+    total_cost   = serializers.DecimalField(max_digits=15, decimal_places=2)
 
 
 class BudgetVarianceSerializer(serializers.Serializer):
