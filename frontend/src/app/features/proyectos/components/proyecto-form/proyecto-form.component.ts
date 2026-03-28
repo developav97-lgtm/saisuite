@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal, computed } from '@angular/core';
-import { ActivatedRoute, Router, RouterModule } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormControl, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -12,11 +12,22 @@ import { MatNativeDateModule } from '@angular/material/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { startWith, map } from 'rxjs/operators';
 import { ProyectoService } from '../../services/proyecto.service';
 import { ProyectoCreate, ProyectoDetail, TipoProyecto, TIPO_LABELS } from '../../models/proyecto.model';
+
+/** Mapeo de TipoProyecto (backend inglés) → subtipo de consecutivo (backend español) */
+const TIPO_TO_SUBTIPO: Record<TipoProyecto, string> = {
+  civil_works:   'obra_civil',
+  consulting:    'consultoria',
+  manufacturing: 'manufactura',
+  services:      'servicios',
+  public_tender: 'licitacion_publica',
+  other:         'otro',
+};
 import { AdminService } from '../../../admin/services/admin.service';
 import { AdminUser } from '../../../admin/models/admin.models';
 import { ConsecutivoService } from '../../../admin/services/consecutivo.service';
@@ -31,12 +42,12 @@ interface SelectOption { label: string; value: string; }
   styleUrl: './proyecto-form.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    CommonModule, ReactiveFormsModule, RouterModule,
+    CommonModule, ReactiveFormsModule,
     MatButtonModule, MatFormFieldModule, MatInputModule,
     MatSelectModule, MatAutocompleteModule,
     MatDatepickerModule, MatNativeDateModule,
     MatCardModule, MatIconModule, MatProgressSpinnerModule,
-    TerceroSelectorComponent,
+    MatDialogModule, TerceroSelectorComponent,
   ],
 })
 export class ProyectoFormComponent implements OnInit {
@@ -48,6 +59,7 @@ export class ProyectoFormComponent implements OnInit {
 
   private readonly adminService        = inject(AdminService);
   private readonly consecutivoService  = inject(ConsecutivoService);
+  private readonly dialog              = inject(MatDialog);
 
   readonly editMode             = signal(false);
   readonly proyectoId           = signal<string | null>(null);
@@ -61,12 +73,14 @@ export class ProyectoFormComponent implements OnInit {
   readonly filteredConsecutivos = computed(() => {
     const tipo = this.selectedTipo();
     if (!tipo) return [];
+    const subtipo = TIPO_TO_SUBTIPO[tipo];
     return this.allConsecutivos().filter(
-      c => c.activo && c.tipo === 'proyecto' && c.subtipo === tipo,
+      c => c.activo && c.tipo === 'proyecto' && c.subtipo === subtipo,
     );
   });
   readonly consecutivoUnico           = computed(() => { const l = this.filteredConsecutivos(); return l.length === 1 ? l[0] : null; });
   readonly mostrarSelectorConsecutivo = computed(() => this.filteredConsecutivos().length > 1);
+  readonly sinConsecutivos            = computed(() => !!this.selectedTipo() && this.filteredConsecutivos().length === 0);
 
   // Controles de texto para el autocomplete (muestran el nombre, el form guarda el UUID)
   readonly gerenteSearch     = new FormControl('');
@@ -237,8 +251,37 @@ export class ProyectoFormComponent implements OnInit {
     this.form.controls.coordinador.setValue(userId);
   }
 
+  abrirConsecutivosModal(): void {
+    Promise.all([
+      import('../../../admin/consecutivos/consecutivo-list.component').then(m => m.ConsecutivoListComponent),
+      import('../../../../shared/components/quick-access-dialog/quick-access-dialog.component'),
+    ]).then(([component, m]) => {
+      const ref = this.dialog.open(m.QuickAccessDialogComponent, {
+        data: { title: 'Consecutivos', component, routes: [] },
+        width: '92vw', maxWidth: '92vw', height: '88vh',
+        panelClass: 'sc-quick-access-dialog',
+      });
+      ref.afterClosed().subscribe(() => {
+        // Recargar consecutivos para que aparezca el recién creado
+        this.consecutivoService.listAll().subscribe(list => {
+          this.allConsecutivos.set(list);
+          // Re-seleccionar automáticamente si ahora hay exactamente uno
+          const filtered = this.filteredConsecutivos();
+          this.form.controls.consecutivo_id.setValue(
+            filtered.length === 1 ? filtered[0].id : null,
+            { emitEvent: false },
+          );
+        });
+      });
+    });
+  }
+
   guardar(): void {
     if (this.form.invalid) { this.form.markAllAsTouched(); return; }
+    if (!this.proyectoId() && this.sinConsecutivos()) {
+      this.snackBar.open('No hay consecutivo configurado para este tipo de proyecto. Créalo en Administración → Consecutivos.', 'Cerrar', { duration: 6000, panelClass: ['snack-error'] });
+      return;
+    }
     this.saving.set(true);
     const val = this.form.getRawValue();
     const proyectoId = this.proyectoId();

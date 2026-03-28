@@ -39,6 +39,19 @@
             {{ accion.label }}
           </button>
         }
+        <!-- SK-42: Botón Scheduling con mat-menu -->
+        <button mat-stroked-button color="accent" [matMenuTriggerFor]="schedulingMenu"
+                matTooltip="Herramientas de programación">
+          <mat-icon>event_note</mat-icon> Scheduling
+          <mat-icon>arrow_drop_down</mat-icon>
+        </button>
+        <mat-menu #schedulingMenu="matMenu">
+          <button mat-menu-item (click)="openAutoSchedule()">
+            <mat-icon>auto_fix_high</mat-icon>
+            <span>Auto-Schedule</span>
+          </button>
+        </mat-menu>
+
         <button mat-raised-button color="primary" (click)="editarProyecto()">
           <mat-icon>edit</mat-icon> Editar
         </button>
@@ -256,6 +269,45 @@
         <div class="pd-tab-content">
           @defer (on idle) {
             <app-project-analytics-dashboard [projectId]="p.id" />
+          } @placeholder {
+            <div class="sc-loading-state" style="height: 200px;">
+              <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+            </div>
+          }
+        </div>
+      </mat-tab>
+
+      <!-- Tab 10: Baselines — SK-43 -->
+      <mat-tab label="Baselines">
+        <div class="pd-tab-content">
+          @defer (on viewport) {
+            <app-baseline-comparison [projectId]="p.id" />
+          } @placeholder {
+            <div class="sc-loading-state" style="height: 200px;">
+              <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+            </div>
+          }
+        </div>
+      </mat-tab>
+
+      <!-- Tab 11: Escenarios What-If — SK-43 -->
+      <mat-tab label="Escenarios">
+        <div class="pd-tab-content">
+          @defer (on viewport) {
+            <app-what-if-scenario-builder [projectId]="p.id" />
+          } @placeholder {
+            <div class="sc-loading-state" style="height: 200px;">
+              <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+            </div>
+          }
+        </div>
+      </mat-tab>
+
+      <!-- Tab 12: Presupuesto & Costos — Feature #7 -->
+      <mat-tab label="Presupuesto">
+        <div class="pd-tab-content">
+          @defer (on viewport) {
+            <app-budget-dashboard [projectId]="p.id" />
           } @placeholder {
             <div class="sc-loading-state" style="height: 200px;">
               <mat-progress-bar mode="indeterminate"></mat-progress-bar>

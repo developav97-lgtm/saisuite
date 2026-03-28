@@ -13,9 +13,19 @@ DATABASES = {
     }
 }
 
-# Desactivar migraciones pesadas en tests (usa schema directo)
-# Nota: dejar en False para que cree las tablas correctamente
-# MIGRATION_MODULES = {app: None for app in INSTALLED_APPS}
+# Desactivar migraciones en tests — Django crea el schema desde el estado actual
+# del modelo, evitando el bug de SQLite donde RenameModel no actualiza FK
+# constraints en tablas relacionadas (ej: proyectos_taskdependency → proyectos_tarea).
+# En PostgreSQL (producción) las migraciones se ejecutan normalmente.
+class DisableMigrations:
+    def __contains__(self, item):
+        return True
+
+    def __getitem__(self, item):
+        return None
+
+
+MIGRATION_MODULES = DisableMigrations()
 
 # Passwords más simples en tests → más rápido
 PASSWORD_HASHERS = ['django.contrib.auth.hashers.MD5PasswordHasher']

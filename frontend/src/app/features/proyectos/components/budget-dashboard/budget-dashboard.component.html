@@ -1,0 +1,441 @@
+@if (loading()) {
+  <mat-progress-bar mode="indeterminate" />
+}
+
+<div class="bd-container">
+
+  <!-- ── Alerts ── -->
+  @if (alerts().length > 0) {
+    <div class="bd-alerts">
+      @for (alert of alerts(); track alert.type) {
+        <div [class]="'bd-alert bd-alert--' + alert.type">
+          <mat-icon class="bd-alert__icon">
+            @switch (alert.type) {
+              @case ('danger')  { error }
+              @case ('warning') { warning }
+              @default          { info }
+            }
+          </mat-icon>
+          <span class="bd-alert__msg">{{ alert.message }}</span>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- ── Budget summary card ── -->
+  <div class="bd-grid bd-grid--3">
+
+    <!-- Presupuesto -->
+    <mat-card class="bd-card">
+      <mat-card-header>
+        <mat-icon mat-card-avatar>account_balance_wallet</mat-icon>
+        <mat-card-title>Presupuesto</mat-card-title>
+        <mat-card-subtitle>
+          @if (budget()?.is_approved) {
+            <mat-chip class="bd-chip--approved">
+              <mat-icon matChipAvatar>verified</mat-icon>Aprobado
+            </mat-chip>
+          } @else {
+            <span class="bd-subtitle--pending">Pendiente de aprobación</span>
+          }
+        </mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        @if (hasBudget()) {
+          <div class="bd-stat-row">
+            <span class="bd-stat-label">Planificado</span>
+            <span class="bd-stat-value">{{ formatCurrency(budget()!.planned_total_budget) }}</span>
+          </div>
+          @if (budget()!.approved_budget) {
+            <div class="bd-stat-row">
+              <span class="bd-stat-label">Aprobado</span>
+              <span class="bd-stat-value bd-stat-value--approved">
+                {{ formatCurrency(budget()!.approved_budget) }}
+              </span>
+            </div>
+          }
+          <mat-divider />
+          <div class="bd-stat-row">
+            <span class="bd-stat-label">Costo real</span>
+            <span [class]="'bd-stat-value ' + (alertLevel() !== 'none' ? 'bd-stat-value--alert' : '')">
+              {{ formatCurrency(budget()!.actual_total_cost) }}
+            </span>
+          </div>
+          <div class="bd-execution-bar">
+            <div class="bd-execution-bar__label">Ejecución {{ executionPct() }}%</div>
+            <mat-progress-bar
+              [mode]="'determinate'"
+              [value]="executionPct()"
+              [color]="alertLevel() === 'danger' ? 'warn' : alertLevel() === 'warning' ? 'accent' : 'primary'"
+            />
+          </div>
+        } @else {
+          <p class="bd-empty-hint">Sin presupuesto definido.</p>
+        }
+      </mat-card-content>
+      <mat-card-actions align="end">
+        <button mat-button (click)="showBudgetForm.set(!showBudgetForm())">
+          <mat-icon>{{ hasBudget() ? 'edit' : 'add' }}</mat-icon>
+          {{ hasBudget() ? 'Editar' : 'Definir presupuesto' }}
+        </button>
+        @if (hasBudget()) {
+          <button mat-button (click)="createSnapshot()" matTooltip="Guardar snapshot del estado actual">
+            <mat-icon>save_alt</mat-icon> Snapshot
+          </button>
+        }
+      </mat-card-actions>
+    </mat-card>
+
+    <!-- Mano de obra -->
+    <mat-card class="bd-card">
+      <mat-card-header>
+        <mat-icon mat-card-avatar>engineering</mat-icon>
+        <mat-card-title>Mano de obra</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="bd-stat-row">
+          <span class="bd-stat-label">Costo real</span>
+          <span class="bd-stat-value">{{ formatCurrency(budget()?.actual_labor_cost) }}</span>
+        </div>
+        <div class="bd-stat-row">
+          <span class="bd-stat-label">Planificado</span>
+          <span class="bd-stat-value bd-stat-value--muted">
+            {{ formatCurrency(budget()?.planned_labor_cost) }}
+          </span>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Gastos directos -->
+    <mat-card class="bd-card">
+      <mat-card-header>
+        <mat-icon mat-card-avatar>receipt_long</mat-icon>
+        <mat-card-title>Gastos directos</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="bd-stat-row">
+          <span class="bd-stat-label">Costo real</span>
+          <span class="bd-stat-value">{{ formatCurrency(budget()?.actual_expense_cost) }}</span>
+        </div>
+        <div class="bd-stat-row">
+          <span class="bd-stat-label">Planificado</span>
+          <span class="bd-stat-value bd-stat-value--muted">
+            {{ formatCurrency(budget()?.planned_expense_cost) }}
+          </span>
+        </div>
+        <div class="bd-stat-row">
+          <span class="bd-stat-label">Registrados</span>
+          <span class="bd-stat-value">{{ expenses().length }}</span>
+        </div>
+      </mat-card-content>
+      <mat-card-actions align="end">
+        <button mat-button (click)="showExpenseForm.set(!showExpenseForm())">
+          <mat-icon>add</mat-icon> Registrar gasto
+        </button>
+      </mat-card-actions>
+    </mat-card>
+
+  </div>
+
+  <!-- ── EVM Metrics ── -->
+  @if (evm(); as evmData) {
+    <mat-card class="bd-card bd-card--full">
+      <mat-card-header>
+        <mat-icon mat-card-avatar>analytics</mat-icon>
+        <mat-card-title>Earned Value Management (EVM)</mat-card-title>
+        <mat-card-subtitle>
+          Al {{ evmData.as_of_date }}
+          @if (evmData.warning) {
+            <span class="bd-evm-warning"> — {{ evmData.warning }}</span>
+          }
+        </mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="bd-grid bd-grid--4">
+          <div class="bd-evm-metric">
+            <div class="bd-evm-metric__label">BAC</div>
+            <div class="bd-evm-metric__value">{{ formatCurrency(evmData.BAC) }}</div>
+            <div class="bd-evm-metric__desc">Presupuesto total</div>
+          </div>
+          <div class="bd-evm-metric">
+            <div class="bd-evm-metric__label">EV</div>
+            <div class="bd-evm-metric__value">{{ formatCurrency(evmData.EV) }}</div>
+            <div class="bd-evm-metric__desc">Valor ganado</div>
+          </div>
+          <div class="bd-evm-metric">
+            <div class="bd-evm-metric__label">AC</div>
+            <div class="bd-evm-metric__value">{{ formatCurrency(evmData.AC) }}</div>
+            <div class="bd-evm-metric__desc">Costo real</div>
+          </div>
+          <div class="bd-evm-metric">
+            <div class="bd-evm-metric__label">PV</div>
+            <div class="bd-evm-metric__value">{{ formatCurrency(evmData.PV) }}</div>
+            <div class="bd-evm-metric__desc">Valor planificado</div>
+          </div>
+          <div class="bd-evm-metric">
+            <div class="bd-evm-metric__label">CPI</div>
+            <div class="bd-evm-metric__value" [style.color]="cpiColor(evmData.CPI)">
+              {{ evmData.CPI ?? '—' }}
+            </div>
+            <div class="bd-evm-metric__desc">Eficiencia de costo</div>
+          </div>
+          <div class="bd-evm-metric">
+            <div class="bd-evm-metric__label">SPI</div>
+            <div class="bd-evm-metric__value" [style.color]="cpiColor(evmData.SPI)">
+              {{ evmData.SPI ?? '—' }}
+            </div>
+            <div class="bd-evm-metric__desc">Eficiencia de cronograma</div>
+          </div>
+          <div class="bd-evm-metric">
+            <div class="bd-evm-metric__label">EAC</div>
+            <div class="bd-evm-metric__value">{{ formatCurrency(evmData.EAC) }}</div>
+            <div class="bd-evm-metric__desc">Estimado al completar</div>
+          </div>
+          <div class="bd-evm-metric">
+            <div class="bd-evm-metric__label">Avance</div>
+            <div class="bd-evm-metric__value">{{ evmData.completion_percentage }}%</div>
+            <div class="bd-evm-metric__desc">% completado</div>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  }
+
+  <!-- ── Budget form ── -->
+  @if (showBudgetForm()) {
+    <mat-card class="bd-card bd-card--full bd-card--form">
+      <mat-card-header>
+        <mat-card-title>{{ hasBudget() ? 'Editar presupuesto' : 'Definir presupuesto' }}</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <form [formGroup]="budgetForm" class="bd-form bd-form--budget">
+          <mat-form-field appearance="outline">
+            <mat-label>Presupuesto total planificado</mat-label>
+            <input matInput type="number" formControlName="planned_total_budget" />
+            @if (budgetForm.get('planned_total_budget')?.hasError('required')) {
+              <mat-error>Campo requerido.</mat-error>
+            }
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Costo mano de obra planificado</mat-label>
+            <input matInput type="number" formControlName="planned_labor_cost" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Costo gastos planificado</mat-label>
+            <input matInput type="number" formControlName="planned_expense_cost" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Umbral de alerta (%)</mat-label>
+            <input matInput type="number" formControlName="alert_threshold_percentage" />
+            @if (budgetForm.get('alert_threshold_percentage')?.hasError('min') ||
+                 budgetForm.get('alert_threshold_percentage')?.hasError('max')) {
+              <mat-error>Debe ser entre 1 y 100.</mat-error>
+            }
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Moneda</mat-label>
+            <mat-select formControlName="currency">
+              <mat-option value="COP">COP</mat-option>
+              <mat-option value="USD">USD</mat-option>
+              <mat-option value="EUR">EUR</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="bd-form__full-width">
+            <mat-label>Notas</mat-label>
+            <textarea matInput formControlName="notes" rows="2"></textarea>
+          </mat-form-field>
+        </form>
+      </mat-card-content>
+      <mat-card-actions align="end">
+        <button mat-button (click)="showBudgetForm.set(false)">Cancelar</button>
+        <button mat-flat-button color="primary" (click)="saveBudget()" [disabled]="budgetForm.invalid">
+          Guardar
+        </button>
+      </mat-card-actions>
+    </mat-card>
+  }
+
+  <!-- ── Expense registration form ── -->
+  @if (showExpenseForm()) {
+    <mat-card class="bd-card bd-card--full bd-card--form">
+      <mat-card-header>
+        <mat-card-title>Registrar gasto</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <form [formGroup]="expenseForm" class="bd-form bd-form--expense">
+          <mat-form-field appearance="outline">
+            <mat-label>Categoría</mat-label>
+            <mat-select formControlName="category">
+              @for (cat of EXPENSE_CATEGORIES; track cat.value) {
+                <mat-option [value]="cat.value">{{ cat.label }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Descripción</mat-label>
+            <input matInput formControlName="description" />
+            @if (expenseForm.get('description')?.hasError('required')) {
+              <mat-error>Campo requerido.</mat-error>
+            }
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Monto</mat-label>
+            <input matInput type="number" formControlName="amount" />
+            @if (expenseForm.get('amount')?.hasError('required')) {
+              <mat-error>Campo requerido.</mat-error>
+            }
+            @if (expenseForm.get('amount')?.hasError('min')) {
+              <mat-error>Debe ser mayor a 0.</mat-error>
+            }
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Fecha del gasto</mat-label>
+            <input matInput type="date" formControlName="expense_date" />
+            @if (expenseForm.get('expense_date')?.hasError('required')) {
+              <mat-error>Campo requerido.</mat-error>
+            }
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Moneda</mat-label>
+            <mat-select formControlName="currency">
+              <mat-option value="COP">COP</mat-option>
+              <mat-option value="USD">USD</mat-option>
+              <mat-option value="EUR">EUR</mat-option>
+            </mat-select>
+          </mat-form-field>
+        </form>
+      </mat-card-content>
+      <mat-card-actions align="end">
+        <button mat-button (click)="showExpenseForm.set(false)">Cancelar</button>
+        <button mat-flat-button color="primary" (click)="saveExpense()" [disabled]="expenseForm.invalid">
+          Registrar
+        </button>
+      </mat-card-actions>
+    </mat-card>
+  }
+
+  <!-- ── Cost breakdown by resource ── -->
+  @defer (on viewport) {
+    @if (costByResource().length > 0) {
+      <mat-card class="bd-card bd-card--full">
+        <mat-card-header>
+          <mat-icon mat-card-avatar>people</mat-icon>
+          <mat-card-title>Costo por recurso</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <table mat-table [dataSource]="costByResource()" class="bd-table">
+            <ng-container matColumnDef="user">
+              <th mat-header-cell *matHeaderCellDef>Recurso</th>
+              <td mat-cell *matCellDef="let row">{{ row.user_full_name }}</td>
+            </ng-container>
+            <ng-container matColumnDef="hours">
+              <th mat-header-cell *matHeaderCellDef>Horas</th>
+              <td mat-cell *matCellDef="let row">{{ row.hours_worked }}</td>
+            </ng-container>
+            <ng-container matColumnDef="rate">
+              <th mat-header-cell *matHeaderCellDef>Tarifa prom.</th>
+              <td mat-cell *matCellDef="let row">—</td>
+            </ng-container>
+            <ng-container matColumnDef="cost">
+              <th mat-header-cell *matHeaderCellDef>Costo</th>
+              <td mat-cell *matCellDef="let row">{{ formatCurrency(row.cost) }}</td>
+            </ng-container>
+            <ng-container matColumnDef="pct">
+              <th mat-header-cell *matHeaderCellDef>%</th>
+              <td mat-cell *matCellDef="let row">{{ row.percentage_of_total }}%</td>
+            </ng-container>
+            <tr mat-header-row *matHeaderRowDef="RESOURCE_COLUMNS"></tr>
+            <tr mat-row *matRowDef="let row; columns: RESOURCE_COLUMNS"></tr>
+          </table>
+        </mat-card-content>
+      </mat-card>
+    }
+  }
+
+  <!-- ── Expenses table ── -->
+  @defer (on viewport) {
+    <mat-card class="bd-card bd-card--full">
+      <mat-card-header>
+        <mat-icon mat-card-avatar>receipt_long</mat-icon>
+        <mat-card-title>Gastos del proyecto</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        @if (expenses().length === 0) {
+          <div class="sc-empty-state">
+            <mat-icon class="sc-empty-state__icon">receipt_long</mat-icon>
+            <p class="sc-empty-state__title">Sin gastos registrados</p>
+            <p class="sc-empty-state__subtitle">Registra el primer gasto del proyecto.</p>
+            <button mat-flat-button color="primary" (click)="showExpenseForm.set(true)">
+              <mat-icon>add</mat-icon> Registrar gasto
+            </button>
+          </div>
+        } @else {
+          <mat-progress-bar *ngIf="false" mode="indeterminate" />
+          <table mat-table [dataSource]="expenses()" class="bd-table">
+            <ng-container matColumnDef="date">
+              <th mat-header-cell *matHeaderCellDef>Fecha</th>
+              <td mat-cell *matCellDef="let row">{{ row.expense_date }}</td>
+            </ng-container>
+            <ng-container matColumnDef="category">
+              <th mat-header-cell *matHeaderCellDef>Categoría</th>
+              <td mat-cell *matCellDef="let row">{{ row.category_display }}</td>
+            </ng-container>
+            <ng-container matColumnDef="description">
+              <th mat-header-cell *matHeaderCellDef>Descripción</th>
+              <td mat-cell *matCellDef="let row">{{ row.description }}</td>
+            </ng-container>
+            <ng-container matColumnDef="amount">
+              <th mat-header-cell *matHeaderCellDef>Monto</th>
+              <td mat-cell *matCellDef="let row">{{ formatCurrency(row.amount) }}</td>
+            </ng-container>
+            <ng-container matColumnDef="billable">
+              <th mat-header-cell *matHeaderCellDef>Facturable</th>
+              <td mat-cell *matCellDef="let row">
+                <mat-icon [style.color]="row.billable ? 'var(--sc-success)' : 'var(--sc-muted)'">
+                  {{ row.billable ? 'check_circle' : 'cancel' }}
+                </mat-icon>
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="approved">
+              <th mat-header-cell *matHeaderCellDef>Estado</th>
+              <td mat-cell *matCellDef="let row">
+                @if (row.is_approved) {
+                  <mat-chip class="bd-chip--approved">Aprobado</mat-chip>
+                } @else {
+                  <mat-chip class="bd-chip--pending">Pendiente</mat-chip>
+                }
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="actions">
+              <th mat-header-cell *matHeaderCellDef></th>
+              <td mat-cell *matCellDef="let row">
+                @if (!row.is_approved) {
+                  <button mat-icon-button color="primary" (click)="approveExpense(row)"
+                          matTooltip="Aprobar gasto">
+                    <mat-icon>verified</mat-icon>
+                  </button>
+                  <button mat-icon-button color="warn" (click)="deleteExpense(row)"
+                          matTooltip="Eliminar gasto">
+                    <mat-icon>delete</mat-icon>
+                  </button>
+                }
+              </td>
+            </ng-container>
+            <tr mat-header-row *matHeaderRowDef="EXPENSE_COLUMNS"></tr>
+            <tr mat-row *matRowDef="let row; columns: EXPENSE_COLUMNS"></tr>
+          </table>
+        }
+      </mat-card-content>
+    </mat-card>
+  }
+
+</div>

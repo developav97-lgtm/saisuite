@@ -834,15 +834,16 @@ class TimesheetEntryService:
         company=None,
     ):
         """
-        Crea o actualiza un registro de horas para usuario/tarea/fecha.
+        Crea o actualiza un registro de horas/días para usuario/tarea/fecha.
         Si ya existe un entry para ese día/tarea/usuario, lo actualiza
         siempre que no esté validado.
+        Siempre recalcula tarea.horas_registradas con la suma de todos los entries.
 
         Raises:
             ValidationError: si horas fuera de rango o entry ya validado.
         """
-        if horas <= 0 or horas > 24:
-            raise ValidationError({'horas': 'Las horas deben estar entre 0.01 y 24.'})
+        if horas <= 0 or horas > 365:
+            raise ValidationError({'horas': 'El valor debe estar entre 0.01 y 365.'})
 
         tarea = Task.objects.select_related('company').get(
             id=tarea_id, company=company,
@@ -867,6 +868,9 @@ class TimesheetEntryService:
             entry.horas       = horas
             entry.descripcion = descripcion
             entry.save(update_fields=['horas', 'descripcion'])
+
+        # Recalcular horas_registradas con todos los entries (validados y no validados)
+        TimesheetEntryService._recalcular_horas(tarea)
 
         logger.info('timesheet_entry_registrado', extra={
             'entry_id': str(entry.id),
@@ -895,7 +899,12 @@ class TimesheetEntryService:
         if entry.validado:
             raise ValidationError('No se puede eliminar un registro ya validado.')
 
+        tarea = entry.tarea
         entry.delete()
+
+        # Recalcular horas_registradas tras eliminar
+        TimesheetEntryService._recalcular_horas(tarea)
+
         logger.info('timesheet_entry_eliminado', extra={'entry_id': entry_id})
 
     # ── Validación por manager ─────────────────────────────────────────────────
@@ -949,6 +958,24 @@ class TimesheetEntryService:
         return entry
 
     # ── Cálculo de horas acumuladas ────────────────────────────────────────────
+
+    @staticmethod
+    def _recalcular_horas(tarea) -> None:
+        """Suma todos los entries (validados y no validados) y actualiza la tarea."""
+        total = TimesheetEntry.objects.filter(
+            tarea=tarea,
+        ).aggregate(total=Sum('horas'))['total'] or Decimal('0')
+
+        tarea.horas_registradas = total
+        update_fields = ['horas_registradas']
+        if tarea.horas_estimadas and tarea.horas_estimadas > 0:
+            nuevo_pct = min(
+                int(float(total) / float(tarea.horas_estimadas) * 100),
+                100,
+            )
+            tarea.porcentaje_completado = nuevo_pct
+            update_fields.append('porcentaje_completado')
+        tarea.save(update_fields=update_fields)
 
     @staticmethod
     @transaction.atomic

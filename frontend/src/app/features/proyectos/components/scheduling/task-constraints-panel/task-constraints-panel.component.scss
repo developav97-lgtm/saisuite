@@ -1,0 +1,105 @@
+// SaiSuite — TaskConstraintsPanelComponent (SK-37)
+
+.tcp-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+}
+
+// ── Header ────────────────────────────────────────────────────────────────────
+.tcp-header {
+  &__title {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    margin: 0;
+    color: var(--sc-primary);
+  }
+
+  &__icon {
+    font-size: 1.1rem;
+    color: var(--sc-primary);
+  }
+}
+
+// ── Progress ──────────────────────────────────────────────────────────────────
+.tcp-progress {
+  border-radius: var(--sc-radius);
+}
+
+// ── Formulario de agregar ─────────────────────────────────────────────────────
+.tcp-add-form {
+  padding: 0.875rem 1rem;
+  border: 1px solid var(--sc-surface-border);
+  border-radius: var(--sc-radius);
+
+  &__label {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--sc-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin: 0 0 0.75rem;
+  }
+
+  &__fields {
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+}
+
+.tcp-field-type {
+  flex: 1;
+  min-width: 220px;
+}
+
+.tcp-field-date {
+  width: 180px;
+  flex-shrink: 0;
+}
+
+.tcp-add-btn {
+  margin-top: 4px; // alinear con mat-form-field
+  flex-shrink: 0;
+}
+
+// ── Lista ─────────────────────────────────────────────────────────────────────
+.tcp-list {
+  padding: 0;
+  border: 1px solid var(--sc-surface-border);
+  border-radius: var(--sc-radius);
+  overflow: hidden;
+}
+
+.tcp-list-item {
+  border-bottom: 1px solid var(--sc-surface-border);
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  &__icon {
+    color: var(--sc-primary);
+  }
+
+  &__title {
+    font-weight: 500;
+  }
+
+  &__date {
+    font-size: 0.8125rem;
+    color: var(--sc-text-muted);
+    font-family: 'SF Mono', 'Fira Code', monospace;
+  }
+}
+
+// ── Empty state ───────────────────────────────────────────────────────────────
+.tcp-empty {
+  border: 1px solid var(--sc-surface-border);
+  border-radius: var(--sc-radius);
+  padding: 1.5rem;
+}

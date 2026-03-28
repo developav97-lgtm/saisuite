@@ -6,6 +6,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
   OnInit,
   input,
   output,
@@ -206,6 +207,7 @@ export class SelectorDependenciasComponent implements OnInit {
   // ── DI ───────────────────────────────────────────────────────────────────
   private readonly tareaService = inject(TareaService);
   private readonly snackBar     = inject(MatSnackBar);
+  private readonly destroyRef   = inject(DestroyRef);
 
   // ── Estado ───────────────────────────────────────────────────────────────
   readonly busquedaCtrl   = new FormControl<string | Tarea>('');
@@ -245,7 +247,7 @@ export class SelectorDependenciasComponent implements OnInit {
           search: query,
         }).pipe(catchError(() => of([])));
       }),
-      takeUntilDestroyed(),
+      takeUntilDestroyed(this.destroyRef),
     ).subscribe(tareas => {
       const tareaActualId = this.tarea().id;
       const yaRelacionadas = new Set([

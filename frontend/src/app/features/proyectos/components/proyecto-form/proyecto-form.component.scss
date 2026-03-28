@@ -32,11 +32,16 @@
   color: var(--sc-text-color);
 
   mat-icon { color: var(--sc-color-warning, #f59e0b); opacity: 1; }
+}
 
-  a {
-    color: var(--sc-primary);
-    font-weight: 600;
-  }
+.pf-consecutivo-link {
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0 4px;
+  min-width: unset;
+  height: auto;
+  line-height: 1.4;
+  vertical-align: baseline;
 }
 
 // ── Layout de dos columnas ────────────────────────────────────

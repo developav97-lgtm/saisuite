@@ -1,3 +1,80 @@
+## DEC-029: Automatización de Snapshots — Management Command vs Celery
+**Fecha:** 2026-03-28
+**Estado:** ✅ Decidido e implementado
+
+**Contexto:** Feature #7 (BG-47) requería ejecutar snapshots semanales de presupuesto automáticamente. El plan original contemplaba una Celery task (`@shared_task`).
+
+**Opciones consideradas:**
+1. **Celery task** — requiere broker Redis/RabbitMQ + worker process, nada de esto existe en el stack
+2. **Django management command** — invocable desde cron, AWS EventBridge, n8n o curl; cero dependencias nuevas
+
+**Decisión:** Django management command `budget_weekly_snapshot`.
+
+**Razón:** El stack actual no tiene broker (Redis no está en `docker-compose.yml` ni en settings). Agregar Celery solo para este proceso sería sobreingeniería. Un management command es suficiente para frecuencia semanal y puede dispararse síncronamente desde EventBridge o n8n.
+
+**Consecuencia:** Si en el futuro se agrega Celery, el command se envuelve trivialmente: `call_command('budget_weekly_snapshot')` dentro de `@shared_task`. La migración no requiere cambiar la lógica del command.
+
+**Scheduling recomendado:**
+- AWS EventBridge: `cron(0 6 ? * MON *)`
+- n8n: workflow cron → HTTP POST al endpoint de gestión interno
+- Sistema: `0 6 * * 1 /app/manage.py budget_weekly_snapshot`
+
+---
+
+## DEC-028: EVM — Fórmula Simplificada vs Earned Value Completo
+**Fecha:** 2026-03-28
+**Estado:** ✅ Decidido e implementado
+
+**Contexto:** Feature #7 (BG-29) requería métricas EVM (CPI, SPI, EAC, etc.). La fórmula estándar de EVM requiere un baseline detallado de planificación por período (baseline distribution), que no existe en el modelo de datos actual.
+
+**Opciones consideradas:**
+1. **EVM completo** — requiere `BaselinePeriod` con distribución de PV por semana/mes; modelo no existe
+2. **EVM simplificado** — PV estimado linealmente, EV basado en porcentaje de avance de tareas
+
+**Decisión:** EVM simplificado con estas fórmulas:
+- `PV = BAC × (elapsed_days / total_days)` — valor planificado lineal
+- `EV = BAC × avg(task.porcentaje_completado / 100)` — valor ganado real
+- `AC` = costo real de timesheets + gastos
+- Resto de métricas (CPI, SPI, EAC, ETC, TCPI, VAC) se calculan con las fórmulas estándar PMI
+
+**Razón:** El modelo no tiene distribución de costos planificada por período. La aproximación lineal es suficiente para alertas tempranas y tendencias. Implementar la distribución completa es una feature independiente (Feature #8+).
+
+**Consecuencia:** Los valores de PV son aproximados. Para proyectos con esfuerzo muy no-lineal, los índices SPI pueden ser engañosos. Se documenta esta limitación en la guía de usuario. Cuando se implemente `BaselinePeriod`, `EVMService.get_evm_metrics()` se actualiza sin cambiar la API.
+
+---
+
+## DEC-027: Gantt Overlay — Re-render completo vs patch DOM
+**Fecha:** 2026-03-27
+**Estado:** ✅ Decidido e implementado
+
+**Contexto:** Feature #6 (SK-41) requería añadir overlays visuales sobre el Gantt (ruta crítica, holgura, baseline) sin reescribir Frappe Gantt.
+
+**Opciones consideradas:**
+- Opción A: Parchear el DOM del SVG de Frappe Gantt post-render para cambiar estilos/labels
+- Opción B: Re-render completo de Frappe Gantt con `renderTasks` enriquecidos (`custom_class`, `name` con sufijos)
+
+**Decisión:** Opción B — re-render completo vía `rerenderGantt()`.
+
+**Razón:** Frappe Gantt no expone API de actualización granular por tarea. El parche DOM sería frágil ante actualizaciones de la librería y difícil de revertir. El re-render es más costoso (~50ms) pero simple, correcto y mantenible. Con debounce de 400ms en drag, no hay conflicto.
+
+**Consecuencia:** `initGantt()` ahora delega a `rerenderGantt()`. El array `this.tasks` permanece como la fuente de verdad sin mutaciones; `renderTasks` es el array derivado temporal para cada render.
+
+---
+
+## DEC-026: DisableMigrations en testing.py — Fix SQLite FK enforcement
+**Fecha:** 2026-03-27
+**Estado:** ✅ Decidido e implementado
+
+**Contexto:** Feature #6 Chunk 5 — Los tests de scheduling fallaban con `OperationalError: no such table: main.proyectos_tarea` porque la migración 0013 (`RenameModel Tarea→Task`) no actualiza FK constraints en SQLite. Django reconstruye el schema copiando tablas, pero deja referencias rotas en SQLite.
+
+**Decisión:** Agregar `DisableMigrations` class en `backend/config/settings/testing.py` para que Django use `CREATE TABLE` directo desde el estado actual de los modelos, sin reproducir el historial de migraciones.
+
+**Razón:** La alternativa (regenerar todas las migraciones) rompería el historial de producción. `DisableMigrations` es el patrón estándar de Django para entornos de test con SQLite que no soportan todas las operaciones de migración.
+
+**Consecuencia:** Los tests no validan que las migraciones sean correctas. Los tests de integración en CI/CD contra PostgreSQL (producción) siguen corriendo con migraciones reales — eso es la validación real.
+
+---
+
 ## DEC-023: Refactoring Completo — Renombrado Español → Inglés
 **Fecha:** 2026-03-26
 **Estado:** 🔄 En ejecución — rama `refactor/english-rename`

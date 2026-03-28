@@ -17,7 +17,13 @@ import { GanttViewComponent } from '../gantt-view/gantt-view.component';
 import { TeamTimelineComponent } from '../team-timeline/team-timeline.component';
 import { ProjectAnalyticsDashboardComponent } from '../analytics/project-analytics-dashboard/project-analytics-dashboard.component';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatMenuModule } from '@angular/material/menu';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { ConfirmDialogComponent } from '../../../../shared/components/confirm-dialog/confirm-dialog.component';
+import { AutoScheduleDialogComponent } from '../scheduling/auto-schedule-dialog/auto-schedule-dialog.component';
+import { BaselineComparisonComponent } from '../scheduling/baseline-comparison/baseline-comparison.component';
+import { WhatIfScenarioBuilderComponent } from '../scheduling/what-if-scenario-builder/what-if-scenario-builder.component';
+import { BudgetDashboardComponent } from '../budget-dashboard/budget-dashboard.component';
 
 @Component({
   selector: 'app-proyecto-detail',
@@ -36,6 +42,12 @@ import { ConfirmDialogComponent } from '../../../../shared/components/confirm-di
     GanttViewComponent,
     TeamTimelineComponent,
     ProjectAnalyticsDashboardComponent,
+    MatMenuModule,
+    MatTooltipModule,
+    AutoScheduleDialogComponent,
+    BaselineComparisonComponent,
+    WhatIfScenarioBuilderComponent,
+    BudgetDashboardComponent,
   ],
 })
 export class ProyectoDetailComponent implements OnInit {
@@ -79,6 +91,18 @@ export class ProyectoDetailComponent implements OnInit {
         this.snackBar.open('No se pudo cargar el proyecto.', 'Cerrar', { duration: 4000, panelClass: ['snack-error'] });
         this.loading.set(false);
       },
+    });
+  }
+
+  // ── SK-42: Auto-Schedule dialog ──────────────────────────────────────────
+
+  openAutoSchedule(): void {
+    const p = this.proyecto();
+    if (!p) return;
+    this.dialog.open(AutoScheduleDialogComponent, {
+      data: { projectId: p.id, projectName: p.nombre },
+      width: '560px',
+      disableClose: false,
     });
   }
 

@@ -1,0 +1,274 @@
+<!-- SaiSuite — BaselineComparisonComponent (SK-38) -->
+<div class="bc-container">
+
+  <!-- Header -->
+  <div class="bc-header">
+    <h3 class="bc-header__title">
+      <mat-icon class="bc-header__icon">history</mat-icon>
+      Baselines del Proyecto
+    </h3>
+    <button mat-raised-button color="primary" type="button" (click)="toggleCreateForm()">
+      <mat-icon>{{ showCreateForm() ? 'close' : 'add' }}</mat-icon>
+      {{ showCreateForm() ? 'Cancelar' : 'Crear Baseline' }}
+    </button>
+  </div>
+
+  <!-- Progress bar de carga general -->
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate" class="bc-progress" />
+  }
+
+  <!-- Formulario de creación (expandible) -->
+  @if (showCreateForm()) {
+    <div class="bc-create-card sc-card" [formGroup]="createForm">
+      <p class="bc-create-card__title">Nuevo Baseline</p>
+
+      <div class="bc-create-fields">
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bc-field-name">
+          <mat-label>Nombre del baseline</mat-label>
+          <input matInput formControlName="name" placeholder="Ej: Línea base v1.0" />
+          @if (createForm.get('name')?.hasError('required')) {
+            <mat-error>El nombre es obligatorio</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bc-field-desc">
+          <mat-label>Descripción (opcional)</mat-label>
+          <input matInput formControlName="description" placeholder="Descripción del snapshot" />
+        </mat-form-field>
+      </div>
+
+      <div class="bc-create-actions">
+        <button mat-stroked-button type="button" (click)="toggleCreateForm()">Cancelar</button>
+        <button
+          mat-raised-button
+          color="primary"
+          type="button"
+          (click)="createBaseline()"
+          [disabled]="createForm.invalid || saving()"
+        >
+          @if (saving()) {
+            <mat-icon class="bc-spin">refresh</mat-icon>
+          }
+          Guardar Baseline
+        </button>
+      </div>
+    </div>
+  }
+
+  <!-- Lista de baselines -->
+  @if (!loading() && baselines().length > 0) {
+    <div class="bc-baselines-list">
+      @for (baseline of baselines(); track baseline.id) {
+        <div class="bc-baseline-item sc-card">
+          <div class="bc-baseline-item__info">
+            <div class="bc-baseline-item__name">
+              {{ baseline.name }}
+              @if (baseline.is_active_baseline) {
+                <mat-chip class="bc-active-chip" [disableRipple]="true">Activo</mat-chip>
+              }
+            </div>
+            <div class="bc-baseline-item__meta">
+              <span>{{ baseline.total_tasks_snapshot }} tareas</span>
+              @if (baseline.project_end_date_snapshot) {
+                <span>Fin: {{ baseline.project_end_date_snapshot | date:'dd/MM/yyyy' }}</span>
+              }
+              <span>Creado: {{ baseline.created_at | date:'dd/MM/yyyy' }}</span>
+            </div>
+          </div>
+          <div class="bc-baseline-item__actions">
+            <button
+              mat-icon-button
+              color="warn"
+              type="button"
+              (click)="deleteBaseline(baseline)"
+              matTooltip="Eliminar baseline"
+              [disabled]="baseline.is_active_baseline"
+            >
+              <mat-icon>delete_outline</mat-icon>
+            </button>
+          </div>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- Empty state baselines -->
+  @if (!loading() && baselines().length === 0) {
+    <div class="sc-empty-state bc-empty">
+      <mat-icon>history_toggle_off</mat-icon>
+      <p>No hay baselines creados para este proyecto.</p>
+      <button mat-raised-button color="primary" type="button" (click)="toggleCreateForm()">
+        <mat-icon>add</mat-icon>
+        Crear primer baseline
+      </button>
+    </div>
+  }
+
+  <!-- Sección de comparación -->
+  @if (baselines().length > 0) {
+    <div class="bc-compare-section sc-card">
+      <p class="bc-compare-section__title">
+        <mat-icon>compare_arrows</mat-icon>
+        Comparar con baseline
+      </p>
+
+      <div class="bc-compare-controls">
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bc-compare-select">
+          <mat-label>Seleccionar baseline</mat-label>
+          <mat-select
+            [ngModel]="selectedBaselineId()"
+            (ngModelChange)="onBaselineSelect($event)"
+          >
+            @for (b of baselines(); track b.id) {
+              <mat-option [value]="b.id">{{ b.name }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <button
+          mat-raised-button
+          color="primary"
+          type="button"
+          (click)="loadComparison()"
+          [disabled]="!selectedBaselineId() || comparing()"
+        >
+          <mat-icon>analytics</mat-icon>
+          Calcular comparación
+        </button>
+      </div>
+
+      <!-- Progress bar comparación -->
+      @if (comparing()) {
+        <mat-progress-bar mode="indeterminate" class="bc-compare-progress" />
+      }
+
+      <!-- Resultados de comparación -->
+      @if (comparison(); as comp) {
+        <!-- Tarjetas resumen -->
+        <div class="bc-summary-cards">
+          <div class="bc-summary-card bc-summary-card--ahead">
+            <span class="bc-summary-card__value">{{ comp.summary.ahead }}</span>
+            <span class="bc-summary-card__label">Adelantadas</span>
+          </div>
+          <div class="bc-summary-card bc-summary-card--on-schedule">
+            <span class="bc-summary-card__value">{{ comp.summary.on_schedule }}</span>
+            <span class="bc-summary-card__label">En plazo</span>
+          </div>
+          <div class="bc-summary-card bc-summary-card--behind">
+            <span class="bc-summary-card__value">{{ comp.summary.behind }}</span>
+            <span class="bc-summary-card__label">Retrasadas</span>
+          </div>
+          <div class="bc-summary-card bc-summary-card--neutral">
+            <span class="bc-summary-card__value">{{ comp.summary.removed }}</span>
+            <span class="bc-summary-card__label">Eliminadas</span>
+          </div>
+        </div>
+
+        <!-- Variación de fecha fin -->
+        <div class="bc-variance-info">
+          <mat-icon>date_range</mat-icon>
+          <span>
+            Variación total:
+            <strong [class.bc-variance--behind]="comp.schedule_variance_days > 0"
+                    [class.bc-variance--ahead]="comp.schedule_variance_days < 0">
+              {{ comp.schedule_variance_days > 0 ? '+' : '' }}{{ comp.schedule_variance_days }} días
+            </strong>
+          </span>
+          @if (comp.current_end_date) {
+            <span class="bc-variance-dates">
+              Baseline: {{ comp.baseline_end_date | date:'dd/MM/yyyy' }}
+              → Actual: {{ comp.current_end_date | date:'dd/MM/yyyy' }}
+            </span>
+          }
+        </div>
+
+        <!-- Tabla de tareas -->
+        <mat-table [dataSource]="paginatedTasks()" class="bc-table">
+
+          <!-- Columna: tarea -->
+          <ng-container matColumnDef="tarea">
+            <mat-header-cell *matHeaderCellDef>Tarea</mat-header-cell>
+            <mat-cell *matCellDef="let row">
+              <div class="bc-cell-tarea">
+                <span class="bc-tarea-codigo">{{ row.codigo }}</span>
+                <span class="bc-tarea-nombre">{{ row.nombre }}</span>
+              </div>
+            </mat-cell>
+          </ng-container>
+
+          <!-- Columna: baseline_ini -->
+          <ng-container matColumnDef="baseline_ini">
+            <mat-header-cell *matHeaderCellDef>Inicio Baseline</mat-header-cell>
+            <mat-cell *matCellDef="let row">
+              {{ row.baseline_start ? (row.baseline_start | date:'dd/MM/yyyy') : '—' }}
+            </mat-cell>
+          </ng-container>
+
+          <!-- Columna: actual_ini -->
+          <ng-container matColumnDef="actual_ini">
+            <mat-header-cell *matHeaderCellDef>Inicio Actual</mat-header-cell>
+            <mat-cell *matCellDef="let row">
+              {{ row.current_start ? (row.current_start | date:'dd/MM/yyyy') : '—' }}
+            </mat-cell>
+          </ng-container>
+
+          <!-- Columna: variacion -->
+          <ng-container matColumnDef="variacion">
+            <mat-header-cell *matHeaderCellDef class="bc-col-right">Variación</mat-header-cell>
+            <mat-cell *matCellDef="let row" class="bc-col-right">
+              <span
+                class="bc-variance-badge"
+                [class.bc-variance-badge--ahead]="row.status === 'ahead'"
+                [class.bc-variance-badge--on-schedule]="row.status === 'on_schedule'"
+                [class.bc-variance-badge--behind]="row.status === 'behind'"
+              >
+                {{ row.variance_days > 0 ? '+' : '' }}{{ row.variance_days }}d
+              </span>
+            </mat-cell>
+          </ng-container>
+
+          <!-- Columna: estado -->
+          <ng-container matColumnDef="estado">
+            <mat-header-cell *matHeaderCellDef>Estado</mat-header-cell>
+            <mat-cell *matCellDef="let row">
+              <mat-chip
+                class="bc-status-chip"
+                [class.bc-status-chip--ahead]="row.status === 'ahead'"
+                [class.bc-status-chip--on-schedule]="row.status === 'on_schedule'"
+                [class.bc-status-chip--behind]="row.status === 'behind'"
+                [disableRipple]="true"
+              >
+                {{ statusLabel(row.status) }}
+              </mat-chip>
+            </mat-cell>
+          </ng-container>
+
+          <mat-header-row *matHeaderRowDef="displayedColumns" />
+          <mat-row *matRowDef="let row; columns: displayedColumns;" />
+        </mat-table>
+
+        <!-- Empty state tabla -->
+        @if (comp.tasks.length === 0) {
+          <div class="sc-empty-state bc-table-empty">
+            <mat-icon>table_view</mat-icon>
+            <p>No hay tareas comparables en este baseline.</p>
+          </div>
+        }
+
+        <!-- Paginador -->
+        @if (comp.tasks.length > pageSize) {
+          <mat-paginator
+            [length]="comp.tasks.length"
+            [pageSize]="pageSize"
+            [pageIndex]="pageIndex()"
+            [pageSizeOptions]="[10]"
+            (page)="onPage($event)"
+            showFirstLastButtons
+          />
+        }
+      }
+    </div>
+  }
+
+</div>

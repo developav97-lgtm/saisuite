@@ -12,6 +12,9 @@ import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatNativeDateModule } from '@angular/material/core';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -81,7 +84,8 @@ export const PRIORIDAD_COLORS: Record<string, string | undefined> = {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     DatePipe, DecimalPipe, FormsModule, RouterLink,
-    MatButtonModule, MatIconModule, MatInputModule,
+    MatButtonModule, MatIconModule, MatInputModule, MatFormFieldModule,
+    MatDatepickerModule, MatNativeDateModule,
     MatProgressBarModule, MatProgressSpinnerModule,
     MatTooltipModule, MatTabsModule, MatDividerModule,
     MatChipsModule,
@@ -111,6 +115,27 @@ export class TareaDetailComponent implements OnInit {
   readonly modoMedicion = computed<ModoMedicion>(
     () => this.tarea()?.modo_medicion ?? 'solo_estados',
   );
+
+  /** Unidad de medida de la actividad_proyecto asociada ('hora', 'día', etc.) */
+  readonly actividadUnidad = computed(() =>
+    (this.tarea()?.actividad_proyecto_detail?.actividad_unidad_medida ?? '').toLowerCase().trim(),
+  );
+
+  readonly esModoDias = computed(() => {
+    const u = this.actividadUnidad();
+    return u === 'día' || u === 'dias' || u === 'días' || u === 'dia' || u === 'day' || u === 'days';
+  });
+
+  /** Si la actividad usa días, forzar timesheet (backend retorna 'cantidad' para cualquier unidad ≠ 'hora') */
+  readonly modoEfectivo = computed<ModoMedicion>(() => {
+    if (this.esModoDias()) return 'timesheet';
+    return this.modoMedicion();
+  });
+
+  readonly unidadLabel       = computed(() => this.esModoDias() ? 'días'        : 'horas');
+  readonly unidadLabelCap    = computed(() => this.esModoDias() ? 'Días'        : 'Horas');
+  readonly unidadRegistrados = computed(() => this.esModoDias() ? 'registrados' : 'registradas');
+  readonly unidadSufijo   = computed(() => this.esModoDias() ? 'd'     : 'h');
 
   // ── Cantidad inline (modo = 'cantidad') ──────────────────────
   readonly editandoCantidad = signal(false);
@@ -357,7 +382,7 @@ export class TareaDetailComponent implements OnInit {
       next: (actualizada) => {
         this.tarea.set(actualizada);
         this.snackBar.open(
-          `${horas}h agregadas correctamente.`,
+          `${horas} ${this.unidadLabel()} agregados correctamente.`,
           'Cerrar',
           { duration: 2500, panelClass: ['snack-success'] },
         );
@@ -394,7 +419,7 @@ export class TareaDetailComponent implements OnInit {
   readonly mostrarFormEntry   = signal(false);
 
   // Campos del formulario manual
-  entryFecha       = this.hoyIso();
+  entryFecha:      Date | null = new Date();
   entryHoras       = 1;
   entryDescripcion = '';
 
@@ -414,7 +439,7 @@ export class TareaDetailComponent implements OnInit {
     const t = this.tarea();
     if (!t) return;
     if (!this.entryFecha || this.entryHoras <= 0) {
-      this.snackBar.open('Fecha y horas son obligatorios.', 'Cerrar', {
+      this.snackBar.open('Fecha y días son obligatorios.', 'Cerrar', {
         duration: 3000, panelClass: ['snack-error'],
       });
       return;
@@ -422,17 +447,19 @@ export class TareaDetailComponent implements OnInit {
     this.guardandoEntry.set(true);
     this.timesheetService.create({
       tarea_id:    t.id,
-      fecha:       this.entryFecha,
+      fecha:       this.isoFromDate(this.entryFecha),
       horas:       this.entryHoras,
       descripcion: this.entryDescripcion,
     }).subscribe({
       next: () => {
         this.mostrarFormEntry.set(false);
+        this.entryFecha       = new Date();
         this.entryHoras       = 1;
         this.entryDescripcion = '';
-        this.snackBar.open('Horas registradas.', 'Cerrar', {
+        this.snackBar.open(`${this.unidadLabelCap()} ${this.unidadRegistrados()}.`, 'Cerrar', {
           duration: 3000, panelClass: ['snack-success'],
         });
+        this.loadTarea(t.id);
         this.cargarEntries(t.id);
         this.guardandoEntry.set(false);
         this.cdr.markForCheck();
@@ -453,7 +480,7 @@ export class TareaDetailComponent implements OnInit {
         this.snackBar.open('Registro eliminado.', 'Cerrar', {
           duration: 2500, panelClass: ['snack-success'],
         });
-        this.cargarEntries(t.id);
+        this.loadTarea(t.id);
       },
       error: (err: { error?: { detail?: string } }) => {
         const msg = err.error?.detail ?? 'No se pudo eliminar.';
@@ -462,7 +489,15 @@ export class TareaDetailComponent implements OnInit {
     });
   }
 
-  hoyIso(): string {
-    return new Date().toISOString().slice(0, 10);
+  hoy(): Date {
+    return new Date();
+  }
+
+  private isoFromDate(d: Date | null): string {
+    if (!d) return new Date().toISOString().slice(0, 10);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
   }
 }

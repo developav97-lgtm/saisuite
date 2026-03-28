@@ -1,7 +1,94 @@
 # CONTEXT.md - Estado del Proyecto Saicloud
 
-**Última actualización:** 27 Marzo 2026
-**Sesión:** Feature #5 — Reporting & Analytics (Completa)
+**Última actualización:** 28 Marzo 2026
+**Sesión:** Feature #7 — Budget & Cost Tracking — COMPLETA (Chunks 1-10: modelos, migraciones, servicios, vistas, URLs, tests services, Angular, tests vistas, management command, documentación)
+
+---
+
+## ✅ COMPLETADO (28 Marzo 2026) — Feature #7 COMPLETA: Budget & Cost Tracking
+
+### Chunk 1 — Modelos + Migraciones + Serializers (BG-01 a BG-06)
+- ✅ `models.py`: `ResourceCostRate`, `ProjectBudget`, `ProjectExpense`, `BudgetSnapshot`, `ExpenseCategory` (TextChoices)
+- ✅ `migration 0018_feature_7_budget_models.py`: Generada con `makemigrations`
+- ✅ `migration 0019_feature_7_budget_indexes.py`: Índice parcial único `WHERE end_date IS NULL` via RunSQL + 2 índices compuestos de performance
+- ✅ `budget_serializers.py`: 14 serializers — Lista/Detalle/Write para ResourceCostRate, Budget, Expense; BudgetSnapshot read-only; CostSummary, CostBreakdownResource/Task, BudgetVariance, BudgetAlert, EvmMetrics, InvoiceLineItem/Data
+
+### Chunk 2 — Services (BG-07 a BG-14)
+- ✅ `budget_services.py`: 7 clases de servicio
+  - `CostCalculationService`: `_build_rate_index` (O(2-4) queries), `_resolve_rate`, `get_labor_cost`, `get_expense_cost`, `get_total_cost`, `get_budget_variance`, `get_cost_by_resource`, `get_cost_by_task`
+  - `EVMService`: `get_evm_metrics` (BAC, PV, EV, AC, CV, SV, CPI, SPI, EAC, ETC, TCPI, VAC, schedule_health, cost_health)
+  - `BudgetManagementService`: `set_project_budget` (bloqueado si aprobado), `approve_budget`, `check_budget_alerts`
+  - `ExpenseService`: `create_expense`, `list_expenses`, `approve_expense` (segregación de funciones), `update_expense`, `delete_expense`
+  - `ResourceCostRateService`: `get_active_rate`, `_validate_overlap` (álgebra de intervalos), `create_rate`, `update_rate`, `delete_rate`
+  - `BudgetSnapshotService`: `create_snapshot` (idempotente), `list_snapshots`
+  - `InvoiceService`: `generate_invoice_data` (labor lines + gastos aprobados facturables)
+
+### Chunk 3-4 — Views + URLs (BG-15 a BG-28)
+- ✅ `budget_views.py`: 15 APIViews — ProjectBudgetView, BudgetApproveView, BudgetVarianceView, BudgetAlertsView, BudgetSnapshotListView, CostTotalView, CostByResourceView, CostByTaskView, EVMMetricsView, InvoiceDataView, ProjectExpenseListView, ProjectExpenseDetailView, ExpenseApproveView, CostRateListView, CostRateDetailView
+- ✅ `urls.py`: 15 nuevas rutas bajo `# Budget & Cost Tracking — Feature #7`
+
+### Chunk 5 — Tests (BG-53 a BG-58)
+- ✅ `tests/test_budget_services.py`: 73 tests, 93% cobertura de `budget_services.py`
+- ✅ Fix: `'created'` → `'is_new'` en logging (LogRecord conflict con campo reservado)
+
+### Chunk 6 — Angular Models + Services (BG-34 a BG-37)
+- ✅ `models/budget.model.ts`: 20+ interfaces TypeScript — ResourceCostRate, ProjectBudget, ProjectExpense, BudgetSnapshot, CostSummary, CostBreakdown*, BudgetVariance, BudgetAlert, EvmMetrics, InvoiceData, etc.
+- ✅ `services/budget.service.ts`: getBudget, createBudget, updateBudget, approveBudget, getVariance, getAlerts, getSnapshots, createSnapshot, getTotalCost, getCostByResource, getCostByTask, getEvmMetrics, getInvoiceData
+- ✅ `services/expense.service.ts`: getExpenses, createExpense, getExpense, updateExpense, deleteExpense, approveExpense
+- ✅ `services/cost-rate.service.ts`: getRates, getRate, createRate, updateRate, deleteRate
+
+### Chunk 7 — Angular Budget Dashboard (BG-38 a BG-46)
+- ✅ `components/budget-dashboard/budget-dashboard.component.ts/.html/.scss` — Dashboard completo: alertas, summary cards, EVM metrics, formulario presupuesto inline, formulario gastos inline, tabla gastos con aprobación/eliminación, cost breakdown table con @defer on viewport
+- ✅ `proyecto-detail.component.ts/.html`: Tab "Presupuesto" (Tab 12) con @defer on viewport
+
+### Chunk 8 — Management Command (BG-47)
+- ✅ `management/commands/budget_weekly_snapshot.py` — Django management command (en lugar de Celery, DEC-029)
+- ✅ Flags: `--dry-run`, `--project-id <uuid>`, `--company-id <uuid>`
+- ✅ Loop con try/except por proyecto: un fallo no detiene el resto
+- ✅ Scheduling: AWS EventBridge `cron(0 6 ? * MON *)` o cron del sistema `0 6 * * 1`
+
+### Chunk 9 — Tests de Vistas (BG-59 a BG-65)
+- ✅ `tests/test_budget_command.py`: 13 tests — no-projects warning, skip sin presupuesto, snapshot creado, idempotente, dry-run, filtros project-id/company-id, proyectos cerrados excluidos, error en uno no detiene otros, resumen
+- ✅ `tests/test_budget_views.py`: 60 tests — todos los endpoints con GET/POST/PATCH/DELETE, 200/201/400/403/404, multi-tenant isolation
+- ✅ 3 bugs corregidos en `budget_views.py`: `approver_user_id`→`approved_by_user_id`, `CostTotalView` kwargs inválidos, `EVMMetricsView` as_of_date no parseado
+- ✅ 1 bug corregido en `budget_services.py`: `approve_expense` ahora lanza `PermissionDenied` para self-approval y re-lanza `DoesNotExist` para not found
+
+### Chunk 10 — Documentación (BG-66 a BG-70)
+- ✅ `docs/FEATURE-7-API-DOCS.md` — 15 endpoints documentados con ejemplos JSON, errores, reglas de negocio, management command
+- ✅ `DECISIONS.md` — DEC-028 (EVM simplificado), DEC-029 (management command vs Celery)
+- ✅ `CONTEXT.md` — este bloque
+
+### Estado de tests
+- ✅ 936 tests pasando (up from 775 al inicio de Feature #7), 6 failures pre-existentes (no relacionados)
+- ✅ Cobertura `budget_services.py`: 93% (target 85%)
+- ✅ Cobertura `budget_views.py`: ~82% (target 80%)
+
+### Endpoints disponibles — Feature #7
+- GET/POST/PATCH `/api/v1/projects/{id}/budget/`
+- POST         `/api/v1/projects/{id}/budget/approve/`
+- GET          `/api/v1/projects/{id}/budget/variance/`
+- GET          `/api/v1/projects/{id}/budget/alerts/`
+- GET/POST     `/api/v1/projects/{id}/budget/snapshots/`
+- GET          `/api/v1/projects/{id}/costs/total/`
+- GET          `/api/v1/projects/{id}/costs/by-resource/`
+- GET          `/api/v1/projects/{id}/costs/by-task/`
+- GET          `/api/v1/projects/{id}/costs/evm/`
+- GET          `/api/v1/projects/{id}/invoice-data/`
+- GET/POST     `/api/v1/projects/{id}/expenses/`
+- GET/PATCH/DEL `/api/v1/projects/expenses/{pk}/`
+- POST         `/api/v1/projects/expenses/{pk}/approve/`
+- GET/POST     `/api/v1/projects/resources/cost-rates/`
+- GET/PATCH/DEL `/api/v1/projects/resources/cost-rates/{pk}/`
+
+### Criterio de salida Feature #7 completa
+- ✅ 936 tests pasando, 6 failures pre-existentes
+- ✅ 93% cobertura budget_services.py
+- ✅ 15 endpoints documentados
+- ✅ DEC-028 y DEC-029 en DECISIONS.md
+
+---
+
+**Sesión:** Feature #6 — Advanced Scheduling — COMPLETA (Chunk 8: Gantt overlays + documentación)
 
 ---
 
@@ -11,7 +98,71 @@
 - **Nombre:** Saicloud (SaiSuite)
 - **Stack:** Django 5 + Angular 18 + PostgreSQL 16 + n8n + AWS
 - **Fase:** Desarrollo activo
-- **Último milestone:** Feature #5 — Reporting & Analytics completa (9 endpoints, 4 gráficos Chart.js, exportación Excel)
+- **Último milestone:** Feature #7 — Budget & Cost Tracking completa (15 endpoints, 7 servicios, dashboard Angular, management command semanal, 936 tests)
+
+---
+
+## ✅ COMPLETADO (27 Marzo 2026) — Feature #6 Chunk 8: Gantt Overlays + Documentación
+
+### SK-41: Gantt Scheduling Overlays
+- ✅ `gantt-view.component.ts`: Toggle buttons + `showCriticalPath`/`showFloat`/`showBaseline` signals; `loadCriticalPath()`, `loadFloatData()`, `loadActiveBaseline()`, `rerenderGantt()` methods; `initGantt()` now delegates to `rerenderGantt()`
+- ✅ `gantt-view.component.html`: 3 overlay toggle buttons (Ruta crítica, Holgura, Baseline) + loading overlay `mat-progress-bar` + baseline active chip
+- ✅ `gantt-view.component.scss`: `.gv-overlay-toggles`, `.gv-overlay-active`, `.gv-baseline-chip`; `.critical-task` CSS rule `fill: var(--sc-danger, #e53935) !important`
+
+### SK-50: API Docs
+- ✅ `docs/FEATURE-6-API-DOCS.md` — 15 endpoints documentados (auto-schedule, level-resources, critical-path, float, constraints CRUD, baselines CRUD + compare, scenarios CRUD + run + compare)
+
+### SK-51: User Guide
+- ✅ `docs/FEATURE-6-USER-GUIDE.md` — Guía completa para gerentes de proyecto: Auto-Schedule, Gantt overlays, Baselines, What-If, Restricciones, FAQ
+
+### SK-52: CONTEXT.md + DECISIONS.md actualización
+- ✅ Este bloque de contexto
+- ✅ `DECISIONS.md` — DEC-026: DisableMigrations en testing, DEC-027: Gantt overlay renderizado
+
+### Criterio de salida Feature #6 completa
+- ✅ `npx tsc --noEmit` — 0 errores TypeScript strict
+- ✅ Backend: 71/71 tests, 85% cobertura scheduling_services.py
+- ✅ 15 endpoints documentados
+- ✅ Guía de usuario en español para PMs
+
+---
+
+## ✅ COMPLETADO (27 Marzo 2026) — Feature #6 Chunk 7: Frontend Componentes
+
+### Componentes creados
+- ✅ `components/scheduling/float-indicator/float-indicator.component.ts` — SK-40: Badge chip reutilizable (isCritical → "CRÍTICA" rojo, floatDays > 0 → "Float: Xd" azul)
+- ✅ `components/scheduling/auto-schedule-dialog/` — SK-36: Dialog dos fases (configurar ASAP/ALAP → Calcular dry_run → preview → Aplicar)
+- ✅ `components/scheduling/task-constraints-panel/` — SK-37: Panel add/list/delete restricciones con 8 ConstraintTypes y datepicker condicional
+- ✅ `components/scheduling/baseline-comparison/` — SK-38: mat-table comparativa baseline vs actual con paginación client-side y badges de estado
+- ✅ `components/scheduling/what-if-scenario-builder/` — SK-39: Lista + detalle de escenarios, crear inline, correr simulación
+- ✅ `proyecto-detail.component.ts/.html` — SK-42/SK-43: Botón Scheduling (mat-menu) + 2 nuevas tabs (Baselines, Escenarios) con @defer on viewport
+
+### Criterio de salida
+- ✅ `npx tsc --noEmit` — 0 errores TypeScript strict
+- ✅ `ng build --configuration=production` — 0 errores nuevos (solo error pre-existente tarea-detail.scss budget)
+- ✅ Todos los componentes con ChangeDetectionStrategy.OnPush, input() signals, inject(), @if/@for
+
+---
+
+## ✅ COMPLETADO (27 Marzo 2026) — Feature #6 Chunk 6: Frontend Modelos + Servicios
+
+### Archivos creados
+- ✅ `frontend/src/app/features/proyectos/models/scheduling.model.ts` — SK-30: `ConstraintType`, `TaskConstraint`, `AutoScheduleRequest/Result`, `LevelResourcesRequest/Result`, `CriticalPathResponse`, `FloatData`
+- ✅ `frontend/src/app/features/proyectos/models/baseline.model.ts` — SK-31: `ProjectBaselineList`, `ProjectBaselineDetail`, `CreateBaselineRequest`, `BaselineComparison`, `BaselineComparisonTask`
+- ✅ `frontend/src/app/features/proyectos/models/what-if.model.ts` — SK-32: `WhatIfScenarioList`, `WhatIfScenarioDetail`, `CreateWhatIfScenarioRequest`, `ScenarioComparisonRow`, `CompareScenarioRequest`
+- ✅ `frontend/src/app/features/proyectos/services/scheduling.service.ts` — SK-33: `autoSchedule`, `levelResources`, `getCriticalPath`, `getTaskFloat`, `getConstraints`, `setConstraint`, `deleteConstraint`
+- ✅ `frontend/src/app/features/proyectos/services/baseline.service.ts` — SK-34: `list`, `create`, `get`, `delete`, `compare`
+- ✅ `frontend/src/app/features/proyectos/services/what-if.service.ts` — SK-35: `list`, `create`, `get`, `delete`, `runSimulation`, `compare`
+
+### Criterio de salida
+- ✅ `npx tsc --noEmit` — 0 errores TypeScript strict
+- ✅ `ng build --configuration=production` — 0 errores (warnings de CSS budget son pre-existentes de tarea-detail.component.scss)
+
+### Deuda técnica resuelta en Chunk 5 (backend)
+- ✅ `DisableMigrations` en testing.py — fix definitivo del bug SQLite FK enforcement
+- ✅ `CheckConstraint(condition=...)` en models.py — Django 6.0 compatibility
+- ✅ `_TaskProxy.activo` eliminado de scheduling_services.py — Task sin campo activo
+- ✅ 71/71 tests backend pasando, 85% cobertura scheduling_services.py
 
 ---
 

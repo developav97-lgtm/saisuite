@@ -1,0 +1,109 @@
+<!-- SaiSuite — TaskConstraintsPanelComponent (SK-37) -->
+<div class="tcp-container">
+
+  <!-- Header -->
+  <div class="tcp-header">
+    <h3 class="tcp-header__title">
+      <mat-icon class="tcp-header__icon">event_available</mat-icon>
+      Restricciones de Scheduling
+    </h3>
+  </div>
+
+  <!-- Progress bar -->
+  @if (loading() || saving()) {
+    <mat-progress-bar mode="indeterminate" class="tcp-progress" />
+  }
+
+  <!-- Formulario de agregar -->
+  <div class="tcp-add-form sc-card">
+    <p class="tcp-add-form__label">Agregar restricción</p>
+
+    <div class="tcp-add-form__fields">
+      <!-- Tipo -->
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="tcp-field-type">
+        <mat-label>Tipo de restricción</mat-label>
+        <mat-select
+          [ngModel]="selectedType()"
+          (ngModelChange)="onTypeChange($event)"
+        >
+          @for (opt of constraintOptions; track opt.value) {
+            <mat-option [value]="opt.value">{{ opt.label }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <!-- Fecha (condicional) -->
+      @if (requiresDate()) {
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="tcp-field-date">
+          <mat-label>Fecha</mat-label>
+          <input
+            matInput
+            [matDatepicker]="picker"
+            [ngModel]="constraintDate() ? (constraintDate()! | date:'yyyy-MM-dd') : null"
+            (dateChange)="onDateChange($event.value)"
+            placeholder="DD/MM/YYYY"
+          />
+          <mat-datepicker-toggle matIconSuffix [for]="picker" />
+          <mat-datepicker #picker />
+        </mat-form-field>
+      }
+
+      <!-- Botón agregar -->
+      <button
+        mat-raised-button
+        color="primary"
+        type="button"
+        (click)="addConstraint()"
+        [disabled]="saving() || loading()"
+        class="tcp-add-btn"
+        matTooltip="Agregar restricción"
+      >
+        <mat-icon>add</mat-icon>
+        Agregar
+      </button>
+    </div>
+  </div>
+
+  <!-- Lista de restricciones activas -->
+  @if (!loading() && constraints().length > 0) {
+    <mat-list class="tcp-list">
+      @for (constraint of constraints(); track constraint.id) {
+        <mat-list-item class="tcp-list-item">
+          <mat-icon matListItemIcon class="tcp-list-item__icon">event_note</mat-icon>
+
+          <div matListItemTitle class="tcp-list-item__title">
+            {{ constraint.constraint_type_display }}
+          </div>
+
+          @if (constraint.constraint_date) {
+            <div matListItemLine class="tcp-list-item__date">
+              {{ constraint.constraint_date | date:'dd/MM/yyyy' }}
+            </div>
+          }
+
+          <div matListItemMeta>
+            <button
+              mat-icon-button
+              color="warn"
+              type="button"
+              (click)="removeConstraint(constraint)"
+              [disabled]="saving() || loading()"
+              matTooltip="Eliminar restricción"
+            >
+              <mat-icon>delete_outline</mat-icon>
+            </button>
+          </div>
+        </mat-list-item>
+      }
+    </mat-list>
+  }
+
+  <!-- Empty state -->
+  @if (!loading() && constraints().length === 0) {
+    <div class="sc-empty-state tcp-empty">
+      <mat-icon>event_busy</mat-icon>
+      <p>No hay restricciones de scheduling configuradas.</p>
+    </div>
+  }
+
+</div>

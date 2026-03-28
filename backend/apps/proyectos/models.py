@@ -650,6 +650,15 @@ class Task(BaseModel):
             models.Index(fields=['proyecto', 'estado']),
             models.Index(fields=['responsable']),
             models.Index(fields=['fecha_limite']),
+            # Feature #6 — scheduling performance indexes (SK-25, SK-26)
+            models.Index(
+                fields=['proyecto', 'fecha_inicio', 'fecha_fin'],
+                name='idx_task_proj_dates',
+            ),
+            models.Index(
+                fields=['fecha_fin'],
+                name='idx_task_fecha_fin',
+            ),
         ]
         verbose_name = 'Tarea'
         verbose_name_plural = 'Tareas'
@@ -721,7 +730,8 @@ class Task(BaseModel):
         if self.actividad_proyecto_id and self.actividad_proyecto_id:
             try:
                 um = (self.actividad_proyecto.actividad.unidad_medida or '').lower().strip()
-                if um == 'hora':
+                _DIA_UNITS = {'dia', 'día', 'dias', 'días', 'day', 'days'}
+                if um == 'hora' or um in _DIA_UNITS:
                     return MeasurementMode.TIMESHEET
                 if um:
                     return MeasurementMode.QUANTITY
@@ -877,9 +887,9 @@ class TimesheetEntry(BaseModel):
         from django.core.exceptions import ValidationError
         if self.horas is not None:
             if self.horas <= 0:
-                raise ValidationError({'horas': 'Las horas deben ser mayores a 0.'})
-            if self.horas > 24:
-                raise ValidationError({'horas': 'Las horas no pueden superar 24 por día.'})
+                raise ValidationError({'horas': 'El valor debe ser mayor a 0.'})
+            if self.horas > 365:
+                raise ValidationError({'horas': 'El valor no puede superar 365 por registro.'})
 
 
 class DependencyType(models.TextChoices):
@@ -919,6 +929,13 @@ class TaskDependency(BaseModel):
         verbose_name        = 'Dependencia de tarea'
         verbose_name_plural = 'Dependencias de tareas'
         unique_together     = [['company', 'tarea_predecesora', 'tarea_sucesora']]
+        indexes = [
+            # Feature #6 — scheduling performance index (SK-27)
+            models.Index(
+                fields=['tarea_predecesora'],
+                name='idx_tdep_predecessor',
+            ),
+        ]
 
     def __str__(self):
         return (
@@ -1181,3 +1198,588 @@ class ResourceAvailability(BaseModel):
             raise ValidationError({
                 'aprobado_por': 'Debe especificar quién aprobó la ausencia.',
             })
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Feature #6 — Advanced Scheduling
+# ──────────────────────────────────────────────────────────────────────────────
+
+class ProjectBaseline(BaseModel):
+    """
+    Snapshot del plan del proyecto en un momento dado.
+    Permite comparar plan original vs plan actual (Earned-Value / schedule variance).
+
+    Solo un baseline puede estar activo por proyecto+company al mismo tiempo
+    (UniqueConstraint parcial con condition=is_active_baseline=True).
+    """
+    project = models.ForeignKey(
+        'Project',
+        on_delete=models.CASCADE,
+        related_name='baselines',
+        verbose_name='Proyecto',
+    )
+    name = models.CharField(max_length=255, verbose_name='Nombre')
+    description = models.TextField(blank=True, verbose_name='Descripción')
+    is_active_baseline = models.BooleanField(
+        default=False,
+        db_index=True,
+        verbose_name='Baseline activo',
+        help_text='Solo un baseline activo por proyecto.',
+    )
+
+    # Snapshot de tareas al momento de crear el baseline
+    # [{task_id, nombre, fecha_inicio, fecha_fin, horas_estimadas}]
+    tasks_snapshot = models.JSONField(default=list, verbose_name='Snapshot de tareas')
+
+    # Snapshot de asignaciones de recursos
+    # [{assignment_id, task_id, user_id, porcentaje, fecha_inicio, fecha_fin}]
+    resources_snapshot = models.JSONField(
+        default=list,
+        verbose_name='Snapshot de recursos',
+    )
+
+    # Métricas del momento del snapshot
+    project_end_date_snapshot = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name='Fecha fin proyecto (snapshot)',
+    )
+    total_tasks_snapshot = models.IntegerField(
+        default=0,
+        verbose_name='Total tareas (snapshot)',
+    )
+    critical_path_snapshot = models.JSONField(
+        default=list,
+        verbose_name='Ruta crítica (snapshot)',
+        help_text='Lista de task_ids que formaban la ruta crítica.',
+    )
+
+    class Meta:
+        verbose_name        = 'Baseline de proyecto'
+        verbose_name_plural = 'Baselines de proyectos'
+        ordering            = ['-created_at']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['company', 'project'],
+                condition=models.Q(is_active_baseline=True),
+                name='uq_one_active_baseline_per_project',
+            )
+        ]
+
+    def __str__(self):
+        active_label = ' [ACTIVO]' if self.is_active_baseline else ''
+        return f'{self.project.nombre} — {self.name}{active_label}'
+
+
+class ConstraintType(models.TextChoices):
+    ASAP                  = 'asap',                   'As Soon As Possible'
+    ALAP                  = 'alap',                   'As Late As Possible'
+    MUST_START_ON         = 'must_start_on',          'Must Start On'
+    MUST_FINISH_ON        = 'must_finish_on',         'Must Finish On'
+    START_NO_EARLIER_THAN = 'start_no_earlier_than',  'Start No Earlier Than'
+    START_NO_LATER_THAN   = 'start_no_later_than',    'Start No Later Than'
+    FINISH_NO_EARLIER_THAN = 'finish_no_earlier_than', 'Finish No Earlier Than'
+    FINISH_NO_LATER_THAN  = 'finish_no_later_than',   'Finish No Later Than'
+
+
+class TaskConstraint(BaseModel):
+    """
+    Restricción de scheduling aplicada a una tarea.
+    Las restricciones se respetan durante auto-schedule.
+
+    Una tarea puede tener múltiples constraints de tipos distintos, pero no
+    dos constraints del mismo tipo para la misma tarea+company.
+    """
+    task = models.ForeignKey(
+        'Task',
+        on_delete=models.CASCADE,
+        related_name='scheduling_constraints',
+        verbose_name='Tarea',
+    )
+    constraint_type = models.CharField(
+        max_length=30,
+        choices=ConstraintType.choices,
+        default=ConstraintType.ASAP,
+        verbose_name='Tipo de restricción',
+    )
+    constraint_date = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name='Fecha de restricción',
+        help_text='Requerido para tipos con fecha (must_start_on, start_no_earlier_than, etc.).',
+    )
+
+    class Meta:
+        verbose_name        = 'Restricción de tarea'
+        verbose_name_plural = 'Restricciones de tareas'
+        unique_together     = [('company', 'task', 'constraint_type')]
+
+    def __str__(self):
+        date_suffix = f' ({self.constraint_date})' if self.constraint_date else ''
+        return f'{self.task.nombre} — {self.get_constraint_type_display()}{date_suffix}'
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        date_required = {
+            ConstraintType.MUST_START_ON,
+            ConstraintType.MUST_FINISH_ON,
+            ConstraintType.START_NO_EARLIER_THAN,
+            ConstraintType.START_NO_LATER_THAN,
+            ConstraintType.FINISH_NO_EARLIER_THAN,
+            ConstraintType.FINISH_NO_LATER_THAN,
+        }
+        if self.constraint_type in date_required and not self.constraint_date:
+            raise ValidationError({
+                'constraint_date': (
+                    f'constraint_date es obligatorio para el tipo "{self.constraint_type}".'
+                )
+            })
+
+
+class WhatIfScenario(BaseModel):
+    """
+    Escenario de simulación hipotética ("what if").
+
+    Los cambios se aplican sobre un clon en memoria — nunca modifican datos reales.
+    Los resultados (simulated_end_date, days_delta, etc.) se guardan en el mismo
+    registro después de ejecutar run_simulation().
+    """
+    project = models.ForeignKey(
+        'Project',
+        on_delete=models.CASCADE,
+        related_name='what_if_scenarios',
+        verbose_name='Proyecto',
+    )
+    name = models.CharField(max_length=255, verbose_name='Nombre')
+    description = models.TextField(blank=True, verbose_name='Descripción')
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='created_what_if_scenarios',
+        verbose_name='Creado por',
+    )
+
+    # Cambios propuestos (estructura JSON):
+    # task_changes:       {str(task_id): {field: new_value, ...}}
+    # resource_changes:   {str(assignment_id): {field: new_value, ...}}
+    # dependency_changes: {str(dep_id): {'retraso_dias': N}}
+    task_changes       = models.JSONField(default=dict, verbose_name='Cambios en tareas')
+    resource_changes   = models.JSONField(default=dict, verbose_name='Cambios en recursos')
+    dependency_changes = models.JSONField(default=dict, verbose_name='Cambios en dependencias')
+
+    # Resultados — null hasta que se ejecute run_simulation()
+    simulated_end_date = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name='Fecha fin simulada',
+    )
+    simulated_critical_path = models.JSONField(
+        null=True,
+        blank=True,
+        verbose_name='Ruta crítica simulada',
+        help_text='Lista de task_ids en la ruta crítica del escenario.',
+    )
+    days_delta = models.IntegerField(
+        null=True,
+        blank=True,
+        verbose_name='Delta días',
+        help_text='Días de diferencia vs plan actual. Positivo = retraso, negativo = adelanto.',
+    )
+    tasks_affected_count = models.IntegerField(
+        null=True,
+        blank=True,
+        verbose_name='Tareas afectadas',
+    )
+    simulation_ran_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name='Simulación ejecutada en',
+    )
+
+    class Meta:
+        verbose_name        = 'Escenario What-If'
+        verbose_name_plural = 'Escenarios What-If'
+        ordering            = ['-created_at']
+
+    def __str__(self):
+        ran = ' [simulado]' if self.simulation_ran_at else ' [pendiente]'
+        return f'{self.project.nombre} — {self.name}{ran}'
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Feature #7 — Budget & Cost Tracking
+# ─────────────────────────────────────────────────────────────────────────────
+
+class ResourceCostRate(BaseModel):
+    """
+    Tarifa horaria facturable de un recurso (usuario) para un período dado.
+
+    Regla de negocio: los rangos de fechas [start_date, end_date] no pueden
+    solaparse para el mismo par (user, company). end_date=NULL significa
+    "actualmente vigente". Solo puede existir un registro con end_date=NULL
+    por (user, company).
+
+    La validación de solapamiento se aplica en budget_services antes de
+    persistir. El partial unique index (WHERE end_date IS NULL) creado en la
+    migración 0019 actúa como red de seguridad en la base de datos.
+    """
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='cost_rates',
+        verbose_name='Usuario',
+    )
+    # company viene de BaseModel — no duplicar FK
+
+    start_date = models.DateField(verbose_name='Fecha inicio vigencia')
+    end_date = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name='Fecha fin vigencia',
+        help_text='NULL indica que la tarifa está actualmente vigente.',
+    )
+    hourly_rate = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal('0.00'))],
+        verbose_name='Tarifa por hora',
+    )
+    currency = models.CharField(
+        max_length=3,
+        default='COP',
+        verbose_name='Moneda (ISO 4217)',
+    )
+    notes = models.TextField(blank=True, verbose_name='Notas')
+
+    class Meta:
+        db_table             = 'resource_cost_rates'
+        verbose_name         = 'Tarifa de Costo de Recurso'
+        verbose_name_plural  = 'Tarifas de Costo de Recursos'
+        ordering             = ['-start_date']
+        indexes = [
+            models.Index(fields=['user', 'company', 'start_date']),
+            models.Index(fields=['company', 'start_date', 'end_date']),
+        ]
+        constraints = [
+            models.CheckConstraint(
+                check=Q(start_date__lte=models.F('end_date'))
+                    | Q(end_date__isnull=True),
+                name='resource_cost_rate_start_before_end',
+            ),
+            models.CheckConstraint(
+                check=Q(hourly_rate__gte=Decimal('0.00')),
+                name='resource_cost_rate_non_negative',
+            ),
+        ]
+
+    def __str__(self):
+        end = self.end_date.isoformat() if self.end_date else 'presente'
+        return (
+            f'{self.user_id} — {self.hourly_rate} {self.currency}/h '
+            f'({self.start_date} → {end})'
+        )
+
+
+class ProjectBudget(BaseModel):
+    """
+    Presupuesto planificado y aprobado de un proyecto.
+
+    Relación OneToOne con Project: un proyecto tiene exactamente un presupuesto.
+    Se crea explícitamente mediante la API — no se auto-crea en Project.save().
+
+    El campo `approved_date` indica si el presupuesto fue aprobado
+    (approved_date IS NOT NULL ↔ aprobado). No se usa un campo BooleanField
+    separado para evitar inconsistencias.
+    """
+    project = models.OneToOneField(
+        'Project',
+        on_delete=models.CASCADE,
+        related_name='budget',
+        verbose_name='Proyecto',
+    )
+
+    # Componentes del presupuesto planificado
+    planned_labor_cost = models.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        validators=[MinValueValidator(Decimal('0.00'))],
+        verbose_name='Costo mano de obra planificado',
+    )
+    planned_expense_cost = models.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        validators=[MinValueValidator(Decimal('0.00'))],
+        verbose_name='Costo gastos planificado',
+    )
+    planned_total_budget = models.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        validators=[MinValueValidator(Decimal('0.00'))],
+        verbose_name='Presupuesto total planificado',
+        help_text=(
+            'Puede incluir AIU y contingencia además de labor + expense. '
+            'No se auto-calcula: el gestor lo define explícitamente.'
+        ),
+    )
+
+    # Aprobación
+    approved_budget = models.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal('0.00'))],
+        verbose_name='Presupuesto aprobado',
+    )
+    approved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='approved_budgets',
+        verbose_name='Aprobado por',
+    )
+    approved_date = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name='Fecha de aprobación',
+    )
+
+    # Alertas
+    alert_threshold_percentage = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=Decimal('80.00'),
+        validators=[
+            MinValueValidator(Decimal('1.00')),
+            MaxValueValidator(Decimal('100.00')),
+        ],
+        verbose_name='Umbral de alerta (%)',
+        help_text='Porcentaje de ejecución del presupuesto que activa una alerta.',
+    )
+
+    currency = models.CharField(
+        max_length=3,
+        default='COP',
+        verbose_name='Moneda (ISO 4217)',
+    )
+    notes = models.TextField(blank=True, verbose_name='Notas')
+
+    class Meta:
+        db_table            = 'project_budgets'
+        verbose_name        = 'Presupuesto de Proyecto'
+        verbose_name_plural = 'Presupuestos de Proyectos'
+        indexes = [
+            models.Index(fields=['company', 'approved_date']),
+        ]
+        constraints = [
+            models.CheckConstraint(
+                check=Q(planned_labor_cost__gte=Decimal('0.00')),
+                name='project_budget_labor_non_negative',
+            ),
+            models.CheckConstraint(
+                check=Q(planned_expense_cost__gte=Decimal('0.00')),
+                name='project_budget_expense_non_negative',
+            ),
+            models.CheckConstraint(
+                check=Q(planned_total_budget__gte=Decimal('0.00')),
+                name='project_budget_total_non_negative',
+            ),
+        ]
+
+    @property
+    def is_approved(self) -> bool:
+        return self.approved_date is not None
+
+    def __str__(self):
+        return f'Budget {self.project.codigo} — {self.planned_total_budget} {self.currency}'
+
+
+class ExpenseCategory(models.TextChoices):
+    MATERIALS     = 'materials',     'Materiales'
+    EQUIPMENT     = 'equipment',     'Equipos'
+    TRAVEL        = 'travel',        'Viáticos y transporte'
+    SUBCONTRACTOR = 'subcontractor', 'Subcontratista'
+    SOFTWARE      = 'software',      'Software / licencias'
+    TRAINING      = 'training',      'Capacitación'
+    OTHER         = 'other',         'Otro'
+
+
+class ProjectExpense(BaseModel):
+    """
+    Gasto real incurrido en un proyecto.
+
+    Los gastos pueden ser facturables (se incluyen en invoice_data)
+    o no facturables (costos internos).
+
+    El campo `amount` siempre es positivo. Para anular un gasto usar
+    soft-delete (activo=False de BaseModel) — nunca importes negativos.
+
+    El campo `approved_date` indica aprobación (approved_date IS NOT NULL ↔ aprobado).
+    """
+    project = models.ForeignKey(
+        'Project',
+        on_delete=models.CASCADE,
+        related_name='expenses',
+        verbose_name='Proyecto',
+    )
+    category = models.CharField(
+        max_length=20,
+        choices=ExpenseCategory.choices,
+        verbose_name='Categoría',
+    )
+    description = models.CharField(max_length=255, verbose_name='Descripción')
+    amount = models.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal('0.01'))],
+        verbose_name='Monto',
+    )
+    currency = models.CharField(
+        max_length=3,
+        default='COP',
+        verbose_name='Moneda (ISO 4217)',
+    )
+    expense_date = models.DateField(verbose_name='Fecha del gasto')
+    paid_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='expenses_paid',
+        verbose_name='Pagado por',
+    )
+    receipt_url = models.URLField(
+        blank=True,
+        verbose_name='URL comprobante',
+        help_text='URL del recibo en S3 o servicio de almacenamiento.',
+    )
+    billable = models.BooleanField(default=True, verbose_name='Facturable')
+
+    # Aprobación
+    approved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='approved_expenses',
+        verbose_name='Aprobado por',
+    )
+    approved_date = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name='Fecha de aprobación',
+    )
+
+    notes = models.TextField(blank=True, verbose_name='Notas')
+
+    class Meta:
+        db_table            = 'project_expenses'
+        verbose_name        = 'Gasto de Proyecto'
+        verbose_name_plural = 'Gastos de Proyecto'
+        ordering            = ['-expense_date', '-created_at']
+        indexes = [
+            models.Index(fields=['project', 'expense_date']),
+            models.Index(fields=['project', 'billable']),
+            models.Index(fields=['company', 'category']),
+            models.Index(fields=['company', 'expense_date']),
+        ]
+        constraints = [
+            models.CheckConstraint(
+                check=Q(amount__gt=Decimal('0.00')),
+                name='project_expense_amount_positive',
+            ),
+        ]
+
+    @property
+    def is_approved(self) -> bool:
+        return self.approved_date is not None
+
+    def __str__(self):
+        return (
+            f'{self.project.codigo} — {self.get_category_display()} '
+            f'{self.amount} {self.currency}'
+        )
+
+
+class BudgetSnapshot(BaseModel):
+    """
+    Foto diaria del estado financiero del proyecto.
+
+    Se genera automáticamente (via tarea periódica Celery o llamada explícita
+    a create_budget_snapshot()) y sirve como serie temporal para gráficos
+    de burn-rate y tendencias de costo.
+
+    unique_together garantiza una sola foto por proyecto por día.
+    Si se necesita re-generar el mismo día, create_budget_snapshot() usa
+    update_or_create — la constraint no genera error en el flujo normal.
+    """
+    project = models.ForeignKey(
+        'Project',
+        on_delete=models.CASCADE,
+        related_name='budget_snapshots',
+        verbose_name='Proyecto',
+    )
+    snapshot_date = models.DateField(verbose_name='Fecha del snapshot')
+
+    # Costos reales al momento del snapshot
+    labor_cost = models.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        verbose_name='Costo mano de obra real',
+    )
+    expense_cost = models.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        verbose_name='Costo gastos reales',
+    )
+    total_cost = models.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        verbose_name='Costo total real',
+    )
+
+    # Referencia presupuestal en el momento del snapshot
+    planned_budget = models.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        verbose_name='Presupuesto planificado (en fecha)',
+        help_text='Copia del planned_total_budget o approved_budget vigente al tomar el snapshot.',
+    )
+
+    # Variación
+    variance = models.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        verbose_name='Variación (planned - actual)',
+        help_text='Positivo = bajo presupuesto. Negativo = sobre presupuesto.',
+    )
+    variance_percentage = models.DecimalField(
+        max_digits=7,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        verbose_name='Variación (%)',
+    )
+
+    class Meta:
+        db_table            = 'budget_snapshots'
+        verbose_name        = 'Snapshot de Presupuesto'
+        verbose_name_plural = 'Snapshots de Presupuesto'
+        ordering            = ['-snapshot_date']
+        unique_together     = [['project', 'snapshot_date']]
+        indexes = [
+            models.Index(fields=['company', 'snapshot_date']),
+            models.Index(fields=['project', 'snapshot_date']),
+        ]
+
+    def __str__(self):
+        return f'Snapshot {self.project.codigo} @ {self.snapshot_date} — {self.total_cost}'

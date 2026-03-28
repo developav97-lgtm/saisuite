@@ -85,7 +85,7 @@
                 <div class="pf-consecutivo-info pf-consecutivo-info--warn">
                   <mat-icon>warning_amber</mat-icon>
                   <span>No hay consecutivos configurados para este tipo.
-                    <a routerLink="/admin/consecutivos">Configurar consecutivos</a>
+                    <button mat-button color="primary" type="button" class="pf-consecutivo-link" (click)="abrirConsecutivosModal()">Configurar consecutivos</button>
                   </span>
                 </div>
               }

@@ -1,0 +1,160 @@
+// SaiSuite — AutoScheduleDialogComponent (SK-36)
+
+.asd-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+
+  &__icon {
+    color: var(--sc-primary);
+  }
+}
+
+.asd-content {
+  min-width: 480px;
+  max-width: 600px;
+  padding-top: 0.5rem !important;
+}
+
+.asd-project-name {
+  margin: 0 0 1rem;
+  color: var(--sc-text-muted);
+  font-size: 0.875rem;
+}
+
+// ── Secciones ─────────────────────────────────────────────────────────────────
+.asd-section {
+  margin-bottom: 1.25rem;
+
+  &__title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--sc-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin: 0 0 0.75rem;
+  }
+}
+
+// ── Radio group ───────────────────────────────────────────────────────────────
+.asd-radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.asd-radio {
+  display: flex;
+  align-items: flex-start;
+
+  &__label {
+    font-weight: 500;
+    display: block;
+  }
+
+  &__hint {
+    font-size: 0.8rem;
+    color: var(--sc-text-muted);
+    display: block;
+    margin-top: 0.15rem;
+  }
+}
+
+// ── Checkboxes ────────────────────────────────────────────────────────────────
+.asd-checkboxes {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+// ── Progress ──────────────────────────────────────────────────────────────────
+.asd-progress {
+  margin: 0.5rem 0;
+  border-radius: var(--sc-radius);
+}
+
+// ── Vista previa ──────────────────────────────────────────────────────────────
+.asd-preview {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--sc-surface-border);
+  border-radius: var(--sc-radius);
+
+  &__title {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin: 0 0 0.875rem;
+    color: var(--sc-primary);
+  }
+}
+
+.asd-preview__stats {
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.875rem;
+}
+
+.asd-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 80px;
+
+  &__value {
+    font-size: 1.375rem;
+    font-weight: 700;
+    color: var(--sc-primary);
+  }
+
+  &__label {
+    font-size: 0.75rem;
+    color: var(--sc-text-muted);
+    text-align: center;
+  }
+
+  &--warn .asd-stat__value {
+    color: var(--sc-warning, #f57f17);
+  }
+}
+
+// ── Advertencias ──────────────────────────────────────────────────────────────
+.asd-warnings {
+  border-top: 1px solid var(--sc-surface-border);
+  padding-top: 0.75rem;
+
+  &__header {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--sc-warning, #f57f17);
+    margin: 0 0 0.5rem;
+  }
+
+  &__icon {
+    font-size: 1rem;
+    color: var(--sc-warning, #f57f17);
+  }
+
+  &__list {
+    padding: 0;
+  }
+}
+
+.asd-warning-item {
+  &__icon {
+    font-size: 1rem;
+    color: var(--sc-warning, #f57f17);
+  }
+}
+
+// ── Acciones ──────────────────────────────────────────────────────────────────
+.asd-actions {
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem 1rem !important;
+}

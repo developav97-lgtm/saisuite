@@ -47,9 +47,12 @@ export class LoginComponent {
         this.loading.set(false);
         this.router.navigate(['/dashboard']);
       },
-      error: () => {
+      error: (err: { status?: number; error?: { detail?: string } }) => {
         this.loading.set(false);
-        this.snackBar.open('Credenciales inválidas. Verifica tu email y contraseña.', 'Cerrar', {
+        const msg = err?.status === 401
+          ? (err.error?.detail ?? 'Credenciales inválidas. Verifica tu email y contraseña.')
+          : 'Error al iniciar sesión. Intenta de nuevo.';
+        this.snackBar.open(msg, 'Cerrar', {
           duration: 5000,
           panelClass: ['snack-error'],
         });

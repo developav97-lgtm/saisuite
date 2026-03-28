@@ -10,6 +10,21 @@
   --mat-button-toggle-height: 32px;
 }
 
+.gv-overlay-toggles {
+  display: flex;
+  gap: 6px;
+}
+
+.gv-overlay-active {
+  background-color: var(--sc-primary-light, rgba(25, 118, 210, 0.12));
+  border-color: var(--sc-primary, #1976d2) !important;
+  color: var(--sc-primary, #1976d2);
+}
+
+.gv-baseline-chip {
+  padding: 4px 0 8px;
+}
+
 .gv-refresh-btn {
   margin-left: auto;
 }
@@ -79,4 +94,8 @@
 
   .bar.estado-cancelled   .bar-progress,
   .bar.estado-cancelled   .bar-wrapper .bar { fill: #e0e0e0; }
+
+  // SK-41: Critical path overlay
+  .bar.critical-task .bar-wrapper .bar { fill: var(--sc-danger, #e53935) !important; }
+  .bar.critical-task .bar-progress     { fill: #b71c1c !important; }
 }

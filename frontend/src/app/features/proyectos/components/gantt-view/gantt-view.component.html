@@ -18,6 +18,34 @@
         <mat-button-toggle value="Month">Mes</mat-button-toggle>
       </mat-button-toggle-group>
 
+      <!-- SK-41: Scheduling overlay toggles -->
+      <div class="gv-overlay-toggles">
+        <button
+          mat-stroked-button
+          [class.gv-overlay-active]="showCriticalPath()"
+          (click)="toggleCriticalPath()"
+          matTooltip="Resaltar ruta crítica"
+        >
+          <mat-icon>route</mat-icon> Ruta crítica
+        </button>
+        <button
+          mat-stroked-button
+          [class.gv-overlay-active]="showFloat()"
+          (click)="toggleFloat()"
+          matTooltip="Mostrar holgura de tareas"
+        >
+          <mat-icon>space_bar</mat-icon> Holgura
+        </button>
+        <button
+          mat-stroked-button
+          [class.gv-overlay-active]="showBaseline()"
+          (click)="toggleBaseline()"
+          matTooltip="Comparar con baseline activo"
+        >
+          <mat-icon>compare</mat-icon> Baseline
+        </button>
+      </div>
+
       <button
         mat-icon-button
         (click)="refreshGantt()"
@@ -27,6 +55,21 @@
         <mat-icon>refresh</mat-icon>
       </button>
     </div>
+
+    <!-- SK-41: Indicador de overlay activo -->
+    @if (loadingOverlay()) {
+      <mat-progress-bar mode="indeterminate" color="accent" />
+    }
+    @if (showBaseline() && activeBaseline()) {
+      <div class="gv-baseline-chip">
+        <mat-chip-set>
+          <mat-chip>
+            <mat-icon matChipAvatar>bookmark</mat-icon>
+            Baseline: {{ activeBaseline()!.name }}
+          </mat-chip>
+        </mat-chip-set>
+      </div>
+    }
 
     <!-- Leyenda de estados -->
     <div class="gv-legend">

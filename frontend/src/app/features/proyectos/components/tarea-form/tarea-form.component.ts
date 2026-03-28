@@ -12,7 +12,7 @@
  */
 import {
   ChangeDetectionStrategy, ChangeDetectorRef, DestroyRef,
-  Component, OnInit, inject, signal,
+  Component, OnInit, inject, signal, computed,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router, ActivatedRoute } from '@angular/router';
@@ -85,6 +85,11 @@ export class TareaFormComponent implements OnInit {
   readonly loadingFases          = signal(false);
   readonly selectedActividadModo  = signal<'solo_estados' | 'timesheet' | 'cantidad' | null>(null);
   readonly selectedActividadUnidad = signal<string>('');
+
+  private static readonly DIA_UNITS = new Set(['dia', 'día', 'dias', 'días', 'day', 'days']);
+  readonly esActividadDias = computed(() =>
+    TareaFormComponent.DIA_UNITS.has(this.selectedActividadUnidad().toLowerCase().trim()),
+  );
 
   // ── Controles de búsqueda (NO parte del form group) ────────
   readonly proyectoSearch          = new FormControl('');
@@ -500,6 +505,7 @@ export class TareaFormComponent implements OnInit {
   private resolverModo(um: string | null | undefined): 'solo_estados' | 'timesheet' | 'cantidad' {
     const u = (um ?? '').toLowerCase().trim();
     if (u === 'hora' || u === 'horas') return 'timesheet';
+    if (TareaFormComponent.DIA_UNITS.has(u)) return 'timesheet';
     if (u) return 'cantidad';
     return 'solo_estados';
   }

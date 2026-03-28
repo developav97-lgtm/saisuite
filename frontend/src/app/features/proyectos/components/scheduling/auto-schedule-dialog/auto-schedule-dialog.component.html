@@ -1,0 +1,128 @@
+<!-- SaiSuite — AutoScheduleDialogComponent (SK-36) -->
+<h2 mat-dialog-title class="asd-title">
+  <mat-icon class="asd-title__icon">auto_fix_high</mat-icon>
+  Reprogramación Automática
+</h2>
+
+<mat-dialog-content class="asd-content">
+
+  <!-- Nombre del proyecto -->
+  <p class="asd-project-name">Proyecto: <strong>{{ data.projectName }}</strong></p>
+
+  <!-- Opciones de configuración -->
+  <section class="asd-section">
+    <h3 class="asd-section__title">Modo de programación</h3>
+    <mat-radio-group
+      [ngModel]="mode()"
+      (ngModelChange)="mode.set($event)"
+      class="asd-radio-group"
+    >
+      <mat-radio-button value="asap" class="asd-radio">
+        <span class="asd-radio__label">Lo antes posible (ASAP)</span>
+        <span class="asd-radio__hint">Las tareas se programan lo más temprano que permiten sus dependencias.</span>
+      </mat-radio-button>
+      <mat-radio-button value="alap" class="asd-radio">
+        <span class="asd-radio__label">Lo más tarde posible (ALAP)</span>
+        <span class="asd-radio__hint">Las tareas se posponen hasta el último momento sin afectar el fin del proyecto.</span>
+      </mat-radio-button>
+    </mat-radio-group>
+  </section>
+
+  <section class="asd-section">
+    <h3 class="asd-section__title">Opciones adicionales</h3>
+    <div class="asd-checkboxes">
+      <mat-checkbox
+        [ngModel]="respectConstraints()"
+        (ngModelChange)="respectConstraints.set($event)"
+      >
+        Respetar restricciones de scheduling (MUST_START_ON, etc.)
+      </mat-checkbox>
+      <mat-checkbox
+        [ngModel]="dryRunOnly()"
+        (ngModelChange)="dryRunOnly.set($event)"
+      >
+        Solo simular — no guardar cambios
+      </mat-checkbox>
+    </div>
+  </section>
+
+  <!-- Progress bar -->
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate" class="asd-progress" />
+  }
+
+  <!-- Sección de vista previa -->
+  @if (preview(); as result) {
+    <section class="asd-preview sc-card">
+      <h3 class="asd-preview__title">
+        <mat-icon>preview</mat-icon>
+        Vista Previa del Resultado
+      </h3>
+
+      <div class="asd-preview__stats">
+        <div class="asd-stat">
+          <span class="asd-stat__value">{{ result.tasks_rescheduled }}</span>
+          <span class="asd-stat__label">tareas a reprogramar</span>
+        </div>
+
+        @if (result.new_project_end_date) {
+          <div class="asd-stat">
+            <span class="asd-stat__value">{{ result.new_project_end_date | date:'dd MMM yyyy' }}</span>
+            <span class="asd-stat__label">nueva fecha de fin</span>
+          </div>
+        }
+
+        @if (result.tasks_excluded.length > 0) {
+          <div class="asd-stat asd-stat--warn">
+            <span class="asd-stat__value">{{ result.tasks_excluded.length }}</span>
+            <span class="asd-stat__label">tareas excluidas (sin fechas)</span>
+          </div>
+        }
+      </div>
+
+      @if (result.warnings.length > 0) {
+        <div class="asd-warnings">
+          <p class="asd-warnings__header">
+            <mat-icon class="asd-warnings__icon">warning_amber</mat-icon>
+            Advertencias
+          </p>
+          <mat-list class="asd-warnings__list">
+            @for (warn of result.warnings; track warn) {
+              <mat-list-item class="asd-warning-item">
+                <mat-icon matListItemIcon class="asd-warning-item__icon">warning_amber</mat-icon>
+                <span matListItemTitle>{{ warn }}</span>
+              </mat-list-item>
+            }
+          </mat-list>
+        </div>
+      }
+    </section>
+  }
+
+</mat-dialog-content>
+
+<mat-dialog-actions class="asd-actions" align="end">
+  <button mat-stroked-button type="button" (click)="cancel()" [disabled]="loading()">
+    Cancelar
+  </button>
+  <button
+    mat-stroked-button
+    color="primary"
+    type="button"
+    (click)="calculate()"
+    [disabled]="loading()"
+  >
+    <mat-icon>calculate</mat-icon>
+    Calcular
+  </button>
+  <button
+    mat-raised-button
+    color="primary"
+    type="button"
+    (click)="apply()"
+    [disabled]="!preview() || dryRunOnly() || loading()"
+  >
+    <mat-icon>check</mat-icon>
+    Aplicar
+  </button>
+</mat-dialog-actions>

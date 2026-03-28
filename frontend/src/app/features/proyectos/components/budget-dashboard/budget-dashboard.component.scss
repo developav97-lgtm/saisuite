@@ -1,0 +1,163 @@
+// Budget Dashboard — Feature #7
+// Todas las variables CSS desde var(--sc-*)
+
+.bd-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px 0;
+}
+
+// ── Alerts ────────────────────────────────────────────────────────────────────
+
+.bd-alerts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bd-alert {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 6px;
+  font-size: 0.875rem;
+
+  &--info    { background: var(--sc-info-bg, #e3f2fd);    color: var(--sc-info, #1565c0); }
+  &--warning { background: var(--sc-warning-bg, #fff3e0); color: var(--sc-warning, #e65100); }
+  &--danger  { background: var(--sc-danger-bg, #ffebee);  color: var(--sc-danger, #c62828); }
+}
+
+.bd-alert__icon {
+  flex-shrink: 0;
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
+}
+
+// ── Grid layout ───────────────────────────────────────────────────────────────
+
+.bd-grid {
+  display: grid;
+  gap: 16px;
+
+  &--3 { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+  &--4 { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+}
+
+// ── Cards ─────────────────────────────────────────────────────────────────────
+
+.bd-card {
+  &--full  { grid-column: 1 / -1; }
+  &--form  { border-left: 4px solid var(--sc-primary, #1976d2); }
+}
+
+// ── Stat rows ─────────────────────────────────────────────────────────────────
+
+.bd-stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--sc-divider, rgba(0,0,0,.08));
+
+  &:last-of-type { border-bottom: none; }
+}
+
+.bd-stat-label {
+  color: var(--sc-text-secondary, rgba(0,0,0,.6));
+  font-size: 0.8125rem;
+}
+
+.bd-stat-value {
+  font-weight: 600;
+  font-size: 0.9375rem;
+
+  &--approved { color: var(--sc-success, #388e3c); }
+  &--alert    { color: var(--sc-danger, #d32f2f); }
+  &--muted    { color: var(--sc-text-secondary, rgba(0,0,0,.54)); font-weight: 400; }
+}
+
+// ── Execution bar ─────────────────────────────────────────────────────────────
+
+.bd-execution-bar {
+  margin-top: 12px;
+
+  &__label {
+    font-size: 0.75rem;
+    color: var(--sc-text-secondary, rgba(0,0,0,.6));
+    margin-bottom: 4px;
+  }
+}
+
+// ── EVM metrics ───────────────────────────────────────────────────────────────
+
+.bd-evm-metric {
+  text-align: center;
+  padding: 12px 8px;
+  border: 1px solid var(--sc-divider, rgba(0,0,0,.1));
+  border-radius: 8px;
+  background: var(--sc-surface-alt, #fafafa);
+
+  &__label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--sc-text-secondary, rgba(0,0,0,.54));
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  &__value {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 4px 0;
+    color: var(--sc-text-primary, rgba(0,0,0,.87));
+  }
+
+  &__desc {
+    font-size: 0.6875rem;
+    color: var(--sc-text-secondary, rgba(0,0,0,.54));
+  }
+}
+
+.bd-evm-warning {
+  color: var(--sc-warning, #f57c00);
+  font-size: 0.8125rem;
+}
+
+// ── Forms ─────────────────────────────────────────────────────────────────────
+
+.bd-form {
+  display: grid;
+  gap: 8px;
+
+  &--budget  { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+  &--expense { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+
+  &__full-width { grid-column: 1 / -1; }
+}
+
+// ── Chips ─────────────────────────────────────────────────────────────────────
+
+.bd-chip--approved { background: var(--sc-success-bg, #e8f5e9) !important; color: var(--sc-success, #388e3c) !important; }
+.bd-chip--pending  { background: var(--sc-warning-bg, #fff8e1) !important; color: var(--sc-warning, #f57f17) !important; }
+
+// ── Table ─────────────────────────────────────────────────────────────────────
+
+.bd-table {
+  width: 100%;
+}
+
+// ── Empty state hint ──────────────────────────────────────────────────────────
+
+.bd-empty-hint {
+  color: var(--sc-text-secondary, rgba(0,0,0,.54));
+  font-style: italic;
+  margin: 8px 0;
+}
+
+.bd-subtitle--pending {
+  color: var(--sc-warning, #f57c00);
+  font-size: 0.8125rem;
+}

@@ -75,6 +75,38 @@ from apps.proyectos.analytics_views import (
     CompareProjectsView,
     ExportExcelView,
 )
+from apps.proyectos.scheduling_views import (
+    AutoScheduleView,
+    ResourceLevelingView,
+    CriticalPathView,
+    TaskFloatView,
+    TaskConstraintListView,
+    TaskConstraintDeleteView,
+    ProjectBaselineListView,
+    BaselineDetailView,
+    BaselineCompareView,
+    WhatIfScenarioListView,
+    WhatIfScenarioDetailView,
+    RunSimulationView,
+    CompareScenariosView,
+)
+from apps.proyectos.budget_views import (
+    ProjectBudgetView,
+    BudgetApproveView,
+    BudgetVarianceView,
+    BudgetAlertsView,
+    BudgetSnapshotListView,
+    CostTotalView,
+    CostByResourceView,
+    CostByTaskView,
+    EVMMetricsView,
+    InvoiceDataView,
+    ProjectExpenseListView,
+    ProjectExpenseDetailView,
+    ExpenseApproveView,
+    CostRateListView,
+    CostRateDetailView,
+)
 
 # ── Main project router ────────────────────────────────────────────────────────
 project_router = DefaultRouter()
@@ -292,6 +324,168 @@ urlpatterns = [
         'analytics/export-excel/',
         ExportExcelView.as_view(),
         name='analytics-export-excel',
+    ),
+
+    # ── Scheduling — Feature #6 ───────────────────────────────────────────
+
+    # Auto-scheduling (project-scoped)
+    path(
+        '<uuid:project_pk>/scheduling/auto-schedule/',
+        AutoScheduleView.as_view(),
+        name='project-scheduling-auto-schedule',
+    ),
+    path(
+        '<uuid:project_pk>/scheduling/level-resources/',
+        ResourceLevelingView.as_view(),
+        name='project-scheduling-level-resources',
+    ),
+    path(
+        '<uuid:project_pk>/scheduling/critical-path/',
+        CriticalPathView.as_view(),
+        name='project-scheduling-critical-path',
+    ),
+
+    # Task float (task-scoped)
+    path(
+        'tasks/<uuid:task_pk>/scheduling/float/',
+        TaskFloatView.as_view(),
+        name='task-scheduling-float',
+    ),
+
+    # Task constraints
+    path(
+        'tasks/<uuid:task_pk>/constraints/',
+        TaskConstraintListView.as_view(),
+        name='task-constraints-list',
+    ),
+    path(
+        'constraints/<uuid:pk>/',
+        TaskConstraintDeleteView.as_view(),
+        name='task-constraint-detail',
+    ),
+
+    # Baselines
+    path(
+        '<uuid:project_pk>/baselines/',
+        ProjectBaselineListView.as_view(),
+        name='project-baselines-list',
+    ),
+    path(
+        'baselines/<uuid:pk>/',
+        BaselineDetailView.as_view(),
+        name='baseline-detail',
+    ),
+    path(
+        'baselines/<uuid:pk>/compare/',
+        BaselineCompareView.as_view(),
+        name='baseline-compare',
+    ),
+
+    # What-If Scenarios
+    path(
+        '<uuid:project_pk>/scenarios/',
+        WhatIfScenarioListView.as_view(),
+        name='project-scenarios-list',
+    ),
+    path(
+        'scenarios/<uuid:pk>/',
+        WhatIfScenarioDetailView.as_view(),
+        name='scenario-detail',
+    ),
+    path(
+        'scenarios/<uuid:pk>/run-simulation/',
+        RunSimulationView.as_view(),
+        name='scenario-run-simulation',
+    ),
+    path(
+        'scenarios/compare/',
+        CompareScenariosView.as_view(),
+        name='scenarios-compare',
+    ),
+
+    # ── Budget & Cost Tracking — Feature #7 ──────────────────────────────
+
+    # Budget CRUD + approve
+    path(
+        '<uuid:project_pk>/budget/',
+        ProjectBudgetView.as_view(),
+        name='project-budget',
+    ),
+    path(
+        '<uuid:project_pk>/budget/approve/',
+        BudgetApproveView.as_view(),
+        name='project-budget-approve',
+    ),
+    path(
+        '<uuid:project_pk>/budget/variance/',
+        BudgetVarianceView.as_view(),
+        name='project-budget-variance',
+    ),
+    path(
+        '<uuid:project_pk>/budget/alerts/',
+        BudgetAlertsView.as_view(),
+        name='project-budget-alerts',
+    ),
+    path(
+        '<uuid:project_pk>/budget/snapshots/',
+        BudgetSnapshotListView.as_view(),
+        name='project-budget-snapshots',
+    ),
+
+    # Cost summaries
+    path(
+        '<uuid:project_pk>/costs/total/',
+        CostTotalView.as_view(),
+        name='project-costs-total',
+    ),
+    path(
+        '<uuid:project_pk>/costs/by-resource/',
+        CostByResourceView.as_view(),
+        name='project-costs-by-resource',
+    ),
+    path(
+        '<uuid:project_pk>/costs/by-task/',
+        CostByTaskView.as_view(),
+        name='project-costs-by-task',
+    ),
+    path(
+        '<uuid:project_pk>/costs/evm/',
+        EVMMetricsView.as_view(),
+        name='project-costs-evm',
+    ),
+    path(
+        '<uuid:project_pk>/invoice-data/',
+        InvoiceDataView.as_view(),
+        name='project-invoice-data',
+    ),
+
+    # Expenses (nested under project for creation/list; flat for detail)
+    path(
+        '<uuid:project_pk>/expenses/',
+        ProjectExpenseListView.as_view(),
+        name='project-expenses-list',
+    ),
+    path(
+        'expenses/<uuid:pk>/',
+        ProjectExpenseDetailView.as_view(),
+        name='expense-detail',
+    ),
+    path(
+        'expenses/<uuid:pk>/approve/',
+        ExpenseApproveView.as_view(),
+        name='expense-approve',
+    ),
+
+    # Cost rates (company-wide resource rates)
+    path(
+        'resources/cost-rates/',
+        CostRateListView.as_view(),
+        name='resource-cost-rates-list',
+    ),
+    path(
+        'resources/cost-rates/<uuid:pk>/',
+        CostRateDetailView.as_view(),
+        name='resource-cost-rate-detail',
     ),
 
     # ── Main project router ───────────────────────────────────────────────

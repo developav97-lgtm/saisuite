@@ -50,7 +50,7 @@
         <span>
           Progreso
           @if (tarea()!.horas_estimadas > 0) {
-            <span class="td-progress-hint">(por horas)</span>
+            <span class="td-progress-hint">(por {{ unidadLabel() }})</span>
           }
         </span>
         <strong>{{ (tarea()!.horas_estimadas > 0 ? tarea()!.progreso_porcentaje : tarea()!.porcentaje_completado) | number:'1.0-0' }}%</strong>
@@ -175,9 +175,12 @@
           <!-- Tab: Tiempo / Medición -->
           <mat-tab>
             <ng-template mat-tab-label>
-              @if (modoMedicion() === 'cantidad') {
+              @if (modoEfectivo() === 'cantidad') {
                 <mat-icon class="td-tab-icon">assessment</mat-icon>
                 Medición
+              } @else if (esModoDias()) {
+                <mat-icon class="td-tab-icon">calendar_today</mat-icon>
+                Días
               } @else {
                 <mat-icon class="td-tab-icon">schedule</mat-icon>
                 Tiempo
@@ -186,7 +189,7 @@
             <div class="td-tab-content">
 
               <!-- ── MODO: solo_estados ── -->
-              @if (modoMedicion() === 'solo_estados') {
+              @if (modoEfectivo() === 'solo_estados') {
                 <div class="td-modo-info">
                   <mat-icon>info_outline</mat-icon>
                   <span>Esta tarea no tiene actividad asociada. El avance se gestiona únicamente mediante el cambio de estado.</span>
@@ -202,16 +205,28 @@
                 }
               }
 
-              <!-- ── MODO: timesheet (también visible en solo_estados si el proyecto tiene timesheet activo) ── -->
-              @if (modoMedicion() === 'timesheet' || (modoMedicion() === 'solo_estados' && !modoTimesheetDesactivado())) {
+              <!-- ── MODO: timesheet / días ── -->
+              @if (modoEfectivo() === 'timesheet' || (modoEfectivo() === 'solo_estados' && !modoTimesheetDesactivado())) {
+
+                <!-- Hint: sin estimados no hay progreso -->
+                @if (esModoDias() && tarea()!.horas_estimadas === 0) {
+                  <div class="td-dias-hint">
+                    <mat-icon>info_outline</mat-icon>
+                    <span>
+                      Para ver el progreso, edita la tarea y configura los <strong>días estimados</strong>.
+                    </span>
+                    <button mat-button color="primary" (click)="editar()">Editar tarea</button>
+                  </div>
+                }
+
                 <!-- Resumen estimadas vs registradas -->
                 <div class="td-horas-resumen">
                   <div class="td-hora-bloque">
                     <span class="td-hora-label">
                       <mat-icon>timer</mat-icon>
-                      Horas estimadas
+                      {{ unidadLabelCap() }} estimadas
                     </span>
-                    <span class="td-hora-valor">{{ tarea()!.horas_estimadas }}h</span>
+                    <span class="td-hora-valor">{{ tarea()!.horas_estimadas }}{{ unidadSufijo() }}</span>
                   </div>
 
                   <mat-divider [vertical]="true" class="td-hora-divider" />
@@ -219,12 +234,12 @@
                   <div class="td-hora-bloque">
                     <span class="td-hora-label">
                       <mat-icon>history</mat-icon>
-                      Horas registradas
+                      {{ unidadLabelCap() }} {{ unidadRegistrados() }}
                     </span>
 
                     @if (modoTimesheetDesactivado()) {
                       <span class="td-hora-valor td-hora-muted">
-                        {{ tarea()!.horas_registradas }}h
+                        {{ tarea()!.horas_registradas }}{{ unidadSufijo() }}
                         <a class="td-timesheet-config-link" routerLink="/proyectos/configuracion"
                           matTooltip="Activar timesheet en Configuración">
                           (desactivado)
@@ -237,19 +252,20 @@
                           [(ngModel)]="horasAdicionales"
                           (keydown)="onHorasKeydown($event)"
                           (blur)="guardarHoras()"
-                          min="0.5" step="0.5"
-                          placeholder="ej. 1.5"
+                          [min]="esModoDias() ? 0.5 : 0.25"
+                          [step]="esModoDias() ? 0.5 : 0.25"
+                          [placeholder]="esModoDias() ? 'ej. 1' : 'ej. 1.5'"
                           class="td-horas-input"
                           autofocus
                         />
-                        <span class="td-horas-hint">+ {{ tarea()!.horas_registradas }}h actuales</span>
+                        <span class="td-horas-hint">+ {{ tarea()!.horas_registradas }}{{ unidadSufijo() }} actuales</span>
                       </div>
                     } @else {
                       <span class="td-hora-valor"
                         [class.td-horas-editable]="modoManualHabilitado()"
                         (click)="modoManualHabilitado() ? onHorasClick() : null"
-                        [matTooltip]="modoManualHabilitado() ? 'Click para agregar horas' : ''">
-                        {{ tarea()!.horas_registradas }}h
+                        [matTooltip]="modoManualHabilitado() ? 'Click para agregar ' + unidadLabel() : ''">
+                        {{ tarea()!.horas_registradas }}{{ unidadSufijo() }}
                         @if (modoManualHabilitado()) {
                           <mat-icon class="td-horas-edit-icon">add_circle_outline</mat-icon>
                         }
@@ -258,11 +274,11 @@
                   </div>
                 </div>
 
-                <!-- Barra de progreso de horas -->
+                <!-- Barra de progreso -->
                 @if (tarea()!.horas_estimadas > 0) {
                   <div class="td-horas-progreso">
                     <div class="td-horas-progreso-header">
-                      <span class="td-hora-label">Avance por horas</span>
+                      <span class="td-hora-label">Avance por {{ unidadLabel() }}</span>
                       <span class="td-hora-label">{{ tarea()!.progreso_porcentaje | number:'1.0-0' }}%</span>
                     </div>
                     <mat-progress-bar
@@ -272,8 +288,8 @@
                   </div>
                 }
 
-                <!-- Cronómetro -->
-                @if (modoCronometroHabilitado()) {
+                <!-- Cronómetro (solo horas, no aplica para días) -->
+                @if (modoCronometroHabilitado() && !esModoDias()) {
                   <mat-divider />
                   <div class="td-cronometro-section">
                     <span class="td-section-label">Cronómetro</span>
@@ -310,7 +326,7 @@
                         (click)="mostrarFormEntry.set(true)"
                       >
                         <mat-icon>add</mat-icon>
-                        Registrar horas
+                        Registrar {{ unidadLabel() }}
                       </button>
                     }
                   </div>
@@ -320,25 +336,22 @@
                     <div class="td-ts-form">
                       <mat-form-field appearance="outline" class="td-ts-form-field">
                         <mat-label>Fecha</mat-label>
-                        <input
-                          matInput
-                          type="date"
-                          [(ngModel)]="entryFecha"
-                          [max]="hoyIso()"
-                        />
+                        <input matInput [matDatepicker]="fechaPicker" [(ngModel)]="entryFecha" [max]="hoy()" />
+                        <mat-datepicker-toggle matSuffix [for]="fechaPicker" />
+                        <mat-datepicker #fechaPicker />
                       </mat-form-field>
 
                       <mat-form-field appearance="outline" class="td-ts-form-field td-ts-form-field--horas">
-                        <mat-label>Horas</mat-label>
+                        <mat-label>{{ unidadLabelCap() }}</mat-label>
                         <input
                           matInput
                           type="number"
                           [(ngModel)]="entryHoras"
-                          min="0.25"
-                          max="24"
-                          step="0.25"
+                          [min]="esModoDias() ? 0.5 : 0.25"
+                          [max]="esModoDias() ? 365 : 24"
+                          [step]="esModoDias() ? 0.5 : 0.25"
                         />
-                        <span matSuffix>h</span>
+                        <span matSuffix>{{ unidadSufijo() }}</span>
                       </mat-form-field>
 
                       <mat-form-field appearance="outline" class="td-ts-form-field td-ts-form-field--desc">
@@ -370,7 +383,7 @@
                         <div class="td-ts-item" [class.td-ts-item--validado]="entry.validado">
                           <div class="td-ts-item-main">
                             <span class="td-ts-fecha">{{ entry.fecha | date:'d MMM yyyy':'':'es-CO' }}</span>
-                            <span class="td-ts-horas">{{ entry.horas }}h</span>
+                            <span class="td-ts-horas">{{ entry.horas }}{{ unidadSufijo() }}</span>
                             @if (entry.descripcion) {
                               <span class="td-ts-desc">{{ entry.descripcion }}</span>
                             }
@@ -395,14 +408,14 @@
                       }
                     </div>
                   } @else {
-                    <p class="td-empty-text">Sin registros de horas diarios.</p>
+                    <p class="td-empty-text">Sin registros de {{ unidadLabel() }} diarios.</p>
                   }
 
                 </div>
               }
 
               <!-- ── MODO: cantidad ── -->
-              @if (modoMedicion() === 'cantidad') {
+              @if (modoEfectivo() === 'cantidad') {
                 <div class="td-horas-resumen">
 
                   <!-- Objetivo -->

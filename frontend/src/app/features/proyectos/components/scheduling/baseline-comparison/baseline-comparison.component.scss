@@ -1,0 +1,341 @@
+// SaiSuite — BaselineComparisonComponent (SK-38)
+
+.bc-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+// ── Header ────────────────────────────────────────────────────────────────────
+.bc-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+
+  &__title {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    margin: 0;
+    color: var(--sc-primary);
+  }
+
+  &__icon {
+    font-size: 1.1rem;
+    color: var(--sc-primary);
+  }
+}
+
+// ── Progress ──────────────────────────────────────────────────────────────────
+.bc-progress {
+  border-radius: var(--sc-radius);
+  margin-bottom: -4px;
+}
+
+// ── Formulario de creación ────────────────────────────────────────────────────
+.bc-create-card {
+  padding: 1rem;
+  border: 1px solid var(--sc-surface-border);
+  border-radius: var(--sc-radius);
+
+  &__title {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--sc-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin: 0 0 0.875rem;
+  }
+}
+
+.bc-create-fields {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.bc-field-name { flex: 1; min-width: 200px; }
+.bc-field-desc { flex: 1.5; min-width: 220px; }
+
+.bc-create-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.875rem;
+}
+
+.bc-spin {
+  animation: bc-spin 1s linear infinite;
+}
+
+@keyframes bc-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+// ── Lista de baselines ────────────────────────────────────────────────────────
+.bc-baselines-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.bc-baseline-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--sc-surface-border);
+  border-radius: var(--sc-radius);
+  gap: 1rem;
+
+  &__info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    flex: 1;
+  }
+
+  &__name {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 500;
+  }
+
+  &__meta {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.8rem;
+    color: var(--sc-text-muted);
+  }
+
+  &__actions {
+    flex-shrink: 0;
+  }
+}
+
+.bc-active-chip {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  min-height: 20px;
+  height: 20px;
+  padding: 0 6px;
+  background-color: var(--sc-primary-light) !important;
+  color: var(--sc-primary) !important;
+  cursor: default;
+}
+
+// ── Empty state ───────────────────────────────────────────────────────────────
+.bc-empty {
+  border: 1px solid var(--sc-surface-border);
+  border-radius: var(--sc-radius);
+}
+
+// ── Sección de comparación ────────────────────────────────────────────────────
+.bc-compare-section {
+  padding: 1rem;
+  border: 1px solid var(--sc-surface-border);
+  border-radius: var(--sc-radius);
+
+  &__title {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--sc-primary);
+    margin: 0 0 0.875rem;
+  }
+}
+
+.bc-compare-controls {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+
+.bc-compare-select {
+  flex: 1;
+  min-width: 220px;
+}
+
+.bc-compare-progress {
+  border-radius: var(--sc-radius);
+  margin-bottom: 0.75rem;
+}
+
+// ── Tarjetas resumen ──────────────────────────────────────────────────────────
+.bc-summary-cards {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.bc-summary-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.75rem 1.25rem;
+  border-radius: var(--sc-radius);
+  border: 1px solid var(--sc-surface-border);
+  min-width: 90px;
+
+  &__value {
+    font-size: 1.5rem;
+    font-weight: 700;
+  }
+
+  &__label {
+    font-size: 0.75rem;
+    color: var(--sc-text-muted);
+    text-align: center;
+  }
+
+  &--ahead {
+    border-color: #2e7d32;
+    background: #e8f5e9;
+
+    .bc-summary-card__value { color: #2e7d32; }
+  }
+
+  &--on-schedule {
+    border-color: var(--sc-surface-border);
+
+    .bc-summary-card__value { color: var(--sc-text-muted); }
+  }
+
+  &--behind {
+    border-color: #c62828;
+    background: #fdecea;
+
+    .bc-summary-card__value { color: #c62828; }
+  }
+
+  &--neutral {
+    .bc-summary-card__value { color: var(--sc-text-muted); }
+  }
+}
+
+// ── Info variación ────────────────────────────────────────────────────────────
+.bc-variance-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
+  padding: 0.625rem 0.875rem;
+  background: var(--sc-surface-ground);
+  border-radius: var(--sc-radius);
+  border: 1px solid var(--sc-surface-border);
+
+  mat-icon {
+    font-size: 1rem;
+    color: var(--sc-primary);
+  }
+}
+
+.bc-variance--behind { color: #c62828; }
+.bc-variance--ahead  { color: #2e7d32; }
+
+.bc-variance-dates {
+  color: var(--sc-text-muted);
+  font-size: 0.8125rem;
+}
+
+// ── Tabla ─────────────────────────────────────────────────────────────────────
+.bc-table {
+  width: 100%;
+  border-radius: var(--sc-radius);
+}
+
+.bc-col-right {
+  text-align: right !important;
+  justify-content: flex-end !important;
+}
+
+.bc-cell-tarea {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.bc-tarea-codigo {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--sc-primary);
+  background: var(--sc-primary-light);
+  padding: 0.1rem 0.35rem;
+  border-radius: 3px;
+  width: fit-content;
+}
+
+.bc-tarea-nombre {
+  font-size: 0.875rem;
+}
+
+// ── Variance badge ────────────────────────────────────────────────────────────
+.bc-variance-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+
+  &--ahead {
+    background: #e8f5e9;
+    color: #2e7d32;
+  }
+
+  &--on-schedule {
+    background: var(--sc-surface-ground);
+    color: var(--sc-text-muted);
+  }
+
+  &--behind {
+    background: #fdecea;
+    color: #c62828;
+  }
+}
+
+// ── Status chips ──────────────────────────────────────────────────────────────
+.bc-status-chip {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  min-height: 22px;
+  height: 22px;
+  padding: 0 8px;
+  cursor: default;
+
+  &--ahead {
+    background-color: #e8f5e9 !important;
+    color: #2e7d32 !important;
+  }
+
+  &--on-schedule {
+    background-color: var(--sc-surface-ground) !important;
+    color: var(--sc-text-muted) !important;
+  }
+
+  &--behind {
+    background-color: #fdecea !important;
+    color: #c62828 !important;
+  }
+}
+
+// ── Empty state tabla ─────────────────────────────────────────────────────────
+.bc-table-empty {
+  border-top: none;
+  border-radius: 0 0 var(--sc-radius) var(--sc-radius);
+  border: 1px solid var(--sc-surface-border);
+}

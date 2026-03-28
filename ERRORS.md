@@ -1,3 +1,21 @@
+## [28 Marzo 2026] ERROR: CheckConstraint(condition=) rompe Docker con Django 5.0.6
+
+**Síntoma:** Contenedor `saisuite-api` queda en estado `unhealthy`. Django no levanta: `TypeError: CheckConstraint.__init__() got an unexpected keyword argument 'condition'`.
+**Causa:** El parámetro `condition=` en `CheckConstraint` fue introducido en Django 5.1. El proyecto usa Django 5.0.6 (en Docker Python 3.12). En el entorno local (Python 3.13) se puede instalar Django 5.1+ y no se nota el error.
+**Fix:** Reemplazar `CheckConstraint(condition=Q(...))` → `CheckConstraint(check=Q(...))` en `models.py` Y en todas las migraciones que crean esos constraints (0015_resource_models.py, 0018_feature_7_budget_models.py). `Index(condition=)` y `UniqueConstraint(condition=)` NO se tocan, esos parámetros sí existen en 5.0.
+**Prevención:** Nunca usar `CheckConstraint(condition=...)`. Siempre usar `CheckConstraint(check=...)` mientras el proyecto esté en Django < 5.1. Verificar con `docker logs saisuite-api` si el servidor no responde.
+
+---
+
+## [27 Marzo 2026] ERROR: KeyError 'created' en LogRecord al loggear en services
+
+**Síntoma:** Tests de `budget_services.py` fallan con `KeyError: "Attempt to overwrite 'created' in LogRecord"` al llamar `set_project_budget` y `create_snapshot`.
+**Causa:** `'created'` es un campo reservado en `logging.LogRecord` de Python (almacena el timestamp). Usar `extra={'created': ...}` en `logger.info()` intenta sobrescribirlo y lanza KeyError.
+**Fix:** Renombrar la clave en el `extra` dict: `'created'` → `'is_new'` en `budget_services.py:699` y `budget_services.py:1304`.
+**Prevención:** Nunca usar como clave de `extra={}` en llamadas de logging ninguno de los atributos reservados de LogRecord: `created`, `name`, `msg`, `args`, `levelname`, `levelno`, `pathname`, `filename`, `module`, `exc_info`, `exc_text`, `stack_info`, `lineno`, `funcName`, `msecs`, `relativeCreated`, `thread`, `threadName`, `processName`, `process`.
+
+---
+
 ## ERR-011: PrimeNG incompatibilidad con Angular 20
 
 **Fecha:** 19 Marzo 2026

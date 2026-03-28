@@ -570,6 +570,23 @@
 }
 
 // ── Modo info (solo_estados) ───────────────────────────────────
+.td-dias-hint {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem;
+  background: rgba(21, 101, 192, 0.06);
+  border: 1px solid rgba(21, 101, 192, 0.2);
+  border-radius: 6px;
+  font-size: 0.875rem;
+  color: var(--sc-text-color);
+  margin-bottom: 0.25rem;
+
+  mat-icon { font-size: 1.1rem; width: 1.1rem; height: 1.1rem; flex-shrink: 0; color: var(--sc-primary, #1565c0); }
+  span { flex: 1; }
+  button { flex-shrink: 0; }
+}
+
 .td-modo-info {
   display: flex;
   align-items: center;

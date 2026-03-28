@@ -1,0 +1,248 @@
+<!-- SaiSuite — WhatIfScenarioBuilderComponent (SK-39) -->
+<div class="wi-container">
+
+  <!-- Header -->
+  <div class="wi-header">
+    <h3 class="wi-header__title">
+      <mat-icon class="wi-header__icon">science</mat-icon>
+      Escenarios What-If
+    </h3>
+    <button mat-raised-button color="primary" type="button" (click)="toggleCreateForm()">
+      <mat-icon>{{ showCreateForm() ? 'close' : 'add' }}</mat-icon>
+      {{ showCreateForm() ? 'Cancelar' : 'Nuevo Escenario' }}
+    </button>
+  </div>
+
+  <!-- Progress bar de carga general -->
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate" class="wi-progress" />
+  }
+
+  <!-- Formulario de creación (inline toggle) -->
+  @if (showCreateForm()) {
+    <div class="wi-create-card sc-card" [formGroup]="createForm">
+      <p class="wi-create-card__title">Nuevo Escenario What-If</p>
+
+      <div class="wi-create-fields">
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="wi-field-name">
+          <mat-label>Nombre del escenario</mat-label>
+          <input matInput formControlName="name" placeholder="Ej: Escenario pesimista Q2" />
+          @if (createForm.get('name')?.hasError('required')) {
+            <mat-error>El nombre es obligatorio</mat-error>
+          }
+          @if (createForm.get('name')?.hasError('maxlength')) {
+            <mat-error>Máximo 120 caracteres</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="wi-field-desc">
+          <mat-label>Descripción (opcional)</mat-label>
+          <input matInput formControlName="description" placeholder="Describe el supuesto del escenario" />
+        </mat-form-field>
+      </div>
+
+      <!-- Aviso sobre cambios -->
+      <div class="wi-create-hint">
+        <mat-icon class="wi-create-hint__icon">info_outline</mat-icon>
+        <span>
+          Tras crear el escenario, configura los cambios (task_changes, resource_changes)
+          mediante la API o la interfaz avanzada disponible en versiones futuras.
+        </span>
+      </div>
+
+      <div class="wi-create-actions">
+        <button mat-stroked-button type="button" (click)="toggleCreateForm()">Cancelar</button>
+        <button
+          mat-raised-button
+          color="primary"
+          type="button"
+          (click)="createScenario()"
+          [disabled]="createForm.invalid || saving()"
+        >
+          @if (saving()) {
+            <mat-icon class="wi-spin">refresh</mat-icon>
+          }
+          Guardar Escenario
+        </button>
+      </div>
+    </div>
+  }
+
+  <!-- Tabla de escenarios -->
+  @if (!loading() && scenarios().length > 0) {
+    <mat-table [dataSource]="scenarios()" class="wi-table">
+
+      <!-- Columna: nombre -->
+      <ng-container matColumnDef="nombre">
+        <mat-header-cell *matHeaderCellDef>Escenario</mat-header-cell>
+        <mat-cell *matCellDef="let row">
+          <div class="wi-cell-nombre">
+            <span class="wi-nombre">{{ row.name }}</span>
+            @if (row.description) {
+              <span class="wi-desc">{{ row.description }}</span>
+            }
+          </div>
+        </mat-cell>
+      </ng-container>
+
+      <!-- Columna: estado -->
+      <ng-container matColumnDef="estado">
+        <mat-header-cell *matHeaderCellDef>Estado</mat-header-cell>
+        <mat-cell *matCellDef="let row">
+          <mat-chip
+            class="wi-status-chip"
+            [class.wi-status-chip--done]="row.simulation_done"
+            [class.wi-status-chip--pending]="!row.simulation_done"
+            [disableRipple]="true"
+          >
+            {{ statusLabel(row.simulation_done) }}
+          </mat-chip>
+        </mat-cell>
+      </ng-container>
+
+      <!-- Columna: resultado -->
+      <ng-container matColumnDef="resultado">
+        <mat-header-cell *matHeaderCellDef class="wi-col-right">Impacto</mat-header-cell>
+        <mat-cell *matCellDef="let row" class="wi-col-right">
+          @if (row.simulation_done) {
+            <span
+              class="wi-delta"
+              [class.wi-delta--positive]="row.days_delta !== null && row.days_delta > 0"
+              [class.wi-delta--negative]="row.days_delta !== null && row.days_delta < 0"
+            >
+              {{ deltaDaysDisplay(row.days_delta) }}
+            </span>
+          } @else {
+            <span class="wi-delta wi-delta--none">Sin simular</span>
+          }
+        </mat-cell>
+      </ng-container>
+
+      <!-- Columna: acciones -->
+      <ng-container matColumnDef="acciones">
+        <mat-header-cell *matHeaderCellDef class="wi-col-actions">Acciones</mat-header-cell>
+        <mat-cell *matCellDef="let row" class="wi-col-actions">
+          <button
+            mat-icon-button
+            type="button"
+            (click)="selectScenario(row.id)"
+            matTooltip="Ver detalle"
+          >
+            <mat-icon>chevron_right</mat-icon>
+          </button>
+          <button
+            mat-icon-button
+            color="warn"
+            type="button"
+            (click)="deleteScenario(row)"
+            matTooltip="Eliminar escenario"
+          >
+            <mat-icon>delete_outline</mat-icon>
+          </button>
+        </mat-cell>
+      </ng-container>
+
+      <mat-header-row *matHeaderRowDef="displayedColumns" />
+      <mat-row *matRowDef="let row; columns: displayedColumns;" />
+    </mat-table>
+  }
+
+  <!-- Empty state -->
+  @if (!loading() && scenarios().length === 0) {
+    <div class="sc-empty-state wi-empty">
+      <mat-icon>science</mat-icon>
+      <p>No hay escenarios what-if creados para este proyecto.</p>
+      <button mat-raised-button color="primary" type="button" (click)="toggleCreateForm()">
+        <mat-icon>add</mat-icon>
+        Crear primer escenario
+      </button>
+    </div>
+  }
+
+  <!-- Panel de detalle del escenario seleccionado -->
+  @if (selectedScenario(); as scenario) {
+    <mat-divider class="wi-divider" />
+
+    <div class="wi-detail-panel sc-card">
+      <div class="wi-detail-header">
+        <div class="wi-detail-header__info">
+          <h4 class="wi-detail-header__name">{{ scenario.name }}</h4>
+          @if (scenario.description) {
+            <p class="wi-detail-header__desc">{{ scenario.description }}</p>
+          }
+        </div>
+        <div class="wi-detail-header__actions">
+          <button
+            mat-raised-button
+            color="primary"
+            type="button"
+            (click)="runSimulation(scenario.id)"
+            [disabled]="simulating()"
+          >
+            @if (simulating()) {
+              <mat-icon class="wi-spin">refresh</mat-icon>
+            } @else {
+              <mat-icon>play_arrow</mat-icon>
+            }
+            Correr Simulación
+          </button>
+        </div>
+      </div>
+
+      <!-- Progress bar simulación -->
+      @if (simulating()) {
+        <mat-progress-bar mode="indeterminate" class="wi-sim-progress" />
+      }
+
+      <!-- Resultado de simulación -->
+      @if (scenario.simulation_done) {
+        <div class="wi-result">
+          <p class="wi-result__title">
+            <mat-icon>bar_chart</mat-icon>
+            Resultado de la simulación
+          </p>
+
+          <div class="wi-result__grid">
+            <div class="wi-result-stat">
+              <span class="wi-result-stat__label">Fin simulado</span>
+              <span class="wi-result-stat__value">
+                {{ scenario.simulated_end_date ? (scenario.simulated_end_date | date:'dd/MM/yyyy') : '—' }}
+              </span>
+            </div>
+
+            <div class="wi-result-stat">
+              <span class="wi-result-stat__label">Impacto en días</span>
+              <span
+                class="wi-result-stat__value"
+                [class.wi-delta--positive]="scenario.days_delta !== null && scenario.days_delta > 0"
+                [class.wi-delta--negative]="scenario.days_delta !== null && scenario.days_delta < 0"
+              >
+                {{ deltaDaysDisplay(scenario.days_delta) }}
+              </span>
+            </div>
+
+            <div class="wi-result-stat">
+              <span class="wi-result-stat__label">Tareas afectadas</span>
+              <span class="wi-result-stat__value">{{ scenario.tasks_affected_count }}</span>
+            </div>
+
+            @if (scenario.simulation_ran_at) {
+              <div class="wi-result-stat">
+                <span class="wi-result-stat__label">Última simulación</span>
+                <span class="wi-result-stat__value wi-result-stat__value--small">
+                  {{ scenario.simulation_ran_at | date:'dd/MM/yyyy HH:mm' }}
+                </span>
+              </div>
+            }
+          </div>
+        </div>
+      } @else {
+        <div class="wi-no-result">
+          <mat-icon>pending_actions</mat-icon>
+          <p>Este escenario aún no ha sido simulado. Pulsa "Correr Simulación" para obtener resultados.</p>
+        </div>
+      }
+    </div>
+  }
+
+</div>
