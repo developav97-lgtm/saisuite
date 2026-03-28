@@ -71,7 +71,7 @@
   }
 
   <!-- Charts Grid — canvas elements ALWAYS in DOM so @ViewChild refs are always set -->
-  <div class="pad-charts-grid" [class.pad-charts-grid--hidden]="loading() || !kpis()">
+  <div #chartsGrid class="pad-charts-grid" [class.pad-charts-grid--hidden]="loading() || !kpis()">
 
     <mat-card class="pad-chart-card">
       <mat-card-header>

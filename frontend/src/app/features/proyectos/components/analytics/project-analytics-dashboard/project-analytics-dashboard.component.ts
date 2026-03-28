@@ -56,11 +56,12 @@ export class ProjectAnalyticsDashboardComponent implements AfterViewInit, OnDest
   readonly burnDownData = signal<BurnDownData | null>(null);
   readonly resourceUtilization = signal<ResourceUtilization[]>([]);
 
-  // Canvas refs — always in DOM (outside @if), so always resolved after ngAfterViewInit
+  // Canvas and grid container refs — always in DOM (outside @if)
   @ViewChild('burnDownCanvas') burnDownCanvas!: ElementRef<HTMLCanvasElement>;
   @ViewChild('velocityCanvas') velocityCanvas!: ElementRef<HTMLCanvasElement>;
   @ViewChild('taskDistCanvas') taskDistCanvas!: ElementRef<HTMLCanvasElement>;
   @ViewChild('resourceCanvas') resourceCanvas!: ElementRef<HTMLCanvasElement>;
+  @ViewChild('chartsGrid')    chartsGrid!: ElementRef<HTMLDivElement>;
 
   // Computed signals for KPI display state
   readonly completionClass   = computed(() => this.kpiClass(this.kpis()?.completion_rate ?? 0));
@@ -71,16 +72,41 @@ export class ProjectAnalyticsDashboardComponent implements AfterViewInit, OnDest
   private charts: Chart[] = [];
   private loadSub: Subscription | null = null;
   private exportSub: Subscription | null = null;
+  // ResizeObserver watches the grid container. When mat-tab makes it visible
+  // (removes display:none), dimensions change → we resize/rebuild charts.
+  private resizeObserver: ResizeObserver | null = null;
 
   ngAfterViewInit(): void {
-    // Load data after view init so @ViewChild canvas refs are guaranteed to be set
     this.loadData();
+    this.setupResizeObserver();
   }
 
   ngOnDestroy(): void {
+    this.resizeObserver?.disconnect();
     this.destroyCharts();
     this.loadSub?.unsubscribe();
     this.exportSub?.unsubscribe();
+  }
+
+  /** Watch the chart grid container for size changes.
+   *  mat-tab-group uses display:none on inactive tabs. When the Analytics tab
+   *  becomes active, the container goes from width=0 to its real width.
+   *  We use that transition to rebuild/resize the charts with correct dimensions. */
+  private setupResizeObserver(): void {
+    if (!this.chartsGrid?.nativeElement) return;
+    let lastWidth = 0;
+    this.resizeObserver = new ResizeObserver((entries) => {
+      const width = entries[0]?.contentRect.width ?? 0;
+      if (width > 0 && lastWidth === 0 && this.charts.length > 0) {
+        // Container just became visible — resize all charts to fit
+        this.charts.forEach(c => c.resize());
+      } else if (width > 0 && lastWidth === 0 && this.burnDownData()) {
+        // Container visible but charts not yet built (data already arrived)
+        this.buildCharts();
+      }
+      lastWidth = width;
+    });
+    this.resizeObserver.observe(this.chartsGrid.nativeElement);
   }
 
   loadData(): void {
@@ -103,13 +129,9 @@ export class ProjectAnalyticsDashboardComponent implements AfterViewInit, OnDest
         this.burnDownData.set(data.burnDown);
         this.resourceUtilization.set(data.resources);
         this.loading.set(false);
-        // Two ticks: first tick removes --hidden (opacity:0 → visible, dimensions available),
-        // second tick lets Chart.js measure the container correctly.
-        setTimeout(() => {
-          this.buildCharts();
-          // Resize all charts so they fit the now-visible container
-          setTimeout(() => this.charts.forEach(c => c.resize()), 50);
-        }, 0);
+        // Build charts. If the container is hidden (display:none from mat-tab),
+        // charts will be 300x150 but ResizeObserver will resize them when tab activates.
+        setTimeout(() => this.buildCharts(), 0);
       },
       error: () => {
         this.loading.set(false);
@@ -155,37 +177,17 @@ export class ProjectAnalyticsDashboardComponent implements AfterViewInit, OnDest
     const dist      = this.taskDistribution();
     const resources = this.resourceUtilization();
 
-    console.log('[Analytics] buildCharts called', {
-      burnDownCanvas: !!this.burnDownCanvas?.nativeElement,
-      velocityCanvas: !!this.velocityCanvas?.nativeElement,
-      taskDistCanvas: !!this.taskDistCanvas?.nativeElement,
-      resourceCanvas: !!this.resourceCanvas?.nativeElement,
-      hasBurnDown: !!burnDown,
-      velocityLen: velocity.length,
-      hasDist: !!dist,
-      resourcesLen: resources.length,
-    });
-
-    try {
-      if (this.burnDownCanvas?.nativeElement && burnDown) {
-        console.log('[Analytics] Building burndown chart...');
-        this.charts.push(this.buildBurnDownChart(burnDown));
-      }
-      if (this.velocityCanvas?.nativeElement && velocity.length) {
-        console.log('[Analytics] Building velocity chart...');
-        this.charts.push(this.buildVelocityChart(velocity));
-      }
-      if (this.taskDistCanvas?.nativeElement && dist) {
-        console.log('[Analytics] Building task dist chart...');
-        this.charts.push(this.buildTaskDistChart(dist));
-      }
-      if (this.resourceCanvas?.nativeElement && resources.length) {
-        console.log('[Analytics] Building resource chart...');
-        this.charts.push(this.buildResourceChart(resources));
-      }
-      console.log('[Analytics] buildCharts complete, charts count:', this.charts.length);
-    } catch (err) {
-      console.error('[Analytics] buildCharts error:', err);
+    if (this.burnDownCanvas?.nativeElement && burnDown) {
+      this.charts.push(this.buildBurnDownChart(burnDown));
+    }
+    if (this.velocityCanvas?.nativeElement && velocity.length) {
+      this.charts.push(this.buildVelocityChart(velocity));
+    }
+    if (this.taskDistCanvas?.nativeElement && dist) {
+      this.charts.push(this.buildTaskDistChart(dist));
+    }
+    if (this.resourceCanvas?.nativeElement && resources.length) {
+      this.charts.push(this.buildResourceChart(resources));
     }
   }
 
