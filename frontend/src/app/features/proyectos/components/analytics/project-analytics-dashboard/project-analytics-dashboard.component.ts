@@ -1,7 +1,7 @@
 import {
   Component,
-  OnInit,
   OnDestroy,
+  AfterViewInit,
   ChangeDetectionStrategy,
   signal,
   computed,
@@ -42,7 +42,7 @@ import {
   templateUrl: './project-analytics-dashboard.component.html',
   styleUrl: './project-analytics-dashboard.component.scss',
 })
-export class ProjectAnalyticsDashboardComponent implements OnInit, OnDestroy {
+export class ProjectAnalyticsDashboardComponent implements AfterViewInit, OnDestroy {
   private readonly analyticsService = inject(AnalyticsService);
   private readonly snackBar = inject(MatSnackBar);
 
@@ -72,7 +72,8 @@ export class ProjectAnalyticsDashboardComponent implements OnInit, OnDestroy {
   private loadSub: Subscription | null = null;
   private exportSub: Subscription | null = null;
 
-  ngOnInit(): void {
+  ngAfterViewInit(): void {
+    // Load data after view init so @ViewChild canvas refs are guaranteed to be set
     this.loadData();
   }
 
