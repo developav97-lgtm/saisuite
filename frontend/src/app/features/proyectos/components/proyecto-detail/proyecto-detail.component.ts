@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, inject, signal, computed } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { MatTabsModule } from '@angular/material/tabs';
@@ -59,6 +59,11 @@ export class ProyectoDetailComponent implements OnInit {
 
   readonly proyecto = signal<ProyectoDetail | null>(null);
   readonly loading  = signal(true);
+  readonly selectedTab = signal(0);
+  readonly analyticsTabActive    = computed(() => this.selectedTab() === 8);
+  readonly baselinesTabLoaded    = computed(() => this.selectedTab() >= 9);
+  readonly escenariosTabLoaded   = computed(() => this.selectedTab() >= 10);
+  readonly presupuestoTabLoaded  = computed(() => this.selectedTab() >= 11);
 
   readonly ESTADO_LABELS   = ESTADO_LABELS;
   readonly ESTADO_SEVERITY = ESTADO_SEVERITY;

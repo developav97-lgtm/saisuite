@@ -59,7 +59,7 @@
     </div>
 
     <!-- ── Tabs ── -->
-    <mat-tab-group class="pd-tabs">
+    <mat-tab-group class="pd-tabs" (selectedTabChange)="selectedTab.set($event.index)">
 
       <!-- Tab 1: General -->
       <mat-tab label="General">
@@ -264,11 +264,11 @@
         </div>
       </mat-tab>
 
-      <!-- Tab 9: Analytics — lazy con @defer on idle -->
+      <!-- Tab 9: Analytics — defer until tab is selected so canvas dimensions are valid -->
       <mat-tab label="Analytics">
         <div class="pd-tab-content">
-          @defer (on idle) {
-            <app-project-analytics-dashboard [projectId]="p.id" />
+          @defer (when analyticsTabActive()) {
+            <app-project-analytics-dashboard [projectId]="p.id" [tabActive]="analyticsTabActive()" />
           } @placeholder {
             <div class="sc-loading-state" style="height: 200px;">
               <mat-progress-bar mode="indeterminate"></mat-progress-bar>
@@ -280,7 +280,7 @@
       <!-- Tab 10: Baselines — SK-43 -->
       <mat-tab label="Baselines">
         <div class="pd-tab-content">
-          @defer (on viewport) {
+          @defer (when baselinesTabLoaded()) {
             <app-baseline-comparison [projectId]="p.id" />
           } @placeholder {
             <div class="sc-loading-state" style="height: 200px;">
@@ -293,7 +293,7 @@
       <!-- Tab 11: Escenarios What-If — SK-43 -->
       <mat-tab label="Escenarios">
         <div class="pd-tab-content">
-          @defer (on viewport) {
+          @defer (when escenariosTabLoaded()) {
             <app-what-if-scenario-builder [projectId]="p.id" />
           } @placeholder {
             <div class="sc-loading-state" style="height: 200px;">
@@ -306,7 +306,7 @@
       <!-- Tab 12: Presupuesto & Costos — Feature #7 -->
       <mat-tab label="Presupuesto">
         <div class="pd-tab-content">
-          @defer (on viewport) {
+          @defer (when presupuestoTabLoaded()) {
             <app-budget-dashboard [projectId]="p.id" />
           } @placeholder {
             <div class="sc-loading-state" style="height: 200px;">

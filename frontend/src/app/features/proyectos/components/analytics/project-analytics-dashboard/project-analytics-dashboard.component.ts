@@ -47,6 +47,8 @@ export class ProjectAnalyticsDashboardComponent implements AfterViewInit, OnDest
   private readonly snackBar = inject(MatSnackBar);
 
   readonly projectId = input.required<string>();
+  /** Set to true by the parent when this tab becomes the active tab. */
+  readonly tabActive = input(false);
 
   readonly loading = signal(false);
   readonly kpis = signal<ProjectKPIs | null>(null);
@@ -69,43 +71,35 @@ export class ProjectAnalyticsDashboardComponent implements AfterViewInit, OnDest
   private charts: Chart[] = [];
   private loadSub: Subscription | null = null;
   private exportSub: Subscription | null = null;
-  private mutationObs: MutationObserver | null = null;
   private dataReady = false;
+  private containerVisible = false;
+  private resizeObserver: ResizeObserver | null = null;
 
   ngAfterViewInit(): void {
     this.loadData();
-    this.watchTabActivation();
+    this.setupResizeObserver();
   }
 
   ngOnDestroy(): void {
-    this.mutationObs?.disconnect();
     this.destroyCharts();
+    this.resizeObserver?.disconnect();
     this.loadSub?.unsubscribe();
     this.exportSub?.unsubscribe();
   }
 
-  /**
-   * Angular Material adds/removes `mat-mdc-tab-body-active` on the tab body
-   * when the user switches tabs. We watch for this class on the nearest
-   * mat-mdc-tab-body ancestor. When it appears and data is ready, we build
-   * (or resize) charts with the now-correct container dimensions.
-   */
-  private watchTabActivation(): void {
-    let el: HTMLElement | null = this.chartsGrid?.nativeElement?.parentElement ?? null;
-    while (el && !el.classList.contains('mat-mdc-tab-body')) {
-      el = el.parentElement;
-    }
+  private setupResizeObserver(): void {
+    const el = this.chartsGrid?.nativeElement;
     if (!el) return;
-
-    const tabBody = el;
-    this.mutationObs = new MutationObserver(() => {
-      const isActive = tabBody.classList.contains('mat-mdc-tab-body-active');
-      if (isActive && this.dataReady) {
-        // Tab just became active — rebuild charts so they use real dimensions
-        setTimeout(() => this.buildCharts(), 50);
+    this.resizeObserver = new ResizeObserver(entries => {
+      const width = entries[0]?.contentRect.width ?? 0;
+      if (width > 0) {
+        this.containerVisible = true;
+        if (this.dataReady) {
+          this.drawCharts();
+        }
       }
     });
-    this.mutationObs.observe(tabBody, { attributes: true, attributeFilter: ['class'] });
+    this.resizeObserver.observe(el);
   }
 
   loadData(): void {
@@ -130,18 +124,24 @@ export class ProjectAnalyticsDashboardComponent implements AfterViewInit, OnDest
         this.resourceUtilization.set(data.resources);
         this.loading.set(false);
         this.dataReady = true;
-        // Try building immediately; if the tab is hidden, MutationObserver
-        // will rebuild when the tab becomes active.
-        setTimeout(() => this.buildCharts(), 0);
+        // Draw if the container is already visible (ResizeObserver already fired).
+        // Otherwise ResizeObserver will call drawCharts() once the container has dimensions.
+        if (this.containerVisible) {
+          this.drawCharts();
+        }
       },
       error: () => {
         this.loading.set(false);
         this.snackBar.open('Error al cargar analytics', 'Cerrar', {
-          duration: 4000,
-          panelClass: ['snack-error'],
+          duration: 4000, panelClass: ['snack-error'],
         });
       },
     });
+  }
+
+  /** Public — called by the refresh button */
+  redrawCharts(): void {
+    this.loadData();
   }
 
   kpiClass(value: number): string {
@@ -167,42 +167,38 @@ export class ProjectAnalyticsDashboardComponent implements AfterViewInit, OnDest
     this.charts = [];
   }
 
-  private getCanvasSize(canvas: HTMLCanvasElement): { w: number; h: number } {
-    const container = canvas.closest('.pad-chart-container') as HTMLElement | null;
-    const w = container?.clientWidth  || canvas.parentElement?.clientWidth  || 560;
-    const h = container?.clientHeight || 280;
-    return { w: Math.max(w, 200), h: Math.max(h, 200) };
-  }
-
-  private buildCharts(): void {
+  drawCharts(): void {
     this.destroyCharts();
+
     const burnDown  = this.burnDownData();
     const velocity  = this.velocityData();
     const dist      = this.taskDistribution();
     const resources = this.resourceUtilization();
 
+    if (!burnDown && !velocity.length && !dist && !resources.length) return;
+
+    // Set explicit pixel dimensions from the actual DOM container.
+    // Use || (not ??) so that 0 also falls back to the default.
+    const setSize = (canvas: HTMLCanvasElement) => {
+      const box = canvas.closest('.pad-chart-container')?.getBoundingClientRect();
+      canvas.width  = Math.round(box?.width  || 560);
+      canvas.height = Math.round(box?.height || 280);
+    };
+
     if (this.burnDownCanvas?.nativeElement && burnDown) {
-      const { w, h } = this.getCanvasSize(this.burnDownCanvas.nativeElement);
-      this.burnDownCanvas.nativeElement.width  = w;
-      this.burnDownCanvas.nativeElement.height = h;
+      setSize(this.burnDownCanvas.nativeElement);
       this.charts.push(this.buildBurnDownChart(burnDown));
     }
     if (this.velocityCanvas?.nativeElement && velocity.length) {
-      const { w, h } = this.getCanvasSize(this.velocityCanvas.nativeElement);
-      this.velocityCanvas.nativeElement.width  = w;
-      this.velocityCanvas.nativeElement.height = h;
+      setSize(this.velocityCanvas.nativeElement);
       this.charts.push(this.buildVelocityChart(velocity));
     }
     if (this.taskDistCanvas?.nativeElement && dist) {
-      const { w, h } = this.getCanvasSize(this.taskDistCanvas.nativeElement);
-      this.taskDistCanvas.nativeElement.width  = w;
-      this.taskDistCanvas.nativeElement.height = h;
+      setSize(this.taskDistCanvas.nativeElement);
       this.charts.push(this.buildTaskDistChart(dist));
     }
     if (this.resourceCanvas?.nativeElement && resources.length) {
-      const { w, h } = this.getCanvasSize(this.resourceCanvas.nativeElement);
-      this.resourceCanvas.nativeElement.width  = w;
-      this.resourceCanvas.nativeElement.height = h;
+      setSize(this.resourceCanvas.nativeElement);
       this.charts.push(this.buildResourceChart(resources));
     }
   }
@@ -213,29 +209,12 @@ export class ProjectAnalyticsDashboardComponent implements AfterViewInit, OnDest
       data: {
         labels: data.data_points.map(p => p.week_label),
         datasets: [
-          {
-            label: 'Ideal',
-            data: data.data_points.map(p => p.hours_ideal),
-            borderColor: '#9E9E9E',
-            borderDash: [5, 5],
-            pointRadius: 0,
-            fill: false,
-          },
-          {
-            label: 'Estimadas restantes',
-            data: data.data_points.map(p => p.hours_remaining),
-            borderColor: '#1976d2',
-            backgroundColor: 'rgba(25,118,210,0.08)',
-            fill: true,
-            tension: 0.3,
-          },
-          {
-            label: 'Acumuladas reales',
-            data: data.data_points.map(p => p.hours_actual_cumulative),
-            borderColor: '#4CAF50',
-            fill: false,
-            tension: 0.3,
-          },
+          { label: 'Ideal', data: data.data_points.map(p => p.hours_ideal),
+            borderColor: '#9E9E9E', borderDash: [5,5], pointRadius: 0, fill: false },
+          { label: 'Estimadas restantes', data: data.data_points.map(p => p.hours_remaining),
+            borderColor: '#1976d2', backgroundColor: 'rgba(25,118,210,0.08)', fill: true, tension: 0.3 },
+          { label: 'Acumuladas reales', data: data.data_points.map(p => p.hours_actual_cumulative),
+            borderColor: '#4CAF50', fill: false, tension: 0.3 },
         ],
       },
       options: {
@@ -253,20 +232,10 @@ export class ProjectAnalyticsDashboardComponent implements AfterViewInit, OnDest
       data: {
         labels: data.map(p => p.week_label),
         datasets: [
-          {
-            label: 'Tareas completadas',
-            data: data.map(p => p.tasks_completed),
-            backgroundColor: data.map(p => p.tasks_completed >= avg ? '#4CAF50' : '#F44336'),
-          },
-          {
-            label: 'Media',
-            data: data.map(() => avg),
-            type: 'line' as const,
-            borderColor: '#FFC107',
-            borderDash: [4, 4],
-            pointRadius: 0,
-            fill: false,
-          },
+          { label: 'Tareas completadas', data: data.map(p => p.tasks_completed),
+            backgroundColor: data.map(p => p.tasks_completed >= avg ? '#4CAF50' : '#F44336') },
+          { label: 'Media', data: data.map(() => avg), type: 'line' as const,
+            borderColor: '#FFC107', borderDash: [4,4], pointRadius: 0, fill: false },
         ],
       },
       options: {
@@ -304,11 +273,9 @@ export class ProjectAnalyticsDashboardComponent implements AfterViewInit, OnDest
         datasets: [{
           label: 'Utilización (%)',
           data: sorted.map(r => Math.min(r.utilization_percentage, 120)),
-          backgroundColor: sorted.map(r => {
-            if (r.utilization_percentage > 90) return '#F44336';
-            if (r.utilization_percentage > 70) return '#FFC107';
-            return '#4CAF50';
-          }),
+          backgroundColor: sorted.map(r =>
+            r.utilization_percentage > 90 ? '#F44336' :
+            r.utilization_percentage > 70 ? '#FFC107' : '#4CAF50'),
         }],
       },
       options: {
@@ -328,14 +295,11 @@ export class ProjectAnalyticsDashboardComponent implements AfterViewInit, OnDest
         next: (blob) => {
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
-          a.href = url;
-          a.download = `analytics-${this.projectId()}.xlsx`;
-          a.click();
-          URL.revokeObjectURL(url);
+          a.href = url; a.download = `analytics-${this.projectId()}.xlsx`;
+          a.click(); URL.revokeObjectURL(url);
           this.snackBar.open('Excel descargado', 'Cerrar', { duration: 3000, panelClass: ['snack-success'] });
         },
-        error: () =>
-          this.snackBar.open('Error al exportar', 'Cerrar', { duration: 4000, panelClass: ['snack-error'] }),
+        error: () => this.snackBar.open('Error al exportar', 'Cerrar', { duration: 4000, panelClass: ['snack-error'] }),
       });
   }
 }
