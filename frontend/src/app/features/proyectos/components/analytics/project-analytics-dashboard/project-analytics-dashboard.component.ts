@@ -103,8 +103,13 @@ export class ProjectAnalyticsDashboardComponent implements AfterViewInit, OnDest
         this.burnDownData.set(data.burnDown);
         this.resourceUtilization.set(data.resources);
         this.loading.set(false);
-        // Canvas refs are always available (not inside @if), build charts immediately
-        this.buildCharts();
+        // Two ticks: first tick removes --hidden (opacity:0 → visible, dimensions available),
+        // second tick lets Chart.js measure the container correctly.
+        setTimeout(() => {
+          this.buildCharts();
+          // Resize all charts so they fit the now-visible container
+          setTimeout(() => this.charts.forEach(c => c.resize()), 50);
+        }, 0);
       },
       error: () => {
         this.loading.set(false);
@@ -150,17 +155,37 @@ export class ProjectAnalyticsDashboardComponent implements AfterViewInit, OnDest
     const dist      = this.taskDistribution();
     const resources = this.resourceUtilization();
 
-    if (this.burnDownCanvas?.nativeElement && burnDown) {
-      this.charts.push(this.buildBurnDownChart(burnDown));
-    }
-    if (this.velocityCanvas?.nativeElement && velocity.length) {
-      this.charts.push(this.buildVelocityChart(velocity));
-    }
-    if (this.taskDistCanvas?.nativeElement && dist) {
-      this.charts.push(this.buildTaskDistChart(dist));
-    }
-    if (this.resourceCanvas?.nativeElement && resources.length) {
-      this.charts.push(this.buildResourceChart(resources));
+    console.log('[Analytics] buildCharts called', {
+      burnDownCanvas: !!this.burnDownCanvas?.nativeElement,
+      velocityCanvas: !!this.velocityCanvas?.nativeElement,
+      taskDistCanvas: !!this.taskDistCanvas?.nativeElement,
+      resourceCanvas: !!this.resourceCanvas?.nativeElement,
+      hasBurnDown: !!burnDown,
+      velocityLen: velocity.length,
+      hasDist: !!dist,
+      resourcesLen: resources.length,
+    });
+
+    try {
+      if (this.burnDownCanvas?.nativeElement && burnDown) {
+        console.log('[Analytics] Building burndown chart...');
+        this.charts.push(this.buildBurnDownChart(burnDown));
+      }
+      if (this.velocityCanvas?.nativeElement && velocity.length) {
+        console.log('[Analytics] Building velocity chart...');
+        this.charts.push(this.buildVelocityChart(velocity));
+      }
+      if (this.taskDistCanvas?.nativeElement && dist) {
+        console.log('[Analytics] Building task dist chart...');
+        this.charts.push(this.buildTaskDistChart(dist));
+      }
+      if (this.resourceCanvas?.nativeElement && resources.length) {
+        console.log('[Analytics] Building resource chart...');
+        this.charts.push(this.buildResourceChart(resources));
+      }
+      console.log('[Analytics] buildCharts complete, charts count:', this.charts.length);
+    } catch (err) {
+      console.error('[Analytics] buildCharts error:', err);
     }
   }
 
@@ -197,6 +222,8 @@ export class ProjectAnalyticsDashboardComponent implements AfterViewInit, OnDest
         ],
       },
       options: {
+        responsive: true,
+        maintainAspectRatio: false,
         scales: {
           y: {
             beginAtZero: true,
@@ -234,6 +261,8 @@ export class ProjectAnalyticsDashboardComponent implements AfterViewInit, OnDest
         ],
       },
       options: {
+        responsive: true,
+        maintainAspectRatio: false,
         scales: { y: { beginAtZero: true } },
         plugins: { legend: { position: 'top' } },
       },
@@ -259,6 +288,8 @@ export class ProjectAnalyticsDashboardComponent implements AfterViewInit, OnDest
         ],
       },
       options: {
+        responsive: true,
+        maintainAspectRatio: false,
         plugins: { legend: { position: 'right' } },
         cutout: '65%',
       },
@@ -286,6 +317,8 @@ export class ProjectAnalyticsDashboardComponent implements AfterViewInit, OnDest
         ],
       },
       options: {
+        responsive: true,
+        maintainAspectRatio: false,
         indexAxis: 'y' as const,
         scales: {
           x: {
