@@ -2,7 +2,6 @@ import {
   Component,
   OnInit,
   OnDestroy,
-  AfterViewChecked,
   ChangeDetectionStrategy,
   signal,
   computed,
@@ -10,6 +9,7 @@ import {
   ViewChild,
   ElementRef,
   inject,
+  effect,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { forkJoin, Subscription } from 'rxjs';
@@ -43,7 +43,7 @@ import {
   templateUrl: './project-analytics-dashboard.component.html',
   styleUrl: './project-analytics-dashboard.component.scss',
 })
-export class ProjectAnalyticsDashboardComponent implements OnInit, OnDestroy, AfterViewChecked {
+export class ProjectAnalyticsDashboardComponent implements OnInit, OnDestroy {
   private readonly analyticsService = inject(AnalyticsService);
   private readonly snackBar = inject(MatSnackBar);
 
@@ -72,22 +72,30 @@ export class ProjectAnalyticsDashboardComponent implements OnInit, OnDestroy, Af
   private charts: Chart[] = [];
   private loadSub: Subscription | null = null;
   private exportSub: Subscription | null = null;
-  private chartsBuilt = false;
+  private rafId: number | null = null;
+
+  constructor() {
+    // Reactive effect: when data finishes loading, build charts.
+    // requestAnimationFrame guarantees Angular has painted the @if block
+    // and the @ViewChild canvas refs exist in the DOM.
+    effect(() => {
+      const dataReady = !this.loading() && this.burnDownData() !== null;
+      if (dataReady) {
+        if (this.rafId !== null) cancelAnimationFrame(this.rafId);
+        this.rafId = requestAnimationFrame(() => {
+          this.rafId = null;
+          this.buildCharts();
+        });
+      }
+    });
+  }
 
   ngOnInit(): void {
     this.loadData();
   }
 
-  ngAfterViewChecked(): void {
-    // Build charts the first time after the @if block renders the canvas elements.
-    // @ViewChild refs inside @if are only available after AfterViewChecked runs.
-    if (!this.chartsBuilt && this.burnDownCanvas?.nativeElement && this.burnDownData()) {
-      this.chartsBuilt = true;
-      this.buildCharts();
-    }
-  }
-
   ngOnDestroy(): void {
+    if (this.rafId !== null) cancelAnimationFrame(this.rafId);
     this.destroyCharts();
     this.loadSub?.unsubscribe();
     this.exportSub?.unsubscribe();
@@ -96,26 +104,24 @@ export class ProjectAnalyticsDashboardComponent implements OnInit, OnDestroy, Af
   loadData(): void {
     this.loadSub?.unsubscribe();
     this.loading.set(true);
-    this.chartsBuilt = false;
     this.destroyCharts();
     const id = this.projectId();
 
     this.loadSub = forkJoin({
-      kpis: this.analyticsService.getKPIs(id),
+      kpis:         this.analyticsService.getKPIs(id),
       distribution: this.analyticsService.getTaskDistribution(id),
-      velocity: this.analyticsService.getVelocity(id),
-      burnDown: this.analyticsService.getBurnDown(id),
-      resources: this.analyticsService.getResourceUtilization(id),
+      velocity:     this.analyticsService.getVelocity(id),
+      burnDown:     this.analyticsService.getBurnDown(id),
+      resources:    this.analyticsService.getResourceUtilization(id),
     }).subscribe({
       next: (data) => {
         this.kpis.set(data.kpis);
         this.taskDistribution.set(data.distribution);
-        // Backend wraps velocity in { periods, data: [...] }
         this.velocityData.set(data.velocity.data);
         this.burnDownData.set(data.burnDown);
         this.resourceUtilization.set(data.resources);
         this.loading.set(false);
-        // ngAfterViewChecked will build charts once canvas refs are available
+        // effect() will react to the signal changes and call buildCharts via rAF
       },
       error: () => {
         this.loading.set(false);
@@ -137,7 +143,6 @@ export class ProjectAnalyticsDashboardComponent implements OnInit, OnDestroy, Af
 
   budgetClass(variance: number | null): string {
     if (variance === null) return 'pad-kpi__trend--neutral';
-    // Negative = under budget (good); Positive = over budget (bad)
     if (variance <= 0) return 'pad-kpi__trend--up';
     if (variance <= 10) return 'pad-kpi__trend--warn';
     return 'pad-kpi__trend--danger';
@@ -157,9 +162,9 @@ export class ProjectAnalyticsDashboardComponent implements OnInit, OnDestroy, Af
 
   private buildCharts(): void {
     this.destroyCharts();
-    const burnDown = this.burnDownData();
-    const velocity = this.velocityData();
-    const dist = this.taskDistribution();
+    const burnDown  = this.burnDownData();
+    const velocity  = this.velocityData();
+    const dist      = this.taskDistribution();
     const resources = this.resourceUtilization();
 
     if (this.burnDownCanvas?.nativeElement && burnDown) {
