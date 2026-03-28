@@ -17,9 +17,8 @@
     <mat-progress-bar mode="indeterminate" class="pad-progress"></mat-progress-bar>
   }
 
+  <!-- KPI Cards — only when data is ready -->
   @if (!loading() && kpis(); as k) {
-
-    <!-- KPI Cards -->
     <div class="pad-kpi-grid">
 
       <mat-card class="pad-kpi-card">
@@ -69,57 +68,56 @@
       </mat-card>
 
     </div>
-
-    <!-- Charts Grid -->
-    <div class="pad-charts-grid">
-
-      <mat-card class="pad-chart-card">
-        <mat-card-header>
-          <mat-card-title>Burn Down</mat-card-title>
-        </mat-card-header>
-        <mat-card-content>
-          <div class="pad-chart-container" role="img" aria-label="Gráfico burn down del proyecto">
-            <canvas #burnDownCanvas></canvas>
-          </div>
-        </mat-card-content>
-      </mat-card>
-
-      <mat-card class="pad-chart-card">
-        <mat-card-header>
-          <mat-card-title>Velocidad del equipo</mat-card-title>
-        </mat-card-header>
-        <mat-card-content>
-          <div class="pad-chart-container" role="img" aria-label="Gráfico de velocidad por semana">
-            <canvas #velocityCanvas></canvas>
-          </div>
-        </mat-card-content>
-      </mat-card>
-
-      <mat-card class="pad-chart-card">
-        <mat-card-header>
-          <mat-card-title>Distribución de tareas</mat-card-title>
-        </mat-card-header>
-        <mat-card-content>
-          <div class="pad-chart-container" role="img" aria-label="Distribución de tareas por estado">
-            <canvas #taskDistCanvas></canvas>
-          </div>
-        </mat-card-content>
-      </mat-card>
-
-      <mat-card class="pad-chart-card">
-        <mat-card-header>
-          <mat-card-title>Utilización de recursos</mat-card-title>
-        </mat-card-header>
-        <mat-card-content>
-          <div class="pad-chart-container" role="img" aria-label="Utilización de recursos del equipo">
-            <canvas #resourceCanvas></canvas>
-          </div>
-        </mat-card-content>
-      </mat-card>
-
-    </div>
-
   }
+
+  <!-- Charts Grid — canvas elements ALWAYS in DOM so @ViewChild refs are always set -->
+  <div class="pad-charts-grid" [class.pad-charts-grid--hidden]="loading() || !kpis()">
+
+    <mat-card class="pad-chart-card">
+      <mat-card-header>
+        <mat-card-title>Burn Down</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="pad-chart-container" role="img" aria-label="Gráfico burn down del proyecto">
+          <canvas #burnDownCanvas></canvas>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="pad-chart-card">
+      <mat-card-header>
+        <mat-card-title>Velocidad del equipo</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="pad-chart-container" role="img" aria-label="Gráfico de velocidad por semana">
+          <canvas #velocityCanvas></canvas>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="pad-chart-card">
+      <mat-card-header>
+        <mat-card-title>Distribución de tareas</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="pad-chart-container" role="img" aria-label="Distribución de tareas por estado">
+          <canvas #taskDistCanvas></canvas>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="pad-chart-card">
+      <mat-card-header>
+        <mat-card-title>Utilización de recursos</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="pad-chart-container" role="img" aria-label="Utilización de recursos del equipo">
+          <canvas #resourceCanvas></canvas>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+  </div>
 
   @if (!loading() && !kpis()) {
     <div class="sc-empty-state">

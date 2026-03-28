@@ -72,6 +72,10 @@
   @media (max-width: 960px) {
     grid-template-columns: 1fr;
   }
+
+  &--hidden {
+    display: none;
+  }
 }
 
 .pad-chart-card {

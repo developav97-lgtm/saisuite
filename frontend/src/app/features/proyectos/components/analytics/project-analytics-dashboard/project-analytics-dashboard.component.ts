@@ -9,7 +9,6 @@ import {
   ViewChild,
   ElementRef,
   inject,
-  effect,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { forkJoin, Subscription } from 'rxjs';
@@ -57,45 +56,27 @@ export class ProjectAnalyticsDashboardComponent implements OnInit, OnDestroy {
   readonly burnDownData = signal<BurnDownData | null>(null);
   readonly resourceUtilization = signal<ResourceUtilization[]>([]);
 
-  // Chart canvas refs
+  // Canvas refs — always in DOM (outside @if), so always resolved after ngAfterViewInit
   @ViewChild('burnDownCanvas') burnDownCanvas!: ElementRef<HTMLCanvasElement>;
   @ViewChild('velocityCanvas') velocityCanvas!: ElementRef<HTMLCanvasElement>;
   @ViewChild('taskDistCanvas') taskDistCanvas!: ElementRef<HTMLCanvasElement>;
   @ViewChild('resourceCanvas') resourceCanvas!: ElementRef<HTMLCanvasElement>;
 
   // Computed signals for KPI display state
-  readonly completionClass  = computed(() => this.kpiClass(this.kpis()?.completion_rate ?? 0));
-  readonly onTimeClass      = computed(() => this.kpiClass(this.kpis()?.on_time_rate ?? 0));
-  readonly budgetClass_     = computed(() => this.budgetClass(this.kpis()?.budget_variance ?? null));
+  readonly completionClass   = computed(() => this.kpiClass(this.kpis()?.completion_rate ?? 0));
+  readonly onTimeClass       = computed(() => this.kpiClass(this.kpis()?.on_time_rate ?? 0));
+  readonly budgetClass_      = computed(() => this.budgetClass(this.kpis()?.budget_variance ?? null));
   readonly budgetVarianceFmt = computed(() => this.formatVariance(this.kpis()?.budget_variance ?? null));
 
   private charts: Chart[] = [];
   private loadSub: Subscription | null = null;
   private exportSub: Subscription | null = null;
-  private rafId: number | null = null;
-
-  constructor() {
-    // Reactive effect: when data finishes loading, build charts.
-    // requestAnimationFrame guarantees Angular has painted the @if block
-    // and the @ViewChild canvas refs exist in the DOM.
-    effect(() => {
-      const dataReady = !this.loading() && this.burnDownData() !== null;
-      if (dataReady) {
-        if (this.rafId !== null) cancelAnimationFrame(this.rafId);
-        this.rafId = requestAnimationFrame(() => {
-          this.rafId = null;
-          this.buildCharts();
-        });
-      }
-    });
-  }
 
   ngOnInit(): void {
     this.loadData();
   }
 
   ngOnDestroy(): void {
-    if (this.rafId !== null) cancelAnimationFrame(this.rafId);
     this.destroyCharts();
     this.loadSub?.unsubscribe();
     this.exportSub?.unsubscribe();
@@ -121,7 +102,8 @@ export class ProjectAnalyticsDashboardComponent implements OnInit, OnDestroy {
         this.burnDownData.set(data.burnDown);
         this.resourceUtilization.set(data.resources);
         this.loading.set(false);
-        // effect() will react to the signal changes and call buildCharts via rAF
+        // Canvas refs are always available (not inside @if), build charts immediately
+        this.buildCharts();
       },
       error: () => {
         this.loading.set(false);
