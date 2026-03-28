@@ -48,7 +48,6 @@ export class ProjectAnalyticsDashboardComponent implements AfterViewInit, OnDest
 
   readonly projectId = input.required<string>();
 
-  // State signals
   readonly loading = signal(false);
   readonly kpis = signal<ProjectKPIs | null>(null);
   readonly taskDistribution = signal<TaskDistribution | null>(null);
@@ -56,14 +55,12 @@ export class ProjectAnalyticsDashboardComponent implements AfterViewInit, OnDest
   readonly burnDownData = signal<BurnDownData | null>(null);
   readonly resourceUtilization = signal<ResourceUtilization[]>([]);
 
-  // Canvas and grid container refs — always in DOM (outside @if)
   @ViewChild('burnDownCanvas') burnDownCanvas!: ElementRef<HTMLCanvasElement>;
   @ViewChild('velocityCanvas') velocityCanvas!: ElementRef<HTMLCanvasElement>;
   @ViewChild('taskDistCanvas') taskDistCanvas!: ElementRef<HTMLCanvasElement>;
   @ViewChild('resourceCanvas') resourceCanvas!: ElementRef<HTMLCanvasElement>;
   @ViewChild('chartsGrid')    chartsGrid!: ElementRef<HTMLDivElement>;
 
-  // Computed signals for KPI display state
   readonly completionClass   = computed(() => this.kpiClass(this.kpis()?.completion_rate ?? 0));
   readonly onTimeClass       = computed(() => this.kpiClass(this.kpis()?.on_time_rate ?? 0));
   readonly budgetClass_      = computed(() => this.budgetClass(this.kpis()?.budget_variance ?? null));
@@ -72,46 +69,49 @@ export class ProjectAnalyticsDashboardComponent implements AfterViewInit, OnDest
   private charts: Chart[] = [];
   private loadSub: Subscription | null = null;
   private exportSub: Subscription | null = null;
-  // ResizeObserver watches the grid container. When mat-tab makes it visible
-  // (removes display:none), dimensions change → we resize/rebuild charts.
-  private resizeObserver: ResizeObserver | null = null;
+  private mutationObs: MutationObserver | null = null;
+  private dataReady = false;
 
   ngAfterViewInit(): void {
     this.loadData();
-    this.setupResizeObserver();
+    this.watchTabActivation();
   }
 
   ngOnDestroy(): void {
-    this.resizeObserver?.disconnect();
+    this.mutationObs?.disconnect();
     this.destroyCharts();
     this.loadSub?.unsubscribe();
     this.exportSub?.unsubscribe();
   }
 
-  /** Watch the chart grid container for size changes.
-   *  mat-tab-group uses display:none on inactive tabs. When the Analytics tab
-   *  becomes active, the container goes from width=0 to its real width.
-   *  We use that transition to rebuild/resize the charts with correct dimensions. */
-  private setupResizeObserver(): void {
-    if (!this.chartsGrid?.nativeElement) return;
-    let lastWidth = 0;
-    this.resizeObserver = new ResizeObserver((entries) => {
-      const width = entries[0]?.contentRect.width ?? 0;
-      if (width > 0 && lastWidth === 0 && this.charts.length > 0) {
-        // Container just became visible — resize all charts to fit
-        this.charts.forEach(c => c.resize());
-      } else if (width > 0 && lastWidth === 0 && this.burnDownData()) {
-        // Container visible but charts not yet built (data already arrived)
-        this.buildCharts();
+  /**
+   * Angular Material adds/removes `mat-mdc-tab-body-active` on the tab body
+   * when the user switches tabs. We watch for this class on the nearest
+   * mat-mdc-tab-body ancestor. When it appears and data is ready, we build
+   * (or resize) charts with the now-correct container dimensions.
+   */
+  private watchTabActivation(): void {
+    let el: HTMLElement | null = this.chartsGrid?.nativeElement?.parentElement ?? null;
+    while (el && !el.classList.contains('mat-mdc-tab-body')) {
+      el = el.parentElement;
+    }
+    if (!el) return;
+
+    const tabBody = el;
+    this.mutationObs = new MutationObserver(() => {
+      const isActive = tabBody.classList.contains('mat-mdc-tab-body-active');
+      if (isActive && this.dataReady) {
+        // Tab just became active — rebuild charts so they use real dimensions
+        setTimeout(() => this.buildCharts(), 50);
       }
-      lastWidth = width;
     });
-    this.resizeObserver.observe(this.chartsGrid.nativeElement);
+    this.mutationObs.observe(tabBody, { attributes: true, attributeFilter: ['class'] });
   }
 
   loadData(): void {
     this.loadSub?.unsubscribe();
     this.loading.set(true);
+    this.dataReady = false;
     this.destroyCharts();
     const id = this.projectId();
 
@@ -129,8 +129,9 @@ export class ProjectAnalyticsDashboardComponent implements AfterViewInit, OnDest
         this.burnDownData.set(data.burnDown);
         this.resourceUtilization.set(data.resources);
         this.loading.set(false);
-        // Build charts. If the container is hidden (display:none from mat-tab),
-        // charts will be 300x150 but ResizeObserver will resize them when tab activates.
+        this.dataReady = true;
+        // Try building immediately; if the tab is hidden, MutationObserver
+        // will rebuild when the tab becomes active.
         setTimeout(() => this.buildCharts(), 0);
       },
       error: () => {
@@ -142,8 +143,6 @@ export class ProjectAnalyticsDashboardComponent implements AfterViewInit, OnDest
       },
     });
   }
-
-  // ── KPI helpers ──────────────────────────────────────────────────
 
   kpiClass(value: number): string {
     if (value >= 75) return 'pad-kpi__trend--up';
@@ -163,11 +162,16 @@ export class ProjectAnalyticsDashboardComponent implements AfterViewInit, OnDest
     return v >= 0 ? `+${v.toFixed(1)}%` : `${v.toFixed(1)}%`;
   }
 
-  // ── Charts ───────────────────────────────────────────────────────
-
   private destroyCharts(): void {
     this.charts.forEach(c => c.destroy());
     this.charts = [];
+  }
+
+  private getCanvasSize(canvas: HTMLCanvasElement): { w: number; h: number } {
+    const container = canvas.closest('.pad-chart-container') as HTMLElement | null;
+    const w = container?.clientWidth  || canvas.parentElement?.clientWidth  || 560;
+    const h = container?.clientHeight || 280;
+    return { w: Math.max(w, 200), h: Math.max(h, 200) };
   }
 
   private buildCharts(): void {
@@ -178,25 +182,36 @@ export class ProjectAnalyticsDashboardComponent implements AfterViewInit, OnDest
     const resources = this.resourceUtilization();
 
     if (this.burnDownCanvas?.nativeElement && burnDown) {
+      const { w, h } = this.getCanvasSize(this.burnDownCanvas.nativeElement);
+      this.burnDownCanvas.nativeElement.width  = w;
+      this.burnDownCanvas.nativeElement.height = h;
       this.charts.push(this.buildBurnDownChart(burnDown));
     }
     if (this.velocityCanvas?.nativeElement && velocity.length) {
+      const { w, h } = this.getCanvasSize(this.velocityCanvas.nativeElement);
+      this.velocityCanvas.nativeElement.width  = w;
+      this.velocityCanvas.nativeElement.height = h;
       this.charts.push(this.buildVelocityChart(velocity));
     }
     if (this.taskDistCanvas?.nativeElement && dist) {
+      const { w, h } = this.getCanvasSize(this.taskDistCanvas.nativeElement);
+      this.taskDistCanvas.nativeElement.width  = w;
+      this.taskDistCanvas.nativeElement.height = h;
       this.charts.push(this.buildTaskDistChart(dist));
     }
     if (this.resourceCanvas?.nativeElement && resources.length) {
+      const { w, h } = this.getCanvasSize(this.resourceCanvas.nativeElement);
+      this.resourceCanvas.nativeElement.width  = w;
+      this.resourceCanvas.nativeElement.height = h;
       this.charts.push(this.buildResourceChart(resources));
     }
   }
 
   private buildBurnDownChart(data: BurnDownData): Chart {
-    const labels = data.data_points.map(p => p.week_label);
     return new Chart(this.burnDownCanvas.nativeElement, {
       type: 'line',
       data: {
-        labels,
+        labels: data.data_points.map(p => p.week_label),
         datasets: [
           {
             label: 'Ideal',
@@ -224,14 +239,8 @@ export class ProjectAnalyticsDashboardComponent implements AfterViewInit, OnDest
         ],
       },
       options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-          y: {
-            beginAtZero: true,
-            title: { display: true, text: 'Horas' },
-          },
-        },
+        responsive: false,
+        scales: { y: { beginAtZero: true, title: { display: true, text: 'Horas' } } },
         plugins: { legend: { position: 'top' } },
       },
     });
@@ -247,9 +256,7 @@ export class ProjectAnalyticsDashboardComponent implements AfterViewInit, OnDest
           {
             label: 'Tareas completadas',
             data: data.map(p => p.tasks_completed),
-            backgroundColor: data.map(p =>
-              p.tasks_completed >= avg ? '#4CAF50' : '#F44336'
-            ),
+            backgroundColor: data.map(p => p.tasks_completed >= avg ? '#4CAF50' : '#F44336'),
           },
           {
             label: 'Media',
@@ -263,8 +270,7 @@ export class ProjectAnalyticsDashboardComponent implements AfterViewInit, OnDest
         ],
       },
       options: {
-        responsive: true,
-        maintainAspectRatio: false,
+        responsive: false,
         scales: { y: { beginAtZero: true } },
         plugins: { legend: { position: 'top' } },
       },
@@ -276,22 +282,13 @@ export class ProjectAnalyticsDashboardComponent implements AfterViewInit, OnDest
       type: 'doughnut',
       data: {
         labels: ['Por hacer', 'En progreso', 'En revisión', 'Completadas', 'Bloqueadas'],
-        datasets: [
-          {
-            data: [
-              dist.todo,
-              dist.in_progress,
-              dist.in_review,
-              dist.completed,
-              dist.blocked,
-            ],
-            backgroundColor: ['#9E9E9E', '#2196F3', '#FFC107', '#4CAF50', '#F44336'],
-          },
-        ],
+        datasets: [{
+          data: [dist.todo, dist.in_progress, dist.in_review, dist.completed, dist.blocked],
+          backgroundColor: ['#9E9E9E', '#2196F3', '#FFC107', '#4CAF50', '#F44336'],
+        }],
       },
       options: {
-        responsive: true,
-        maintainAspectRatio: false,
+        responsive: false,
         plugins: { legend: { position: 'right' } },
         cutout: '65%',
       },
@@ -299,36 +296,25 @@ export class ProjectAnalyticsDashboardComponent implements AfterViewInit, OnDest
   }
 
   private buildResourceChart(data: ResourceUtilization[]): Chart {
-    const sorted = [...data].sort(
-      (a, b) => b.utilization_percentage - a.utilization_percentage
-    );
+    const sorted = [...data].sort((a, b) => b.utilization_percentage - a.utilization_percentage);
     return new Chart(this.resourceCanvas.nativeElement, {
       type: 'bar',
       data: {
         labels: sorted.map(r => r.user_name),
-        datasets: [
-          {
-            label: 'Utilización (%)',
-            data: sorted.map(r => Math.min(r.utilization_percentage, 120)),
-            backgroundColor: sorted.map(r => {
-              if (r.utilization_percentage > 90) return '#F44336';
-              if (r.utilization_percentage > 70) return '#FFC107';
-              return '#4CAF50';
-            }),
-          },
-        ],
+        datasets: [{
+          label: 'Utilización (%)',
+          data: sorted.map(r => Math.min(r.utilization_percentage, 120)),
+          backgroundColor: sorted.map(r => {
+            if (r.utilization_percentage > 90) return '#F44336';
+            if (r.utilization_percentage > 70) return '#FFC107';
+            return '#4CAF50';
+          }),
+        }],
       },
       options: {
-        responsive: true,
-        maintainAspectRatio: false,
+        responsive: false,
         indexAxis: 'y' as const,
-        scales: {
-          x: {
-            min: 0,
-            max: 120,
-            title: { display: true, text: 'Utilización (%)' },
-          },
-        },
+        scales: { x: { min: 0, max: 120, title: { display: true, text: 'Utilización (%)' } } },
         plugins: { legend: { display: false } },
       },
     });
@@ -346,16 +332,10 @@ export class ProjectAnalyticsDashboardComponent implements AfterViewInit, OnDest
           a.download = `analytics-${this.projectId()}.xlsx`;
           a.click();
           URL.revokeObjectURL(url);
-          this.snackBar.open('Excel descargado', 'Cerrar', {
-            duration: 3000,
-            panelClass: ['snack-success'],
-          });
+          this.snackBar.open('Excel descargado', 'Cerrar', { duration: 3000, panelClass: ['snack-success'] });
         },
         error: () =>
-          this.snackBar.open('Error al exportar', 'Cerrar', {
-            duration: 4000,
-            panelClass: ['snack-error'],
-          }),
+          this.snackBar.open('Error al exportar', 'Cerrar', { duration: 4000, panelClass: ['snack-error'] }),
       });
   }
 }
