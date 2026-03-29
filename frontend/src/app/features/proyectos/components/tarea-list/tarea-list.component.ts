@@ -3,7 +3,8 @@
  * Lista de tareas con filtros server-side, paginación client-side y acciones CRUD.
  * Soporta modo "Mis Tareas" cuando la ruta lleva data.misTareas = true.
  */
-import { ChangeDetectionStrategy, Component, OnInit, effect, inject, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, effect, inject, input, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router, ActivatedRoute } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -61,6 +62,7 @@ export class TareaListComponent implements OnInit {
   private readonly route        = inject(ActivatedRoute);
   private readonly dialog       = inject(MatDialog);
   private readonly snackBar     = inject(MatSnackBar);
+  private readonly destroyRef   = inject(DestroyRef);
 
   /**
    * Input para uso embebido (ej: tab dentro de proyecto-detail).
@@ -86,7 +88,7 @@ export class TareaListComponent implements OnInit {
 
   constructor() {
     // Reaccionar a cambios del input proyectoIdInput (modo embebido).
-    // Se ejecuta en injection context, por lo que el effect es válido aquí.
+    // allowSignalWrites: true permite que el effect actualice signals derivados.
     effect(() => {
       const inputId = this.proyectoIdInput();
       if (inputId !== null) {
@@ -94,7 +96,7 @@ export class TareaListComponent implements OnInit {
         this.loadFases(inputId);
         this.loadTareas();
       }
-    });
+    }, { allowSignalWrites: true });
   }
 
   readonly displayedColumns = [
@@ -162,7 +164,7 @@ export class TareaListComponent implements OnInit {
     if (this.searchText())      filters.search         = this.searchText();
     if (this.esMisTareas())     filters.solo_mis_tareas = true;
 
-    this.tareaService.list(filters).subscribe({
+    this.tareaService.list(filters).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (tareas) => {
         this.tareas.set(tareas);
         this.totalCount.set(tareas.length);

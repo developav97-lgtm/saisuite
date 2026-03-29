@@ -32,6 +32,7 @@ const TIPO_TO_SUBTIPO: Record<TipoActividad, string> = {
   material:    'material',
   equipment:   'equipo',
   subcontract: 'subcontrato',
+  milestone:   'hito',
 };
 
 const UNIDADES_MEDIDA = [

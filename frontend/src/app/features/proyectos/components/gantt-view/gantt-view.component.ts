@@ -11,6 +11,8 @@ import {
   signal,
 } from '@angular/core';
 import { Router } from '@angular/router';
+import { forkJoin, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
@@ -27,6 +29,18 @@ import { SchedulingService } from '../../services/scheduling.service';
 import { BaselineService } from '../../services/baseline.service';
 import { ConfirmDialogComponent } from '../../../../shared/components/confirm-dialog/confirm-dialog.component';
 import type { ProjectBaselineList } from '../../models/baseline.model';
+
+/**
+ * Convierte un UUID (con guiones) en un ID seguro para atributos SVG/HTML.
+ * frappe-gantt usa el id como atributo `id` en elementos SVG; un UUID con
+ * guiones es válido en HTML pero frappe-gantt lo pasa a selectores CSS donde
+ * los guiones en el primer carácter causan InvalidCharacterError.
+ * Prefijo "g_" garantiza que comienza con letra y los guiones se convierten a
+ * underscores, produciendo un identificador CSS y SVG completamente seguro.
+ */
+function uuidToGanttId(uuid: string): string {
+  return 'g_' + uuid.replace(/-/g, '_');
+}
 
 @Component({
   selector: 'app-gantt-view',
@@ -74,6 +88,8 @@ export class GanttViewComponent implements AfterViewInit, OnDestroy {
 
   private ganttInstance: Gantt | null = null;
   private tasks: FrappeGanttTask[]    = [];
+  /** Mapa ganttId → UUID original de la tarea (para navegación on_click) */
+  private ganttIdToUuid      = new Map<string, string>();
 
   /** Flag para distinguir drag de click simple */
   private wasDragged = false;
@@ -108,14 +124,19 @@ export class GanttViewComponent implements AfterViewInit, OnDestroy {
           this.cdr.detectChanges();
           return;
         }
-        this.tasks = tasks.map(t => ({
-          id:           t.id,
-          name:         t.name,
-          start:        t.start,
-          end:          t.end,
-          progress:     t.progress,
-          custom_class: t.custom_class,
-        }));
+        this.ganttIdToUuid.clear();
+        this.tasks = tasks.map(t => {
+          const ganttId = uuidToGanttId(t.id);
+          this.ganttIdToUuid.set(ganttId, t.id);
+          return {
+            id:           ganttId,
+            name:         t.name,
+            start:        t.start,
+            end:          t.end,
+            progress:     t.progress,
+            custom_class: t.custom_class,
+          };
+        });
         this.hasData.set(true);
         this.cdr.detectChanges();
         this.initGantt();
@@ -144,7 +165,8 @@ export class GanttViewComponent implements AfterViewInit, OnDestroy {
     this.loadingOverlay.set(true);
     this.schedulingService.getCriticalPath(this.proyectoId()).subscribe({
       next: (data) => {
-        this.criticalTaskIds = new Set(data.critical_path);
+        // Los IDs del backend son UUIDs; convertir a ganttIds para comparación
+        this.criticalTaskIds = new Set(data.critical_path.map(uuidToGanttId));
         this.loadingOverlay.set(false);
         this.rerenderGantt();
       },
@@ -172,13 +194,27 @@ export class GanttViewComponent implements AfterViewInit, OnDestroy {
 
   private loadFloatData(): void {
     this.loadingOverlay.set(true);
-    this.schedulingService.getCriticalPath(this.proyectoId()).subscribe({
-      next: (data) => {
-        // Usamos el CPM para poblar el float de cada tarea crítica (float=0)
-        // Para tareas no críticas no tenemos float por tarea sin llamadas individuales;
-        // marcamos las críticas con float=0, resto como null (sin dato)
+    // UUIDs originales de todas las tareas visibles (máx 30 para no saturar la red)
+    const taskUuids = [...this.ganttIdToUuid.values()].slice(0, 30);
+    if (taskUuids.length === 0) {
+      this.loadingOverlay.set(false);
+      return;
+    }
+
+    // Cargar float de cada tarea en paralelo; si una tarea no tiene CPM devuelve null
+    forkJoin(
+      taskUuids.map(uuid =>
+        this.schedulingService.getTaskFloat(uuid).pipe(
+          catchError(() => of(null))
+        )
+      )
+    ).subscribe({
+      next: (results) => {
         this.floatMap.clear();
-        data.critical_path.forEach(id => this.floatMap.set(id, 0));
+        results.forEach((fd, idx) => {
+          const ganttId = uuidToGanttId(taskUuids[idx]);
+          this.floatMap.set(ganttId, fd ? fd.total_float : null);
+        });
         this.loadingOverlay.set(false);
         this.rerenderGantt();
       },
@@ -255,7 +291,9 @@ export class GanttViewComponent implements AfterViewInit, OnDestroy {
       },
       on_click: (task: FrappeGanttTask) => {
         if (this.wasDragged) { this.wasDragged = false; return; }
-        void this.router.navigate(['/proyectos', this.proyectoId(), 'tareas', task.id]);
+        // task.id es ganttId (g_uuid_sin_guiones); recuperar UUID original
+        const taskUuid = this.ganttIdToUuid.get(task.id) ?? task.id;
+        void this.router.navigate(['/proyectos', this.proyectoId(), 'tareas', taskUuid]);
       },
     });
   }
@@ -287,7 +325,9 @@ export class GanttViewComponent implements AfterViewInit, OnDestroy {
 
       const toISO = (d: Date) => d.toISOString().split('T')[0];
 
-      this.tareaService.update(task.id, {
+      // task.id es ganttId; recuperar UUID original para la API
+      const taskUuid = this.ganttIdToUuid.get(task.id) ?? task.id;
+      this.tareaService.update(taskUuid, {
         fecha_inicio: toISO(start),
         fecha_fin:    toISO(end),
       }).subscribe({

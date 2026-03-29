@@ -534,12 +534,16 @@ class TestTeamAvailabilityView(AuthMixin, APITestCase):
         self._auth(self.admin)
         self.base = f'/api/v1/projects/{self.proyecto.id}/team-availability/'
 
-    def test_sin_asignaciones_retorna_lista_vacia(self):
+    def test_sin_assignments_formales_retorna_responsable(self):
+        """Sin ResourceAssignment, el responsable de la tarea aparece en el timeline."""
         resp = self.client.get(self.base, {
             'start_date': TODAY, 'end_date': IN_30
         })
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
-        self.assertEqual(resp.data, [])
+        # self.admin es responsable de self.tarea → debe aparecer vía 'responsable'
+        self.assertEqual(len(resp.data), 1)
+        self.assertEqual(resp.data[0]['usuario_id'], str(self.admin.id))
+        self.assertEqual(resp.data[0]['asignaciones'][0]['fuente'], 'responsable')
 
     def test_con_asignacion_retorna_usuario(self):
         make_assignment(self.company, self.tarea, self.admin)

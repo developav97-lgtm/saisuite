@@ -49,10 +49,10 @@
   font-weight: 600;
   white-space: nowrap;
 
-  &--planificada { background: #e3f2fd; color: #1565c0; }
-  &--activa      { background: #e8f5e9; color: #2e7d32; }
-  &--completada  { background: #f3e5f5; color: #6a1b9a; }
-  &--cancelada   { background: #fce4ec; color: #b71c1c; }
+  &--planned    { background: #e3f2fd; color: #1565c0; }
+  &--active     { background: #e8f5e9; color: #2e7d32; }
+  &--completed  { background: #f3e5f5; color: #6a1b9a; }
+  &--cancelled  { background: #fce4ec; color: #b71c1c; }
 }
 
 .fl-empty {

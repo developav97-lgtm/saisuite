@@ -525,7 +525,10 @@ class TestGetTeamAvailabilityTimeline:
         self.fase     = make_fase(self.company, self.proyecto)
         self.tarea    = make_tarea(self.company, self.proyecto, self.fase, self.user)
 
-    def test_sin_asignaciones_devuelve_lista_vacia(self):
+    def test_sin_assignments_ni_responsable_devuelve_lista_vacia(self):
+        """Sin ResourceAssignment ni Task.responsable no hay equipo."""
+        # Tarea sin responsable
+        Task.objects.filter(id=self.tarea.id).update(responsable=None)
         result = get_team_availability_timeline(
             proyecto_id=str(self.proyecto.id),
             company_id=str(self.company.id),
@@ -533,6 +536,20 @@ class TestGetTeamAvailabilityTimeline:
             end_date=IN_30,
         )
         assert result == []
+
+    def test_responsable_sin_assignment_aparece_en_timeline(self):
+        """Un responsable de tarea sin ResourceAssignment debe aparecer en el timeline."""
+        result = get_team_availability_timeline(
+            proyecto_id=str(self.proyecto.id),
+            company_id=str(self.company.id),
+            start_date=TODAY,
+            end_date=IN_30,
+        )
+        assert len(result) == 1
+        assert result[0].usuario_id == str(self.user.id)
+        # La asignación viene de Task.responsable (fuente='responsable')
+        assert len(result[0].asignaciones) == 1
+        assert result[0].asignaciones[0]['fuente'] == 'responsable'
 
     def test_un_usuario_con_asignacion(self):
         ResourceAssignment.objects.create(
@@ -593,6 +610,7 @@ class TestGetTeamAvailabilityTimeline:
         assert len(result[0].ausencias) == 0
 
     def test_no_incluye_usuarios_de_otro_proyecto(self):
+        """user2 con assignment en otro proyecto NO debe aparecer en self.proyecto."""
         otro_proyecto = make_proyecto(self.company, self.user)
         otra_fase     = make_fase(self.company, otro_proyecto)
         otra_tarea    = make_tarea(self.company, otro_proyecto, otra_fase, self.user)
@@ -608,7 +626,11 @@ class TestGetTeamAvailabilityTimeline:
             start_date=TODAY,
             end_date=IN_30,
         )
-        assert result == []
+        # self.user es responsable de self.tarea (en self.proyecto) → aparece
+        # user2 solo tiene assignment en otro_proyecto → NO debe aparecer
+        result_ids = [r.usuario_id for r in result]
+        assert str(user2.id) not in result_ids
+        assert str(self.user.id) in result_ids
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

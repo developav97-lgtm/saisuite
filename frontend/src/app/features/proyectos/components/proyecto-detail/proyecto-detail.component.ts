@@ -69,10 +69,17 @@ export class ProyectoDetailComponent implements OnInit {
   // General(0) Fases(1) Terceros(2) Docs(3) Hitos(4) Tareas(5) Kanban(6)
   // Actividades(7) Gantt(8) Equipo(9) Timesheets(10)
   // Analytics(11) Baselines(12) Escenarios(13) Presupuesto(14)
+  readonly tareasTabLoaded       = computed(() => this.selectedTab() >= 5);
+  readonly kanbanTabLoaded       = computed(() => this.selectedTab() >= 6);
+  readonly timesheetsTabLoaded   = computed(() => this.selectedTab() >= 10);
   readonly analyticsTabActive    = computed(() => this.selectedTab() === 11);
   readonly baselinesTabLoaded    = computed(() => this.selectedTab() >= 12);
   readonly escenariosTabLoaded   = computed(() => this.selectedTab() >= 13);
   readonly presupuestoTabLoaded  = computed(() => this.selectedTab() >= 14);
+
+  readonly actividadesTabLabel = computed(() =>
+    this.proyecto()?.tipo === 'civil_works' ? 'Actividades de obra' : 'Actividades'
+  );
 
   readonly ESTADO_LABELS   = ESTADO_LABELS;
   readonly ESTADO_SEVERITY = ESTADO_SEVERITY;

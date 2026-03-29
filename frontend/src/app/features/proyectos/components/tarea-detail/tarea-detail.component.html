@@ -28,7 +28,7 @@
           <h1 class="sc-page-header__title">{{ tarea()!.nombre }}</h1>
           <sc-float-indicator
             [isCritical]="tarea()!.es_camino_critico"
-            [floatDays]="null" />
+            [floatDays]="floatDays()" />
         </div>
       </div>
       <div class="td-header-actions">

@@ -174,14 +174,16 @@
           </div>
           <div class="bd-evm-metric">
             <div class="bd-evm-metric__label">CPI</div>
-            <div class="bd-evm-metric__value" [style.color]="cpiColor(evmData.CPI)">
+            <div class="bd-evm-metric__value" [style.color]="cpiColor(evmData.CPI)"
+                 [matTooltip]="evmData.CPI === null ? 'Requiere tarifas de costo y timesheets aprobados para calcular CPI (EV/AC)' : 'CPI = EV / AC. >1: bajo presupuesto, <1: sobre presupuesto'">
               {{ evmData.CPI ?? '—' }}
             </div>
             <div class="bd-evm-metric__desc">Eficiencia de costo</div>
           </div>
           <div class="bd-evm-metric">
             <div class="bd-evm-metric__label">SPI</div>
-            <div class="bd-evm-metric__value" [style.color]="cpiColor(evmData.SPI)">
+            <div class="bd-evm-metric__value" [style.color]="cpiColor(evmData.SPI)"
+                 [matTooltip]="evmData.SPI === null ? 'Requiere fechas planificadas y avance registrado para calcular SPI (EV/PV)' : 'SPI = EV / PV. >1: adelantado, <1: atrasado'">
               {{ evmData.SPI ?? '—' }}
             </div>
             <div class="bd-evm-metric__desc">Eficiencia de cronograma</div>

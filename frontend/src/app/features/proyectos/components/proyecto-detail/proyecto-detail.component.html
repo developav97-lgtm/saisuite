@@ -246,7 +246,7 @@
       <!-- Tab 5: Tareas -->
       <mat-tab label="Tareas">
         <div class="pd-tab-content">
-          @defer (on viewport) {
+          @defer (when tareasTabLoaded()) {
             <app-tarea-list [proyectoIdInput]="p.id" />
           } @placeholder {
             <div class="sc-loading-state" style="height: 200px;">
@@ -259,7 +259,7 @@
       <!-- Tab 6: Kanban -->
       <mat-tab label="Kanban">
         <div class="pd-tab-content">
-          @defer (on viewport) {
+          @defer (when kanbanTabLoaded()) {
             <app-tarea-kanban [proyectoIdInput]="p.id" />
           } @placeholder {
             <div class="sc-loading-state" style="height: 200px;">
@@ -270,7 +270,7 @@
       </mat-tab>
 
       <!-- Tab 7: Actividades -->
-      <mat-tab label="Actividades de obra">
+      <mat-tab [label]="actividadesTabLabel()">
         <div class="pd-tab-content">
           <app-actividad-proyecto-list [proyectoId]="p.id" [proyectoEstado]="p.estado" />
         </div>
@@ -293,7 +293,7 @@
       <!-- Tab 10: Timesheets -->
       <mat-tab label="Timesheets">
         <div class="pd-tab-content">
-          @defer (on viewport) {
+          @defer (when timesheetsTabLoaded()) {
             <app-proyecto-timesheet-tab [proyectoId]="p.id" />
           } @placeholder {
             <mat-progress-bar mode="indeterminate" />

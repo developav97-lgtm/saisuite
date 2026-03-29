@@ -26,7 +26,7 @@ export class HitoService {
 
   generarFactura(proyectoId: string, hitoId: string): Observable<Hito> {
     return this.http.post<Hito>(
-      `${this.url(proyectoId)}/${hitoId}/generar-factura/`,
+      `${this.url(proyectoId)}/${hitoId}/generate-invoice/`,
       { confirmar: true }
     );
   }

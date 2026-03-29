@@ -4,7 +4,7 @@
  */
 
 // Valores que espera el backend (ActivityType en models.py)
-export type TipoActividad = 'labor' | 'material' | 'equipment' | 'subcontract';
+export type TipoActividad = 'labor' | 'material' | 'equipment' | 'subcontract' | 'milestone';
 
 /** Actividad en listado — campos mínimos para tabla */
 export interface ActividadList {
@@ -73,4 +73,5 @@ export const TIPO_ACTIVIDAD_LABELS: Record<TipoActividad, string> = {
   material:    'Material',
   equipment:   'Equipo',
   subcontract: 'Subcontrato',
+  milestone:   'Hito',
 };

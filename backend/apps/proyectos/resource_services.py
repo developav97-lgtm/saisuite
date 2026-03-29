@@ -499,8 +499,8 @@ def get_team_availability_timeline(
     from django.db.models import Prefetch
     User = get_user_model()
 
-    # Query 1: usuarios únicos con assignments activos en el proyecto
-    usuario_ids = list(
+    # Query 1a: usuarios con ResourceAssignment activo en el proyecto en el período
+    ids_from_assignments = set(
         ResourceAssignment.objects.filter(
             company_id=company_id,
             tarea__proyecto_id=proyecto_id,
@@ -509,6 +509,24 @@ def get_team_availability_timeline(
             fecha_fin__gte=start_date,
         ).values_list('usuario_id', flat=True).distinct()
     )
+
+    # Query 1b: usuarios asignados como responsable en tareas del proyecto
+    # (pueden no tener ResourceAssignment pero sí aparecen en el Tab Equipo)
+    ids_from_responsable = set(
+        Task.objects.filter(
+            company_id=company_id,
+            proyecto_id=proyecto_id,
+            responsable__isnull=False,
+        ).exclude(
+            # Solo incluir tareas que se solapan con el período solicitado
+            # (fecha_fin antes del inicio O fecha_inicio después del fin)
+            fecha_fin__lt=start_date,
+        ).exclude(
+            fecha_inicio__gt=end_date,
+        ).values_list('responsable_id', flat=True).distinct()
+    )
+
+    usuario_ids = list(ids_from_assignments | ids_from_responsable)
 
     if not usuario_ids:
         return []
@@ -526,7 +544,17 @@ def get_team_availability_timeline(
         to_attr='project_assignments',
     )
 
-    # Prefetch ausencias aprobadas del período (Query 3)
+    # Prefetch tareas donde el usuario es responsable en el proyecto (Query 3)
+    responsable_tasks_prefetch = Prefetch(
+        'assigned_tasks',
+        queryset=Task.objects.filter(
+            company_id=company_id,
+            proyecto_id=proyecto_id,
+        ).order_by('fecha_inicio'),
+        to_attr='project_responsable_tasks',
+    )
+
+    # Prefetch ausencias aprobadas del período (Query 4)
     availabilities_prefetch = Prefetch(
         'resource_availabilities',
         queryset=ResourceAvailability.objects.filter(
@@ -544,29 +572,58 @@ def get_team_availability_timeline(
             id__in=usuario_ids,
             company_id=company_id,
         )
-        .prefetch_related(assignments_prefetch, availabilities_prefetch)
+        .prefetch_related(
+            assignments_prefetch,
+            responsable_tasks_prefetch,
+            availabilities_prefetch,
+        )
         .order_by('last_name', 'first_name')
     )
 
     result: list[UserTimelineData] = []
     for usuario in usuarios:
+        # IDs de tareas ya cubiertas por ResourceAssignment (para deduplicar)
+        tarea_ids_con_assignment = {
+            str(a.tarea_id) for a in usuario.project_assignments
+        }
+
+        # Asignaciones desde ResourceAssignment
+        asignaciones_formales = [
+            {
+                'id':                   str(a.id),
+                'tarea_id':             str(a.tarea_id),
+                'tarea_codigo':         a.tarea.codigo,
+                'tarea_nombre':         a.tarea.nombre,
+                'porcentaje_asignacion': str(a.porcentaje_asignacion),
+                'fecha_inicio':         str(a.fecha_inicio),
+                'fecha_fin':            str(a.fecha_fin),
+                'fuente':               'assignment',
+            }
+            for a in usuario.project_assignments
+        ]
+
+        # Asignaciones derivadas de Task.responsable que no tienen ResourceAssignment
+        asignaciones_responsable = [
+            {
+                'id':                   None,
+                'tarea_id':             str(t.id),
+                'tarea_codigo':         t.codigo,
+                'tarea_nombre':         t.nombre,
+                'porcentaje_asignacion': None,
+                'fecha_inicio':         str(t.fecha_inicio) if t.fecha_inicio else None,
+                'fecha_fin':            str(t.fecha_fin) if t.fecha_fin else None,
+                'fuente':               'responsable',
+            }
+            for t in usuario.project_responsable_tasks
+            if str(t.id) not in tarea_ids_con_assignment
+        ]
+
         result.append(
             UserTimelineData(
                 usuario_id=str(usuario.id),
                 usuario_nombre=usuario.full_name or usuario.email,
                 usuario_email=usuario.email,
-                asignaciones=[
-                    {
-                        'id':                   str(a.id),
-                        'tarea_id':             str(a.tarea_id),
-                        'tarea_codigo':         a.tarea.codigo,
-                        'tarea_nombre':         a.tarea.nombre,
-                        'porcentaje_asignacion': str(a.porcentaje_asignacion),
-                        'fecha_inicio':         str(a.fecha_inicio),
-                        'fecha_fin':            str(a.fecha_fin),
-                    }
-                    for a in usuario.project_assignments
-                ],
+                asignaciones=asignaciones_formales + asignaciones_responsable,
                 ausencias=[
                     {
                         'id':          str(av.id),

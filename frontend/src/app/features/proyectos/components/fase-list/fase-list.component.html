@@ -54,7 +54,7 @@
       <ng-container matColumnDef="acciones">
         <mat-header-cell *matHeaderCellDef class="fl-col-acciones">Acciones</mat-header-cell>
         <mat-cell *matCellDef="let f" class="fl-col-acciones">
-          @if (f.estado === 'planificada') {
+          @if (f.estado === 'planned') {
             <button mat-icon-button matTooltip="Activar fase" color="primary" (click)="activarFase(f)">
               <mat-icon>play_circle</mat-icon>
             </button>

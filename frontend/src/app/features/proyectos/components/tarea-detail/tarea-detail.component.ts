@@ -26,6 +26,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { TareaService } from '../../services/tarea.service';
 import { TimesheetService } from '../../services/timesheet.service';
 import { ConfiguracionProyectoService } from '../../services/configuracion-proyecto.service';
+import { SchedulingService } from '../../services/scheduling.service';
 import { TareaCardComponent } from '../tarea-card/tarea-card.component';
 import { ConfirmDialogComponent } from '../../../../shared/components/confirm-dialog/confirm-dialog.component';
 import { CronometroComponent } from '../../../../shared/components/cronometro/cronometro.component';
@@ -101,19 +102,21 @@ export const PRIORIDAD_COLORS: Record<string, string | undefined> = {
   ],
 })
 export class TareaDetailComponent implements OnInit {
-  private readonly tareaService      = inject(TareaService);
-  private readonly timesheetService  = inject(TimesheetService);
-  private readonly configService     = inject(ConfiguracionProyectoService);
+  private readonly tareaService       = inject(TareaService);
+  private readonly timesheetService   = inject(TimesheetService);
+  private readonly configService      = inject(ConfiguracionProyectoService);
+  private readonly schedulingService  = inject(SchedulingService);
   private readonly router         = inject(Router);
   private readonly route          = inject(ActivatedRoute);
   private readonly dialog         = inject(MatDialog);
   private readonly snackBar       = inject(MatSnackBar);
   private readonly cdr            = inject(ChangeDetectorRef);
 
-  readonly loading  = signal(true);
-  readonly deleting = signal(false);
-  readonly tarea    = signal<Tarea | null>(null);
-  readonly returnTo = signal<'list' | 'kanban'>('list');
+  readonly loading   = signal(true);
+  readonly deleting  = signal(false);
+  readonly tarea     = signal<Tarea | null>(null);
+  readonly returnTo  = signal<'list' | 'kanban'>('list');
+  readonly floatDays = signal<number | null>(null);
 
   // ── Modo de medición (DEC-022) ───────────────────────────────
   readonly modoMedicion = computed<ModoMedicion>(
@@ -236,6 +239,13 @@ export class TareaDetailComponent implements OnInit {
         this.tarea.set(tarea);
         this.loading.set(false);
         this.cargarEntries(tarea.id);
+        // Cargar float real solo si la tarea no es crítica (crítica → float=0)
+        if (!tarea.es_camino_critico) {
+          this.schedulingService.getTaskFloat(tarea.id).subscribe({
+            next: (fd) => { this.floatDays.set(fd.total_float); this.cdr.markForCheck(); },
+            error: () => { /* sin datos CPM: floatDays queda null */ },
+          });
+        }
         this.cdr.markForCheck();
       },
       error: () => {

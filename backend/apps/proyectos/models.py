@@ -315,6 +315,7 @@ class ActivityType(models.TextChoices):
     MATERIAL    = 'material',    'Material'
     EQUIPMENT   = 'equipment',   'Equipo'
     SUBCONTRACT = 'subcontract', 'Subcontrato'
+    MILESTONE   = 'milestone',   'Hito'
 
 
 class Activity(BaseModel):
