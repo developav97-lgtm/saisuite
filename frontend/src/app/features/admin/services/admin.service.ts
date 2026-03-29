@@ -1,10 +1,20 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
-import { AdminUser, CompanyLicense, CompanySettings, CreateUserDto } from '../models/admin.models';
+import { AdminUser, CompanyLicense, CompanySettings, CreateUserDto, UserRole } from '../models/admin.models';
 
-interface Paginated<T> { count: number; next: string | null; previous: string | null; results: T[]; }
+export interface ListUsersParams {
+  search?: string;
+  role?: UserRole | '';
+  is_active?: boolean | '';
+  page?: number;
+  page_size?: number;
+}
+
+export interface PaginatedUsers {
+  count: number;
+  results: AdminUser[];
+}
 
 @Injectable({ providedIn: 'root' })
 export class AdminService {
@@ -12,9 +22,16 @@ export class AdminService {
 
   // ── Users ───────────────────────────────────────────────────────────────
 
-  listUsers(): Observable<AdminUser[]> {
-    return this.http.get<Paginated<AdminUser>>('/api/v1/auth/users/')
-      .pipe(map(r => r.results ?? (r as unknown as AdminUser[])));
+  listUsers(params: ListUsersParams = {}): Observable<PaginatedUsers> {
+    let httpParams = new HttpParams();
+    if (params.search)    httpParams = httpParams.set('search',    params.search);
+    if (params.role)      httpParams = httpParams.set('role',      params.role);
+    if (params.is_active !== '' && params.is_active !== undefined)
+                          httpParams = httpParams.set('is_active', String(params.is_active));
+    if (params.page)      httpParams = httpParams.set('page',      String(params.page));
+    if (params.page_size) httpParams = httpParams.set('page_size', String(params.page_size));
+
+    return this.http.get<PaginatedUsers>('/api/v1/auth/users/', { params: httpParams });
   }
 
   getUser(id: string): Observable<AdminUser> {

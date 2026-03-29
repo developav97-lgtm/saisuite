@@ -1,6 +1,6 @@
 <!-- frontend/src/app/core/components/shell/shell.component.html -->
 <div class="sc-shell">
-    <app-topbar [sidebarVisible]="sidebarVisible" (toggleSidebar)="sidebarVisible = !sidebarVisible" />
+    <app-topbar [sidebarVisible]="sidebarVisible" (toggleSidebar)="toggleSidebar()" />
     <div class="sc-shell__body">
         <app-sidebar [(visible)]="sidebarVisible" />
         <main class="sc-shell__main">

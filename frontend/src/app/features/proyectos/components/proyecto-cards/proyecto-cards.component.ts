@@ -110,7 +110,7 @@ export class ProyectoCardsComponent implements OnInit {
 
   irALista(): void {
     localStorage.setItem('saisuite.proyectosView', 'list');
-    this.router.navigate(['/proyectos']);
+    this.router.navigate(['/proyectos', 'lista']);
   }
   verDetalle(id: string): void { this.router.navigate(['/proyectos', id]); }
   nuevoProyecto():       void { this.router.navigate(['/proyectos', 'nuevo']); }

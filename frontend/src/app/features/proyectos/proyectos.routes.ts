@@ -1,8 +1,18 @@
 import { Routes } from '@angular/router';
 
 export const PROYECTOS_ROUTES: Routes = [
+  { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
   {
-    path: '',
+    // Dashboard — home del módulo
+    path: 'dashboard',
+    loadComponent: () =>
+      import('./components/proyecto-dashboard/proyecto-dashboard.component').then(
+        (m) => m.ProyectoDashboardComponent
+      ),
+  },
+  {
+    // Lista completa de proyectos
+    path: 'lista',
     loadComponent: () =>
       import('./components/proyecto-list/proyecto-list.component').then(
         (m) => m.ProyectoListComponent

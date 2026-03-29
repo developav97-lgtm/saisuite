@@ -11,60 +11,6 @@
     </div>
   </div>
 
-  <!-- KPIs de proyectos activos -->
-  @if (loadingKpis()) {
-    <mat-progress-bar mode="indeterminate" class="db-kpi-loading" />
-  }
-
-  @if (!loadingKpis() && proyectosKpis().length > 0) {
-    <section class="db-kpi-section">
-      <h2 class="db-kpi-title">
-        <mat-icon>dashboard</mat-icon>
-        Proyectos Activos
-      </h2>
-      <div class="db-kpi-grid">
-        @for (p of proyectosKpis(); track p.id) {
-          <div class="db-kpi-card" (click)="irAProyecto(p.id)" matRipple>
-            <div class="db-kpi-card__header">
-              <span class="db-kpi-card__nombre">{{ p.nombre }}</span>
-              <span class="db-kpi-card__estado db-kpi-card__estado--{{ estadoSalud(p) }}">
-                {{ estadoSaludLabel(p) }}
-              </span>
-            </div>
-            <div class="db-kpi-card__progress">
-              <mat-progress-bar mode="determinate" [value]="p.porcentaje_avance" />
-              <span class="db-kpi-card__pct">{{ p.porcentaje_avance | number:'1.0-0' }}%</span>
-            </div>
-            <div class="db-kpi-card__metrics">
-              <span class="db-kpi-card__metric">
-                <mat-icon>task_alt</mat-icon>
-                {{ p.completed_tasks }}/{{ p.total_tasks }}
-              </span>
-              @if (p.overdue_tasks > 0) {
-                <span class="db-kpi-card__metric db-kpi-card__metric--warn">
-                  <mat-icon>warning</mat-icon>
-                  {{ p.overdue_tasks }} venc.
-                </span>
-              }
-              <span class="db-kpi-card__metric" [class.db-kpi-card__metric--ok]="p.on_time_rate >= 80" [class.db-kpi-card__metric--warn]="p.on_time_rate < 80">
-                <mat-icon>schedule</mat-icon>
-                {{ p.on_time_rate | number:'1.0-0' }}% puntual
-              </span>
-              @if (p.budget_variance !== null) {
-                <span class="db-kpi-card__metric"
-                  [class.db-kpi-card__metric--ok]="p.budget_variance >= 0"
-                  [class.db-kpi-card__metric--warn]="p.budget_variance < 0">
-                  <mat-icon>payments</mat-icon>
-                  {{ p.budget_variance | number:'1.0-0' }}% presup.
-                </span>
-              }
-            </div>
-          </div>
-        }
-      </div>
-    </section>
-  }
-
   <!-- Grid de módulos -->
   <div class="ms-grid">
     @for (mod of modulos; track mod.key) {

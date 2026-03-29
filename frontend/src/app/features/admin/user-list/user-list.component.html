@@ -1,95 +1,132 @@
-<div class="ul-container">
+<div class="sc-page">
 
-  <div class="ul-toolbar">
-    <h2 class="ul-title">Usuarios</h2>
-    <span class="ul-spacer"></span>
+  <!-- Header -->
+  <div class="sc-page-header">
+    <h1 class="sc-page-header__title">Usuarios</h1>
     <button mat-raised-button color="primary" routerLink="/admin/usuarios/nuevo">
-      <mat-icon>person_add</mat-icon>
-      Nuevo usuario
+      <mat-icon>person_add</mat-icon> Nuevo usuario
     </button>
   </div>
 
+  <!-- Filtros -->
+  <div class="ul-filters sc-card">
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ul-search">
+      <mat-label>Buscar por nombre o correo…</mat-label>
+      <input matInput [value]="searchText()" (input)="searchText.set($any($event.target).value)" (keyup.enter)="onSearch()" />
+      <button mat-icon-button matSuffix (click)="onSearch()" aria-label="Buscar">
+        <mat-icon>search</mat-icon>
+      </button>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ul-filter">
+      <mat-label>Rol</mat-label>
+      <mat-select [value]="roleFilter()" (selectionChange)="roleFilter.set($event.value); aplicarFiltros()">
+        @for (op of roleOptions; track op.value) {
+          <mat-option [value]="op.value">{{ op.label }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ul-filter">
+      <mat-label>Estado</mat-label>
+      <mat-select [value]="activeFilter()" (selectionChange)="activeFilter.set($event.value); aplicarFiltros()">
+        @for (op of activeOptions; track op.value) {
+          <mat-option [value]="op.value">{{ op.label }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+  </div>
+
   @if (loading()) {
-    <div class="ul-loading">
-      <mat-spinner diameter="40" />
-    </div>
-  } @else {
-    <table mat-table [dataSource]="users()" class="ul-table mat-elevation-z1">
-
-      <!-- Nombre -->
-      <ng-container matColumnDef="nombre">
-        <th mat-header-cell *matHeaderCellDef>Nombre</th>
-        <td mat-cell *matCellDef="let u">
-          <div class="ul-user-cell">
-            <div class="ul-avatar">{{ (u.full_name || u.email).charAt(0).toUpperCase() }}</div>
-            <span>{{ u.full_name || u.email }}</span>
-          </div>
-        </td>
-      </ng-container>
-
-      <!-- Email -->
-      <ng-container matColumnDef="email">
-        <th mat-header-cell *matHeaderCellDef>Correo</th>
-        <td mat-cell *matCellDef="let u">{{ u.email }}</td>
-      </ng-container>
-
-      <!-- Rol -->
-      <ng-container matColumnDef="rol">
-        <th mat-header-cell *matHeaderCellDef>Rol</th>
-        <td mat-cell *matCellDef="let u">
-          <span class="ul-chip ul-chip--{{ u.role }}">
-            {{ getRoleLabel(u.role) }}
-          </span>
-        </td>
-      </ng-container>
-
-      <!-- Estado -->
-      <ng-container matColumnDef="estado">
-        <th mat-header-cell *matHeaderCellDef>Estado</th>
-        <td mat-cell *matCellDef="let u">
-          @if (u.is_active) {
-            <span class="ul-badge ul-badge--active">Activo</span>
-          } @else {
-            <span class="ul-badge ul-badge--inactive">Inactivo</span>
-          }
-        </td>
-      </ng-container>
-
-      <!-- Acciones -->
-      <ng-container matColumnDef="acciones">
-        <th mat-header-cell *matHeaderCellDef class="ul-col-acciones">Acciones</th>
-        <td mat-cell *matCellDef="let u" class="ul-col-acciones">
-          <button mat-icon-button color="primary"
-            [routerLink]="['/admin/usuarios', u.id]"
-            matTooltip="Editar">
-            <mat-icon>edit</mat-icon>
-          </button>
-          @if (u.is_active) {
-            <button mat-icon-button color="warn"
-              (click)="confirmarDesactivar(u)"
-              matTooltip="Desactivar">
-              <mat-icon>person_off</mat-icon>
-            </button>
-          } @else {
-            <button mat-icon-button color="primary"
-              (click)="confirmarActivar(u)"
-              matTooltip="Activar">
-              <mat-icon>person_check</mat-icon>
-            </button>
-          }
-        </td>
-      </ng-container>
-
-      <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-      <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
-
-      <tr class="mat-row" *matNoDataRow>
-        <td class="mat-cell ul-empty" [attr.colspan]="displayedColumns.length">
-          No hay usuarios registrados.
-        </td>
-      </tr>
-
-    </table>
+    <mat-progress-bar mode="indeterminate" class="ul-progress" />
   }
+
+  <mat-table [dataSource]="users()" class="ul-table">
+
+    <!-- Nombre -->
+    <ng-container matColumnDef="nombre">
+      <mat-header-cell *matHeaderCellDef>Nombre</mat-header-cell>
+      <mat-cell *matCellDef="let u">
+        <div class="ul-user-cell">
+          <div class="ul-avatar">{{ (u.full_name || u.email).charAt(0).toUpperCase() }}</div>
+          <span>{{ u.full_name || u.email }}</span>
+        </div>
+      </mat-cell>
+    </ng-container>
+
+    <!-- Email -->
+    <ng-container matColumnDef="email">
+      <mat-header-cell *matHeaderCellDef>Correo</mat-header-cell>
+      <mat-cell *matCellDef="let u">{{ u.email }}</mat-cell>
+    </ng-container>
+
+    <!-- Rol -->
+    <ng-container matColumnDef="rol">
+      <mat-header-cell *matHeaderCellDef>Rol</mat-header-cell>
+      <mat-cell *matCellDef="let u">
+        <span class="ul-chip ul-chip--{{ u.role }}">
+          {{ getRoleLabel(u.role) }}
+        </span>
+      </mat-cell>
+    </ng-container>
+
+    <!-- Estado -->
+    <ng-container matColumnDef="estado">
+      <mat-header-cell *matHeaderCellDef>Estado</mat-header-cell>
+      <mat-cell *matCellDef="let u">
+        @if (u.is_active) {
+          <span class="ul-badge ul-badge--active">Activo</span>
+        } @else {
+          <span class="ul-badge ul-badge--inactive">Inactivo</span>
+        }
+      </mat-cell>
+    </ng-container>
+
+    <!-- Acciones -->
+    <ng-container matColumnDef="acciones">
+      <mat-header-cell *matHeaderCellDef class="ul-col-acciones"></mat-header-cell>
+      <mat-cell *matCellDef="let u" class="ul-col-acciones">
+        <button mat-icon-button [routerLink]="['/admin/usuarios', u.id]" matTooltip="Editar">
+          <mat-icon>edit</mat-icon>
+        </button>
+        @if (u.is_active) {
+          <button mat-icon-button color="warn" (click)="confirmarDesactivar(u)" matTooltip="Desactivar">
+            <mat-icon>person_off</mat-icon>
+          </button>
+        } @else {
+          <button mat-icon-button color="primary" (click)="confirmarActivar(u)" matTooltip="Activar">
+            <mat-icon>person_check</mat-icon>
+          </button>
+        }
+      </mat-cell>
+    </ng-container>
+
+    <mat-header-row *matHeaderRowDef="displayedColumns" />
+    <mat-row *matRowDef="let row; columns: displayedColumns;" />
+
+  </mat-table>
+
+  @if (!loading() && users().length === 0) {
+    <div class="sc-empty-state ul-empty">
+      <mat-icon>manage_accounts</mat-icon>
+      @if (hayFiltros()) {
+        <p>Sin resultados para los filtros aplicados.</p>
+        <button mat-stroked-button (click)="limpiarFiltros()">Limpiar filtros</button>
+      } @else {
+        <p>No hay usuarios registrados aún.</p>
+        <button mat-raised-button color="primary" routerLink="/admin/usuarios/nuevo">
+          <mat-icon>person_add</mat-icon> Nuevo usuario
+        </button>
+      }
+    </div>
+  }
+
+  <mat-paginator
+    [length]="totalCount()"
+    [pageSize]="pageSize"
+    [pageSizeOptions]="[25, 50, 100]"
+    [pageIndex]="currentPage() - 1"
+    (page)="onPageChange($event)"
+    showFirstLastButtons />
 
 </div>

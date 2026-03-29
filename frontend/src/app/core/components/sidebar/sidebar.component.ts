@@ -27,6 +27,7 @@ export interface NavItem {
   icon: string;
   route?: string;
   action?: () => void;
+  activeCheck?: () => boolean;
   badge?: string | number;
   children?: NavItem[];
   exact?: boolean;
@@ -87,12 +88,19 @@ export class SidebarComponent implements OnInit, OnDestroy {
       {
         sectionLabel: 'Gestión de Proyectos',
         items: [
-          { label: 'Proyectos',     icon: 'work',         route: '/proyectos',              exact: true },
+          { label: 'Dashboard', icon: 'dashboard', route: '/proyectos/dashboard', exact: true },
+          {
+            label: 'Lista',
+            icon: 'work',
+            action: () => this.router.navigate(['/proyectos/lista']),
+            activeCheck: () => this.isProyectosListaActive(),
+          },
           { label: 'Actividades',   icon: 'construction', route: '/proyectos/actividades' },
           {
             label: 'Tareas',
             icon: 'task_alt',
             action: () => this.navigateToTareas(),
+            activeCheck: () => this.isTareasActive(),
           },
           { label: 'Timesheets',    icon: 'schedule',     route: '/proyectos/timesheets' },
           { label: 'Mis Tareas',    icon: 'person',       route: '/proyectos/mis-tareas' },
@@ -298,6 +306,11 @@ export class SidebarComponent implements OnInit, OnDestroy {
 
   isExpanded(label: string): boolean {
     return this.expandedItems.has(label);
+  }
+
+  isProyectosListaActive(): boolean {
+    const url = this.router.url.split('?')[0];
+    return url === '/proyectos/lista' || url === '/proyectos/cards';
   }
 
   isTareasActive(): boolean {

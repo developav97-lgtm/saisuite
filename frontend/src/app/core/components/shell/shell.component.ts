@@ -15,14 +15,26 @@ import { ThemeService } from '../../services/theme.service';
 export class ShellComponent implements OnInit {
   private readonly themeService = inject(ThemeService);
 
-  sidebarVisible = true;
+  private readonly SIDEBAR_EXPANDED_KEY = 'saisuite.sidebarExpanded';
+
+  sidebarVisible = false;
 
   ngOnInit(): void {
     this.themeService.initTheme();
-    this.sidebarVisible = window.innerWidth >= 992;
+    if (window.innerWidth < 992) {
+      // Mobile: drawer cerrado por defecto
+      this.sidebarVisible = false;
+    } else {
+      // Desktop: leer preferencia guardada; si no hay nada guardado, contraído (false)
+      const saved = localStorage.getItem(this.SIDEBAR_EXPANDED_KEY);
+      this.sidebarVisible = saved === 'true';
+    }
   }
 
   toggleSidebar(): void {
     this.sidebarVisible = !this.sidebarVisible;
+    if (window.innerWidth >= 992) {
+      localStorage.setItem(this.SIDEBAR_EXPANDED_KEY, String(this.sidebarVisible));
+    }
   }
 }

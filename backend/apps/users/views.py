@@ -116,7 +116,21 @@ class UserListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated, IsCompanyAdmin]
 
     def get_queryset(self):
-        return UserService.list_users(self.request.user.company)
+        params = self.request.query_params
+        search    = params.get('search', '').strip()
+        role      = params.get('role', '').strip()
+        is_active_raw = params.get('is_active', None)
+        is_active = None
+        if is_active_raw == 'true':
+            is_active = True
+        elif is_active_raw == 'false':
+            is_active = False
+        return UserService.list_users(
+            self.request.user.company,
+            search=search,
+            role=role,
+            is_active=is_active,
+        )
 
     def get_serializer_class(self):
         if self.request.method == 'POST':

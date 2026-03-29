@@ -171,7 +171,7 @@ const TIPO_LABELS: Record<TipoDependencia, string> = {
     }
     .sc-add-dep-form {
       display: flex;
-      align-items: flex-start;
+      align-items: center;
       gap: 8px;
       flex-wrap: wrap;
     }
@@ -187,8 +187,8 @@ const TIPO_LABELS: Record<TipoDependencia, string> = {
       flex: 0 0 100px;
     }
     .sc-btn-agregar {
-      margin-top: 4px;
       height: 56px;
+      flex-shrink: 0;
     }
     .sc-opt-codigo {
       font-weight: 600;

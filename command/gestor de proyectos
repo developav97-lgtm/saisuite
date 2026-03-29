@@ -1,0 +1,50 @@
+/gestor-proyectos-saicloud
+
+Necesito que crees un proyecto COMPLETO y REALISTA desde cero en SaiCloud, usando TODAS las funcionalidades para validarlas paso a paso.
+
+Como NO soy experto en gestión de proyectos:
+1. Guíame explicando QUÉ haces y POR QUÉ en cada paso
+2. Ejecuta TODO navegando en http://localhost:4200
+3. Valida cada funcionalidad como un PM real
+4. Dime claramente QUÉ funciona, QUÉ NO, y QUÉ falta
+
+REQUERIMIENTOS:
+- Proyecto realista (Software, Obra, Servicios o Distribución)
+- Actividades de TODOS los tipos: horas, unidad, porcentaje, hito
+- Dependencias de TODOS los tipos: FS, SS, FF, SF
+- Navegación OBLIGATORIA en navegador (usar Playwright)
+- Validación paso a paso con screenshots de errores
+
+FLUJO (13 FASES):
+1. Setup → Login admin
+2. Crear tercero (cliente)
+3. Crear 4 actividades (horas, unidad, %, hito)
+4. Crear proyecto base
+5. Crear 3-4 fases
+6. Crear mínimo 10 tareas
+7. Crear dependencias (FS, SS, FF, SF)
+8. Gantt (overlays: crítica, float, baseline)
+9. Recursos (asignación, capacidad, disponibilidad)
+10. Timesheets (manual + timer)
+11. Budget (presupuesto, tarifas, gastos, EVM)
+12. Scheduling (baseline, what-if, auto-schedule)
+13. Analytics (KPIs + gráficos)
+
+Por cada paso:
+1. EXPLICAR por qué (soy no-experto)
+2. EJECUTAR en navegador
+3. VALIDAR (✅❌⚠️🐛)
+4. REPORTAR resultado
+5. SCREENSHOT si error
+
+REPORTE FINAL:
+- ✅ Funcionalidades OK
+- ❌ No existen
+- ⚠️ Diferentes
+- 🐛 Bugs encontrados
+- 🎯 Gaps críticos
+- 💡 Recomendaciones PM
+
+genera un documento .md con el resultado 
+
+¿Estás listo para validar TODO paso a paso?

@@ -174,9 +174,26 @@ class UserService:
         return user
 
     @staticmethod
-    def list_users(company):
-        """Retorna todos los usuarios activos de la empresa, ordenados por email."""
-        return User.objects.filter(company=company).order_by('email')
+    def list_users(company, search: str = '', role: str = '', is_active=None):
+        """
+        Retorna usuarios de la empresa con filtros opcionales.
+        - search: busca en email, first_name y last_name
+        - role: filtra por rol exacto
+        - is_active: True/False o None para todos
+        """
+        from django.db.models import Q
+        qs = User.objects.filter(company=company)
+        if search:
+            qs = qs.filter(
+                Q(email__icontains=search) |
+                Q(first_name__icontains=search) |
+                Q(last_name__icontains=search)
+            )
+        if role:
+            qs = qs.filter(role=role)
+        if is_active is not None:
+            qs = qs.filter(is_active=is_active)
+        return qs.order_by('email')
 
     @staticmethod
     def get_user(company, user_id: str) -> User:

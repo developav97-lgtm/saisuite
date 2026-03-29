@@ -1,0 +1,138 @@
+<div class="sc-page">
+
+  <!-- Header -->
+  <div class="sc-page-header">
+    <h1 class="sc-page-header__title">Dashboard</h1>
+    <div class="pd-header-actions">
+      <button mat-stroked-button (click)="nuevoProyecto()">
+        <mat-icon>add</mat-icon>
+        Nuevo proyecto
+      </button>
+    </div>
+  </div>
+
+  <!-- Loading global -->
+  @if (loadingLista()) {
+    <mat-progress-bar mode="indeterminate" class="pd-loading" />
+  }
+
+  <!-- ── Stat tiles ── -->
+  @if (!loadingLista()) {
+    <div class="pd-stat-grid">
+      <div class="pd-stat-card">
+        <mat-icon class="pd-stat-card__icon pd-stat-card__icon--blue">work</mat-icon>
+        <div class="pd-stat-card__body">
+          <span class="pd-stat-card__value">{{ totalProyectos() }}</span>
+          <span class="pd-stat-card__label">Total proyectos</span>
+        </div>
+      </div>
+
+      <div class="pd-stat-card">
+        <mat-icon class="pd-stat-card__icon pd-stat-card__icon--green">play_circle</mat-icon>
+        <div class="pd-stat-card__body">
+          <span class="pd-stat-card__value">{{ activosTotal() }}</span>
+          <span class="pd-stat-card__label">Activos (planif. + ejecución)</span>
+        </div>
+      </div>
+
+      <div class="pd-stat-card">
+        <mat-icon class="pd-stat-card__icon pd-stat-card__icon--purple">payments</mat-icon>
+        <div class="pd-stat-card__body">
+          <span class="pd-stat-card__value pd-stat-card__value--sm">{{ formatCurrency(presupuestoTotal()) }}</span>
+          <span class="pd-stat-card__label">Presupuesto total</span>
+        </div>
+      </div>
+
+      <div class="pd-stat-card" [class.pd-stat-card--warn]="overdueTotal() > 0">
+        <mat-icon class="pd-stat-card__icon pd-stat-card__icon--red">warning_amber</mat-icon>
+        <div class="pd-stat-card__body">
+          <span class="pd-stat-card__value">{{ overdueTotal() }}</span>
+          <span class="pd-stat-card__label">Tareas vencidas</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Distribución por estado ── -->
+    @if (porEstado().length > 0) {
+      <div class="pd-estado-row sc-card">
+        @for (e of porEstado(); track e.estado) {
+          <div class="pd-estado-item">
+            <span [class]="estadoClass(e.estado)">{{ e.label }}</span>
+            <span class="pd-estado-count">{{ e.count }}</span>
+          </div>
+        }
+      </div>
+    }
+  }
+
+  <!-- ── KPIs proyectos activos ── -->
+  @if (loadingKpis()) {
+    <mat-progress-bar mode="indeterminate" class="pd-kpi-loading" />
+  }
+
+  @if (!loadingKpis() && kpis().length > 0) {
+    <section class="pd-kpi-section">
+      <h2 class="pd-kpi-title">
+        <mat-icon>dashboard</mat-icon>
+        Proyectos Activos — Seguimiento por tareas
+      </h2>
+      <p class="pd-kpi-hint">El % mostrado es la tasa de tareas completadas según el motor de analytics.</p>
+      <div class="pd-kpi-grid">
+        @for (k of kpis(); track k.id) {
+          <div class="pd-kpi-card" (click)="irAProyecto(k.id)" matRipple>
+            <div class="pd-kpi-card__header">
+              <span class="pd-kpi-card__nombre">{{ k.nombre }}</span>
+              <span class="pd-kpi-card__estado pd-kpi-card__estado--{{ estadoSalud(k) }}">
+                {{ estadoSaludLabel(k) }}
+              </span>
+            </div>
+            <div class="pd-kpi-card__progress">
+              <mat-progress-bar mode="determinate" [value]="k.completion_rate" />
+              <span class="pd-kpi-card__pct">{{ k.completion_rate | number:'1.0-0' }}%</span>
+            </div>
+            <div class="pd-kpi-card__metrics">
+              <span class="pd-kpi-card__metric"
+                matTooltip="Tareas completadas / totales">
+                <mat-icon>task_alt</mat-icon>
+                {{ k.completed_tasks }}/{{ k.total_tasks }} tareas
+              </span>
+              @if (k.overdue_tasks > 0) {
+                <span class="pd-kpi-card__metric pd-kpi-card__metric--warn">
+                  <mat-icon>warning</mat-icon>
+                  {{ k.overdue_tasks }} venc.
+                </span>
+              }
+              <span class="pd-kpi-card__metric"
+                [class.pd-kpi-card__metric--ok]="k.on_time_rate >= 80"
+                [class.pd-kpi-card__metric--warn]="k.on_time_rate < 80"
+                matTooltip="Porcentaje de tareas entregadas a tiempo">
+                <mat-icon>schedule</mat-icon>
+                {{ k.on_time_rate | number:'1.0-0' }}% puntual
+              </span>
+              @if (k.budget_variance !== null) {
+                <span class="pd-kpi-card__metric"
+                  [class.pd-kpi-card__metric--ok]="k.budget_variance >= 0"
+                  [class.pd-kpi-card__metric--warn]="k.budget_variance < 0"
+                  matTooltip="Varianza presupuestal: positivo = dentro del presupuesto">
+                  <mat-icon>payments</mat-icon>
+                  {{ k.budget_variance | number:'1.0-0' }}% presup.
+                </span>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    </section>
+  }
+
+  @if (!loadingLista() && !loadingKpis() && totalProyectos() === 0) {
+    <div class="sc-empty-state">
+      <mat-icon>work_outline</mat-icon>
+      <p>Aún no tienes proyectos.</p>
+      <button mat-raised-button color="primary" (click)="nuevoProyecto()">
+        <mat-icon>add</mat-icon> Nuevo proyecto
+      </button>
+    </div>
+  }
+
+</div>

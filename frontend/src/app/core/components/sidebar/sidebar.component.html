@@ -46,7 +46,7 @@
           <!-- Item con acción especial (ej: Tareas con localStorage) -->
           <div
             class="sc-nav__item"
-            [class.sc-nav__item--active]="isTareasActive()"
+            [class.sc-nav__item--active]="item.activeCheck ? item.activeCheck() : false"
             (click)="handleItemClick(item)"
             role="button"
             [matTooltip]="!visible() ? item.label : ''"
