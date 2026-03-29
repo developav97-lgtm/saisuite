@@ -158,8 +158,8 @@ export class ProyectoFormComponent implements OnInit {
   ngOnInit(): void {
     // Cargar usuarios para los autocompletes de equipo
     this.adminService.listUsers().subscribe({
-      next: (users) => {
-        this.usuarios.set(users.filter(u => u.is_active));
+      next: (res) => {
+        this.usuarios.set(res.results.filter(u => u.is_active));
         this.syncAutocompleteText();
       },
       error: () => { /* silencioso */ },

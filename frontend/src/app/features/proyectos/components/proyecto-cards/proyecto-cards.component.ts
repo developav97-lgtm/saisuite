@@ -78,7 +78,7 @@ export class ProyectoCardsComponent implements OnInit {
 
   private loadUsuarios(): void {
     this.adminService.listUsers().subscribe({
-      next: (users) => this.usuarios.set(users),
+      next: (res) => this.usuarios.set(res.results),
       error: () => { /* silencioso: el filtro de gerente simplemente no muestra opciones */ },
     });
   }

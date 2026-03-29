@@ -267,7 +267,8 @@ export class TareaFormComponent implements OnInit {
   }
 
   private loadResponsables(): void {
-    this.adminService.listUsers().subscribe(users => {
+    this.adminService.listUsers().subscribe(res => {
+      const users = res.results;
       this.allUsuarios = users;
       this.responsablesFiltrados.set(users);
       this.cdr.markForCheck();

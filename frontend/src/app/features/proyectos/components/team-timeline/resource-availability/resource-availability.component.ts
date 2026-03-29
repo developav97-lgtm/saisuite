@@ -84,7 +84,7 @@ export class ResourceAvailabilityComponent implements OnInit {
 
   private loadUsers(): void {
     this.adminService.listUsers().subscribe({
-      next: (data) => this.users.set(data),
+      next: (res) => this.users.set(res.results),
       error: () => { /* silencioso */ },
     });
   }

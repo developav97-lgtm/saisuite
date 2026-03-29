@@ -166,7 +166,7 @@ export class TareaKanbanComponent implements OnInit {
 
   private loadUsuarios(): void {
     this.adminService.listUsers().subscribe({
-      next: (usuarios) => this.usuarios.set(usuarios),
+      next: (res) => this.usuarios.set(res.results),
       error: () => { /* silencioso */ },
     });
   }

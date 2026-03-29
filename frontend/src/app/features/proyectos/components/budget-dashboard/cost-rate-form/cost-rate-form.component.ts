@@ -76,8 +76,8 @@ export class CostRateFormComponent implements OnInit {
   });
 
   ngOnInit(): void {
-    this.adminService.listUsers().subscribe(users => {
-      this.usuarios.set(users.filter(u => u.is_active));
+    this.adminService.listUsers().subscribe(res => {
+      this.usuarios.set(res.results.filter(u => u.is_active));
     });
   }
 
