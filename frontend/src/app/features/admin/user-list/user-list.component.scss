@@ -1,29 +1,24 @@
-.ul-container {
+.ul-filters {
   display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-  padding: 1.5rem;
-}
-
-.ul-toolbar {
-  display: flex;
-  align-items: center;
+  flex-wrap: wrap;
   gap: 1rem;
+  align-items: flex-start;
+  padding: 1rem;
+  margin-bottom: 1rem;
+
+  .ul-search {
+    flex: 1 1 280px;
+    min-width: 220px;
+  }
+
+  .ul-filter {
+    flex: 0 1 200px;
+    min-width: 160px;
+  }
 }
 
-.ul-title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  margin: 0;
-  color: var(--sc-text-color);
-}
-
-.ul-spacer { flex: 1; }
-
-.ul-loading {
-  display: flex;
-  justify-content: center;
-  padding: 3rem 0;
+.ul-progress {
+  border-radius: 4px;
 }
 
 .ul-table {
@@ -82,11 +77,10 @@
 
 .ul-col-acciones {
   width: 96px;
-  text-align: center;
+  flex: 0 0 96px;
+  justify-content: flex-end !important;
 }
 
 .ul-empty {
-  text-align: center;
-  padding: 2rem;
-  color: var(--sc-text-muted);
+  padding: 3rem 1rem;
 }
