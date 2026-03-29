@@ -179,6 +179,36 @@
           </mat-list>
         </div>
       }
+
+      @if (previewTasks().length > 0) {
+        <section class="asd-affected-tasks">
+          <h4 class="asd-affected-tasks__title">Tareas a reprogramar</h4>
+          <div class="asd-tasks-scroll">
+            <table class="asd-tasks-table">
+              <thead>
+                <tr>
+                  <th>Tarea</th>
+                  <th>Inicio (antes → después)</th>
+                  <th>Fin (antes → después)</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (t of previewTasks(); track t.id) {
+                  <tr>
+                    <td class="asd-task-nombre">{{ t.nombre }}</td>
+                    <td class="asd-task-dates">
+                      {{ t.old_start ?? '—' }} → {{ t.new_start ?? '—' }}
+                    </td>
+                    <td class="asd-task-dates">
+                      {{ t.old_end ?? '—' }} → {{ t.new_end ?? '—' }}
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </section>
+      }
     </section>
   }
 

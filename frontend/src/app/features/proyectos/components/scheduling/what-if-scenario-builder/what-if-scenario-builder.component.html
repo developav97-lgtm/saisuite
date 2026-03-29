@@ -41,13 +41,87 @@
         </mat-form-field>
       </div>
 
-      <!-- Aviso sobre cambios -->
-      <div class="wi-create-hint">
-        <mat-icon class="wi-create-hint__icon">info_outline</mat-icon>
-        <span>
-          Tras crear el escenario, configura los cambios (task_changes, resource_changes)
-          mediante la API o la interfaz avanzada disponible en versiones futuras.
-        </span>
+      <!-- Sección de cambios propuestos -->
+      <div class="wi-changes-section">
+        <div class="wi-changes-header">
+          <span class="wi-changes-header__title">Cambios propuestos</span>
+          <button
+            mat-stroked-button
+            type="button"
+            (click)="addTaskChange()"
+            [disabled]="loadingTareas()"
+            class="wi-changes-add-btn"
+          >
+            <mat-icon>add</mat-icon>
+            Agregar cambio
+          </button>
+        </div>
+
+        @if (loadingTareas()) {
+          <mat-progress-bar mode="indeterminate" class="wi-tareas-progress" />
+        }
+
+        @if (taskChangesList.controls.length > 0) {
+          <div formArrayName="task_changes_list" class="wi-changes-list">
+            @for (control of taskChangesList.controls; track $index) {
+              <div class="wi-change-row" [formGroupName]="$index">
+                <!-- Selector de tarea -->
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="wi-change-task">
+                  <mat-label>Tarea</mat-label>
+                  <mat-select formControlName="task_id">
+                    @for (tarea of tareas(); track tarea.id) {
+                      <mat-option [value]="tarea.id">
+                        {{ tarea.codigo }} — {{ tarea.nombre }}
+                      </mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+
+                <!-- Selector de campo -->
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="wi-change-campo">
+                  <mat-label>Campo</mat-label>
+                  <mat-select formControlName="campo">
+                    @for (opt of campoOptions; track opt.value) {
+                      <mat-option [value]="opt.value">{{ opt.label }}</mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+
+                <!-- Input de valor — tipo condicionado al campo seleccionado -->
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="wi-change-valor">
+                  <mat-label>Valor nuevo</mat-label>
+                  @if (getCampoControl($index).value === 'horas_estimadas') {
+                    <input
+                      matInput
+                      formControlName="valor"
+                      type="number"
+                      min="0"
+                      placeholder="0"
+                    />
+                  } @else {
+                    <input
+                      matInput
+                      formControlName="valor"
+                      type="date"
+                    />
+                  }
+                </mat-form-field>
+
+                <!-- Botón eliminar -->
+                <button
+                  mat-icon-button
+                  color="warn"
+                  type="button"
+                  (click)="removeTaskChange($index)"
+                  matTooltip="Eliminar cambio"
+                  class="wi-change-remove"
+                >
+                  <mat-icon>delete_outline</mat-icon>
+                </button>
+              </div>
+            }
+          </div>
+        }
       </div>
 
       <div class="wi-create-actions">

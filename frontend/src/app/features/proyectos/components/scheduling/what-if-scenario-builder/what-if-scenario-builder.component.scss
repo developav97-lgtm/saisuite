@@ -60,23 +60,57 @@
 .wi-field-name { flex: 1; min-width: 200px; }
 .wi-field-desc { flex: 1.5; min-width: 220px; }
 
-.wi-create-hint {
+// ── Sección de cambios propuestos ────────────────────────────────────────────
+.wi-changes-section {
+  margin-top: 0.875rem;
+  border-top: 1px solid var(--sc-surface-border);
+  padding-top: 0.875rem;
+}
+
+.wi-changes-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.625rem;
+
+  &__title {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--sc-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+}
+
+.wi-changes-add-btn {
+  flex-shrink: 0;
+}
+
+.wi-tareas-progress {
+  border-radius: var(--sc-radius);
+  margin-bottom: 0.625rem;
+}
+
+.wi-changes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.wi-change-row {
   display: flex;
   align-items: flex-start;
-  gap: 0.4rem;
-  font-size: 0.8rem;
-  color: var(--sc-text-muted);
-  background: var(--sc-surface-ground);
-  border: 1px solid var(--sc-surface-border);
-  border-radius: var(--sc-radius);
-  padding: 0.6rem 0.875rem;
-  margin-top: 0.75rem;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
 
-  &__icon {
-    font-size: 1rem;
-    flex-shrink: 0;
-    margin-top: 0.05rem;
-  }
+.wi-change-task  { flex: 2; min-width: 180px; }
+.wi-change-campo { flex: 1.2; min-width: 140px; }
+.wi-change-valor { flex: 1; min-width: 130px; }
+
+.wi-change-remove {
+  flex-shrink: 0;
+  margin-top: 4px;
 }
 
 .wi-create-actions {

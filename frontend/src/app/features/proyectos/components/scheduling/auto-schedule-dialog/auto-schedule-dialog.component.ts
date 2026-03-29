@@ -7,6 +7,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  computed,
   inject,
   signal,
 } from '@angular/core';
@@ -59,6 +60,19 @@ export class AutoScheduleDialogComponent {
   readonly levelingLoading = signal(false);
   readonly levelingPreview = signal<LevelResourcesResult | null>(null);
   readonly levelingDryRun  = signal(true);
+
+  // ── Preview tasks computed ──────────────────────────────────────────────────
+  readonly previewTasks = computed(() => {
+    const p = this.preview();
+    if (!p?.preview) return [];
+    return Object.entries(p.preview as Record<string, {
+      nombre: string;
+      old_start: string | null;
+      old_end: string | null;
+      new_start: string | null;
+      new_end: string | null;
+    }>).map(([id, v]) => ({ id, ...v }));
+  });
 
   calculate(): void {
     this.loading.set(true);

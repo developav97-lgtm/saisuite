@@ -241,6 +241,53 @@
   }
 }
 
+// ── Tareas afectadas ──────────────────────────────────────────────────────────
+.asd-affected-tasks {
+  margin-top: 1rem;
+  border-top: 1px solid var(--sc-surface-border);
+  padding-top: 0.875rem;
+
+  &__title {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--sc-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin: 0 0 0.625rem;
+  }
+}
+
+.asd-tasks-scroll {
+  overflow-x: auto;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.asd-tasks-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+
+  th {
+    text-align: left;
+    padding: 4px 8px;
+    font-weight: 600;
+    border-bottom: 1px solid var(--sc-surface-border);
+    white-space: nowrap;
+    color: var(--sc-text-muted);
+  }
+
+  td {
+    padding: 4px 8px;
+    border-bottom: 1px solid var(--sc-surface-border);
+
+    &:first-child { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  }
+}
+
+.asd-task-nombre { font-weight: 500; }
+.asd-task-dates { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 0.75rem; white-space: nowrap; }
+
 // ── Acciones ──────────────────────────────────────────────────────────────────
 .asd-actions {
   gap: 0.5rem;

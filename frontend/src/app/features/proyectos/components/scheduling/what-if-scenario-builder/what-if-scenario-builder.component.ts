@@ -1,7 +1,7 @@
 /**
  * SaiSuite — WhatIfScenarioBuilderComponent (SK-39)
  * Lista escenarios what-if de un proyecto, permite crearlos y simularlos.
- * La configuración de cambios detallados (task_changes, resource_changes) es trabajo futuro (Chunk 8).
+ * A-02: Formulario incluye task_changes (fecha_inicio, fecha_fin, horas_estimadas).
  */
 import {
   ChangeDetectionStrategy,
@@ -12,7 +12,13 @@ import {
   signal,
 } from '@angular/core';
 import { DatePipe } from '@angular/common';
-import { ReactiveFormsModule, FormControl, FormGroup, Validators } from '@angular/forms';
+import {
+  ReactiveFormsModule,
+  FormControl,
+  FormGroup,
+  FormArray,
+  Validators,
+} from '@angular/forms';
 import { MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -20,6 +26,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatDialog } from '@angular/material/dialog';
@@ -29,7 +36,17 @@ import {
   WhatIfScenarioList,
   WhatIfScenarioDetail,
 } from '../../../models/what-if.model';
+import { TareaService } from '../../../services/tarea.service';
+import { Tarea } from '../../../models/tarea.model';
 import { ConfirmDialogComponent } from '../../../../../shared/components/confirm-dialog/confirm-dialog.component';
+
+type TaskChangeCampo = 'fecha_inicio' | 'fecha_fin' | 'horas_estimadas';
+
+interface TaskChangeRow {
+  task_id: FormControl<string>;
+  campo: FormControl<TaskChangeCampo>;
+  valor: FormControl<string>;
+}
 
 @Component({
   selector: 'app-what-if-scenario-builder',
@@ -46,6 +63,7 @@ import { ConfirmDialogComponent } from '../../../../../shared/components/confirm
     MatChipsModule,
     MatFormFieldModule,
     MatInputModule,
+    MatSelectModule,
     MatTooltipModule,
     MatDividerModule,
   ],
@@ -54,6 +72,7 @@ export class WhatIfScenarioBuilderComponent implements OnInit {
   readonly projectId = input.required<string>();
 
   private readonly whatIfService = inject(WhatIfService);
+  private readonly tareaService  = inject(TareaService);
   private readonly dialog        = inject(MatDialog);
   private readonly snackBar      = inject(MatSnackBar);
 
@@ -63,13 +82,26 @@ export class WhatIfScenarioBuilderComponent implements OnInit {
   readonly simulating       = signal(false);
   readonly saving           = signal(false);
   readonly showCreateForm   = signal(false);
+  readonly loadingTareas    = signal(false);
+  readonly tareas           = signal<Tarea[]>([]);
 
   readonly displayedColumns = ['nombre', 'estado', 'resultado', 'acciones'];
 
+  readonly campoOptions: { value: TaskChangeCampo; label: string }[] = [
+    { value: 'fecha_inicio',     label: 'Fecha inicio' },
+    { value: 'fecha_fin',        label: 'Fecha fin' },
+    { value: 'horas_estimadas',  label: 'Horas estimadas' },
+  ];
+
   readonly createForm = new FormGroup({
-    name:        new FormControl<string>('', { nonNullable: true, validators: [Validators.required, Validators.maxLength(120)] }),
-    description: new FormControl<string>('', { nonNullable: true }),
+    name:              new FormControl<string>('', { nonNullable: true, validators: [Validators.required, Validators.maxLength(120)] }),
+    description:       new FormControl<string>('', { nonNullable: true }),
+    task_changes_list: new FormArray<FormGroup<TaskChangeRow>>([]),
   });
+
+  get taskChangesList(): FormArray<FormGroup<TaskChangeRow>> {
+    return this.createForm.controls['task_changes_list'] as FormArray<FormGroup<TaskChangeRow>>;
+  }
 
   ngOnInit(): void {
     this.loadScenarios();
@@ -92,11 +124,51 @@ export class WhatIfScenarioBuilderComponent implements OnInit {
     });
   }
 
+  private loadTareas(): void {
+    this.loadingTareas.set(true);
+    this.tareaService.listByProyecto(this.projectId()).subscribe({
+      next: (data) => {
+        this.tareas.set(data);
+        this.loadingTareas.set(false);
+      },
+      error: () => {
+        this.loadingTareas.set(false);
+        this.snackBar.open('Error al cargar las tareas del proyecto.', 'Cerrar', {
+          duration: 5000,
+          panelClass: ['snack-error'],
+        });
+      },
+    });
+  }
+
   toggleCreateForm(): void {
     this.showCreateForm.update(v => !v);
-    if (!this.showCreateForm()) {
+    if (this.showCreateForm()) {
+      this.loadTareas();
+    } else {
       this.createForm.reset();
+      // Clear the FormArray on close
+      while (this.taskChangesList.length > 0) {
+        this.taskChangesList.removeAt(0);
+      }
     }
+  }
+
+  addTaskChange(): void {
+    const row = new FormGroup<TaskChangeRow>({
+      task_id: new FormControl<string>('', { nonNullable: true, validators: [Validators.required] }),
+      campo:   new FormControl<TaskChangeCampo>('fecha_inicio', { nonNullable: true, validators: [Validators.required] }),
+      valor:   new FormControl<string>('', { nonNullable: true, validators: [Validators.required] }),
+    });
+    this.taskChangesList.push(row);
+  }
+
+  removeTaskChange(index: number): void {
+    this.taskChangesList.removeAt(index);
+  }
+
+  getCampoControl(index: number): FormControl<TaskChangeCampo> {
+    return this.taskChangesList.at(index).controls['campo'] as FormControl<TaskChangeCampo>;
   }
 
   createScenario(): void {
@@ -105,16 +177,33 @@ export class WhatIfScenarioBuilderComponent implements OnInit {
     this.saving.set(true);
     const { name, description } = this.createForm.getRawValue();
 
+    // Build task_changes from FormArray
+    const taskChanges: Record<string, Record<string, string | number | boolean>> = {};
+    for (const row of this.taskChangesList.controls) {
+      const { task_id, campo, valor } = row.getRawValue();
+      if (!task_id || !campo || valor === '') continue;
+
+      const parsed: string | number =
+        campo === 'horas_estimadas' ? Number(valor) : valor;
+
+      if (!taskChanges[task_id]) {
+        taskChanges[task_id] = {};
+      }
+      taskChanges[task_id][campo] = parsed;
+    }
+
     this.whatIfService.create(this.projectId(), {
       name,
       description: description || undefined,
-      // Backend requiere al menos un cambio; se crea con un placeholder mínimo.
-      dependency_changes: { new: { retraso_dias: 0 } },
+      task_changes: taskChanges,
     }).subscribe({
       next: () => {
         this.saving.set(false);
         this.showCreateForm.set(false);
         this.createForm.reset();
+        while (this.taskChangesList.length > 0) {
+          this.taskChangesList.removeAt(0);
+        }
         this.snackBar.open('Escenario creado correctamente.', 'Cerrar', {
           duration: 3000,
           panelClass: ['snack-success'],

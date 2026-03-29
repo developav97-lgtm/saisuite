@@ -1,3 +1,47 @@
+// ── Drag & Drop ──────────────────────────────────────────────
+
+// Fila siendo arrastrada
+.cdk-drag-preview {
+  background: var(--sc-surface-card);
+  border: 1px solid var(--sc-primary);
+  border-radius: 4px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+}
+
+// Placeholder del lugar donde se soltará
+.cdk-drag-placeholder {
+  opacity: 0.4;
+  background: var(--sc-primary-light, #e3f2fd);
+}
+
+// Animación al soltar
+.cdk-drop-list-dragging .fl-row-draggable:not(.cdk-drag-placeholder) {
+  transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.fl-col-drag {
+  width: 40px;
+  flex-shrink: 0;
+}
+
+.fl-drag-handle {
+  cursor: grab;
+  color: var(--sc-text-muted);
+  opacity: 0.5;
+  font-size: 1.25rem !important;
+  width: 1.25rem !important;
+  height: 1.25rem !important;
+
+  &:hover {
+    opacity: 1;
+    color: var(--sc-primary);
+  }
+}
+
+.fl-table { width: 100%; }
+
 .fl-container { padding: 0; }
 
 .fl-header {

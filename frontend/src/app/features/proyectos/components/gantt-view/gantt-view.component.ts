@@ -361,4 +361,26 @@ export class GanttViewComponent implements AfterViewInit, OnDestroy {
   refreshGantt(): void {
     this.cargarGantt();
   }
+
+  exportarSVG(): void {
+    const el = this.ganttContainer?.nativeElement as HTMLElement | SVGElement | undefined;
+    if (!el) return;
+
+    // ganttContainer puede ser el <svg> directamente o un wrapper div
+    const svg = el instanceof SVGElement
+      ? el
+      : (el as HTMLElement).querySelector('svg');
+
+    if (!svg) return;
+
+    const serializer = new XMLSerializer();
+    const svgStr = serializer.serializeToString(svg);
+    const blob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `gantt-${this.proyectoId()}-${new Date().toISOString().slice(0, 10)}.svg`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 }

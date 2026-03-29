@@ -148,3 +148,120 @@
     grid-template-columns: 1fr;
   }
 }
+
+// ── Dashboard KPIs ──────────────────────────────────────────
+.db-kpi-loading { margin-bottom: 1.5rem; }
+
+.db-kpi-section {
+  margin-bottom: 2rem;
+}
+
+.db-kpi-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 1rem;
+  color: var(--sc-text-color);
+
+  mat-icon {
+    font-size: 1.1rem !important;
+    width: 1.1rem !important;
+    height: 1.1rem !important;
+    color: var(--sc-primary);
+  }
+}
+
+.db-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1rem;
+}
+
+.db-kpi-card {
+  background: var(--sc-surface-card);
+  border: 1px solid var(--sc-surface-border);
+  border-radius: var(--sc-radius);
+  padding: 1rem;
+  cursor: pointer;
+  transition: box-shadow 0.15s ease;
+  box-shadow: var(--sc-shadow-sm);
+
+  &:hover { box-shadow: var(--sc-shadow-md); }
+
+  &__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+  }
+
+  &__nombre {
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.3;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    color: var(--sc-text-color);
+  }
+
+  &__estado {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    white-space: nowrap;
+    padding: 2px 8px;
+    border-radius: 10px;
+    flex-shrink: 0;
+
+    &--on_track  { background: #e8f5e9; color: #2e7d32; }
+    &--at_risk   { background: #fff8e1; color: #f57f17; }
+    &--delayed   { background: #fce4ec; color: #b71c1c; }
+  }
+
+  &__progress {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.625rem;
+
+    mat-progress-bar { flex: 1; }
+  }
+
+  &__pct {
+    font-size: 0.75rem;
+    font-weight: 600;
+    width: 36px;
+    text-align: right;
+    white-space: nowrap;
+    flex-shrink: 0;
+    color: var(--sc-text-color);
+  }
+
+  &__metrics {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  &__metric {
+    display: flex;
+    align-items: center;
+    gap: 0.2rem;
+    font-size: 0.75rem;
+    color: var(--sc-text-muted);
+
+    mat-icon {
+      font-size: 0.875rem !important;
+      width: 0.875rem !important;
+      height: 0.875rem !important;
+    }
+
+    &--ok   { color: #2e7d32; font-weight: 600; }
+    &--warn { color: #e53935; font-weight: 600; }
+  }
+}

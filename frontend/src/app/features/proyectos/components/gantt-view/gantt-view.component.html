@@ -47,6 +47,15 @@
       </div>
 
       <button
+        mat-stroked-button
+        (click)="exportarSVG()"
+        matTooltip="Descargar Gantt como SVG"
+        class="gv-export-btn"
+      >
+        <mat-icon>download</mat-icon> Exportar SVG
+      </button>
+
+      <button
         mat-icon-button
         (click)="refreshGantt()"
         matTooltip="Actualizar Gantt"

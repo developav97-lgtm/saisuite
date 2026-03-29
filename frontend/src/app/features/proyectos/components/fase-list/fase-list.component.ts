@@ -15,6 +15,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { DragDropModule, CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
 import { FaseService } from '../../services/fase.service';
 import { FaseList, FaseDetail } from '../../models/fase.model';
 import { ConfirmDialogComponent } from '../../../../shared/components/confirm-dialog/confirm-dialog.component';
@@ -30,6 +31,7 @@ import { ConfirmDialogComponent } from '../../../../shared/components/confirm-di
     MatTableModule, MatButtonModule, MatIconModule,
     MatFormFieldModule, MatInputModule, MatDatepickerModule,
     MatProgressBarModule, MatTooltipModule, MatDialogModule,
+    DragDropModule,
   ],
 })
 export class FaseListComponent implements OnInit {
@@ -44,8 +46,9 @@ export class FaseListComponent implements OnInit {
   readonly fases        = signal<FaseList[]>([]);
   readonly loading      = signal(false);
   readonly editingFase  = signal<FaseDetail | null>(null);
+  readonly reordering   = signal(false);
 
-  readonly displayedColumns = ['orden', 'nombre', 'estado', 'presupuesto', 'avance', 'acciones'];
+  readonly displayedColumns = ['drag_handle', 'orden', 'nombre', 'estado', 'presupuesto', 'avance', 'acciones'];
 
   readonly budgetCats = [
     { key: 'presupuesto_mano_obra',    label: 'Mano de obra'  },
@@ -87,6 +90,57 @@ export class FaseListComponent implements OnInit {
       error: () => { this.loading.set(false); },
     });
   }
+
+  // ── Drag & Drop ──────────────────────────────────────────────────────────
+
+  onDrop(event: CdkDragDrop<FaseList[]>): void {
+    if (event.previousIndex === event.currentIndex) return;
+
+    // Actualizar array local inmediatamente para UX fluida
+    const fasesActuales = [...this.fases()];
+    moveItemInArray(fasesActuales, event.previousIndex, event.currentIndex);
+    this.fases.set(fasesActuales);
+
+    // Recalcular orden: asignar posición 1-based según nuevo índice
+    const fasesAfectadas = fasesActuales
+      .map((f, idx) => ({ fase: f, nuevoOrden: idx + 1 }))
+      .filter(({ fase, nuevoOrden }) => fase.orden !== nuevoOrden);
+
+    if (fasesAfectadas.length === 0) return;
+
+    this.reordering.set(true);
+
+    // PATCH individual para cada fase cuyo orden cambió
+    let pendientes = fasesAfectadas.length;
+    let huboError = false;
+
+    fasesAfectadas.forEach(({ fase, nuevoOrden }) => {
+      this.faseService.update(fase.id, { orden: nuevoOrden }).subscribe({
+        next: () => {
+          pendientes--;
+          if (pendientes === 0) {
+            this.reordering.set(false);
+            if (!huboError) {
+              // Recargar para sincronizar con el backend
+              this.loadFases();
+            }
+          }
+        },
+        error: () => {
+          huboError = true;
+          pendientes--;
+          if (pendientes === 0) {
+            this.reordering.set(false);
+            this.snackBar.open('No se pudo reordenar las fases.', 'Cerrar', { duration: 4000, panelClass: ['snack-error'] });
+            // Revertir al estado del servidor
+            this.loadFases();
+          }
+        },
+      });
+    });
+  }
+
+  // ── CRUD ─────────────────────────────────────────────────────────────────
 
   abrirDialogNueva(): void {
     this.editingFase.set(null);

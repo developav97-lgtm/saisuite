@@ -10,7 +10,7 @@
     </button>
   </div>
 
-  @if (loading()) {
+  @if (loading() || reordering()) {
     <mat-progress-bar mode="indeterminate" />
   }
 
@@ -20,7 +20,25 @@
       <p>No hay fases definidas. Agrega la primera desde el botón de arriba.</p>
     </div>
   } @else if (fases().length > 0) {
-    <mat-table [dataSource]="fases()">
+    <mat-table
+      [dataSource]="fases()"
+      cdkDropList
+      [cdkDropListData]="fases()"
+      (cdkDropListDropped)="onDrop($event)"
+      class="fl-table"
+    >
+      <!-- Columna drag handle -->
+      <ng-container matColumnDef="drag_handle">
+        <mat-header-cell *matHeaderCellDef class="fl-col-drag"></mat-header-cell>
+        <mat-cell *matCellDef="let f" class="fl-col-drag">
+          <mat-icon
+            cdkDragHandle
+            class="fl-drag-handle"
+            matTooltip="Arrastra para reordenar"
+          >drag_indicator</mat-icon>
+        </mat-cell>
+      </ng-container>
+
       <ng-container matColumnDef="orden">
         <mat-header-cell *matHeaderCellDef>#</mat-header-cell>
         <mat-cell *matCellDef="let f">{{ f.orden }}</mat-cell>
@@ -74,7 +92,12 @@
       </ng-container>
 
       <mat-header-row *matHeaderRowDef="displayedColumns"></mat-header-row>
-      <mat-row *matRowDef="let row; columns: displayedColumns;"></mat-row>
+      <mat-row
+        *matRowDef="let row; columns: displayedColumns;"
+        cdkDrag
+        [cdkDragData]="row"
+        class="fl-row-draggable"
+      ></mat-row>
     </mat-table>
   }
 </div>
