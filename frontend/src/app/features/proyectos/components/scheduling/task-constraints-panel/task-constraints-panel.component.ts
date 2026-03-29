@@ -25,13 +25,13 @@ import { MatNativeDateModule } from '@angular/material/core';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialog } from '@angular/material/dialog';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { SchedulingService } from '../../../services/scheduling.service';
 import {
   TaskConstraint,
   ConstraintType,
 } from '../../../models/scheduling.model';
 import { ConfirmDialogComponent } from '../../../../../shared/components/confirm-dialog/confirm-dialog.component';
+import { ToastService } from '../../../../../core/services/toast.service';
 
 const CONSTRAINT_OPTIONS: { value: ConstraintType; label: string }[] = [
   { value: 'ASAP',                    label: 'Lo antes posible (ASAP)' },
@@ -78,7 +78,7 @@ export class TaskConstraintsPanelComponent implements OnInit {
 
   private readonly schedulingService = inject(SchedulingService);
   private readonly dialog            = inject(MatDialog);
-  private readonly snackBar          = inject(MatSnackBar);
+  private readonly toast       = inject(ToastService);
 
   readonly constraints   = signal<TaskConstraint[]>([]);
   readonly loading       = signal(false);
@@ -104,20 +104,14 @@ export class TaskConstraintsPanelComponent implements OnInit {
       },
       error: () => {
         this.loading.set(false);
-        this.snackBar.open('Error al cargar restricciones', 'Cerrar', {
-          duration: 5000,
-          panelClass: ['snack-error'],
-        });
+        this.toast.error('Error al cargar restricciones');
       },
     });
   }
 
   addConstraint(): void {
     if (this.requiresDate() && !this.constraintDate()) {
-      this.snackBar.open('Este tipo de restricción requiere una fecha.', 'Cerrar', {
-        duration: 4000,
-        panelClass: ['snack-warning'],
-      });
+      this.toast.warning('Este tipo de restricción requiere una fecha.');
       return;
     }
 
@@ -130,18 +124,12 @@ export class TaskConstraintsPanelComponent implements OnInit {
         this.saving.set(false);
         this.constraintDate.set(null);
         this.selectedType.set('ASAP');
-        this.snackBar.open('Restricción guardada correctamente.', 'Cerrar', {
-          duration: 3000,
-          panelClass: ['snack-success'],
-        });
+        this.toast.success('Restricción guardada correctamente.');
         this.loadConstraints();
       },
       error: () => {
         this.saving.set(false);
-        this.snackBar.open('Error al guardar la restricción.', 'Cerrar', {
-          duration: 5000,
-          panelClass: ['snack-error'],
-        });
+        this.toast.error('Error al guardar la restricción.');
       },
     });
   }
@@ -161,17 +149,11 @@ export class TaskConstraintsPanelComponent implements OnInit {
 
       this.schedulingService.deleteConstraint(constraint.id).subscribe({
         next: () => {
-          this.snackBar.open('Restricción eliminada.', 'Cerrar', {
-            duration: 3000,
-            panelClass: ['snack-success'],
-          });
+          this.toast.success('Restricción eliminada.');
           this.loadConstraints();
         },
         error: () => {
-          this.snackBar.open('Error al eliminar la restricción.', 'Cerrar', {
-            duration: 5000,
-            panelClass: ['snack-error'],
-          });
+          this.toast.error('Error al eliminar la restricción.');
         },
       });
     });

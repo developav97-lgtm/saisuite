@@ -18,13 +18,13 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { ResourceService } from '../../../services/resource.service';
 import { AdminService } from '../../../../admin/services/admin.service';
 import { AdminUser } from '../../../../admin/models/admin.models';
 import { ResourceCapacity } from '../../../models/resource.model';
 import { ConfirmDialogComponent } from '../../../../../shared/components/confirm-dialog/confirm-dialog.component';
 import { ResourceCapacityFormComponent } from './resource-capacity-form.component';
+import { ToastService } from '../../../../../core/services/toast.service';
 
 @Component({
   selector: 'app-resource-capacity',
@@ -47,7 +47,7 @@ export class ResourceCapacityComponent implements OnInit {
   private readonly resourceService = inject(ResourceService);
   private readonly adminService    = inject(AdminService);
   private readonly dialog          = inject(MatDialog);
-  private readonly snackBar        = inject(MatSnackBar);
+  private readonly toast       = inject(ToastService);
 
   readonly loading    = signal(false);
   readonly capacities = signal<ResourceCapacity[]>([]);
@@ -69,9 +69,7 @@ export class ResourceCapacityComponent implements OnInit {
       },
       error: () => {
         this.loading.set(false);
-        this.snackBar.open('Error al cargar capacidades.', 'Cerrar', {
-          duration: 4000, panelClass: ['snack-error'],
-        });
+        this.toast.error('Error al cargar capacidades.');
       },
     });
   }
@@ -108,15 +106,11 @@ export class ResourceCapacityComponent implements OnInit {
       if (!confirmed) return;
       this.resourceService.deleteCapacity(capacity.id).subscribe({
         next: () => {
-          this.snackBar.open('Capacidad eliminada.', 'Cerrar', {
-            duration: 3000, panelClass: ['snack-success'],
-          });
+          this.toast.success('Capacidad eliminada.');
           this.loadCapacities();
         },
         error: () => {
-          this.snackBar.open('Error al eliminar la capacidad.', 'Cerrar', {
-            duration: 5000, panelClass: ['snack-error'],
-          });
+          this.toast.error('Error al eliminar la capacidad.');
         },
       });
     });

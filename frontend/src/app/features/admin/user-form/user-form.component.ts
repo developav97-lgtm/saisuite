@@ -11,9 +11,9 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { AdminService } from '../services/admin.service';
 import { MODULE_LABELS, ROLE_OPTIONS } from '../models/admin.models';
+import { ToastService } from '../../../core/services/toast.service';
 
 @Component({
   selector: 'app-user-form',
@@ -32,7 +32,7 @@ export class UserFormComponent implements OnInit {
   private readonly adminService = inject(AdminService);
   private readonly route        = inject(ActivatedRoute);
   private readonly router       = inject(Router);
-  private readonly snackBar     = inject(MatSnackBar);
+  private readonly toast       = inject(ToastService);
 
   readonly editingId  = signal<string | null>(null);
   readonly loading    = signal(false);
@@ -77,7 +77,7 @@ export class UserFormComponent implements OnInit {
       },
       error: () => {
         this.loading.set(false);
-        this.snackBar.open('No se pudo cargar el usuario.', 'Cerrar', { duration: 5000 });
+        this.toast.error('Error al cargar el usuario.');
       },
     });
   }
@@ -120,19 +120,14 @@ export class UserFormComponent implements OnInit {
     action.subscribe({
       next: () => {
         this.saving.set(false);
-        this.snackBar.open(
-          id ? 'Usuario actualizado.' : 'Usuario creado correctamente.',
-          'Cerrar', { duration: 3000, panelClass: ['snack-success'] },
-        );
+        this.toast.success(id? 'Actualizado.' : 'Creado.');
         this.router.navigate(['/admin/usuarios']);
       },
       error: (err: { error?: Record<string, string[]> }) => {
         this.saving.set(false);
         const e = err?.error ?? {};
         const msg = Object.values(e).flat()[0] ?? 'Error al guardar.';
-        this.snackBar.open(String(msg), 'Cerrar', {
-          duration: 6000, panelClass: ['snack-error'],
-        });
+        this.toast.info(msg);
       },
     });
   }

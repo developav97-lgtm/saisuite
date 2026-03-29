@@ -5,9 +5,10 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatIconModule } from '@angular/material/icon';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { NgxSonnerToaster } from 'ngx-sonner';
 import { AuthService } from '../../../core/auth/auth.service';
+import { ToastService } from '../../../core/services/toast.service';
 
 @Component({
   selector: 'app-login',
@@ -18,6 +19,7 @@ import { AuthService } from '../../../core/auth/auth.service';
     MatButtonModule,
     MatIconModule,
     MatProgressSpinnerModule,
+    NgxSonnerToaster,
   ],
   templateUrl: './login.component.html',
   styleUrls: ['./login.component.scss'],
@@ -27,7 +29,7 @@ export class LoginComponent {
   private readonly fb          = inject(FormBuilder);
   private readonly authService = inject(AuthService);
   private readonly router      = inject(Router);
-  private readonly snackBar    = inject(MatSnackBar);
+  private readonly toast       = inject(ToastService);
 
   readonly loading      = signal(false);
   readonly hidePassword = signal(true);
@@ -52,10 +54,7 @@ export class LoginComponent {
         const msg = err?.status === 401
           ? (err.error?.detail ?? 'Credenciales inválidas. Verifica tu email y contraseña.')
           : 'Error al iniciar sesión. Intenta de nuevo.';
-        this.snackBar.open(msg, 'Cerrar', {
-          duration: 5000,
-          panelClass: ['snack-error'],
-        });
+        this.toast.error(msg);
       },
     });
   }

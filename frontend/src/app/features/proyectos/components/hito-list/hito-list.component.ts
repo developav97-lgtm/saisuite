@@ -15,12 +15,12 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatChipsModule } from '@angular/material/chips';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { HitoService } from '../../services/hito.service';
 import { FaseService } from '../../services/fase.service';
 import { Hito, HitoCreate } from '../../models/hito.model';
 import { FaseList } from '../../models/fase.model';
 import { ConfirmDialogComponent } from '../../../../shared/components/confirm-dialog/confirm-dialog.component';
+import { ToastService } from '../../../../core/services/toast.service';
 
 @Component({
   selector: 'app-hito-list',
@@ -40,7 +40,7 @@ export class HitoListComponent implements OnInit {
   private readonly faseService = inject(FaseService);
   private readonly fb          = inject(FormBuilder);
   private readonly dialog      = inject(MatDialog);
-  private readonly snackBar    = inject(MatSnackBar);
+  private readonly toast       = inject(ToastService);
 
   readonly proyectoId = input.required<string>();
 
@@ -104,45 +104,36 @@ export class HitoListComponent implements OnInit {
 
     const disponible = 100 - this.porcentajeUsado();
     if ((val.porcentaje_proyecto ?? 0) > disponible) {
-      this.snackBar.open(
-        `Solo hay ${disponible.toFixed(2)}% disponible para asignar.`,
-        'Cerrar', { duration: 5000, panelClass: ['snack-error'] }
-      );
+      this.toast.error(`Solo hay ${disponible.toFixed(2)}% disponible para asignar.`);
       return;
     }
 
     const payload: HitoCreate = {
-      nombre:              val.nombre!,
-      descripcion:         val.descripcion ?? undefined,
+      nombre:              val.nombre ?? '',
+      descripcion:         val.descripcion ?? '',
       fase:                val.fase ?? null,
-      porcentaje_proyecto: val.porcentaje_proyecto!.toString(),
-      valor_facturar:      val.valor_facturar!.toString(),
+      porcentaje_proyecto: (val.porcentaje_proyecto ?? 0).toString(),
+      valor_facturar:      (val.valor_facturar ?? 0).toString(),
       facturable:          val.facturable ?? true,
     };
 
     this.service.create(this.proyectoId(), payload).subscribe({
-      next: () => {
+      next: (nuevo) => {
+        this.hitos.update(list => [...list, nuevo]);
         this.dialogRef?.close();
-        this.loadHitos();
-        this.snackBar.open('Hito creado correctamente.', 'Cerrar', {
-          duration: 3000, panelClass: ['snack-success'],
-        });
+        this.toast.success('Hito creado correctamente.');
       },
       error: (err: { error?: unknown[] | { detail?: string } }) => {
         const e = err?.error;
         const msg = Array.isArray(e)
           ? String(e[0])
-          : (e as { detail?: string })?.detail ?? 'Error al crear el hito.';
-        this.snackBar.open(msg, 'Cerrar', { duration: 5000, panelClass: ['snack-error'] });
+          : (e as { detail?: string })?.detail ?? 'No se pudo crear el hito.';
+        this.toast.error(msg);
       },
     });
   }
 
   confirmarGenerarFactura(hito: Hito): void {
-    if (hito.facturado) {
-      this.snackBar.open('Este hito ya fue facturado.', 'Cerrar', { duration: 3000 });
-      return;
-    }
     const ref = this.dialog.open(ConfirmDialogComponent, {
       data: {
         header: 'Generar factura',
@@ -159,16 +150,14 @@ export class HitoListComponent implements OnInit {
           this.hitos.update(list =>
             list.map(h => h.id === actualizado.id ? actualizado : h)
           );
-          this.snackBar.open('Factura generada correctamente.', 'Cerrar', {
-            duration: 3000, panelClass: ['snack-success'],
-          });
+          this.toast.success('Factura generada correctamente.');
         },
         error: (err: { error?: unknown[] | { detail?: string } }) => {
           const e = err?.error;
           const msg = Array.isArray(e)
             ? String(e[0])
             : (e as { detail?: string })?.detail ?? 'No se pudo generar la factura.';
-          this.snackBar.open(msg, 'Cerrar', { duration: 5000, panelClass: ['snack-error'] });
+          this.toast.error(msg);
         },
       });
     });

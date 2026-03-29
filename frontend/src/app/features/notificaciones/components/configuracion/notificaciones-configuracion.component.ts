@@ -13,11 +13,11 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { RouterLink } from '@angular/router';
 
 import { NotificacionesService } from '../../../../core/services/notificaciones.service';
 import { PreferenciaNotificacion, TipoNotificacion } from '../../../../shared/models/notificacion.model';
+import { ToastService } from '../../../../core/services/toast.service';
 
 interface TipoMeta {
   tipo: TipoNotificacion;
@@ -55,7 +55,7 @@ const TIPOS_META: TipoMeta[] = [
 })
 export class NotificacionesConfiguracionComponent implements OnInit {
   private readonly svc      = inject(NotificacionesService);
-  private readonly snackBar = inject(MatSnackBar);
+  private readonly toast       = inject(ToastService);
 
   preferencias = signal<PreferenciaNotificacion[]>([]);
   cargando     = signal(true);
@@ -84,7 +84,7 @@ export class NotificacionesConfiguracionComponent implements OnInit {
         this.preferencias.update(list =>
           list.map(p => p.tipo === tipo ? { ...p, ...updated } : p),
         );
-        this.snackBar.open('Guardado', undefined, { duration: 1500 });
+        this.toast.success('Guardado');
       },
     });
   }

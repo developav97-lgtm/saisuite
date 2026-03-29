@@ -14,12 +14,12 @@ import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialog } from '@angular/material/dialog';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { ProyectoService, ProyectoListParams } from '../../services/proyecto.service';
 import { ProyectoList, EstadoProyecto, TipoProyecto, ESTADO_LABELS, TIPO_LABELS } from '../../models/proyecto.model';
 import { AdminService } from '../../../admin/services/admin.service';
 import { AdminUser } from '../../../admin/models/admin.models';
 import { ConfirmDialogComponent } from '../../../../shared/components/confirm-dialog/confirm-dialog.component';
+import { ToastService } from '../../../../core/services/toast.service';
 
 interface SelectOption { label: string; value: string | null; }
 
@@ -40,7 +40,7 @@ export class ProyectoListComponent implements OnInit {
   private readonly adminService    = inject(AdminService);
   private readonly router          = inject(Router);
   private readonly dialog          = inject(MatDialog);
-  private readonly snackBar        = inject(MatSnackBar);
+  private readonly toast       = inject(ToastService);
 
   readonly proyectos     = signal<ProyectoList[]>([]);
   readonly totalCount    = signal(0);
@@ -92,7 +92,7 @@ export class ProyectoListComponent implements OnInit {
     this.proyectoService.list(params).subscribe({
       next: (res) => { this.proyectos.set(res.results); this.totalCount.set(res.count); this.loading.set(false); },
       error: () => {
-        this.snackBar.open('No se pudieron cargar los proyectos.', 'Cerrar', { duration: 4000, panelClass: ['snack-error'] });
+        this.toast.error('No se pudieron cargar los proyectos.');
         this.loading.set(false);
       },
     });
@@ -119,10 +119,10 @@ export class ProyectoListComponent implements OnInit {
   private eliminar(id: string): void {
     this.proyectoService.delete(id).subscribe({
       next: () => {
-        this.snackBar.open('Proyecto eliminado correctamente.', 'Cerrar', { duration: 3000, panelClass: ['snack-success'] });
+        this.toast.success('Proyecto eliminado correctamente.');
         this.loadProyectos(0, this.pageSize);
       },
-      error: () => this.snackBar.open('No se pudo eliminar el proyecto.', 'Cerrar', { duration: 4000, panelClass: ['snack-error'] }),
+      error: () => this.toast.error('No se pudo eliminar el proyecto.'),
     });
   }
 

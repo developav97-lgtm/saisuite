@@ -14,11 +14,11 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { ActividadProyectoService } from '../../services/actividad-proyecto.service';
 import { ActividadService } from '../../services/actividad.service';
 import { ActividadProyecto, ActividadList, TipoActividad, TIPO_ACTIVIDAD_LABELS } from '../../models/actividad.model';
 import { ConfirmDialogComponent } from '../../../../shared/components/confirm-dialog/confirm-dialog.component';
+import { ToastService } from '../../../../core/services/toast.service';
 
 @Component({
   selector: 'app-actividad-proyecto-list',
@@ -38,7 +38,7 @@ export class ActividadProyectoListComponent implements OnInit, OnDestroy {
   private readonly actividadService = inject(ActividadService);
   private readonly fb              = inject(FormBuilder);
   private readonly dialog          = inject(MatDialog);
-  private readonly snackBar        = inject(MatSnackBar);
+  private readonly toast       = inject(ToastService);
 
   readonly proyectoId     = input.required<string>();
   readonly proyectoEstado = input<string>('');
@@ -161,18 +161,14 @@ export class ActividadProyectoListComponent implements OnInit, OnDestroy {
         this.form.get('actividad')?.enable();
         this.dialogRef?.close();
         this.loadAsignaciones();
-        this.snackBar.open(
-          `Actividad ${editing ? 'actualizada' : 'asignada'} correctamente.`,
-          'Cerrar',
-          { duration: 3000, panelClass: ['snack-success'] },
-        );
+        this.toast.success(`Actividad ${editing ? 'actualizada' : 'asignada'} correctamente.`);
       },
       error: (err) => {
         this.saving.set(false);
         this.form.get('actividad')?.enable();
         const e = err as { error?: Record<string, string[]> };
         const firstError = e.error ? Object.values(e.error).flat()[0] : null;
-        this.snackBar.open(firstError ?? 'Error al guardar.', 'Cerrar', { duration: 5000, panelClass: ['snack-error'] });
+        this.toast.error(firstError ?? 'Error al guardar.');
       },
     });
   }
@@ -216,7 +212,7 @@ export class ActividadProyectoListComponent implements OnInit, OnDestroy {
       this.apService.desasignar(this.proyectoId(), ap.id).subscribe({
         next: () => {
           this.loadAsignaciones();
-          this.snackBar.open('Actividad quitada del proyecto.', 'Cerrar', { duration: 3000, panelClass: ['snack-success'] });
+          this.toast.success('Actividad quitada del proyecto.');
         },
       });
     });

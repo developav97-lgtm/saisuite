@@ -19,12 +19,12 @@ import { MatDatepickerModule } from '@angular/material/datepicker';
 import { provideNativeDateAdapter } from '@angular/material/core';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatIconModule } from '@angular/material/icon';
-import { MatSnackBar } from '@angular/material/snack-bar';
 
 import { CostRateService } from '../../../services/cost-rate.service';
 import { AdminService } from '../../../../admin/services/admin.service';
 import { AdminUser } from '../../../../admin/models/admin.models';
 import { ResourceCostRate } from '../../../models/budget.model';
+import { ToastService } from '../../../../../core/services/toast.service';
 
 export interface CostRateFormData {
   /** Si se pasa una tarifa existente se entra en modo edición; si no, modo creación. */
@@ -55,7 +55,7 @@ export class CostRateFormComponent implements OnInit {
   private readonly fb           = inject(FormBuilder);
   private readonly costRateSvc  = inject(CostRateService);
   private readonly adminService = inject(AdminService);
-  private readonly snackBar     = inject(MatSnackBar);
+  private readonly toast       = inject(ToastService);
 
   readonly saving   = signal(false);
   readonly usuarios = signal<AdminUser[]>([]);
@@ -104,11 +104,7 @@ export class CostRateFormComponent implements OnInit {
 
     request$.subscribe({
       next: (saved) => {
-        this.snackBar.open(
-          this.isEditMode ? 'Tarifa actualizada.' : 'Tarifa creada.',
-          'Cerrar',
-          { duration: 3000, panelClass: ['snack-success'] },
-        );
+        this.toast.success(this.isEditMode ? 'Tarifa actualizada.' : 'Tarifa creada.');
         this.dialogRef.close(saved);
       },
       error: (err: { error?: { detail?: string; hourly_rate?: string[]; start_date?: string[] } }) => {
@@ -117,7 +113,7 @@ export class CostRateFormComponent implements OnInit {
           err?.error?.start_date?.[0] ??
           err?.error?.detail ??
           'Error al guardar la tarifa.';
-        this.snackBar.open(msg, 'Cerrar', { duration: 5000, panelClass: ['snack-error'] });
+        this.toast.error(msg);
         this.saving.set(false);
       },
     });

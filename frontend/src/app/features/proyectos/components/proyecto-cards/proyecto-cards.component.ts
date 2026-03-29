@@ -20,7 +20,6 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { ProyectoService, ProyectoListParams } from '../../services/proyecto.service';
 import {
   ProyectoList,
@@ -31,6 +30,7 @@ import {
 } from '../../models/proyecto.model';
 import { AdminService } from '../../../admin/services/admin.service';
 import { AdminUser } from '../../../admin/models/admin.models';
+import { ToastService } from '../../../../core/services/toast.service';
 
 @Component({
   selector: 'app-proyecto-cards',
@@ -49,7 +49,7 @@ export class ProyectoCardsComponent implements OnInit {
   private readonly proyectoService = inject(ProyectoService);
   private readonly adminService    = inject(AdminService);
   private readonly router          = inject(Router);
-  private readonly snackBar        = inject(MatSnackBar);
+  private readonly toast       = inject(ToastService);
 
   readonly proyectos     = signal<ProyectoList[]>([]);
   readonly totalCount    = signal(0);
@@ -98,7 +98,7 @@ export class ProyectoCardsComponent implements OnInit {
         this.loading.set(false);
       },
       error: () => {
-        this.snackBar.open('No se pudieron cargar los proyectos.', 'Cerrar', { duration: 4000, panelClass: ['snack-error'] });
+        this.toast.error('No se pudieron cargar los proyectos.');
         this.loading.set(false);
       },
     });

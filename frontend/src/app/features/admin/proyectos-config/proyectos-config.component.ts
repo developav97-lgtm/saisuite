@@ -9,8 +9,8 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatButtonModule } from '@angular/material/button';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { HttpClient } from '@angular/common/http';
+import { ToastService } from '../../../core/services/toast.service';
 
 export interface ConfiguracionModulo {
   requiere_sync_saiopen_para_ejecucion: boolean;
@@ -36,7 +36,7 @@ export interface ConfiguracionModulo {
 export class ProyectosConfigComponent implements OnInit {
   private readonly http     = inject(HttpClient);
   private readonly fb       = inject(FormBuilder);
-  private readonly snackBar = inject(MatSnackBar);
+  private readonly toast       = inject(ToastService);
 
   private readonly apiUrl = '/api/v1/proyectos/config/';
 
@@ -66,15 +66,11 @@ export class ProyectosConfigComponent implements OnInit {
       next: (config) => {
         this.form.patchValue(config);
         this.saving.set(false);
-        this.snackBar.open('Configuración guardada.', 'Cerrar', {
-          duration: 3000, panelClass: ['snack-success'],
-        });
+        this.toast.success('Configuración guardada.');
       },
       error: () => {
         this.saving.set(false);
-        this.snackBar.open('Error al guardar configuración.', 'Cerrar', {
-          duration: 5000, panelClass: ['snack-error'],
-        });
+        this.toast.error('Error al guardar configuración.');
       },
     });
   }

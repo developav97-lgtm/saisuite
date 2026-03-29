@@ -27,12 +27,12 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
 import { TareaService } from '../../services/tarea.service';
 import { Tarea, TareaDependencia, TipoDependencia } from '../../models/tarea.model';
+import { ToastService } from '../../../../core/services/toast.service';
 
 const TIPO_LABELS: Record<TipoDependencia, string> = {
   FS: 'Finish to Start (FS)',
@@ -206,7 +206,7 @@ export class SelectorDependenciasComponent implements OnInit {
 
   // ── DI ───────────────────────────────────────────────────────────────────
   private readonly tareaService = inject(TareaService);
-  private readonly snackBar     = inject(MatSnackBar);
+  private readonly toast       = inject(ToastService);
   private readonly destroyRef   = inject(DestroyRef);
 
   // ── Estado ───────────────────────────────────────────────────────────────
@@ -267,6 +267,18 @@ export class SelectorDependenciasComponent implements OnInit {
     return `${tarea.codigo} — ${tarea.nombre}`;
   }
 
+  quitarDependencia(dep: TareaDependencia): void {
+    this.tareaService.eliminarDependencia(this.tarea().id, dep.id).subscribe({
+      next: () => {
+        this.dependenciaEliminada.emit(dep.id);
+        this.toast.success('Dependencia eliminada.');
+      },
+      error: () => {
+        this.toast.error('No se pudo eliminar la dependencia.');
+      },
+    });
+  }
+
   agregarDependencia(): void {
     const pred = this.tareaSeleccionada();
     if (!pred) return;
@@ -283,39 +295,15 @@ export class SelectorDependenciasComponent implements OnInit {
         this.busquedaCtrl.reset('');
         this.tipoSeleccionado = 'FS';
         this.retrasoDias = 0;
-        this.snackBar.open('Dependencia agregada', 'OK', {
-          duration: 3000,
-          panelClass: ['snack-success'],
-        });
+        this.toast.success('Dependencia agregada correctamente.');
         this.guardando.set(false);
       },
       error: err => {
         const msg = err?.error?.detail
           || err?.error?.[Object.keys(err.error ?? {})[0]]
           || 'No se pudo crear la dependencia';
-        this.snackBar.open(String(msg), 'Cerrar', {
-          duration: 5000,
-          panelClass: ['snack-error'],
-        });
+        this.toast.error(String(msg));
         this.guardando.set(false);
-      },
-    });
-  }
-
-  quitarDependencia(dep: TareaDependencia): void {
-    this.tareaService.eliminarDependencia(this.tarea().id, dep.id).subscribe({
-      next: () => {
-        this.dependenciaEliminada.emit(dep.id);
-        this.snackBar.open('Dependencia eliminada', 'OK', {
-          duration: 3000,
-          panelClass: ['snack-success'],
-        });
-      },
-      error: () => {
-        this.snackBar.open('Error al eliminar la dependencia', 'Cerrar', {
-          duration: 4000,
-          panelClass: ['snack-error'],
-        });
       },
     });
   }

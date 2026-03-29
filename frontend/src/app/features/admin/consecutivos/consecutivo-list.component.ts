@@ -16,13 +16,13 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { ConsecutivoService, ConsecutivoParams } from '../services/consecutivo.service';
 import {
   ConsecutivoConfig, ConsecutivoCreate, EntidadConsecutivo,
   ENTIDAD_LABELS, FORMATO_OPCIONES, SUBTIPOS_POR_ENTIDAD,
 } from '../models/consecutivo.model';
 import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
+import { ToastService } from '../../../core/services/toast.service';
 
 @Component({
   selector: 'app-consecutivo-list',
@@ -42,7 +42,7 @@ export class ConsecutivoListComponent implements OnInit {
   private readonly service  = inject(ConsecutivoService);
   private readonly fb       = inject(FormBuilder);
   private readonly dialog   = inject(MatDialog);
-  private readonly snackBar = inject(MatSnackBar);
+  private readonly toast       = inject(ToastService);
 
   readonly consecutivos  = signal<ConsecutivoConfig[]>([]);
   readonly searchText    = signal('');
@@ -122,7 +122,7 @@ export class ConsecutivoListComponent implements OnInit {
         this.loading.set(false);
       },
       error: () => {
-        this.snackBar.open('No se pudieron cargar los consecutivos.', 'Cerrar', { duration: 4000, panelClass: ['snack-error'] });
+        this.toast.error('No se pudieron cargar los consecutivos.');
         this.loading.set(false);
       },
     });
@@ -212,17 +212,13 @@ export class ConsecutivoListComponent implements OnInit {
         this.saving.set(false);
         this.dialogRef?.close();
         this.loadConsecutivos();
-        this.snackBar.open(
-          `Consecutivo ${cfg ? 'actualizado' : 'creado'} correctamente.`,
-          'Cerrar',
-          { duration: 3000, panelClass: ['snack-success'] },
-        );
+        this.toast.success(`Consecutivo ${cfg ? 'actualizado' : 'creado'} correctamente.`);
       },
       error: (err) => {
         this.saving.set(false);
         const e = err as { error?: Record<string, string[]> };
         const msg = e.error ? Object.values(e.error).flat()[0] : 'Error al guardar.';
-        this.snackBar.open(msg ?? 'Error al guardar.', 'Cerrar', { duration: 5000, panelClass: ['snack-error'] });
+        this.toast.error(msg ?? 'Error al guardar.');
       },
     });
   }
@@ -242,7 +238,7 @@ export class ConsecutivoListComponent implements OnInit {
       this.service.delete(cfg.id).subscribe({
         next: () => {
           this.loadConsecutivos();
-          this.snackBar.open('Consecutivo eliminado.', 'Cerrar', { duration: 3000, panelClass: ['snack-success'] });
+          this.toast.success('Consecutivo eliminado.');
         },
       });
     });

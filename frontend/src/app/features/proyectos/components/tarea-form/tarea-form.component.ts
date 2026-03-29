@@ -30,7 +30,6 @@ import { MatNativeDateModule } from '@angular/material/core';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatAutocompleteModule, MatAutocompleteSelectedEvent } from '@angular/material/autocomplete';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { TareaService } from '../../services/tarea.service';
 import { ProyectoService } from '../../services/proyecto.service';
 import { FaseService } from '../../services/fase.service';
@@ -42,6 +41,7 @@ import { TerceroList } from '../../../../core/models/tercero.model';
 import { ProyectoList } from '../../models/proyecto.model';
 import { FaseList } from '../../models/fase.model';
 import { ActividadProyecto } from '../../models/actividad.model';
+import { ToastService } from '../../../../core/services/toast.service';
 import {
   Tarea, TareaEstado, TareaFrecuencia, TareaPrioridad,
   TareaCreateDTO, TareaUpdateDTO,
@@ -74,7 +74,7 @@ export class TareaFormComponent implements OnInit {
   private readonly adminService           = inject(AdminService);
   private readonly terceroService         = inject(TerceroService);
   private readonly fb                     = inject(FormBuilder);
-  private readonly snackBar               = inject(MatSnackBar);
+  private readonly toast       = inject(ToastService);
   private readonly cdr                    = inject(ChangeDetectorRef);
   private readonly destroyRef             = inject(DestroyRef);
 
@@ -300,9 +300,7 @@ export class TareaFormComponent implements OnInit {
         this.actividadesFiltradas.set(acts);
         this.cdr.markForCheck();
       },
-      error: () => this.snackBar.open('No se pudieron cargar las actividades.', 'Cerrar', {
-        duration: 4000, panelClass: ['snack-error'],
-      }),
+      error: () => this.toast.error('No se pudieron cargar las actividades.'),
     });
   }
 
@@ -431,9 +429,7 @@ export class TareaFormComponent implements OnInit {
 
         this.cdr.markForCheck();
       },
-      error: () => this.snackBar.open('No se pudo cargar la tarea.', 'Cerrar', {
-        duration: 4000, panelClass: ['snack-error'],
-      }),
+      error: () => this.toast.error('No se pudo cargar la tarea.'),
     });
   }
 
@@ -630,16 +626,12 @@ export class TareaFormComponent implements OnInit {
       next: (t) => {
         this.saving.set(false);
         const accion = id ? 'actualizada' : 'creada';
-        this.snackBar.open(`Tarea "${t.nombre}" ${accion} correctamente.`, 'Cerrar', {
-          duration: 3000, panelClass: ['snack-success'],
-        });
+        this.toast.success(`Tarea "${t.nombre}" ${accion} correctamente.`);
         setTimeout(() => this.router.navigate(['/proyectos/tareas']), 800);
       },
       error: (err: { error?: unknown }) => {
         this.saving.set(false);
-        this.snackBar.open(this.extractError(err), 'Cerrar', {
-          duration: 5000, panelClass: ['snack-error'],
-        });
+        this.toast.error(this.extractError(err));
         this.cdr.markForCheck();
       },
     });

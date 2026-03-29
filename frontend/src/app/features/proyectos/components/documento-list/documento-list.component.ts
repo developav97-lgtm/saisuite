@@ -12,12 +12,12 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { DocumentoContableService } from '../../services/documento-contable.service';
 import { FaseService } from '../../services/fase.service';
 import { DocumentoContableList, DocumentoContableDetail, TIPO_DOCUMENTO_LABELS } from '../../models/documento-contable.model';
 import { FaseList } from '../../models/fase.model';
 import { DocumentoDetailDialogComponent } from './documento-detail-dialog/documento-detail-dialog.component';
+import { ToastService } from '../../../../core/services/toast.service';
 
 @Component({
   selector: 'app-documento-list',
@@ -36,7 +36,7 @@ export class DocumentoListComponent implements OnInit {
   private readonly service     = inject(DocumentoContableService);
   private readonly faseService = inject(FaseService);
   private readonly dialog      = inject(MatDialog);
-  private readonly snackBar    = inject(MatSnackBar);
+  private readonly toast       = inject(ToastService);
 
   readonly proyectoId = input.required<string>();
 
@@ -68,9 +68,7 @@ export class DocumentoListComponent implements OnInit {
     this.service.list(this.proyectoId(), this.faseSeleccionada()).subscribe({
       next: (data) => { this.documentos.set(data); this.loading.set(false); },
       error: () => {
-        this.snackBar.open('Error al cargar documentos.', 'Cerrar', {
-          duration: 4000, panelClass: ['snack-error'],
-        });
+        this.toast.error('Error al cargar documentos.');
         this.loading.set(false);
       },
     });
@@ -90,9 +88,7 @@ export class DocumentoListComponent implements OnInit {
         });
       },
       error: () => {
-        this.snackBar.open('No se pudo cargar el detalle.', 'Cerrar', {
-          duration: 4000, panelClass: ['snack-error'],
-        });
+        this.toast.error('No se pudo cargar el detalle.');
       },
     });
   }

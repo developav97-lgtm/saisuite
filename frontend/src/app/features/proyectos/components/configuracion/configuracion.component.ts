@@ -17,9 +17,9 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { ConfiguracionProyectoService } from '../../services/configuracion-proyecto.service';
 import { ConfiguracionProyecto, ModoTimesheet } from '../../models/configuracion-proyecto.model';
+import { ToastService } from '../../../../core/services/toast.service';
 
 interface ModoOpcion {
   value: ModoTimesheet;
@@ -43,7 +43,7 @@ interface ModoOpcion {
 export class ConfiguracionComponent implements OnInit {
   private readonly fb            = inject(FormBuilder);
   private readonly configService = inject(ConfiguracionProyectoService);
-  private readonly snackBar      = inject(MatSnackBar);
+  private readonly toast       = inject(ToastService);
   private readonly cdr           = inject(ChangeDetectorRef);
 
   readonly loading = signal(true);
@@ -97,9 +97,7 @@ export class ConfiguracionComponent implements OnInit {
         this.cdr.markForCheck();
       },
       error: () => {
-        this.snackBar.open('Error al cargar la configuración.', 'Cerrar', {
-          duration: 4000, panelClass: ['snack-error'],
-        });
+        this.toast.error('Error al cargar la configuración.');
         this.loading.set(false);
         this.cdr.markForCheck();
       },
@@ -114,16 +112,12 @@ export class ConfiguracionComponent implements OnInit {
       next: (config) => {
         this.savedConfig = config;
         this.saving.set(false);
-        this.snackBar.open('Configuración guardada correctamente.', 'Cerrar', {
-          duration: 2500, panelClass: ['snack-success'],
-        });
+        this.toast.success('Configuración guardada correctamente.');
         this.cdr.markForCheck();
       },
       error: () => {
         this.saving.set(false);
-        this.snackBar.open('Error al guardar la configuración.', 'Cerrar', {
-          duration: 4000, panelClass: ['snack-error'],
-        });
+        this.toast.error('Error al guardar la configuración.');
         this.cdr.markForCheck();
       },
     });

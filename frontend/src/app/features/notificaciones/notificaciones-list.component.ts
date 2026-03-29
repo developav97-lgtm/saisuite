@@ -15,10 +15,10 @@ import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDividerModule } from '@angular/material/divider';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { FormsModule } from '@angular/forms';
 import { NotificacionesService } from '../../core/services/notificaciones.service';
 import { Notificacion, TipoNotificacion } from '../../shared/models/notificacion.model';
+import { ToastService } from '../../core/services/toast.service';
 
 const TIPO_ICONS: Record<string, string> = {
   comentario:           'comment',
@@ -62,7 +62,7 @@ interface TipoOption { label: string; value: TipoNotificacion | null; }
 export class NotificacionesListComponent implements OnInit {
   private readonly svc      = inject(NotificacionesService);
   private readonly router   = inject(Router);
-  private readonly snackBar = inject(MatSnackBar);
+  private readonly toast       = inject(ToastService);
 
   readonly notificaciones = signal<Notificacion[]>([]);
   readonly totalCount     = signal(0);
@@ -113,9 +113,7 @@ export class NotificacionesListComponent implements OnInit {
         this.loading.set(false);
       },
       error: () => {
-        this.snackBar.open('No se pudieron cargar las notificaciones.', 'Cerrar', {
-          duration: 4000, panelClass: ['snack-error'],
-        });
+        this.toast.error('No se pudieron cargar las notificaciones.');
         this.loading.set(false);
       },
     });
@@ -174,16 +172,12 @@ export class NotificacionesListComponent implements OnInit {
     this.svc.marcarTodasLeidas().subscribe({
       next: () => {
         this.marcando.set(false);
-        this.snackBar.open('Todas las notificaciones marcadas como leídas.', 'Cerrar', {
-          duration: 3000, panelClass: ['snack-success'],
-        });
+        this.toast.success('Todas las notificaciones marcadas como leídas.');
         this.cargar();
       },
       error: () => {
         this.marcando.set(false);
-        this.snackBar.open('No se pudieron marcar las notificaciones.', 'Cerrar', {
-          duration: 4000, panelClass: ['snack-error'],
-        });
+        this.toast.error('No se pudieron marcar las notificaciones.');
       },
     });
   }

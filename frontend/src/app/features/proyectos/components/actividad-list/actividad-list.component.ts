@@ -17,12 +17,12 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { ActividadService } from '../../services/actividad.service';
 import { ActividadCreate, ActividadList, ActividadDetail, TipoActividad, TIPO_ACTIVIDAD_LABELS } from '../../models/actividad.model';
 import { ConfirmDialogComponent } from '../../../../shared/components/confirm-dialog/confirm-dialog.component';
 import { ConsecutivoService } from '../../../admin/services/consecutivo.service';
 import { ConsecutivoConfig } from '../../../admin/models/consecutivo.model';
+import { ToastService } from '../../../../core/services/toast.service';
 
 interface SelectOption { label: string; value: TipoActividad | null; }
 
@@ -61,7 +61,7 @@ export class ActividadListComponent implements OnInit {
   private readonly consecutivoService  = inject(ConsecutivoService);
   private readonly fb                  = inject(FormBuilder);
   private readonly dialog              = inject(MatDialog);
-  private readonly snackBar            = inject(MatSnackBar);
+  private readonly toast       = inject(ToastService);
 
   readonly actividades      = signal<ActividadList[]>([]);
   readonly totalCount       = signal(0);
@@ -163,7 +163,7 @@ export class ActividadListComponent implements OnInit {
         this.loading.set(false);
       },
       error: () => {
-        this.snackBar.open('No se pudieron cargar las actividades.', 'Cerrar', { duration: 4000, panelClass: ['snack-error'] });
+        this.toast.error('No se pudieron cargar las actividades.');
         this.loading.set(false);
       },
     });
@@ -230,7 +230,7 @@ export class ActividadListComponent implements OnInit {
         });
       },
       error: () => {
-        this.snackBar.open('No se pudo cargar la actividad.', 'Cerrar', { duration: 4000, panelClass: ['snack-error'] });
+        this.toast.error('No se pudo cargar la actividad.');
       },
     });
   }
@@ -238,7 +238,7 @@ export class ActividadListComponent implements OnInit {
   guardar(): void {
     if (this.form.invalid) { this.form.markAllAsTouched(); return; }
     if (!this.editingActividad() && this.sinConsecutivos()) {
-      this.snackBar.open('No hay consecutivo configurado para este tipo de actividad. Créalo en Administración → Consecutivos.', 'Cerrar', { duration: 6000, panelClass: ['snack-error'] });
+      this.toast.error('No hay consecutivo configurado para este tipo de actividad. Créalo en Administración → Consecutivos.');
       return;
     }
     this.saving.set(true);
@@ -265,17 +265,13 @@ export class ActividadListComponent implements OnInit {
         this.saving.set(false);
         this.dialogRef?.close();
         this.loadActividades(0);
-        this.snackBar.open(
-          `Actividad ${editing ? 'actualizada' : 'creada'} correctamente.`,
-          'Cerrar',
-          { duration: 3000, panelClass: ['snack-success'] },
-        );
+        this.toast.success(`Actividad ${editing ? 'actualizada' : 'creada'} correctamente.`);
       },
       error: (err) => {
         this.saving.set(false);
         const e = err as { error?: Record<string, string[]> };
         const firstError = e.error ? Object.values(e.error).flat()[0] : null;
-        this.snackBar.open(firstError ?? 'Error al guardar la actividad.', 'Cerrar', { duration: 5000, panelClass: ['snack-error'] });
+        this.toast.error(firstError ?? 'Error al guardar.');
       },
     });
   }
@@ -287,10 +283,10 @@ export class ActividadListComponent implements OnInit {
           list.map(a => a.id === actividad.id ? { ...a, activo: checked } : a),
         );
         const msg = checked ? 'Actividad activada.' : 'Actividad desactivada.';
-        this.snackBar.open(msg, 'Cerrar', { duration: 3000, panelClass: ['snack-success'] });
+        this.toast.success(msg);
       },
       error: () => {
-        this.snackBar.open('No se pudo actualizar el estado de la actividad.', 'Cerrar', { duration: 4000, panelClass: ['snack-error'] });
+        this.toast.error('No se pudo actualizar el estado de la actividad.');
       },
     });
   }
@@ -310,12 +306,12 @@ export class ActividadListComponent implements OnInit {
       this.actividadService.delete(actividad.id).subscribe({
         next: () => {
           this.loadActividades(0);
-          this.snackBar.open('Actividad eliminada correctamente.', 'Cerrar', { duration: 3000, panelClass: ['snack-success'] });
+          this.toast.success('Actividad eliminada correctamente.');
         },
         error: (err) => {
           const e = err as { error?: string | Record<string, string[]> };
           const msg = typeof e.error === 'string' ? e.error : 'No se pudo eliminar la actividad.';
-          this.snackBar.open(msg, 'Cerrar', { duration: 5000, panelClass: ['snack-error'] });
+          this.toast.error(msg);
         },
       });
     });

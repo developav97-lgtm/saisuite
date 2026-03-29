@@ -15,9 +15,9 @@ import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { TerceroService } from '../../../../core/services/tercero.service';
 import { ConfirmDialogComponent } from '../../../../shared/components/confirm-dialog/confirm-dialog.component';
+import { ToastService } from '../../../../core/services/toast.service';
 import {
   TerceroList,
   TipoIdentificacion, TipoTercero,
@@ -42,7 +42,7 @@ export class TerceroListPageComponent implements OnInit {
   private readonly service  = inject(TerceroService);
   private readonly router   = inject(Router);
   private readonly dialog   = inject(MatDialog);
-  private readonly snackBar = inject(MatSnackBar);
+  private readonly toast       = inject(ToastService);
 
   readonly terceros    = signal<TerceroList[]>([]);
   readonly loading     = signal(false);
@@ -98,7 +98,7 @@ export class TerceroListPageComponent implements OnInit {
         this.loading.set(false);
       },
       error: () => {
-        this.snackBar.open('Error al cargar terceros.', 'Cerrar', { duration: 4000, panelClass: ['snack-error'] });
+        this.toast.error('Error al cargar terceros.');
         this.loading.set(false);
       },
     });
@@ -150,10 +150,10 @@ export class TerceroListPageComponent implements OnInit {
       this.service.delete(t.id).subscribe({
         next: () => {
           this.load();
-          this.snackBar.open('Tercero eliminado.', 'Cerrar', { duration: 3000, panelClass: ['snack-success'] });
+          this.toast.success('Tercero eliminado.');
         },
         error: () => {
-          this.snackBar.open('No se pudo eliminar.', 'Cerrar', { duration: 4000, panelClass: ['snack-error'] });
+          this.toast.error('No se pudo eliminar.');
         },
       });
     });

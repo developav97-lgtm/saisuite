@@ -9,7 +9,6 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
@@ -18,6 +17,7 @@ import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { AdminService } from '../services/admin.service';
 import { AdminUser, UserRole, ROLE_LABELS, ROLE_OPTIONS } from '../models/admin.models';
 import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
+import { ToastService } from '../../../core/services/toast.service';
 
 @Component({
   selector: 'app-user-list',
@@ -35,7 +35,7 @@ import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialo
 export class UserListComponent implements OnInit {
   private readonly adminService = inject(AdminService);
   private readonly dialog       = inject(MatDialog);
-  private readonly snackBar     = inject(MatSnackBar);
+  private readonly toast       = inject(ToastService);
 
   readonly users       = signal<AdminUser[]>([]);
   readonly loading     = signal(false);
@@ -87,7 +87,7 @@ export class UserListComponent implements OnInit {
         this.loading.set(false);
       },
       error: () => {
-        this.snackBar.open('Error al cargar usuarios.', 'Cerrar', { duration: 4000, panelClass: ['snack-error'] });
+        this.toast.error('Error al cargar usuarios.');
         this.loading.set(false);
       },
     });
@@ -132,9 +132,9 @@ export class UserListComponent implements OnInit {
       this.adminService.deactivateUser(user.id).subscribe({
         next: (updated) => {
           this.users.update(list => list.map(u => u.id === updated.id ? updated : u));
-          this.snackBar.open('Usuario desactivado.', 'Cerrar', { duration: 3000, panelClass: ['snack-success'] });
+          this.toast.success('Usuario desactivado.');
         },
-        error: () => this.snackBar.open('No se pudo desactivar.', 'Cerrar', { duration: 5000, panelClass: ['snack-error'] }),
+        error: () => this.toast.error('No se pudo desactivar.'),
       });
     });
   }
@@ -155,9 +155,9 @@ export class UserListComponent implements OnInit {
       this.adminService.activateUser(user.id).subscribe({
         next: (updated) => {
           this.users.update(list => list.map(u => u.id === updated.id ? updated : u));
-          this.snackBar.open('Usuario activado.', 'Cerrar', { duration: 3000, panelClass: ['snack-success'] });
+          this.toast.success('Usuario activado.');
         },
-        error: () => this.snackBar.open('No se pudo activar.', 'Cerrar', { duration: 5000, panelClass: ['snack-error'] }),
+        error: () => this.toast.error('No se pudo activar.'),
       });
     });
   }

@@ -14,9 +14,9 @@ import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { TerceroService } from '../../../../core/services/tercero.service';
 import { ConfirmDialogComponent } from '../../../../shared/components/confirm-dialog/confirm-dialog.component';
+import { ToastService } from '../../../../core/services/toast.service';
 import {
   TerceroCreate, TerceroDireccion,
   TipoIdentificacion, TipoPersona, TipoTercero, TipoDireccion,
@@ -72,7 +72,7 @@ export class TerceroFormComponent implements OnInit {
   private readonly fb      = inject(FormBuilder);
   private readonly router  = inject(Router);
   private readonly route   = inject(ActivatedRoute);
-  private readonly snack   = inject(MatSnackBar);
+  private readonly toast   = inject(ToastService);
   private readonly dialog  = inject(MatDialog);
 
   readonly editId  = signal<string | null>(null);
@@ -186,7 +186,7 @@ export class TerceroFormComponent implements OnInit {
           this.loading.set(false);
         },
         error: () => {
-          this.snack.open('No se encontró el tercero.', 'Cerrar', { duration: 4000 });
+          this.toast.error('No se encontró el tercero.');
           this.router.navigate(['/terceros']);
         },
       });
@@ -223,12 +223,12 @@ export class TerceroFormComponent implements OnInit {
     // Validación: debe haber al menos una dirección
     if (this.editMode()) {
       if (this.direcciones().length === 0) {
-        this.snack.open('Debe agregar al menos una dirección antes de guardar.', 'Cerrar', { duration: 5000 });
+        this.toast.error('Debe agregar al menos una dirección antes de guardar.');
         return;
       }
     } else {
       if (!this.agregarDir) {
-        this.snack.open('Debe agregar al menos una dirección antes de guardar.', 'Cerrar', { duration: 5000 });
+        this.toast.error('Debe agregar al menos una dirección antes de guardar.');
         return;
       }
     }
@@ -284,17 +284,13 @@ export class TerceroFormComponent implements OnInit {
           }).subscribe();
         }
         this.saving.set(false);
-        this.snack.open(
-          `Tercero ${id ? 'actualizado' : 'creado'} correctamente.`,
-          'Cerrar',
-          { duration: 3000, panelClass: ['snack-success'] },
-        );
+        this.toast.success(`Tercero ${id ? 'actualizado' : 'creado'} correctamente.`);
         this.router.navigate(['/terceros']);
       },
       error: (err: { error?: Record<string, string[]> }) => {
         this.saving.set(false);
         const msg = err.error ? Object.values(err.error).flat()[0] : 'Error al guardar.';
-        this.snack.open(msg ?? 'Error al guardar.', 'Cerrar', { duration: 5000, panelClass: ['snack-error'] });
+        this.toast.error(msg ?? 'Error al guardar.');
       },
     });
   }
@@ -352,11 +348,7 @@ export class TerceroFormComponent implements OnInit {
         dir => dir.es_principal && dir.id !== dirId,
       );
       if (yaHayPrincipal) {
-        this.snack.open(
-          'Ya existe una dirección principal. Edítala y cambia su tipo antes de asignar otra.',
-          'Cerrar',
-          { duration: 5000 },
-        );
+        this.toast.info('Ya existe una dirección principal. Edítala y cambia su tipo antes de asignar otra.');
         return;
       }
     }
@@ -392,11 +384,11 @@ export class TerceroFormComponent implements OnInit {
           this.direcciones.update(dirs => [...dirs, updated]);
         }
         this.cancelarDir();
-        this.snack.open('Dirección guardada.', 'Cerrar', { duration: 2500, panelClass: ['snack-success'] });
+        this.toast.success('Dirección guardada.');
       },
       error: () => {
         this.savingDir.set(false);
-        this.snack.open('Error al guardar la dirección.', 'Cerrar', { duration: 4000, panelClass: ['snack-error'] });
+        this.toast.error('Error al guardar la dirección.');
       },
     });
   }
@@ -417,10 +409,10 @@ export class TerceroFormComponent implements OnInit {
         next: () => {
           this.direcciones.update(dirs => dirs.filter(d => d.id !== dir.id));
           if (this.editingDirId() === dir.id) this.cancelarDir();
-          this.snack.open('Dirección eliminada.', 'Cerrar', { duration: 2500, panelClass: ['snack-success'] });
+          this.toast.success('Dirección eliminada.');
         },
         error: () => {
-          this.snack.open('No se pudo eliminar la dirección.', 'Cerrar', { duration: 4000, panelClass: ['snack-error'] });
+          this.toast.error('No se pudo eliminar la dirección.');
         },
       });
     });

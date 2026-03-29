@@ -18,9 +18,9 @@ import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { TimesheetService } from '../../../services/timesheet.service';
 import { TimesheetEntry } from '../../../models/timesheet.model';
+import { ToastService } from '../../../../../core/services/toast.service';
 
 @Component({
   selector: 'app-proyecto-timesheet-tab',
@@ -38,7 +38,7 @@ import { TimesheetEntry } from '../../../models/timesheet.model';
 })
 export class ProyectoTimesheetTabComponent {
   private readonly timesheetService = inject(TimesheetService);
-  private readonly snackBar         = inject(MatSnackBar);
+  private readonly toast       = inject(ToastService);
 
   readonly proyectoId = input.required<string>();
 
@@ -78,10 +78,7 @@ export class ProyectoTimesheetTabComponent {
         this.loading.set(false);
       },
       error: () => {
-        this.snackBar.open('No se pudieron cargar los timesheets.', 'Cerrar', {
-          duration: 4000,
-          panelClass: ['snack-error'],
-        });
+        this.toast.error('No se pudieron cargar los timesheets.');
         this.loading.set(false);
       },
     });

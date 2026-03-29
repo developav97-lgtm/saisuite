@@ -19,13 +19,13 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatDialogModule, MatDialog } from '@angular/material/dialog';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { ResourceService } from '../../../services/resource.service';
 import { AdminService } from '../../../../admin/services/admin.service';
 import { AdminUser } from '../../../../admin/models/admin.models';
 import { ResourceAvailability, AVAILABILITY_TYPE_LABELS } from '../../../models/resource.model';
 import { ConfirmDialogComponent } from '../../../../../shared/components/confirm-dialog/confirm-dialog.component';
 import { ResourceAvailabilityFormComponent } from './resource-availability-form.component';
+import { ToastService } from '../../../../../core/services/toast.service';
 
 // ResourceAvailabilityFormComponent is opened via MatDialog.open(), not used in template.
 
@@ -51,7 +51,7 @@ export class ResourceAvailabilityComponent implements OnInit {
   private readonly resourceService = inject(ResourceService);
   private readonly adminService    = inject(AdminService);
   private readonly dialog          = inject(MatDialog);
-  private readonly snackBar        = inject(MatSnackBar);
+  private readonly toast       = inject(ToastService);
 
   readonly loading        = signal(false);
   readonly availabilities = signal<ResourceAvailability[]>([]);
@@ -75,9 +75,7 @@ export class ResourceAvailabilityComponent implements OnInit {
       },
       error: () => {
         this.loading.set(false);
-        this.snackBar.open('Error al cargar ausencias.', 'Cerrar', {
-          duration: 4000, panelClass: ['snack-error'],
-        });
+        this.toast.error('Error al cargar ausencias.');
       },
     });
   }
@@ -114,15 +112,11 @@ export class ResourceAvailabilityComponent implements OnInit {
       if (!confirmed) return;
       this.resourceService.deleteAvailability(availability.id).subscribe({
         next: () => {
-          this.snackBar.open('Ausencia eliminada.', 'Cerrar', {
-            duration: 3000, panelClass: ['snack-success'],
-          });
+          this.toast.success('Ausencia eliminada.');
           this.loadAvailabilities();
         },
         error: () => {
-          this.snackBar.open('Error al eliminar la ausencia.', 'Cerrar', {
-            duration: 5000, panelClass: ['snack-error'],
-          });
+          this.toast.error('Error al eliminar la ausencia.');
         },
       });
     });

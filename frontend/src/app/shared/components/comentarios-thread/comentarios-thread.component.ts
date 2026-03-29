@@ -16,12 +16,12 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatSnackBar } from '@angular/material/snack-bar';
 
 import { environment } from '../../../../environments/environment';
 import { AuthService } from '../../../core/auth/auth.service';
 import { ComentariosService } from '../../services/comentarios.service';
 import { Comentario, ComentarioAutor, Respuesta } from '../../models/comentario.model';
+import { ToastService } from '../../../core/services/toast.service';
 
 interface MencionSugerencia {
   id: string;
@@ -51,7 +51,7 @@ export class ComentariosThreadComponent implements OnInit {
 
   private readonly svc        = inject(ComentariosService);
   private readonly authSvc    = inject(AuthService);
-  private readonly snackBar   = inject(MatSnackBar);
+  private readonly toast       = inject(ToastService);
   private readonly http       = inject(HttpClient);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -163,7 +163,7 @@ export class ComentariosThreadComponent implements OnInit {
         this.enviando.set(false);
       },
       error: () => {
-        this.snackBar.open('No se pudo enviar el comentario.', 'OK', { duration: 3000 });
+        this.toast.error('No se pudo enviar el comentario.');
         this.enviando.set(false);
       },
     });
@@ -197,7 +197,7 @@ export class ComentariosThreadComponent implements OnInit {
         this.enviando.set(false);
       },
       error: () => {
-        this.snackBar.open('No se pudo enviar la respuesta.', 'OK', { duration: 3000 });
+        this.toast.error('No se pudo enviar la respuesta.');
         this.enviando.set(false);
       },
     });
@@ -244,7 +244,7 @@ export class ComentariosThreadComponent implements OnInit {
         this.cancelarEdicion();
       },
       error: () =>
-        this.snackBar.open('No se pudo editar el comentario.', 'OK', { duration: 3000 }),
+        this.toast.error('No se pudo editar el comentario.'),
     });
   }
 
@@ -265,7 +265,7 @@ export class ComentariosThreadComponent implements OnInit {
         }
       },
       error: () =>
-        this.snackBar.open('No se pudo eliminar el comentario.', 'OK', { duration: 3000 }),
+        this.toast.error('No se pudo eliminar el comentario.'),
     });
   }
 

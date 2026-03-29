@@ -17,9 +17,9 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { Chart } from 'chart.js';
 import { AnalyticsService } from '../../../services/analytics.service';
+import { ToastService } from '../../../../../core/services/toast.service';
 import {
   ProjectKPIs,
   TaskDistribution,
@@ -44,7 +44,7 @@ import {
 })
 export class ProjectAnalyticsDashboardComponent implements AfterViewInit, OnDestroy {
   private readonly analyticsService = inject(AnalyticsService);
-  private readonly snackBar = inject(MatSnackBar);
+  private readonly toast       = inject(ToastService);
 
   readonly projectId = input.required<string>();
   /** Set to true by the parent when this tab becomes the active tab. */
@@ -132,9 +132,7 @@ export class ProjectAnalyticsDashboardComponent implements AfterViewInit, OnDest
       },
       error: () => {
         this.loading.set(false);
-        this.snackBar.open('Error al cargar analytics', 'Cerrar', {
-          duration: 4000, panelClass: ['snack-error'],
-        });
+        this.toast.error('Error al cargar analytics');
       },
     });
   }
@@ -297,9 +295,9 @@ export class ProjectAnalyticsDashboardComponent implements AfterViewInit, OnDest
           const a = document.createElement('a');
           a.href = url; a.download = `analytics-${this.projectId()}.xlsx`;
           a.click(); URL.revokeObjectURL(url);
-          this.snackBar.open('Excel descargado', 'Cerrar', { duration: 3000, panelClass: ['snack-success'] });
+          this.toast.success('Excel descargado');
         },
-        error: () => this.snackBar.open('Error al exportar', 'Cerrar', { duration: 4000, panelClass: ['snack-error'] }),
+        error: () => this.toast.error('Error al exportar'),
       });
   }
 }

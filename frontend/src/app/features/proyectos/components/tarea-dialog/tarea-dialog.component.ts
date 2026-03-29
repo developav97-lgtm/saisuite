@@ -21,7 +21,6 @@ import {
   MAT_DIALOG_DATA,
   MatDialogModule,
 } from '@angular/material/dialog';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { TareaService } from '../../services/tarea.service';
 import { ConfiguracionProyectoService } from '../../services/configuracion-proyecto.service';
 import { TareaCardComponent } from '../tarea-card/tarea-card.component';
@@ -30,6 +29,7 @@ import { ComentariosThreadComponent } from '../../../../shared/components/coment
 import { Tarea, TareaEstado } from '../../models/tarea.model';
 import { ConfiguracionProyecto } from '../../models/configuracion-proyecto.model';
 import { SesionTrabajo } from '../../models/sesion-trabajo.model';
+import { ToastService } from '../../../../core/services/toast.service';
 
 export interface TareaDialogData {
   tareaId: string;
@@ -101,7 +101,7 @@ export class TareaDialogComponent implements OnInit {
   private readonly data          = inject<TareaDialogData>(MAT_DIALOG_DATA);
   private readonly tareaService  = inject(TareaService);
   private readonly configService = inject(ConfiguracionProyectoService);
-  private readonly snackBar      = inject(MatSnackBar);
+  private readonly toast       = inject(ToastService);
   private readonly cdr           = inject(ChangeDetectorRef);
 
   readonly loading  = signal(true);
@@ -161,9 +161,7 @@ export class TareaDialogComponent implements OnInit {
         this.cdr.markForCheck();
       },
       error: () => {
-        this.snackBar.open('No se pudo cargar la tarea.', 'Cerrar', {
-          duration: 4000, panelClass: ['snack-error'],
-        });
+        this.toast.error('No se pudo cargar la tarea.');
         this.dialogRef.close();
       },
     });
@@ -181,17 +179,14 @@ export class TareaDialogComponent implements OnInit {
       next: (updated) => {
         this.tarea.set(updated);
         this.changing.set(false);
-        this.snackBar.open(
-          `Estado cambiado a "${ESTADO_LABELS[nuevoEstado] ?? nuevoEstado}".`,
-          'Cerrar', { duration: 2500, panelClass: ['snack-success'] },
-        );
+        this.toast.success(`Estado cambiado a "${ESTADO_LABELS[nuevoEstado] ?? nuevoEstado}".`);
         this.cdr.markForCheck();
         // Notificar al Kanban que hubo cambio
         this.dialogRef.close({ updated: true, tarea: updated });
       },
       error: (err: { error?: { detail?: string } }) => {
         const msg = err.error?.detail ?? 'No se pudo cambiar el estado.';
-        this.snackBar.open(msg, 'Cerrar', { duration: 4000, panelClass: ['snack-error'] });
+        this.toast.error(msg);
         this.changing.set(false);
         this.cdr.markForCheck();
       },
@@ -249,15 +244,13 @@ export class TareaDialogComponent implements OnInit {
     this.tareaService.agregarHoras(tarea.id, horas).subscribe({
       next: (actualizada) => {
         this.tarea.set(actualizada);
-        this.snackBar.open(`${horas}h agregadas correctamente.`, 'Cerrar', {
-          duration: 2500, panelClass: ['snack-success'],
-        });
+        this.toast.success(`${horas}h agregadas correctamente.`);
         this.cancelarEdicionHoras();
         this.cdr.markForCheck();
       },
       error: (err: { error?: { detail?: string } }) => {
         const msg = err.error?.detail ?? 'Error al agregar horas.';
-        this.snackBar.open(msg, 'Cerrar', { duration: 4000, panelClass: ['snack-error'] });
+        this.toast.error(msg);
       },
     });
   }
@@ -288,15 +281,13 @@ export class TareaDialogComponent implements OnInit {
       next: (actualizada) => {
         this.tarea.set(actualizada);
         const unidad = this.unidadMedida();
-        this.snackBar.open(`${cantidad} ${unidad} agregados correctamente.`, 'Cerrar', {
-          duration: 2500, panelClass: ['snack-success'],
-        });
+        this.toast.success(`${cantidad} ${unidad} agregados correctamente.`);
         this.cancelarEdicionCantidad();
         this.cdr.markForCheck();
       },
       error: (err: { error?: { detail?: string } }) => {
         const msg = err.error?.detail ?? 'Error al agregar cantidad.';
-        this.snackBar.open(msg, 'Cerrar', { duration: 4000, panelClass: ['snack-error'] });
+        this.toast.error(msg);
       },
     });
   }

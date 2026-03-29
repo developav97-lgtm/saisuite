@@ -8,9 +8,9 @@ import { MatInputModule } from '@angular/material/input';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
 import { MatStepperModule } from '@angular/material/stepper';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { AuthService } from '../../../core/auth/auth.service';
+import { ToastService } from '../../../core/services/toast.service';
 
 @Component({
   selector: 'app-register',
@@ -28,7 +28,7 @@ export class RegisterComponent {
   private readonly fb          = inject(FormBuilder);
   private readonly authService = inject(AuthService);
   private readonly router      = inject(Router);
-  private readonly snackBar    = inject(MatSnackBar);
+  private readonly toast       = inject(ToastService);
 
   readonly loading      = signal(false);
   readonly hidePassword = signal(true);
@@ -75,18 +75,14 @@ export class RegisterComponent {
     }).subscribe({
       next: () => {
         this.loading.set(false);
-        this.snackBar.open('¡Empresa creada! Bienvenido a Saicloud.', 'Cerrar', {
-          duration: 4000, panelClass: ['snack-success'],
-        });
+        this.toast.success('¡Empresa creada! Bienvenido a Saicloud.');
         this.router.navigate(['/dashboard']);
       },
       error: (err: { error?: Record<string, string[]> }) => {
         this.loading.set(false);
         const e = err?.error ?? {};
         const firstMsg = Object.values(e).flat()[0] ?? 'Error al crear la empresa.';
-        this.snackBar.open(String(firstMsg), 'Cerrar', {
-          duration: 6000, panelClass: ['snack-error'],
-        });
+        this.toast.error(String(firstMsg));
       },
     });
   }

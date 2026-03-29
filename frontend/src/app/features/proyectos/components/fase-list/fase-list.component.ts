@@ -14,11 +14,11 @@ import { provideNativeDateAdapter } from '@angular/material/core';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { DragDropModule, CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
 import { FaseService } from '../../services/fase.service';
 import { FaseList, FaseDetail } from '../../models/fase.model';
 import { ConfirmDialogComponent } from '../../../../shared/components/confirm-dialog/confirm-dialog.component';
+import { ToastService } from '../../../../core/services/toast.service';
 
 @Component({
   selector: 'app-fase-list',
@@ -38,7 +38,7 @@ export class FaseListComponent implements OnInit {
   private readonly faseService = inject(FaseService);
   private readonly fb          = inject(FormBuilder);
   private readonly dialog      = inject(MatDialog);
-  private readonly snackBar    = inject(MatSnackBar);
+  private readonly toast       = inject(ToastService);
 
   readonly proyectoId          = input.required<string>();
   readonly presupuestoProyecto = input<string>('0');
@@ -131,7 +131,7 @@ export class FaseListComponent implements OnInit {
           pendientes--;
           if (pendientes === 0) {
             this.reordering.set(false);
-            this.snackBar.open('No se pudo reordenar las fases.', 'Cerrar', { duration: 4000, panelClass: ['snack-error'] });
+            this.toast.error('No se pudo reordenar las fases.');
             // Revertir al estado del servidor
             this.loadFases();
           }
@@ -178,7 +178,7 @@ export class FaseListComponent implements OnInit {
         });
       },
       error: () => {
-        this.snackBar.open('No se pudo cargar la fase.', 'Cerrar', { duration: 4000, panelClass: ['snack-error'] });
+        this.toast.error('No se pudo cargar la fase.');
       },
     });
   }
@@ -216,13 +216,13 @@ export class FaseListComponent implements OnInit {
       next: () => {
         this.dialogRef?.close();
         this.loadFases();
-        this.snackBar.open(`Fase ${editing ? 'actualizada' : 'creada'} correctamente.`, 'Cerrar', { duration: 3000, panelClass: ['snack-success'] });
+        this.toast.success(`Fase ${editing ? 'actualizada' : 'creada'} correctamente.`);
       },
       error: (err) => {
         const e = err as { error?: unknown };
         let detail = 'Error al guardar la fase.';
         if (Array.isArray(e.error)) detail = e.error[0] as string;
-        this.snackBar.open(detail, 'Cerrar', { duration: 5000, panelClass: ['snack-error'] });
+        this.toast.error(detail);
       },
     });
   }
@@ -260,12 +260,12 @@ export class FaseListComponent implements OnInit {
       this.faseService.activar(fase.id).subscribe({
         next: () => {
           this.loadFases();
-          this.snackBar.open('Fase activada correctamente.', 'Cerrar', { duration: 3000, panelClass: ['snack-success'] });
+          this.toast.success('Fase activada correctamente.');
         },
         error: (err) => {
           const e = err as { error?: { detail?: string } };
           const msg = e.error?.detail ?? 'No se pudo activar la fase.';
-          this.snackBar.open(msg, 'Cerrar', { duration: 4000, panelClass: ['snack-error'] });
+          this.toast.error(msg);
         },
       });
     });
@@ -286,12 +286,12 @@ export class FaseListComponent implements OnInit {
       this.faseService.completar(fase.id).subscribe({
         next: () => {
           this.loadFases();
-          this.snackBar.open('Fase completada correctamente.', 'Cerrar', { duration: 3000, panelClass: ['snack-success'] });
+          this.toast.success('Fase completada correctamente.');
         },
         error: (err) => {
           const e = err as { error?: { detail?: string } };
           const msg = e.error?.detail ?? 'No se pudo completar la fase.';
-          this.snackBar.open(msg, 'Cerrar', { duration: 4000, panelClass: ['snack-error'] });
+          this.toast.error(msg);
         },
       });
     });
@@ -314,7 +314,7 @@ export class FaseListComponent implements OnInit {
       this.faseService.delete(fase.id).subscribe({
         next: () => {
           this.loadFases();
-          this.snackBar.open('Fase eliminada.', 'Cerrar', { duration: 3000, panelClass: ['snack-success'] });
+          this.toast.success('Fase eliminada.');
         },
       });
     });

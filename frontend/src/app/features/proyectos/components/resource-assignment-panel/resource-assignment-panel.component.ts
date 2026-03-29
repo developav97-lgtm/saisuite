@@ -12,11 +12,11 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatDialog } from '@angular/material/dialog';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { ResourceService } from '../../services/resource.service';
 import { ResourceAssignmentList } from '../../models/resource.model';
 import { ResourceAssignmentFormComponent } from '../resource-assignment-form/resource-assignment-form.component';
 import { ConfirmDialogComponent } from '../../../../shared/components/confirm-dialog/confirm-dialog.component';
+import { ToastService } from '../../../../core/services/toast.service';
 
 @Component({
   selector: 'app-resource-assignment-panel',
@@ -38,7 +38,7 @@ export class ResourceAssignmentPanelComponent implements OnInit {
 
   private readonly resourceService = inject(ResourceService);
   private readonly dialog          = inject(MatDialog);
-  private readonly snackBar        = inject(MatSnackBar);
+  private readonly toast       = inject(ToastService);
 
   readonly loading     = signal(false);
   readonly assignments = signal<ResourceAssignmentList[]>([]);
@@ -56,7 +56,7 @@ export class ResourceAssignmentPanelComponent implements OnInit {
       },
       error: () => {
         this.loading.set(false);
-        this.snackBar.open('Error al cargar asignaciones', 'Cerrar', { duration: 3000, panelClass: ['snack-error'] });
+        this.toast.error('Error al cargar asignaciones');
       },
     });
   }
@@ -84,11 +84,11 @@ export class ResourceAssignmentPanelComponent implements OnInit {
       if (!confirmed) return;
       this.resourceService.deleteAssignment(this.tareaId(), asignacion.id).subscribe({
         next: () => {
-          this.snackBar.open('Recurso desasignado', 'Cerrar', { duration: 3000, panelClass: ['snack-success'] });
+          this.toast.success('Recurso desasignado');
           this.loadAssignments();
         },
         error: () => {
-          this.snackBar.open('Error al desasignar', 'Cerrar', { duration: 3000, panelClass: ['snack-error'] });
+          this.toast.error('Error al desasignar');
         },
       });
     });

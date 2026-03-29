@@ -6,9 +6,9 @@ import { MatCardModule } from '@angular/material/card';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { AdminService } from '../services/admin.service';
 import { CompanyModule, CompanySettings, MODULE_LABELS, ModuleKey } from '../models/admin.models';
+import { ToastService } from '../../../core/services/toast.service';
 
 @Component({
   selector: 'app-modules',
@@ -23,7 +23,7 @@ import { CompanyModule, CompanySettings, MODULE_LABELS, ModuleKey } from '../mod
 })
 export class ModulesComponent implements OnInit {
   private readonly adminService = inject(AdminService);
-  private readonly snackBar     = inject(MatSnackBar);
+  private readonly toast       = inject(ToastService);
 
   readonly company  = signal<CompanySettings | null>(null);
   readonly loading  = signal(false);
@@ -63,16 +63,11 @@ export class ModulesComponent implements OnInit {
           ),
         } : c);
         this.toggling.set(null);
-        this.snackBar.open(
-          `Módulo ${this.moduleLabels[mod.module as ModuleKey]} ${mod.is_active ? 'desactivado' : 'activado'}.`,
-          'Cerrar', { duration: 3000, panelClass: ['snack-success'] },
-        );
+        this.toast.success(`Módulo ${this.moduleLabels[mod.module as ModuleKey]} ${mod.is_active ? 'desactivado' : 'activado'}.`);
       },
       error: () => {
         this.toggling.set(null);
-        this.snackBar.open('No se pudo actualizar el módulo.', 'Cerrar', {
-          duration: 5000, panelClass: ['snack-error'],
-        });
+        this.toast.error('No se pudo actualizar el módulo.');
       },
     });
   }

@@ -19,10 +19,10 @@ import { MatDatepickerModule } from '@angular/material/datepicker';
 import { provideNativeDateAdapter } from '@angular/material/core';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatIconModule } from '@angular/material/icon';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { ResourceService } from '../../../services/resource.service';
 import { AdminUser } from '../../../../admin/models/admin.models';
 import { AvailabilityType, AVAILABILITY_TYPE_LABELS, ResourceAvailabilityCreate } from '../../../models/resource.model';
+import { ToastService } from '../../../../../core/services/toast.service';
 
 export interface ResourceAvailabilityFormData {
   users: AdminUser[];
@@ -52,7 +52,7 @@ export class ResourceAvailabilityFormComponent {
 
   private readonly fb              = inject(FormBuilder);
   private readonly resourceService = inject(ResourceService);
-  private readonly snackBar        = inject(MatSnackBar);
+  private readonly toast       = inject(ToastService);
 
   readonly saving = signal(false);
 
@@ -85,16 +85,12 @@ export class ResourceAvailabilityFormComponent {
 
     this.resourceService.createAvailability(payload).subscribe({
       next: () => {
-        this.snackBar.open('Ausencia registrada correctamente.', 'Cerrar', {
-          duration: 3000, panelClass: ['snack-success'],
-        });
+        this.toast.success('Ausencia registrada correctamente.');
         this.saving.set(false);
         this.dialogRef.close(true);
       },
       error: () => {
-        this.snackBar.open('Error al registrar la ausencia.', 'Cerrar', {
-          duration: 5000, panelClass: ['snack-error'],
-        });
+        this.toast.error('Error al registrar la ausencia.');
         this.saving.set(false);
       },
     });

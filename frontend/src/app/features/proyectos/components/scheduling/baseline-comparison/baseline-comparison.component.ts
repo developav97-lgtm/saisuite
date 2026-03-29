@@ -25,7 +25,6 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatDialog } from '@angular/material/dialog';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { BaselineService } from '../../../services/baseline.service';
 import {
   ProjectBaselineList,
@@ -33,6 +32,7 @@ import {
   BaselineComparisonTask,
 } from '../../../models/baseline.model';
 import { ConfirmDialogComponent } from '../../../../../shared/components/confirm-dialog/confirm-dialog.component';
+import { ToastService } from '../../../../../core/services/toast.service';
 
 @Component({
   selector: 'app-baseline-comparison',
@@ -60,7 +60,7 @@ export class BaselineComparisonComponent implements OnInit {
 
   private readonly baselineService = inject(BaselineService);
   private readonly dialog          = inject(MatDialog);
-  private readonly snackBar        = inject(MatSnackBar);
+  private readonly toast       = inject(ToastService);
 
   readonly baselines          = signal<ProjectBaselineList[]>([]);
   readonly selectedBaselineId = signal<string | null>(null);
@@ -102,10 +102,7 @@ export class BaselineComparisonComponent implements OnInit {
       },
       error: () => {
         this.loading.set(false);
-        this.snackBar.open('Error al cargar baselines.', 'Cerrar', {
-          duration: 5000,
-          panelClass: ['snack-error'],
-        });
+        this.toast.error('Error al cargar baselines.');
       },
     });
   }
@@ -132,18 +129,12 @@ export class BaselineComparisonComponent implements OnInit {
         this.saving.set(false);
         this.showCreateForm.set(false);
         this.createForm.reset();
-        this.snackBar.open('Baseline creado correctamente.', 'Cerrar', {
-          duration: 3000,
-          panelClass: ['snack-success'],
-        });
+        this.toast.success('Baseline creado correctamente.');
         this.loadBaselines();
       },
       error: () => {
         this.saving.set(false);
-        this.snackBar.open('Error al crear el baseline.', 'Cerrar', {
-          duration: 5000,
-          panelClass: ['snack-error'],
-        });
+        this.toast.error('Error al crear el baseline.');
       },
     });
   }
@@ -163,10 +154,7 @@ export class BaselineComparisonComponent implements OnInit {
       },
       error: () => {
         this.comparing.set(false);
-        this.snackBar.open('Error al calcular la comparación.', 'Cerrar', {
-          duration: 5000,
-          panelClass: ['snack-error'],
-        });
+        this.toast.error('Error al calcular la comparación.');
       },
     });
   }
@@ -190,17 +178,11 @@ export class BaselineComparisonComponent implements OnInit {
             this.selectedBaselineId.set(null);
             this.comparison.set(null);
           }
-          this.snackBar.open('Baseline eliminado.', 'Cerrar', {
-            duration: 3000,
-            panelClass: ['snack-success'],
-          });
+          this.toast.success('Baseline eliminado.');
           this.loadBaselines();
         },
         error: () => {
-          this.snackBar.open('Error al eliminar el baseline. El baseline activo no puede eliminarse.', 'Cerrar', {
-            duration: 5000,
-            panelClass: ['snack-error'],
-          });
+          this.toast.error('Error al eliminar el baseline. El baseline activo no puede eliminarse.');
         },
       });
     });

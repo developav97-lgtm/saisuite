@@ -18,12 +18,12 @@ import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialog } from '@angular/material/dialog';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { TareaService } from '../../services/tarea.service';
 import { Tarea, TareaEstado, TareaPrioridad, TareaFilters } from '../../models/tarea.model';
 import { FaseService } from '../../services/fase.service';
 import { FaseList } from '../../models/fase.model';
 import { ConfirmDialogComponent } from '../../../../shared/components/confirm-dialog/confirm-dialog.component';
+import { ToastService } from '../../../../core/services/toast.service';
 
 export const ESTADO_LABELS: Record<string, string> = {
   todo:        'Por Hacer',
@@ -61,7 +61,7 @@ export class TareaListComponent implements OnInit {
   private readonly router       = inject(Router);
   private readonly route        = inject(ActivatedRoute);
   private readonly dialog       = inject(MatDialog);
-  private readonly snackBar     = inject(MatSnackBar);
+  private readonly toast       = inject(ToastService);
   private readonly destroyRef   = inject(DestroyRef);
 
   /**
@@ -171,9 +171,7 @@ export class TareaListComponent implements OnInit {
         this.loading.set(false);
       },
       error: () => {
-        this.snackBar.open('No se pudieron cargar las tareas.', 'Cerrar', {
-          duration: 4000, panelClass: ['snack-error'],
-        });
+        this.toast.error('No se pudieron cargar las tareas.');
         this.loading.set(false);
       },
     });
@@ -219,14 +217,10 @@ export class TareaListComponent implements OnInit {
   private eliminar(id: string): void {
     this.tareaService.delete(id).subscribe({
       next: () => {
-        this.snackBar.open('Tarea eliminada correctamente.', 'Cerrar', {
-          duration: 3000, panelClass: ['snack-success'],
-        });
+        this.toast.success('Tarea eliminada correctamente.');
         this.loadTareas();
       },
-      error: () => this.snackBar.open('No se pudo eliminar la tarea.', 'Cerrar', {
-        duration: 4000, panelClass: ['snack-error'],
-      }),
+      error: () => this.toast.error('No se pudo eliminar la tarea.'),
     });
   }
 

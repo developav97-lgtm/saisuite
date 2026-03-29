@@ -13,7 +13,6 @@ import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { startWith, map } from 'rxjs/operators';
 import { ProyectoService } from '../../services/proyecto.service';
@@ -33,6 +32,7 @@ import { AdminUser } from '../../../admin/models/admin.models';
 import { ConsecutivoService } from '../../../admin/services/consecutivo.service';
 import { ConsecutivoConfig } from '../../../admin/models/consecutivo.model';
 import { TerceroSelectorComponent, TerceroSeleccionado } from '../../../../shared/components/tercero-selector/tercero-selector.component';
+import { ToastService } from '../../../../core/services/toast.service';
 
 interface SelectOption { label: string; value: string; }
 
@@ -55,7 +55,7 @@ export class ProyectoFormComponent implements OnInit {
   private readonly router          = inject(Router);
   private readonly proyectoService = inject(ProyectoService);
   private readonly fb              = inject(FormBuilder);
-  private readonly snackBar        = inject(MatSnackBar);
+  private readonly toast       = inject(ToastService);
 
   private readonly adminService        = inject(AdminService);
   private readonly consecutivoService  = inject(ConsecutivoService);
@@ -234,7 +234,7 @@ export class ProyectoFormComponent implements OnInit {
         // Race: si los usuarios ya cargaron antes que el proyecto, sincronizar el texto ahora
         this.syncAutocompleteText();
       },
-      error: () => this.snackBar.open('No se pudo cargar el proyecto.', 'Cerrar', { duration: 4000, panelClass: ['snack-error'] }),
+      error: () => this.toast.error('No se pudo cargar el proyecto.'),
     });
   }
 
@@ -279,7 +279,7 @@ export class ProyectoFormComponent implements OnInit {
   guardar(): void {
     if (this.form.invalid) { this.form.markAllAsTouched(); return; }
     if (!this.proyectoId() && this.sinConsecutivos()) {
-      this.snackBar.open('No hay consecutivo configurado para este tipo de proyecto. Créalo en Administración → Consecutivos.', 'Cerrar', { duration: 6000, panelClass: ['snack-error'] });
+      this.toast.error('No hay consecutivo configurado para este tipo de proyecto. Créalo en Administración → Consecutivos.');
       return;
     }
     this.saving.set(true);
@@ -303,13 +303,13 @@ export class ProyectoFormComponent implements OnInit {
     obs.subscribe({
       next: (p) => {
         this.saving.set(false);
-        this.snackBar.open(`Proyecto "${p.nombre}" ${proyectoId ? 'actualizado' : 'creado'}.`, 'Cerrar', { duration: 3000, panelClass: ['snack-success'] });
+        this.toast.success(`Proyecto "${p.nombre}" ${proyectoId ? 'actualizado' : 'creado'}.`);
         const destino = p.id ? ['/proyectos', p.id] : ['/proyectos'];
         setTimeout(() => this.router.navigate(destino), 1000);
       },
       error: (err) => {
         this.saving.set(false);
-        this.snackBar.open(this.extractError(err), 'Cerrar', { duration: 5000, panelClass: ['snack-error'] });
+        this.toast.error(this.extractError(err));
       },
     });
   }

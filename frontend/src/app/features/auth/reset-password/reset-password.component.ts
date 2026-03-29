@@ -6,8 +6,8 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { AuthService } from '../../../core/auth/auth.service';
+import { ToastService } from '../../../core/services/toast.service';
 
 @Component({
   selector: 'app-reset-password',
@@ -26,7 +26,7 @@ export class ResetPasswordComponent implements OnInit {
   private readonly route       = inject(ActivatedRoute);
   private readonly router      = inject(Router);
   private readonly authService = inject(AuthService);
-  private readonly snackBar    = inject(MatSnackBar);
+  private readonly toast       = inject(ToastService);
 
   readonly loading      = signal(false);
   readonly done         = signal(false);
@@ -43,7 +43,7 @@ export class ResetPasswordComponent implements OnInit {
     this.uid   = this.route.snapshot.queryParamMap.get('uid')   ?? '';
     this.token = this.route.snapshot.queryParamMap.get('token') ?? '';
     if (!this.uid || !this.token) {
-      this.snackBar.open('Enlace de recuperación inválido.', 'Cerrar', { duration: 5000, panelClass: ['snack-error'] });
+      this.toast.error('Enlace de recuperación inválido.');
       this.router.navigate(['/auth/login']);
     }
   }
@@ -52,7 +52,7 @@ export class ResetPasswordComponent implements OnInit {
     if (this.form.invalid) { this.form.markAllAsTouched(); return; }
     const { password, password2 } = this.form.getRawValue();
     if (password !== password2) {
-      this.snackBar.open('Las contraseñas no coinciden.', 'Cerrar', { duration: 4000, panelClass: ['snack-error'] });
+      this.toast.error('Las contraseñas no coinciden.');
       return;
     }
     this.loading.set(true);
@@ -61,7 +61,7 @@ export class ResetPasswordComponent implements OnInit {
       error: (err) => {
         this.loading.set(false);
         const msg = (err as { error?: { detail?: string } })?.error?.detail ?? 'El enlace ha expirado o es inválido.';
-        this.snackBar.open(msg, 'Cerrar', { duration: 5000, panelClass: ['snack-error'] });
+        this.toast.error(msg);
       },
     });
   }

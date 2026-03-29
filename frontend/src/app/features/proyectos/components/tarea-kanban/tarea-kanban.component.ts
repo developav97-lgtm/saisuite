@@ -33,11 +33,11 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatDialog } from '@angular/material/dialog';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { TareaService } from '../../services/tarea.service';
 import { TareaCardComponent } from '../tarea-card/tarea-card.component';
 import { ConfirmDialogComponent } from '../../../../shared/components/confirm-dialog/confirm-dialog.component';
 import { Tarea, TareaEstado, TareaFilters } from '../../models/tarea.model';
+import { ToastService } from '../../../../core/services/toast.service';
 
 interface KanbanColumn {
   id: TareaEstado;
@@ -75,7 +75,7 @@ export class TareaKanbanComponent implements OnInit {
   private readonly router          = inject(Router);
   private readonly route           = inject(ActivatedRoute);
   private readonly dialog          = inject(MatDialog);
-  private readonly snackBar        = inject(MatSnackBar);
+  private readonly toast       = inject(ToastService);
   private readonly cdr             = inject(ChangeDetectorRef);
   private readonly proyectoService = inject(ProyectoService);
   private readonly faseService     = inject(FaseService);
@@ -201,9 +201,7 @@ export class TareaKanbanComponent implements OnInit {
         this.cdr.markForCheck();
       },
       error: () => {
-        this.snackBar.open('No se pudieron cargar las tareas.', 'Cerrar', {
-          duration: 4000, panelClass: ['snack-error'],
-        });
+        this.toast.error('No se pudieron cargar las tareas.');
         this.loading.set(false);
       },
     });
@@ -240,9 +238,7 @@ export class TareaKanbanComponent implements OnInit {
     // Persistir en backend
     this.tareaService.cambiarEstado(tarea.id, targetCol.id).subscribe({
       next: () => {
-        this.snackBar.open(`Tarea movida a "${targetCol.nombre}".`, 'Cerrar', {
-          duration: 2000, panelClass: ['snack-success'],
-        });
+        this.toast.success(`Tarea movida a "${targetCol.nombre}".`);
       },
       error: (err: { error?: { detail?: string } }) => {
         // Revertir cambio optimista
@@ -254,7 +250,7 @@ export class TareaKanbanComponent implements OnInit {
         );
         this.cdr.markForCheck();
         const msg = err.error?.detail ?? 'No se pudo mover la tarea.';
-        this.snackBar.open(msg, 'Cerrar', { duration: 4000, panelClass: ['snack-error'] });
+        this.toast.error(msg);
       },
     });
   }
@@ -306,13 +302,9 @@ export class TareaKanbanComponent implements OnInit {
           col.tareas = col.tareas.filter(t => t.id !== tarea.id);
           this.cdr.markForCheck();
         }
-        this.snackBar.open('Tarea eliminada correctamente.', 'Cerrar', {
-          duration: 3000, panelClass: ['snack-success'],
-        });
+        this.toast.success('Tarea eliminada correctamente.');
       },
-      error: () => this.snackBar.open('No se pudo eliminar la tarea.', 'Cerrar', {
-        duration: 4000, panelClass: ['snack-error'],
-      }),
+      error: () => this.toast.error('No se pudo eliminar la tarea.'),
     });
   }
 
@@ -371,13 +363,9 @@ export class TareaKanbanComponent implements OnInit {
         // Actualizar el objeto en la columna (mutación in-place, mismo patrón que CDK)
         event.tarea.porcentaje_completado = updated.porcentaje_completado;
         this.cdr.markForCheck();
-        this.snackBar.open('Progreso actualizado.', 'Cerrar', {
-          duration: 2000, panelClass: ['snack-success'],
-        });
+        this.toast.success('Progreso actualizado.');
       },
-      error: () => this.snackBar.open('No se pudo actualizar el progreso.', 'Cerrar', {
-        duration: 3000, panelClass: ['snack-error'],
-      }),
+      error: () => this.toast.error('No se pudo actualizar el progreso.'),
     });
   }
 

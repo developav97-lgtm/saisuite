@@ -16,7 +16,6 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatChipsModule } from '@angular/material/chips';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -43,6 +42,7 @@ import {
 } from '../../models/budget.model';
 import { ConfirmDialogComponent, ConfirmDialogData } from '../../../../shared/components/confirm-dialog/confirm-dialog.component';
 import { CostRateFormComponent, CostRateFormData } from './cost-rate-form/cost-rate-form.component';
+import { ToastService } from '../../../../core/services/toast.service';
 
 @Component({
   selector: 'app-budget-dashboard',
@@ -73,7 +73,7 @@ export class BudgetDashboardComponent implements OnInit {
   private readonly budgetService   = inject(BudgetService);
   private readonly expenseService  = inject(ExpenseService);
   private readonly costRateService = inject(CostRateService);
-  private readonly snackBar        = inject(MatSnackBar);
+  private readonly toast       = inject(ToastService);
   private readonly dialog          = inject(MatDialog);
   private readonly fb              = inject(FormBuilder);
 
@@ -215,24 +215,16 @@ export class BudgetDashboardComponent implements OnInit {
       next: b => {
         this.budget.set(b);
         this.showBudgetForm.set(false);
-        this.snackBar.open('Presupuesto guardado.', 'OK', {
-          duration: 3000, panelClass: ['snack-success'],
-        });
+        this.toast.success('Presupuesto guardado.');
       },
-      error: () => this.snackBar.open('Error al guardar el presupuesto.', 'OK', {
-        duration: 4000, panelClass: ['snack-error'],
-      }),
+      error: () => this.toast.error('Error al guardar el presupuesto.'),
     });
   }
 
   createSnapshot(): void {
     this.budgetService.createSnapshot(this.projectId()).subscribe({
-      next: () => this.snackBar.open('Snapshot creado.', 'OK', {
-        duration: 3000, panelClass: ['snack-success'],
-      }),
-      error: () => this.snackBar.open('Error al crear snapshot.', 'OK', {
-        duration: 4000, panelClass: ['snack-error'],
-      }),
+      next: () => this.toast.success('Snapshot creado.'),
+      error: () => this.toast.error('Error al crear snapshot.'),
     });
   }
 
@@ -257,13 +249,9 @@ export class BudgetDashboardComponent implements OnInit {
         this.expenses.update(list => [exp, ...list]);
         this.expenseForm.reset({ category: 'materials', currency: 'COP', billable: true });
         this.showExpenseForm.set(false);
-        this.snackBar.open('Gasto registrado.', 'OK', {
-          duration: 3000, panelClass: ['snack-success'],
-        });
+        this.toast.success('Gasto registrado.');
       },
-      error: () => this.snackBar.open('Error al registrar el gasto.', 'OK', {
-        duration: 4000, panelClass: ['snack-error'],
-      }),
+      error: () => this.toast.error('Error al registrar el gasto.'),
     });
   }
 
@@ -273,13 +261,11 @@ export class BudgetDashboardComponent implements OnInit {
         this.expenses.update(list =>
           list.map(e => e.id === updated.id ? updated : e)
         );
-        this.snackBar.open('Gasto aprobado.', 'OK', {
-          duration: 3000, panelClass: ['snack-success'],
-        });
+        this.toast.success('Gasto aprobado.');
       },
       error: (err) => {
         const msg = err?.error?.detail ?? 'Error al aprobar el gasto.';
-        this.snackBar.open(msg, 'OK', { duration: 4000, panelClass: ['snack-error'] });
+        this.toast.error(msg);
       },
     });
   }
@@ -296,13 +282,11 @@ export class BudgetDashboardComponent implements OnInit {
       this.expenseService.deleteExpense(expense.id).subscribe({
         next: () => {
           this.expenses.update(list => list.filter(e => e.id !== expense.id));
-          this.snackBar.open('Gasto eliminado.', 'OK', {
-            duration: 3000, panelClass: ['snack-success'],
-          });
+          this.toast.success('Gasto eliminado.');
         },
         error: (err) => {
           const msg = err?.error?.detail ?? 'Error al eliminar el gasto.';
-          this.snackBar.open(msg, 'OK', { duration: 4000, panelClass: ['snack-error'] });
+          this.toast.error(msg);
         },
       });
     });
@@ -351,13 +335,11 @@ export class BudgetDashboardComponent implements OnInit {
       this.costRateService.deleteRate(rate.id).subscribe({
         next: () => {
           this.costRates.update(list => list.filter(r => r.id !== rate.id));
-          this.snackBar.open('Tarifa eliminada.', 'OK', {
-            duration: 3000, panelClass: ['snack-success'],
-          });
+          this.toast.success('Tarifa eliminada.');
         },
         error: (err: { error?: { detail?: string } }) => {
           const msg = err?.error?.detail ?? 'Error al eliminar la tarifa.';
-          this.snackBar.open(msg, 'OK', { duration: 4000, panelClass: ['snack-error'] });
+          this.toast.error(msg);
         },
       });
     });

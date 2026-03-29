@@ -5,7 +5,6 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDialog } from '@angular/material/dialog';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { ProyectoService } from '../../services/proyecto.service';
 import { ProyectoDetail, EstadoProyecto, ESTADO_LABELS, ESTADO_SEVERITY, TIPO_LABELS } from '../../models/proyecto.model';
 import { FaseListComponent } from '../fase-list/fase-list.component';
@@ -27,6 +26,7 @@ import { BudgetDashboardComponent } from '../budget-dashboard/budget-dashboard.c
 import { TareaListComponent } from '../tarea-list/tarea-list.component';
 import { TareaKanbanComponent } from '../tarea-kanban/tarea-kanban.component';
 import { ProyectoTimesheetTabComponent } from './proyecto-timesheet-tab/proyecto-timesheet-tab.component';
+import { ToastService } from '../../../../core/services/toast.service';
 
 @Component({
   selector: 'app-proyecto-detail',
@@ -60,7 +60,7 @@ export class ProyectoDetailComponent implements OnInit {
   private readonly router          = inject(Router);
   private readonly proyectoService = inject(ProyectoService);
   private readonly dialog          = inject(MatDialog);
-  private readonly snackBar        = inject(MatSnackBar);
+  private readonly toast       = inject(ToastService);
 
   readonly proyecto = signal<ProyectoDetail | null>(null);
   readonly loading  = signal(true);
@@ -109,7 +109,7 @@ export class ProyectoDetailComponent implements OnInit {
     this.proyectoService.getById(id).subscribe({
       next: (p) => { this.proyecto.set(p); this.loading.set(false); },
       error: () => {
-        this.snackBar.open('No se pudo cargar el proyecto.', 'Cerrar', { duration: 4000, panelClass: ['snack-error'] });
+        this.toast.error('No se pudo cargar el proyecto.');
         this.loading.set(false);
       },
     });
@@ -144,12 +144,12 @@ export class ProyectoDetailComponent implements OnInit {
       this.proyectoService.cambiarEstado(p.id, nuevo_estado).subscribe({
         next: (updated) => {
           this.proyecto.set(updated);
-          this.snackBar.open(`Proyecto en estado "${ESTADO_LABELS[nuevo_estado]}".`, 'Cerrar', { duration: 3000, panelClass: ['snack-success'] });
+          this.toast.success(`Proyecto en estado "${ESTADO_LABELS[nuevo_estado]}".`);
         },
         error: (err) => {
           const detail = (err as { error?: unknown[] | { detail?: string } })?.error;
           const msg = Array.isArray(detail) ? detail[0] : (detail as { detail?: string })?.detail ?? 'No se pudo cambiar el estado.';
-          this.snackBar.open(String(msg), 'Cerrar', { duration: 5000, panelClass: ['snack-error'] });
+          this.toast.error(String(msg));
         },
       });
     });

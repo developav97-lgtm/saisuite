@@ -22,7 +22,6 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatDialog } from '@angular/material/dialog';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { TareaService } from '../../services/tarea.service';
 import { TimesheetService } from '../../services/timesheet.service';
 import { ConfiguracionProyectoService } from '../../services/configuracion-proyecto.service';
@@ -40,6 +39,7 @@ import { TimesheetEntry } from '../../models/timesheet.model';
 import type { ModoMedicion } from '../../models/actividad-saiopen.model';
 import { ConfiguracionProyecto } from '../../models/configuracion-proyecto.model';
 import { SesionTrabajo } from '../../models/sesion-trabajo.model';
+import { ToastService } from '../../../../core/services/toast.service';
 
 export const ESTADO_LABELS: Record<string, string | undefined> = {
   todo:        'Por Hacer',
@@ -109,7 +109,7 @@ export class TareaDetailComponent implements OnInit {
   private readonly router         = inject(Router);
   private readonly route          = inject(ActivatedRoute);
   private readonly dialog         = inject(MatDialog);
-  private readonly snackBar       = inject(MatSnackBar);
+  private readonly toast       = inject(ToastService);
   private readonly cdr            = inject(ChangeDetectorRef);
 
   readonly loading   = signal(true);
@@ -165,15 +165,13 @@ export class TareaDetailComponent implements OnInit {
       next: (actualizada) => {
         this.tarea.set(actualizada);
         const unidad = t.actividad_proyecto_detail?.actividad_unidad_medida ?? '';
-        this.snackBar.open(`${this.cantidadTemporal} ${unidad} agregados.`, 'Cerrar', {
-          duration: 2500, panelClass: ['snack-success'],
-        });
+        this.toast.success(`${this.cantidadTemporal} ${unidad} agregados.`);
         this.cancelarEdicionCantidad();
         this.cdr.markForCheck();
       },
       error: (err: { error?: { detail?: string } }) => {
         const msg = err.error?.detail ?? 'Error al agregar cantidad.';
-        this.snackBar.open(msg, 'Cerrar', { duration: 4000, panelClass: ['snack-error'] });
+        this.toast.error(msg);
       },
     });
   }
@@ -249,9 +247,7 @@ export class TareaDetailComponent implements OnInit {
         this.cdr.markForCheck();
       },
       error: () => {
-        this.snackBar.open('No se pudo cargar la tarea.', 'Cerrar', {
-          duration: 4000, panelClass: ['snack-error'],
-        });
+        this.toast.error('No se pudo cargar la tarea.');
         this.loading.set(false);
         this.router.navigate(['/proyectos/tareas']);
       },
@@ -303,15 +299,11 @@ export class TareaDetailComponent implements OnInit {
     this.deleting.set(true);
     this.tareaService.delete(t.id).subscribe({
       next: () => {
-        this.snackBar.open('Tarea eliminada correctamente.', 'Cerrar', {
-          duration: 3000, panelClass: ['snack-success'],
-        });
+        this.toast.success('Tarea eliminada correctamente.');
         this.router.navigate(['/proyectos/tareas']);
       },
       error: () => {
-        this.snackBar.open('No se pudo eliminar la tarea.', 'Cerrar', {
-          duration: 4000, panelClass: ['snack-error'],
-        });
+        this.toast.error('No se pudo eliminar la tarea.');
         this.deleting.set(false);
         this.cdr.markForCheck();
       },
@@ -324,15 +316,12 @@ export class TareaDetailComponent implements OnInit {
     this.tareaService.cambiarEstado(t.id, nuevoEstado).subscribe({
       next: (updated) => {
         this.tarea.set(updated);
-        this.snackBar.open(
-          `Estado cambiado a "${ESTADO_LABELS[nuevoEstado] ?? nuevoEstado}".`,
-          'Cerrar', { duration: 2500, panelClass: ['snack-success'] },
-        );
+        this.toast.success(`Estado cambiado a "${ESTADO_LABELS[nuevoEstado] ?? nuevoEstado}".`);
         this.cdr.markForCheck();
       },
       error: (err: { error?: { detail?: string } }) => {
         const msg = err.error?.detail ?? 'No se pudo cambiar el estado.';
-        this.snackBar.open(msg, 'Cerrar', { duration: 4000, panelClass: ['snack-error'] });
+        this.toast.error(msg);
       },
     });
   }
@@ -395,17 +384,13 @@ export class TareaDetailComponent implements OnInit {
     this.tareaService.agregarHoras(tarea.id, horas).subscribe({
       next: (actualizada) => {
         this.tarea.set(actualizada);
-        this.snackBar.open(
-          `${horas} ${this.unidadLabel()} agregados correctamente.`,
-          'Cerrar',
-          { duration: 2500, panelClass: ['snack-success'] },
-        );
+        this.toast.success(`${horas} ${this.unidadLabel()} agregados correctamente.`);
         this.cancelarEdicionHoras();
         this.cdr.markForCheck();
       },
       error: (err: { error?: { detail?: string } }) => {
         const msg = err.error?.detail ?? 'Error al agregar horas.';
-        this.snackBar.open(msg, 'Cerrar', { duration: 4000, panelClass: ['snack-error'] });
+        this.toast.error(msg);
       },
     });
   }
@@ -453,9 +438,7 @@ export class TareaDetailComponent implements OnInit {
     const t = this.tarea();
     if (!t) return;
     if (!this.entryFecha || this.entryHoras <= 0) {
-      this.snackBar.open('Fecha y días son obligatorios.', 'Cerrar', {
-        duration: 3000, panelClass: ['snack-error'],
-      });
+      this.toast.error('Fecha y días son obligatorios.');
       return;
     }
     this.guardandoEntry.set(true);
@@ -470,9 +453,7 @@ export class TareaDetailComponent implements OnInit {
         this.entryFecha       = new Date();
         this.entryHoras       = 1;
         this.entryDescripcion = '';
-        this.snackBar.open(`${this.unidadLabelCap()} ${this.unidadRegistrados()}.`, 'Cerrar', {
-          duration: 3000, panelClass: ['snack-success'],
-        });
+        this.toast.success(`${this.unidadLabelCap()} ${this.unidadRegistrados()}.`);
         this.loadTarea(t.id);
         this.cargarEntries(t.id);
         this.guardandoEntry.set(false);
@@ -480,7 +461,7 @@ export class TareaDetailComponent implements OnInit {
       },
       error: (err: { error?: { detail?: string } }) => {
         const msg = err.error?.detail ?? 'No se pudo registrar las horas.';
-        this.snackBar.open(msg, 'Cerrar', { duration: 4000, panelClass: ['snack-error'] });
+        this.toast.error(msg);
         this.guardandoEntry.set(false);
       },
     });
@@ -491,14 +472,12 @@ export class TareaDetailComponent implements OnInit {
     if (!t) return;
     this.timesheetService.delete(entry.id).subscribe({
       next: () => {
-        this.snackBar.open('Registro eliminado.', 'Cerrar', {
-          duration: 2500, panelClass: ['snack-success'],
-        });
+        this.toast.success('Registro eliminado.');
         this.loadTarea(t.id);
       },
       error: (err: { error?: { detail?: string } }) => {
         const msg = err.error?.detail ?? 'No se pudo eliminar.';
-        this.snackBar.open(msg, 'Cerrar', { duration: 4000, panelClass: ['snack-error'] });
+        this.toast.error(msg);
       },
     });
   }

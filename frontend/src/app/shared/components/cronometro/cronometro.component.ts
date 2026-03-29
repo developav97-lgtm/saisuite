@@ -14,9 +14,9 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { SesionTrabajoService } from '../../../features/proyectos/services/sesion-trabajo.service';
 import { SesionTrabajo, Pausa } from '../../../features/proyectos/models/sesion-trabajo.model';
+import { ToastService } from '../../../core/services/toast.service';
 
 @Component({
   selector: 'app-cronometro',
@@ -37,7 +37,7 @@ export class CronometroComponent implements OnInit, OnDestroy {
 
   // ── Servicios ───────────────────────────────────────────────
   private readonly sesionService = inject(SesionTrabajoService);
-  private readonly snackBar      = inject(MatSnackBar);
+  private readonly toast       = inject(ToastService);
   private readonly cdr           = inject(ChangeDetectorRef);
 
   // ── Estado ──────────────────────────────────────────────────
@@ -76,7 +76,7 @@ export class CronometroComponent implements OnInit, OnDestroy {
         this.tiempoTranscurrido.set(0);
         this.iniciarInterval();
         this.loading.set(false);
-        this.snackBar.open('Cronómetro iniciado.', 'Cerrar', { duration: 2000 });
+        this.toast.success('Cronómetro iniciado.');
         this.cdr.markForCheck();
       },
       error: (err: { error?: { detail?: string; sesion_activa?: SesionTrabajo } }) => {
@@ -87,7 +87,7 @@ export class CronometroComponent implements OnInit, OnDestroy {
         if (sesionActiva && sesionActiva.tarea === this.tareaId()) {
           this.restaurarSesion(sesionActiva);
         } else {
-          this.snackBar.open(detail, 'Cerrar', { duration: 4000, panelClass: ['snack-error'] });
+          this.toast.info(detail);
         }
         this.cdr.markForCheck();
       },
@@ -103,14 +103,12 @@ export class CronometroComponent implements OnInit, OnDestroy {
         this.sesion.set(updated);
         this.pararInterval();
         this.loading.set(false);
-        this.snackBar.open('Cronómetro pausado.', 'Cerrar', { duration: 2000 });
+        this.toast.success('Cronómetro pausado.');
         this.cdr.markForCheck();
       },
       error: () => {
         this.loading.set(false);
-        this.snackBar.open('Error al pausar el cronómetro.', 'Cerrar', {
-          duration: 3000, panelClass: ['snack-error'],
-        });
+        this.toast.error('Error al pausar el cronómetro.');
         this.cdr.markForCheck();
       },
     });
@@ -125,14 +123,12 @@ export class CronometroComponent implements OnInit, OnDestroy {
         this.sesion.set(updated);
         this.iniciarInterval();
         this.loading.set(false);
-        this.snackBar.open('Cronómetro reanudado.', 'Cerrar', { duration: 2000 });
+        this.toast.success('Cronómetro reanudado.');
         this.cdr.markForCheck();
       },
       error: () => {
         this.loading.set(false);
-        this.snackBar.open('Error al reanudar el cronómetro.', 'Cerrar', {
-          duration: 3000, panelClass: ['snack-error'],
-        });
+        this.toast.error('Error al reanudar el cronómetro.');
         this.cdr.markForCheck();
       },
     });
@@ -149,19 +145,13 @@ export class CronometroComponent implements OnInit, OnDestroy {
         this.tiempoTranscurrido.set(0);
         this.notas = '';
         this.loading.set(false);
-        this.snackBar.open(
-          `Sesión finalizada: ${parseFloat(finalizada.duracion_horas).toFixed(2)}h registradas.`,
-          'Cerrar',
-          { duration: 3000, panelClass: ['snack-success'] },
-        );
+        this.toast.success(`Sesión finalizada: ${parseFloat(finalizada.duracion_horas).toFixed(2)}h registradas.`);
         this.sesionFinalizada.emit(finalizada);
         this.cdr.markForCheck();
       },
       error: () => {
         this.loading.set(false);
-        this.snackBar.open('Error al detener el cronómetro.', 'Cerrar', {
-          duration: 3000, panelClass: ['snack-error'],
-        });
+        this.toast.error('Error al detener el cronómetro.');
         this.cdr.markForCheck();
       },
     });

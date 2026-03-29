@@ -3,11 +3,12 @@ import { RouterOutlet } from '@angular/router';
 import { TopbarComponent } from '../topbar/topbar.component';
 import { SidebarComponent } from '../sidebar/sidebar.component';
 import { ThemeService } from '../../services/theme.service';
+import { NgxSonnerToaster } from 'ngx-sonner';
 
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [RouterOutlet, TopbarComponent, SidebarComponent],
+  imports: [RouterOutlet, TopbarComponent, SidebarComponent, NgxSonnerToaster],
   templateUrl: './shell.component.html',
   styleUrls: ['./shell.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,

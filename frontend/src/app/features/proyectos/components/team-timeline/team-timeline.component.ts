@@ -17,12 +17,12 @@ import { MatInputModule } from '@angular/material/input';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import { MatExpansionModule } from '@angular/material/expansion';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { FormsModule } from '@angular/forms';
 import { ResourceService } from '../../services/resource.service';
 import { TeamAvailabilityUser } from '../../models/resource.model';
 import { ResourceCapacityComponent } from './resource-capacity/resource-capacity.component';
 import { ResourceAvailabilityComponent } from './resource-availability/resource-availability.component';
+import { ToastService } from '../../../../core/services/toast.service';
 
 @Component({
   selector: 'app-team-timeline',
@@ -49,7 +49,7 @@ export class TeamTimelineComponent implements OnInit {
   readonly proyectoId = input.required<string>();
 
   private readonly resourceService = inject(ResourceService);
-  private readonly snackBar        = inject(MatSnackBar);
+  private readonly toast       = inject(ToastService);
   private readonly router          = inject(Router);
 
   readonly loading = signal(false);
@@ -78,9 +78,7 @@ export class TeamTimelineComponent implements OnInit {
       },
       error: () => {
         this.loading.set(false);
-        this.snackBar.open('Error al cargar disponibilidad del equipo', 'Cerrar', {
-          duration: 3000, panelClass: ['snack-error'],
-        });
+        this.toast.error('Error al cargar disponibilidad del equipo');
       },
     });
   }

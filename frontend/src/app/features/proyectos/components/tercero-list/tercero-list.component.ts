@@ -14,7 +14,6 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatChipsModule } from '@angular/material/chips';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { TerceroProyectoService } from '../../services/tercero-proyecto.service';
 import { FaseService } from '../../services/fase.service';
 import {
@@ -26,6 +25,7 @@ import {
 import { FaseList } from '../../models/fase.model';
 import { ConfirmDialogComponent } from '../../../../shared/components/confirm-dialog/confirm-dialog.component';
 import { TerceroSelectorComponent, TerceroSeleccionado } from '../../../../shared/components/tercero-selector/tercero-selector.component';
+import { ToastService } from '../../../../core/services/toast.service';
 
 @Component({
   selector: 'app-tercero-list',
@@ -45,7 +45,7 @@ export class TerceroListComponent implements OnInit {
   private readonly faseService = inject(FaseService);
   private readonly fb          = inject(FormBuilder);
   private readonly dialog      = inject(MatDialog);
-  private readonly snackBar    = inject(MatSnackBar);
+  private readonly toast       = inject(ToastService);
 
   readonly proyectoId = input.required<string>();
 
@@ -105,7 +105,7 @@ export class TerceroListComponent implements OnInit {
   vincular(): void {
     if (this.form.invalid) { this.form.markAllAsTouched(); return; }
     if (!this.terceroSeleccionado) {
-      this.snackBar.open('Selecciona un tercero del catálogo.', 'Cerrar', { duration: 3000 });
+      this.toast.warning('Debe seleccionar un tercero.');
       return;
     }
     const val = this.form.getRawValue();
@@ -119,16 +119,14 @@ export class TerceroListComponent implements OnInit {
       next: () => {
         this.dialogRef?.close();
         this.loadTerceros();
-        this.snackBar.open('Tercero vinculado correctamente.', 'Cerrar', {
-          duration: 3000, panelClass: ['snack-success'],
-        });
+        this.toast.success('Tercero vinculado correctamente.');
       },
       error: (err: { error?: unknown[] | { detail?: string } }) => {
         const e = err?.error;
         const msg = Array.isArray(e)
           ? String(e[0])
           : (e as { detail?: string })?.detail ?? 'No se pudo vincular el tercero.';
-        this.snackBar.open(msg, 'Cerrar', { duration: 5000, panelClass: ['snack-error'] });
+        this.toast.error(msg);
       },
     });
   }
@@ -148,14 +146,10 @@ export class TerceroListComponent implements OnInit {
       this.service.desvincular(this.proyectoId(), tercero.id).subscribe({
         next: () => {
           this.loadTerceros();
-          this.snackBar.open('Tercero desvinculado.', 'Cerrar', {
-            duration: 3000, panelClass: ['snack-success'],
-          });
+          this.toast.success('Tercero desvinculado.');
         },
         error: () => {
-          this.snackBar.open('No se pudo desvincular.', 'Cerrar', {
-            duration: 4000, panelClass: ['snack-error'],
-          });
+          this.toast.error('No se pudo desvincular.');
         },
       });
     });

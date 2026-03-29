@@ -19,10 +19,10 @@ import { MatDatepickerModule } from '@angular/material/datepicker';
 import { provideNativeDateAdapter } from '@angular/material/core';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatIconModule } from '@angular/material/icon';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { ResourceService } from '../../../services/resource.service';
 import { AdminUser } from '../../../../admin/models/admin.models';
 import { ResourceCapacity, ResourceCapacityCreate } from '../../../models/resource.model';
+import { ToastService } from '../../../../../core/services/toast.service';
 
 export interface ResourceCapacityFormData {
   capacity?: ResourceCapacity;
@@ -53,7 +53,7 @@ export class ResourceCapacityFormComponent implements OnInit {
 
   private readonly fb              = inject(FormBuilder);
   private readonly resourceService = inject(ResourceService);
-  private readonly snackBar        = inject(MatSnackBar);
+  private readonly toast       = inject(ToastService);
 
   readonly saving  = signal(false);
   readonly isEdit  = signal(false);
@@ -99,17 +99,12 @@ export class ResourceCapacityFormComponent implements OnInit {
 
     obs.subscribe({
       next: () => {
-        this.snackBar.open(
-          cap ? 'Capacidad actualizada.' : 'Capacidad creada.',
-          'Cerrar', { duration: 3000, panelClass: ['snack-success'] },
-        );
+        this.toast.success(cap ? 'Capacidad actualizada.' : 'Capacidad creada.');
         this.saving.set(false);
         this.dialogRef.close(true);
       },
       error: () => {
-        this.snackBar.open('Error al guardar la capacidad.', 'Cerrar', {
-          duration: 5000, panelClass: ['snack-error'],
-        });
+        this.toast.error('Error al guardar la capacidad.');
         this.saving.set(false);
       },
     });

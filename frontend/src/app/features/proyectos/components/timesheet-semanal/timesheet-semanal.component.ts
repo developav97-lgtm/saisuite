@@ -13,10 +13,10 @@ import { MatTableModule } from '@angular/material/table';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { DecimalPipe, DatePipe } from '@angular/common';
 import { TimesheetService } from '../../services/timesheet.service';
 import { TimesheetEntry, TimesheetSemanalRow } from '../../models/timesheet.model';
+import { ToastService } from '../../../../core/services/toast.service';
 
 @Component({
   selector:    'app-timesheet-semanal',
@@ -37,7 +37,7 @@ import { TimesheetEntry, TimesheetSemanalRow } from '../../models/timesheet.mode
 })
 export class TimesheetSemanalComponent implements OnInit {
   private readonly timesheetService = inject(TimesheetService);
-  private readonly snackBar         = inject(MatSnackBar);
+  private readonly toast       = inject(ToastService);
 
   readonly loading = signal(false);
   readonly entries = signal<TimesheetEntry[]>([]);
@@ -148,9 +148,7 @@ export class TimesheetSemanalComponent implements OnInit {
           this.loading.set(false);
         },
         error: () => {
-          this.snackBar.open('No se pudo cargar el timesheet.', 'Cerrar', {
-            duration: 4000, panelClass: ['snack-error'],
-          });
+          this.toast.error('No se pudo cargar el timesheet.');
           this.loading.set(false);
         },
       });

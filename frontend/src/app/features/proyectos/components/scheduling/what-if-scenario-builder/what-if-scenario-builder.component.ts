@@ -30,7 +30,6 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatDialog } from '@angular/material/dialog';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { WhatIfService } from '../../../services/what-if.service';
 import {
   WhatIfScenarioList,
@@ -39,6 +38,7 @@ import {
 import { TareaService } from '../../../services/tarea.service';
 import { Tarea } from '../../../models/tarea.model';
 import { ConfirmDialogComponent } from '../../../../../shared/components/confirm-dialog/confirm-dialog.component';
+import { ToastService } from '../../../../../core/services/toast.service';
 
 type TaskChangeCampo = 'fecha_inicio' | 'fecha_fin' | 'horas_estimadas';
 
@@ -74,7 +74,7 @@ export class WhatIfScenarioBuilderComponent implements OnInit {
   private readonly whatIfService = inject(WhatIfService);
   private readonly tareaService  = inject(TareaService);
   private readonly dialog        = inject(MatDialog);
-  private readonly snackBar      = inject(MatSnackBar);
+  private readonly toast       = inject(ToastService);
 
   readonly scenarios        = signal<WhatIfScenarioList[]>([]);
   readonly selectedScenario = signal<WhatIfScenarioDetail | null>(null);
@@ -116,10 +116,7 @@ export class WhatIfScenarioBuilderComponent implements OnInit {
       },
       error: () => {
         this.loading.set(false);
-        this.snackBar.open('Error al cargar los escenarios.', 'Cerrar', {
-          duration: 5000,
-          panelClass: ['snack-error'],
-        });
+        this.toast.error('Error al cargar los escenarios.');
       },
     });
   }
@@ -133,10 +130,7 @@ export class WhatIfScenarioBuilderComponent implements OnInit {
       },
       error: () => {
         this.loadingTareas.set(false);
-        this.snackBar.open('Error al cargar las tareas del proyecto.', 'Cerrar', {
-          duration: 5000,
-          panelClass: ['snack-error'],
-        });
+        this.toast.error('Error al cargar las tareas del proyecto.');
       },
     });
   }
@@ -204,18 +198,12 @@ export class WhatIfScenarioBuilderComponent implements OnInit {
         while (this.taskChangesList.length > 0) {
           this.taskChangesList.removeAt(0);
         }
-        this.snackBar.open('Escenario creado correctamente.', 'Cerrar', {
-          duration: 3000,
-          panelClass: ['snack-success'],
-        });
+        this.toast.success('Escenario creado correctamente.');
         this.loadScenarios();
       },
       error: () => {
         this.saving.set(false);
-        this.snackBar.open('Error al crear el escenario. Verifica los datos.', 'Cerrar', {
-          duration: 5000,
-          panelClass: ['snack-error'],
-        });
+        this.toast.error('Error al crear el escenario. Verifica los datos.');
       },
     });
   }
@@ -226,10 +214,7 @@ export class WhatIfScenarioBuilderComponent implements OnInit {
         this.selectedScenario.set(detail);
       },
       error: () => {
-        this.snackBar.open('Error al cargar el detalle del escenario.', 'Cerrar', {
-          duration: 5000,
-          panelClass: ['snack-error'],
-        });
+        this.toast.error('Error al cargar el detalle del escenario.');
       },
     });
   }
@@ -241,18 +226,12 @@ export class WhatIfScenarioBuilderComponent implements OnInit {
       next: (detail) => {
         this.simulating.set(false);
         this.selectedScenario.set(detail);
-        this.snackBar.open('Simulación completada correctamente.', 'Cerrar', {
-          duration: 3000,
-          panelClass: ['snack-success'],
-        });
+        this.toast.success('Simulación completada correctamente.');
         this.loadScenarios();
       },
       error: () => {
         this.simulating.set(false);
-        this.snackBar.open('Error al ejecutar la simulación.', 'Cerrar', {
-          duration: 5000,
-          panelClass: ['snack-error'],
-        });
+        this.toast.error('Error al ejecutar la simulación.');
       },
     });
   }
@@ -275,17 +254,11 @@ export class WhatIfScenarioBuilderComponent implements OnInit {
           if (this.selectedScenario()?.id === scenario.id) {
             this.selectedScenario.set(null);
           }
-          this.snackBar.open('Escenario eliminado.', 'Cerrar', {
-            duration: 3000,
-            panelClass: ['snack-success'],
-          });
+          this.toast.success('Escenario eliminado.');
           this.loadScenarios();
         },
         error: () => {
-          this.snackBar.open('Error al eliminar el escenario.', 'Cerrar', {
-            duration: 5000,
-            panelClass: ['snack-error'],
-          });
+          this.toast.error('Error al eliminar el escenario.');
         },
       });
     });

@@ -20,7 +20,6 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatChipsModule } from '@angular/material/chips';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { FormsModule } from '@angular/forms';
 import Gantt, { type FrappeGanttTask, type ViewMode } from 'frappe-gantt';
 import { ProyectoService } from '../../services/proyecto.service';
@@ -29,6 +28,7 @@ import { SchedulingService } from '../../services/scheduling.service';
 import { BaselineService } from '../../services/baseline.service';
 import { ConfirmDialogComponent } from '../../../../shared/components/confirm-dialog/confirm-dialog.component';
 import type { ProjectBaselineList } from '../../models/baseline.model';
+import { ToastService } from '../../../../core/services/toast.service';
 
 /**
  * Convierte un UUID (con guiones) en un ID seguro para atributos SVG/HTML.
@@ -69,7 +69,7 @@ export class GanttViewComponent implements AfterViewInit, OnDestroy {
   private readonly baselineService  = inject(BaselineService);
   private readonly router           = inject(Router);
   private readonly dialog           = inject(MatDialog);
-  private readonly snackBar         = inject(MatSnackBar);
+  private readonly toast       = inject(ToastService);
   private readonly cdr              = inject(ChangeDetectorRef);
 
   readonly loading  = signal(true);
@@ -173,9 +173,7 @@ export class GanttViewComponent implements AfterViewInit, OnDestroy {
       error: () => {
         this.loadingOverlay.set(false);
         this.showCriticalPath.set(false);
-        this.snackBar.open('No se pudo calcular la ruta crítica.', 'Cerrar', {
-          duration: 4000, panelClass: ['snack-error'],
-        });
+        this.toast.error('No se pudo calcular la ruta crítica.');
       },
     });
   }
@@ -338,14 +336,10 @@ export class GanttViewComponent implements AfterViewInit, OnDestroy {
         fecha_fin:    toISO(end),
       }).subscribe({
         next: () => {
-          this.snackBar.open('Fechas actualizadas correctamente.', 'Cerrar', {
-            duration: 3000, panelClass: ['snack-success'],
-          });
+          this.toast.success('Fechas actualizadas correctamente.');
         },
         error: () => {
-          this.snackBar.open('No se pudieron actualizar las fechas.', 'Cerrar', {
-            duration: 4000, panelClass: ['snack-error'],
-          });
+          this.toast.error('No se pudieron actualizar las fechas.');
           this.cargarGantt();
         },
       });

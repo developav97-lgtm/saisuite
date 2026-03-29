@@ -11,10 +11,10 @@ import {
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { TimesheetService } from '../../services/timesheet.service';
 import { SesionTrabajo } from '../../models/timesheet.model';
 import type { Tarea } from '../../models/tarea.model';
+import { ToastService } from '../../../../core/services/toast.service';
 
 @Component({
   selector:    'app-timer',
@@ -29,7 +29,7 @@ export class TimerComponent implements OnDestroy {
   readonly sesionFin  = output<SesionTrabajo>();
 
   private readonly timesheetService = inject(TimesheetService);
-  private readonly snackBar         = inject(MatSnackBar);
+  private readonly toast       = inject(ToastService);
   private readonly cdr              = inject(ChangeDetectorRef);
 
   readonly loading          = signal(false);
@@ -59,7 +59,7 @@ export class TimerComponent implements OnDestroy {
           this.tiempoTranscurrido.set(activa.duracion_segundos);
           this.iniciarIntervalo();
         }
-        this.snackBar.open(detail, 'Cerrar', { duration: 5000, panelClass: ['snack-error'] });
+        this.toast.error(detail);
         this.loading.set(false);
         this.cdr.markForCheck();
       },
@@ -78,7 +78,7 @@ export class TimerComponent implements OnDestroy {
         this.cdr.markForCheck();
       },
       error: () => {
-        this.snackBar.open('No se pudo pausar el timer.', 'Cerrar', { duration: 4000, panelClass: ['snack-error'] });
+        this.toast.error('No se pudo pausar el timer.');
         this.loading.set(false);
       },
     });
@@ -96,7 +96,7 @@ export class TimerComponent implements OnDestroy {
         this.cdr.markForCheck();
       },
       error: () => {
-        this.snackBar.open('No se pudo reanudar el timer.', 'Cerrar', { duration: 4000, panelClass: ['snack-error'] });
+        this.toast.error('No se pudo reanudar el timer.');
         this.loading.set(false);
       },
     });
@@ -113,16 +113,12 @@ export class TimerComponent implements OnDestroy {
         this.detenerIntervalo();
         this.sesionFin.emit(finalizada);
         const horas = (finalizada.duracion_segundos / 3600).toFixed(2);
-        this.snackBar.open(
-          `${horas}h registradas en "${this.tarea().nombre}"`,
-          'Cerrar',
-          { duration: 4000, panelClass: ['snack-success'] },
-        );
+        this.toast.success(`${horas}h registradas en "${this.tarea().nombre}"`);
         this.loading.set(false);
         this.cdr.markForCheck();
       },
       error: () => {
-        this.snackBar.open('No se pudo detener el timer.', 'Cerrar', { duration: 4000, panelClass: ['snack-error'] });
+        this.toast.error('No se pudo detener el timer.');
         this.loading.set(false);
       },
     });
