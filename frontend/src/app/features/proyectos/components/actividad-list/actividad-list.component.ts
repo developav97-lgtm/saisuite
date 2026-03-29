@@ -115,6 +115,7 @@ export class ActividadListComponent implements OnInit {
     { value: 'material',    label: 'Material'        },
     { value: 'equipment',   label: 'Equipo'          },
     { value: 'subcontract', label: 'Subcontrato'     },
+    { value: 'milestone',   label: 'Hito'            },
   ];
 
   readonly tipoOpciones = this.tipoOptions.filter(o => o.value !== null) as { value: TipoActividad; label: string }[];

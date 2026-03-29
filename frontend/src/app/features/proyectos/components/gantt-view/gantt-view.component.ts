@@ -258,9 +258,6 @@ export class GanttViewComponent implements AfterViewInit, OnDestroy {
       let customClass = t.custom_class ?? '';
       let name        = t.name;
 
-      if (this.showCriticalPath() && this.criticalTaskIds.has(t.id)) {
-        customClass = `${customClass} critical-task`.trim();
-      }
       if (this.showFloat()) {
         const f = this.floatMap.get(t.id);
         if (f === 0) {
@@ -293,9 +290,18 @@ export class GanttViewComponent implements AfterViewInit, OnDestroy {
         if (this.wasDragged) { this.wasDragged = false; return; }
         // task.id es ganttId (g_uuid_sin_guiones); recuperar UUID original
         const taskUuid = this.ganttIdToUuid.get(task.id) ?? task.id;
-        void this.router.navigate(['/proyectos', this.proyectoId(), 'tareas', taskUuid]);
+        void this.router.navigate(['/proyectos', 'tareas', taskUuid]);
       },
     });
+
+    // Aplicar clase critical-task por DOM directo (classList.add no acepta strings con espacios)
+    if (this.showCriticalPath() && this.criticalTaskIds.size > 0) {
+      // frappe-gantt usa el ganttId como selector de clase: .bar-wrapper.ganttId
+      this.criticalTaskIds.forEach(ganttId => {
+        const barEl = el.querySelector(`.bar-wrapper[data-id="${ganttId}"]`);
+        if (barEl) barEl.classList.add('critical-task');
+      });
+    }
   }
 
   private initGantt(): void {

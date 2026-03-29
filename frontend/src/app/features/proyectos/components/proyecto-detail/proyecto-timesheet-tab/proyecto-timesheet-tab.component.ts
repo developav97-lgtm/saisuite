@@ -96,7 +96,7 @@ export class ProyectoTimesheetTabComponent {
     return new Date(date + 'T00:00:00').toLocaleDateString('es-CO');
   }
 
-  formatHoras(horas: number): string {
-    return `${horas.toFixed(1)} h`;
+  formatHoras(horas: number | string): string {
+    return `${Number(horas).toFixed(1)} h`;
   }
 }
