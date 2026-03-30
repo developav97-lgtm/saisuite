@@ -1,11 +1,10 @@
 import {
   ChangeDetectionStrategy,
   Component,
-  DestroyRef,
-  OnInit,
   OnDestroy,
   TemplateRef,
   ViewContainerRef,
+  effect,
   inject,
   signal,
   viewChild,
@@ -18,12 +17,11 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { interval } from 'rxjs';
 import { Overlay, OverlayModule, OverlayRef } from '@angular/cdk/overlay';
 import { TemplatePortal } from '@angular/cdk/portal';
 
 import { NotificacionesService } from '../../services/notificaciones.service';
+import { NotificationSocketService } from '../../services/notification-socket.service';
 import { Notificacion, NotificacionGrupo, NotificacionItem } from '../../../shared/models/notificacion.model';
 
 const TIPO_ICONS: Record<string, string> = {
@@ -65,10 +63,10 @@ export const SNOOZE_OPTIONS = [
   styleUrl: './notification-bell.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class NotificationBellComponent implements OnInit, OnDestroy {
+export class NotificationBellComponent implements OnDestroy {
   private readonly svc             = inject(NotificacionesService);
   private readonly router          = inject(Router);
-  private readonly destroyRef      = inject(DestroyRef);
+  private readonly socketService   = inject(NotificationSocketService);
   private readonly overlay         = inject(Overlay);
   private readonly viewContainerRef = inject(ViewContainerRef);
 
@@ -87,22 +85,16 @@ export class NotificationBellComponent implements OnInit, OnDestroy {
   private _accionesOverlayRef: OverlayRef | null = null;
   private _docClickListener: ((e: MouseEvent) => void) | null = null;
 
-  ngOnInit(): void {
-    this.cargarConteo();
-    interval(30_000)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => this.cargarConteo());
+  constructor() {
+    // Sync badge count from WebSocket unread_count signal
+    effect(() => {
+      const wsCount = this.socketService.unreadCount();
+      this.sinLeer.set(wsCount);
+    });
   }
 
   ngOnDestroy(): void {
     this._cerrarAccionesPanel();
-  }
-
-  cargarConteo(): void {
-    this.svc.contarSinLeer().subscribe({
-      next: r  => this.sinLeer.set(r.count),
-      error: () => { /* silencioso */ },
-    });
   }
 
   onMenuOpened(): void {

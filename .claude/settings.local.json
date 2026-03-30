@@ -304,7 +304,10 @@
       "Bash(DJANGO_SETTINGS_MODULE=config.settings.testing python -m pytest apps/notifications/tests/test_websocket.py -v --no-header --tb=long)",
       "Bash(python -m pytest apps/notifications/tests/test_websocket.py -v --no-header --tb=long --no-cov)",
       "Bash(pip list:*)",
-      "Bash(python -m pytest apps/notifications/tests/test_websocket.py -v --tb=short)"
+      "Bash(python -m pytest apps/notifications/tests/test_websocket.py -v --tb=short)",
+      "Bash(python -m pytest apps/notifications/tests/test_ws_push.py -v --timeout=30)",
+      "Bash(python -m pytest apps/notifications/tests/test_ws_push.py -v)",
+      "Bash(python -m pytest apps/notifications/tests/ -v)"
     ]
   }
 }

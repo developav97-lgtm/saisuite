@@ -13,11 +13,6 @@ export interface WsNotification {
   created_at?: string;
 }
 
-interface WsMessage {
-  type: string;
-  data: WsNotification;
-}
-
 @Injectable({ providedIn: 'root' })
 export class NotificationSocketService implements OnDestroy {
   private readonly auth = inject(AuthService);
@@ -61,10 +56,11 @@ export class NotificationSocketService implements OnDestroy {
 
     this.socket.onmessage = (event: MessageEvent): void => {
       try {
-        const msg = JSON.parse(event.data as string) as WsMessage;
-        if (msg.type === 'notification') {
-          this._latestNotification.set(msg.data);
-          this._unreadCount.update(count => count + 1);
+        const msg = JSON.parse(event.data as string) as Record<string, unknown>;
+        if (msg['type'] === 'notification' && msg['data']) {
+          this._latestNotification.set(msg['data'] as WsNotification);
+        } else if (msg['type'] === 'unread_count' && typeof msg['count'] === 'number') {
+          this._unreadCount.set(msg['count'] as number);
         }
       } catch {
         // Ignore malformed messages

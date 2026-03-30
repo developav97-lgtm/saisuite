@@ -8,6 +8,8 @@ import logging
 from collections import defaultdict
 from typing import Optional
 
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.auth import get_user_model
 from django.db import models
@@ -76,6 +78,38 @@ class NotificacionService:
             'notificacion_creada',
             extra={'tipo': tipo, 'usuario': str(usuario.id), 'notificacion': str(notificacion.id)},
         )
+
+        # Push notification via WebSocket (never breaks DB creation on failure)
+        try:
+            channel_layer = get_channel_layer()
+            if channel_layer is not None:
+                group_name = f'notifications_{usuario.id}'
+                from .serializers import NotificacionSerializer
+                notification_data = NotificacionSerializer(notificacion).data
+
+                # Send the notification payload
+                async_to_sync(channel_layer.group_send)(
+                    group_name,
+                    {
+                        'type': 'notification.message',
+                        'data': notification_data,
+                    },
+                )
+                # Trigger count update so the badge refreshes
+                async_to_sync(channel_layer.group_send)(
+                    group_name,
+                    {'type': 'notification.count_update'},
+                )
+                logger.info(
+                    'ws_notification_pushed',
+                    extra={'usuario': str(usuario.id), 'notificacion': str(notificacion.id)},
+                )
+        except Exception:
+            logger.exception(
+                'ws_push_failed',
+                extra={'notificacion': str(notificacion.id)},
+            )
+
         return notificacion
 
     @staticmethod

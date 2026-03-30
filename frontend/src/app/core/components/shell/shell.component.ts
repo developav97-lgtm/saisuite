@@ -1,5 +1,5 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject, computed } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { ChangeDetectionStrategy, Component, OnInit, OnDestroy, inject, computed, effect } from '@angular/core';
+import { Router, RouterOutlet } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -7,7 +7,8 @@ import { TopbarComponent } from '../topbar/topbar.component';
 import { SidebarComponent } from '../sidebar/sidebar.component';
 import { ThemeService } from '../../services/theme.service';
 import { AuthService } from '../../auth/auth.service';
-import { NgxSonnerToaster } from 'ngx-sonner';
+import { NotificationSocketService } from '../../services/notification-socket.service';
+import { NgxSonnerToaster, toast } from 'ngx-sonner';
 
 @Component({
   selector: 'app-shell',
@@ -17,9 +18,35 @@ import { NgxSonnerToaster } from 'ngx-sonner';
   styleUrls: ['./shell.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class ShellComponent implements OnInit {
-  private readonly themeService = inject(ThemeService);
-  private readonly authService  = inject(AuthService);
+export class ShellComponent implements OnInit, OnDestroy {
+  private readonly themeService   = inject(ThemeService);
+  private readonly authService    = inject(AuthService);
+  private readonly socketService  = inject(NotificationSocketService);
+  private readonly router         = inject(Router);
+
+  constructor() {
+    // Show toast when a new notification arrives via WebSocket
+    effect(() => {
+      const notif = this.socketService.latestNotification();
+      if (notif) {
+        toast(notif.titulo, {
+          description: notif.mensaje,
+          duration: 5000,
+          action: notif.url_accion
+            ? {
+                label: 'Ver',
+                onClick: () => {
+                  const url = notif.ancla
+                    ? `${notif.url_accion}${notif.ancla}`
+                    : notif.url_accion;
+                  if (url) this.router.navigateByUrl(url);
+                },
+              }
+            : undefined,
+        });
+      }
+    });
+  }
 
   /** Cuando soporte está en un tenant sin licencia válida. */
   readonly soporteNoLicense = computed(() => {
@@ -77,6 +104,15 @@ export class ShellComponent implements OnInit {
       const saved = localStorage.getItem(this.SIDEBAR_EXPANDED_KEY);
       this.sidebarVisible = saved === 'true';
     }
+
+    // Connect WebSocket for real-time notifications
+    if (this.authService.getAccessToken()) {
+      this.socketService.connect();
+    }
+  }
+
+  ngOnDestroy(): void {
+    this.socketService.disconnect();
   }
 
   toggleSidebar(): void {
