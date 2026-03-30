@@ -2,6 +2,7 @@ export const environment = {
   production: false,
   apiUrl: 'http://localhost:8000/api/v1',
   apiBaseUrl: 'http://localhost:8000',
+  wsUrl: 'ws://localhost:8000',
   jwtTokenKey: 'saicloud_access_token',
   jwtRefreshTokenKey: 'saicloud_refresh_token',
   n8n: {

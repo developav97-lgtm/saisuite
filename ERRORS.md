@@ -1,3 +1,12 @@
+## [30 Marzo 2026] ERROR: UPSTASH_REDIS_URL con formato de comando CLI en .env
+
+**Sintoma:** WebSocket retorna 500 al conectar. Log: `ValueError: Redis URL must specify one of the following schemes (redis://, rediss://, unix://)`.
+**Causa:** El `.env` contenia `UPSTASH_REDIS_URL=redis-cli --tls -u redis://...` (el comando CLI completo de Upstash, copiado del dashboard). `channels-redis` espera solo la URL, no el comando.
+**Fix:** Cambiar a `UPSTASH_REDIS_URL=rediss://default:...@...upstash.io:6379`. Usar `rediss://` (doble s) para TLS que Upstash requiere.
+**Prevencion:** Al copiar URLs de Upstash, usar la pestaña "Connection String" (no "CLI Command"). Siempre verificar que el valor empiece con `redis://` o `rediss://`.
+
+---
+
 ## [28 Marzo 2026] ERROR: CheckConstraint(condition=) rompe Docker con Django 5.0.6
 
 **Síntoma:** Contenedor `saisuite-api` queda en estado `unhealthy`. Django no levanta: `TypeError: CheckConstraint.__init__() got an unexpected keyword argument 'condition'`.

@@ -11,6 +11,7 @@ env = environ.Env()
 environ.Env.read_env(BASE_DIR / '.env')
 
 DJANGO_APPS = [
+    'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -24,6 +25,7 @@ THIRD_PARTY_APPS = [
     'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
     'django_filters',
+    'channels',
 ]
 LOCAL_APPS = [
     'apps.core',
@@ -51,6 +53,7 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'config.urls'
 WSGI_APPLICATION = 'config.wsgi.application'
+ASGI_APPLICATION = 'config.asgi.application'
 AUTH_USER_MODEL = 'users.User'
 
 TEMPLATES = [{
@@ -103,6 +106,16 @@ SIMPLE_JWT = {
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
     'AUTH_HEADER_TYPES': ('Bearer',),
+}
+
+# ── Channels / WebSocket ─────────────────────────────────────────
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            'hosts': [env('UPSTASH_REDIS_URL', default='redis://localhost:6379')],
+        },
+    },
 }
 
 AWS_ACCESS_KEY_ID = env('AWS_ACCESS_KEY_ID', default='')

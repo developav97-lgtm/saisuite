@@ -2,15 +2,12 @@
 SaiSuite — Fixtures globales de pytest.
 """
 import pytest
-from django.contrib.auth import get_user_model
-from apps.companies.models import Company
-
-User = get_user_model()
 
 
 @pytest.fixture
 def company():
     """Fixture: Empresa de prueba."""
+    from apps.companies.models import Company
     return Company.objects.create(
         name="Test Company",
         nit="900000000",
@@ -21,6 +18,7 @@ def company():
 @pytest.fixture
 def company2():
     """Fixture: Segunda empresa (para tests de aislamiento multi-tenant)."""
+    from apps.companies.models import Company
     return Company.objects.create(
         name="Otra Company",
         nit="800000001",
@@ -31,6 +29,8 @@ def company2():
 @pytest.fixture
 def user(company):
     """Fixture: Usuario de prueba."""
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
     return User.objects.create_user(
         email="test@example.com",
         password="testpass123",

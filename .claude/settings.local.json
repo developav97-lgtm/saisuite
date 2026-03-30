@@ -296,7 +296,15 @@
       "mcp__playwright__browser_close",
       "Bash(for chunk:*)",
       "Bash(do echo:*)",
-      "Bash(grep -o '..\\\\{80\\\\}buildCharts.\\\\{80\\\\}')"
+      "Bash(grep -o '..\\\\{80\\\\}buildCharts.\\\\{80\\\\}')",
+      "Bash(pip install:*)",
+      "Bash(python -c \"import channels; import daphne; import bleach; import pytest_asyncio; print\\(f''channels={channels.__version__}''\\); print\\(f''daphne={daphne.__version__}''\\); print\\(f''bleach={bleach.__version__}''\\); print\\(''All imports OK''\\)\")",
+      "Bash(DJANGO_SETTINGS_MODULE=config.settings.testing python -c \":*)",
+      "Bash(python -m pytest apps/notifications/tests/test_websocket.py -v --no-header --tb=long)",
+      "Bash(DJANGO_SETTINGS_MODULE=config.settings.testing python -m pytest apps/notifications/tests/test_websocket.py -v --no-header --tb=long)",
+      "Bash(python -m pytest apps/notifications/tests/test_websocket.py -v --no-header --tb=long --no-cov)",
+      "Bash(pip list:*)",
+      "Bash(python -m pytest apps/notifications/tests/test_websocket.py -v --tb=short)"
     ]
   }
 }
