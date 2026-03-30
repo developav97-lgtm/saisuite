@@ -352,3 +352,27 @@ apps/cash/  (FUTURO)
 1. Markdown estándar `[texto](url)` — menos intuitivo para usuarios no técnicos
 2. Rich text editor — peso adicional (50-100 KB), complejidad innecesaria
 3. Búsqueda manual + botón "Insertar link" — UX muy inferior, baja adopción esperada
+
+---
+
+## DEC-036: Chat Backend — Conversación 1-to-1 con UUID Normalization
+
+**Fecha:** 2026-03-30
+**Estado:** ✅ Decidido e implementado
+
+**Contexto:** El chat interno necesita conversaciones 1-a-1 entre usuarios del mismo tenant. El modelo `Conversacion` tiene `participante_1` y `participante_2`, pero crear A→B y B→A generaría duplicados.
+
+**Opciones consideradas:**
+1. **Constraint CHECK(participante_1 < participante_2)** — DB-level enforcement
+2. **UUID normalization en service** — siempre almacenar UUID menor como participante_1
+3. **Q query bidireccional** — buscar ambas combinaciones en cada query
+
+**Decisión:** Opción 2 — UUID normalization en `ChatService.obtener_o_crear_conversacion()`.
+
+**Razón:**
+- Simple y predecible — `if str(usuario1.id) > str(usuario2.id): swap`
+- `unique_together = (company, participante_1, participante_2)` previene duplicados a nivel DB
+- Funciona con `get_or_create` — no necesita query bidireccional
+- Evita constraints CHECK que complican migraciones
+
+**Consecuencia:** Todo código que cree conversaciones DEBE pasar por `ChatService.obtener_o_crear_conversacion()`, nunca crear directamente via `Conversacion.objects.create()`.

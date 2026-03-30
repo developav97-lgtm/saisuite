@@ -307,7 +307,13 @@
       "Bash(python -m pytest apps/notifications/tests/test_websocket.py -v --tb=short)",
       "Bash(python -m pytest apps/notifications/tests/test_ws_push.py -v --timeout=30)",
       "Bash(python -m pytest apps/notifications/tests/test_ws_push.py -v)",
-      "Bash(python -m pytest apps/notifications/tests/ -v)"
+      "Bash(python -m pytest apps/notifications/tests/ -v)",
+      "Bash(grep -E \"\\\\.py$\")",
+      "Bash(python -c \"import ast; ast.parse\\(open\\(''apps/chat/services.py''\\).read\\(\\)\\); print\\(''services.py: OK''\\)\")",
+      "Bash(python -c \"import ast; ast.parse\\(open\\(''apps/chat/serializers.py''\\).read\\(\\)\\); print\\(''serializers.py: OK''\\)\")",
+      "Bash(python -c \"import ast; ast.parse\\(open\\(''apps/chat/views.py''\\).read\\(\\)\\); print\\(''views.py: OK''\\)\")",
+      "Bash(python -c \"import ast; ast.parse\\(open\\(''apps/chat/urls.py''\\).read\\(\\)\\); print\\(''urls.py: OK''\\)\")",
+      "Bash(python -c \"import ast; ast.parse\\(open\\(''apps/chat/tests/test_services.py''\\).read\\(\\)\\); print\\(''test_services.py: OK''\\)\")"
     ]
   }
 }

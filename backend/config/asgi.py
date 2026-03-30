@@ -4,7 +4,8 @@ Daphne / Channels entrypoint.
 
 HTTP requests go to the standard Django ASGI app.
 WebSocket connections are routed through JWTAuthMiddleware
-for token-based authentication, then to the notifications consumer.
+for token-based authentication, then dispatched to the
+notification and chat consumers.
 """
 import os
 
@@ -18,11 +19,12 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings.production')
 django_asgi_app = get_asgi_application()
 
 from apps.notifications.middleware import JWTAuthMiddleware  # noqa: E402
-from apps.notifications.routing import websocket_urlpatterns  # noqa: E402
+from apps.notifications.routing import websocket_urlpatterns as notification_ws  # noqa: E402
+from apps.chat.routing import websocket_urlpatterns as chat_ws  # noqa: E402
 
 application = ProtocolTypeRouter({
     'http': django_asgi_app,
     'websocket': JWTAuthMiddleware(
-        URLRouter(websocket_urlpatterns)
+        URLRouter(notification_ws + chat_ws)
     ),
 })

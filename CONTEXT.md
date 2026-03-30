@@ -1,7 +1,39 @@
 # CONTEXT.md - Estado del Proyecto Saicloud
 
-**Última actualización:** 29 Marzo 2026
-**Sesión:** Feature #8 — Sistema de Licencias Multi-Tenant — COMPLETA (Backend: modelos, migraciones, servicios, middleware, management command. Frontend: pantalla bloqueante, guard, panel superadmin, alertas)
+**Última actualización:** 30 Marzo 2026
+**Sesión:** Feature #9 — Chat Interno FASE 3 (Backend) — COMPLETA (Modelos, API REST, WebSocket Consumer, procesamiento enlaces/menciones, 69 tests passing)
+
+---
+
+## ✅ COMPLETADO (30 Marzo 2026) — Feature #9 FASE 3: Chat Backend
+
+### Backend — Modelos
+- ✅ `Conversacion`: 1-to-1 entre dos usuarios, unique_together(company, p1, p2), index(company, -ultimo_mensaje_at)
+- ✅ `Mensaje`: texto + HTML procesado + imagen R2 + reply threading + read tracking
+- ✅ Migración 0001_initial aplicada
+
+### Backend — Services
+- ✅ `ChatService.obtener_o_crear_conversacion()` — UUID normalization, idempotente
+- ✅ `ChatService.enviar_mensaje()` — procesa contenido + WS push + notificación destinatario + menciones
+- ✅ `ChatService.listar_mensajes()` — paginado con validación de participante
+- ✅ `ChatService.marcar_leido()` — read receipt + WS push
+- ✅ `ChatService.procesar_enlaces()` — [PRY-001] → HTML link (bleach sanitizado)
+- ✅ `ChatService.procesar_menciones()` — @Usuario → span HTML + notificación
+
+### Backend — API REST (6 endpoints)
+- ✅ GET/POST `/api/v1/chat/conversaciones/`
+- ✅ GET `/api/v1/chat/conversaciones/{id}/mensajes/`
+- ✅ POST `/api/v1/chat/conversaciones/{id}/mensajes/enviar/`
+- ✅ POST `/api/v1/chat/mensajes/{id}/marcar-leido/`
+- ✅ GET `/api/v1/chat/autocomplete/entidades/`
+- ✅ GET `/api/v1/chat/autocomplete/usuarios/`
+
+### Backend — WebSocket
+- ✅ `ChatConsumer` en `ws/chat/` — 7 eventos (new_message, message_read, typing, new_conversation, send_message, mark_read, join_conversation)
+- ✅ ASGI routing combinado con notifications
+
+### Tests — 69/69 passing
+- ✅ 5 model tests + 25 service tests + 21 view tests + 11 WebSocket tests + 7 notification regression tests
 
 ---
 
