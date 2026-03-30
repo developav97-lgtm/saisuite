@@ -40,7 +40,21 @@
   }
 }
 
-.fl-table { width: 100%; }
+.fl-table {
+  width: 100%;
+
+  // Las celdas deben crecer con su contenido, sin cortar texto
+  .mat-mdc-cell,
+  .mat-mdc-header-cell {
+    align-self: center;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    white-space: normal;
+    line-height: 1.4;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+  }
+}
 
 .fl-container { padding: 0; }
 
