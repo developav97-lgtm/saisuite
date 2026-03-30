@@ -3,8 +3,12 @@ import {
   Component,
   DestroyRef,
   OnInit,
+  OnDestroy,
+  TemplateRef,
+  ViewContainerRef,
   inject,
   signal,
+  viewChild,
 } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
@@ -16,6 +20,8 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { interval } from 'rxjs';
+import { Overlay, OverlayModule, OverlayRef } from '@angular/cdk/overlay';
+import { TemplatePortal } from '@angular/cdk/portal';
 
 import { NotificacionesService } from '../../services/notificaciones.service';
 import { Notificacion, NotificacionGrupo, NotificacionItem } from '../../../shared/models/notificacion.model';
@@ -46,6 +52,7 @@ export const SNOOZE_OPTIONS = [
   standalone: true,
   imports: [
     RouterLink,
+    OverlayModule,
     MatIconModule,
     MatButtonModule,
     MatBadgeModule,
@@ -58,10 +65,12 @@ export const SNOOZE_OPTIONS = [
   styleUrl: './notification-bell.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class NotificationBellComponent implements OnInit {
-  private readonly svc        = inject(NotificacionesService);
-  private readonly router     = inject(Router);
-  private readonly destroyRef = inject(DestroyRef);
+export class NotificationBellComponent implements OnInit, OnDestroy {
+  private readonly svc             = inject(NotificacionesService);
+  private readonly router          = inject(Router);
+  private readonly destroyRef      = inject(DestroyRef);
+  private readonly overlay         = inject(Overlay);
+  private readonly viewContainerRef = inject(ViewContainerRef);
 
   sinLeer        = signal(0);
   items          = signal<NotificacionItem[]>([]);
@@ -71,11 +80,22 @@ export class NotificationBellComponent implements OnInit {
 
   readonly snoozeOpts = SNOOZE_OPTIONS;
 
+  // Referencia al template del panel de acciones
+  readonly accionesTemplate = viewChild.required<TemplateRef<unknown>>('accionesPanel');
+
+  // Overlay ref para el panel de acciones
+  private _accionesOverlayRef: OverlayRef | null = null;
+  private _docClickListener: ((e: MouseEvent) => void) | null = null;
+
   ngOnInit(): void {
     this.cargarConteo();
     interval(30_000)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => this.cargarConteo());
+  }
+
+  ngOnDestroy(): void {
+    this._cerrarAccionesPanel();
   }
 
   cargarConteo(): void {
@@ -87,11 +107,17 @@ export class NotificationBellComponent implements OnInit {
 
   onMenuOpened(): void {
     this.loading.set(true);
+    this._cerrarAccionesPanel();
     this.accionesId.set(null);
     this.svc.listarAgrupadas().subscribe({
       next: r  => { this.items.set(r); this.loading.set(false); },
       error: () => this.loading.set(false),
     });
+  }
+
+  onMenuClosed(): void {
+    this._cerrarAccionesPanel();
+    this.accionesId.set(null);
   }
 
   // ── Navegar / marcar leída ─────────────────────────────────────────────────
@@ -106,7 +132,7 @@ export class NotificationBellComponent implements OnInit {
       });
     }
     const url = n.ancla ? `${n.url_accion}${n.ancla}` : n.url_accion;
-    if (url) this.router.navigateByUrl(url);
+    if (url?.startsWith('/')) this.router.navigateByUrl(url);
   }
 
   onGrupoClick(g: NotificacionGrupo): void {
@@ -117,7 +143,7 @@ export class NotificationBellComponent implements OnInit {
       },
     });
     const url = g.ancla ? `${g.url_accion}${g.ancla}` : g.url_accion;
-    if (url) this.router.navigateByUrl(url);
+    if (url?.startsWith('/')) this.router.navigateByUrl(url);
   }
 
   marcarTodasLeidas(): void {
@@ -133,7 +159,83 @@ export class NotificationBellComponent implements OnInit {
 
   toggleAcciones(event: Event, itemId: string): void {
     event.stopPropagation();
-    this.accionesId.update(id => id === itemId ? null : itemId);
+
+    // Si ya está abierto para el mismo item, cerrarlo
+    if (this.accionesId() === itemId) {
+      this._cerrarAccionesPanel();
+      return;
+    }
+
+    // Cerrar cualquier panel previo
+    this._cerrarAccionesPanel();
+
+    const btn = event.currentTarget as HTMLElement;
+
+    // Crear posicion estrategia: anclar debajo del boton, alineado a la derecha
+    const positionStrategy = this.overlay
+      .position()
+      .flexibleConnectedTo(btn)
+      .withPositions([
+        {
+          originX: 'end',
+          originY: 'bottom',
+          overlayX: 'end',
+          overlayY: 'top',
+          offsetY: 4,
+        },
+        {
+          // Fallback: abrir hacia arriba si no hay espacio abajo
+          originX: 'end',
+          originY: 'top',
+          overlayX: 'end',
+          overlayY: 'bottom',
+          offsetY: -4,
+        },
+      ])
+      .withPush(true)
+      .withViewportMargin(8);
+
+    this._accionesOverlayRef = this.overlay.create({
+      positionStrategy,
+      scrollStrategy: this.overlay.scrollStrategies.reposition(),
+      hasBackdrop: false,
+    });
+
+    // Cerrar al hacer click fuera del panel usando listener en document
+    // Se usa setTimeout para evitar que el click que abre el panel lo cierre inmediatamente
+    setTimeout(() => {
+      this._docClickListener = (e: MouseEvent) => {
+        const target = e.target as HTMLElement;
+        const panel = this._accionesOverlayRef?.overlayElement;
+        if (panel && !panel.contains(target)) {
+          this._cerrarAccionesPanel();
+        }
+      };
+      document.addEventListener('click', this._docClickListener, { capture: true });
+    }, 0);
+
+    // Renderizar el template en el overlay
+    const portal = new TemplatePortal(
+      this.accionesTemplate(),
+      this.viewContainerRef,
+      { $implicit: itemId },
+    );
+
+    this._accionesOverlayRef.attach(portal);
+    this.accionesId.set(itemId);
+  }
+
+  private _cerrarAccionesPanel(): void {
+    if (this._docClickListener) {
+      document.removeEventListener('click', this._docClickListener, { capture: true });
+      this._docClickListener = null;
+    }
+    if (this._accionesOverlayRef) {
+      this._accionesOverlayRef.detach();
+      this._accionesOverlayRef.dispose();
+      this._accionesOverlayRef = null;
+    }
+    this.accionesId.set(null);
   }
 
   onSnooze(event: Event, notifId: string, minutos: number): void {
@@ -142,7 +244,7 @@ export class NotificationBellComponent implements OnInit {
       next: () => {
         this._quitarIndividual(notifId);
         this.sinLeer.update(c => Math.max(0, c - 1));
-        this.accionesId.set(null);
+        this._cerrarAccionesPanel();
       },
     });
   }
@@ -158,7 +260,7 @@ export class NotificationBellComponent implements OnInit {
           if (pendientes === 0) {
             this._quitarGrupo(g.id);
             this.sinLeer.update(c => Math.max(0, c - g.cantidad));
-            this.accionesId.set(null);
+            this._cerrarAccionesPanel();
           }
         },
       });
@@ -171,7 +273,7 @@ export class NotificationBellComponent implements OnInit {
       next: () => {
         this._quitarIndividual(notifId);
         this.sinLeer.update(c => Math.max(0, c - 1));
-        this.accionesId.set(null);
+        this._cerrarAccionesPanel();
       },
     });
   }

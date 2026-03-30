@@ -1,0 +1,125 @@
+<div class="tl-page">
+  <div class="tl-header">
+    <div>
+      <h1 class="tl-title">Gestión de Empresas (Tenants)</h1>
+      <p class="tl-subtitle">Administra las empresas clientes y sus licencias</p>
+    </div>
+    <button mat-raised-button color="primary" (click)="crear()">
+      <mat-icon>add</mat-icon>
+      Nueva empresa
+    </button>
+  </div>
+
+  <!-- Filtro -->
+  <div class="tl-filter">
+    <mat-form-field appearance="outline" class="tl-search">
+      <mat-label>Buscar empresa o NIT</mat-label>
+      <mat-icon matPrefix>search</mat-icon>
+      <input matInput [ngModel]="search()" (ngModelChange)="search.set($event)" />
+    </mat-form-field>
+  </div>
+
+  <!-- Progress bar -->
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate" />
+  }
+
+  <!-- Tabla -->
+  @if (!loading() && filtered.length === 0) {
+    <div class="sc-empty-state">
+      <mat-icon>domain_disabled</mat-icon>
+      <p>No hay empresas registradas</p>
+      <button mat-stroked-button color="primary" (click)="crear()">
+        Crear primera empresa
+      </button>
+    </div>
+  } @else {
+    <table mat-table [dataSource]="filtered" class="tl-table mat-elevation-z2">
+
+      <!-- Nombre -->
+      <ng-container matColumnDef="name">
+        <th mat-header-cell *matHeaderCellDef>Empresa</th>
+        <td mat-cell *matCellDef="let t">
+          <div class="tl-company-name">
+            <span class="tl-name">{{ t.name }}</span>
+            @if (!t.is_active) {
+              <span class="tl-inactive-badge">Inactiva</span>
+            }
+          </div>
+        </td>
+      </ng-container>
+
+      <!-- NIT -->
+      <ng-container matColumnDef="nit">
+        <th mat-header-cell *matHeaderCellDef>NIT</th>
+        <td mat-cell *matCellDef="let t">{{ t.nit }}</td>
+      </ng-container>
+
+      <!-- Plan -->
+      <ng-container matColumnDef="plan">
+        <th mat-header-cell *matHeaderCellDef>Plan</th>
+        <td mat-cell *matCellDef="let t">{{ PLAN_LABELS[t.plan] ?? t.plan }}</td>
+      </ng-container>
+
+      <!-- Licencia -->
+      <ng-container matColumnDef="license">
+        <th mat-header-cell *matHeaderCellDef>Licencia</th>
+        <td mat-cell *matCellDef="let t">
+          <mat-chip [color]="getLicenseColor(t)" highlighted>
+            {{ getLicenseLabel(t) }}
+          </mat-chip>
+        </td>
+      </ng-container>
+
+      <!-- Vencimiento -->
+      <ng-container matColumnDef="vencimiento">
+        <th mat-header-cell *matHeaderCellDef>Vencimiento</th>
+        <td mat-cell *matCellDef="let t">
+          @if (t.license) {
+            <span [class]="getLicenseDaysClass(t)">
+              {{ t.license.expires_at | date:'dd/MM/yyyy' }}
+              @if (t.license.days_until_expiry >= 0 && !t.license.is_expired) {
+                <span class="tl-days">({{ t.license.days_until_expiry }}d)</span>
+              }
+            </span>
+          } @else {
+            <span class="tl-none">—</span>
+          }
+        </td>
+      </ng-container>
+
+      <!-- Usuarios concurrentes -->
+      <ng-container matColumnDef="usuarios">
+        <th mat-header-cell *matHeaderCellDef>Usuarios activos</th>
+        <td mat-cell *matCellDef="let t">
+          @if (t.license) {
+            <span>{{ t.active_users }}/{{ t.license.concurrent_users }}</span>
+          } @else {
+            <span class="tl-none">—</span>
+          }
+        </td>
+      </ng-container>
+
+      <!-- Acciones -->
+      <ng-container matColumnDef="acciones">
+        <th mat-header-cell *matHeaderCellDef>Acciones</th>
+        <td mat-cell *matCellDef="let t">
+          <button mat-icon-button matTooltip="Editar empresa y licencia" (click)="editar(t)">
+            <mat-icon>edit</mat-icon>
+          </button>
+          <button mat-icon-button
+            [matTooltip]="t.is_active ? 'Desactivar empresa' : 'Activar empresa'"
+            [color]="t.is_active ? 'warn' : 'primary'"
+            (click)="toggleActive(t)">
+            <mat-icon>{{ t.is_active ? 'block' : 'check_circle' }}</mat-icon>
+          </button>
+        </td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="columns"></tr>
+      <tr mat-row *matRowDef="let row; columns: columns;"
+        class="tl-row"
+        [class.tl-row--inactive]="!row.is_active"></tr>
+    </table>
+  }
+</div>

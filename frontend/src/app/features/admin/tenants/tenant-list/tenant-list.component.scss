@@ -1,0 +1,100 @@
+.tl-page {
+  padding: 1.5rem 2rem;
+}
+
+.tl-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.tl-title {
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin: 0 0 0.25rem;
+  color: var(--mat-sys-on-surface);
+}
+
+.tl-subtitle {
+  font-size: 0.875rem;
+  color: var(--mat-sys-on-surface-variant);
+  margin: 0;
+}
+
+.tl-filter {
+  margin-bottom: 1rem;
+}
+
+.tl-search {
+  width: 320px;
+}
+
+.tl-table {
+  width: 100%;
+}
+
+.tl-company-name {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.tl-name {
+  font-weight: 500;
+}
+
+.tl-inactive-badge {
+  font-size: 0.7rem;
+  background: var(--mat-sys-error-container);
+  color: var(--mat-sys-on-error-container);
+  border-radius: 4px;
+  padding: 0.1rem 0.4rem;
+}
+
+.tl-days {
+  font-size: 0.8rem;
+  color: var(--mat-sys-on-surface-variant);
+  margin-left: 0.25rem;
+}
+
+.tl-none {
+  color: var(--mat-sys-on-surface-variant);
+  opacity: 0.5;
+}
+
+.tl-row--inactive {
+  opacity: 0.55;
+}
+
+.days-critical {
+  color: var(--mat-sys-error);
+  font-weight: 600;
+}
+
+.days-warning {
+  color: #f57c00;
+  font-weight: 500;
+}
+
+.sc-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 3rem 0;
+  color: var(--mat-sys-on-surface-variant);
+
+  mat-icon {
+    font-size: 3rem;
+    width: 3rem;
+    height: 3rem;
+    opacity: 0.4;
+  }
+
+  p {
+    margin: 0;
+    font-size: 1rem;
+  }
+}

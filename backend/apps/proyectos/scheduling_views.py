@@ -41,7 +41,8 @@ logger = logging.getLogger(__name__)
 
 
 def _company_id(request) -> str:
-    return str(request.user.company_id)
+    ec = getattr(request.user, 'effective_company', None)
+    return str(ec.id) if ec else ''
 
 
 # ─────────────────────────────────────────────────────────────────────────────

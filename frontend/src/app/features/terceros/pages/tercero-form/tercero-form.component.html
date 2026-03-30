@@ -72,7 +72,7 @@
 
               <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
                 <mat-label>Número de identificación *</mat-label>
-                <input matInput formControlName="numero_identificacion" placeholder="900123456-7" />
+                <input matInput formControlName="numero_identificacion" maxlength="50" placeholder="900123456-7" />
                 @if (form.get('numero_identificacion')?.invalid && form.get('numero_identificacion')?.touched) {
                   <mat-error>Obligatorio.</mat-error>
                 }
@@ -96,7 +96,7 @@
               @if (tipoPersonaActual === 'juridica') {
                 <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always" class="sc-field--full">
                   <mat-label>Razón social *</mat-label>
-                  <input matInput formControlName="razon_social" placeholder="Empresa ABC S.A.S" />
+                  <input matInput formControlName="razon_social" maxlength="255" placeholder="Empresa ABC S.A.S" />
                   @if (form.get('razon_social')?.invalid && form.get('razon_social')?.touched) {
                     <mat-error>Obligatorio para persona jurídica.</mat-error>
                   }
@@ -104,17 +104,17 @@
               } @else {
                 <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
                   <mat-label>Primer nombre</mat-label>
-                  <input matInput formControlName="primer_nombre" />
+                  <input matInput formControlName="primer_nombre" maxlength="100" />
                 </mat-form-field>
 
                 <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
                   <mat-label>Segundo nombre</mat-label>
-                  <input matInput formControlName="segundo_nombre" />
+                  <input matInput formControlName="segundo_nombre" maxlength="100" />
                 </mat-form-field>
 
                 <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
                   <mat-label>Primer apellido *</mat-label>
-                  <input matInput formControlName="primer_apellido" />
+                  <input matInput formControlName="primer_apellido" maxlength="100" />
                   @if (form.get('primer_apellido')?.invalid && form.get('primer_apellido')?.touched) {
                     <mat-error>Obligatorio.</mat-error>
                   }
@@ -122,7 +122,7 @@
 
                 <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
                   <mat-label>Segundo apellido</mat-label>
-                  <input matInput formControlName="segundo_apellido" />
+                  <input matInput formControlName="segundo_apellido" maxlength="100" />
                 </mat-form-field>
               }
 
@@ -151,13 +151,13 @@
               <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
                 <mat-label>Teléfono fijo</mat-label>
                 <mat-icon matPrefix class="tf-field-icon">phone</mat-icon>
-                <input matInput formControlName="telefono" placeholder="(2) 345 6789" />
+                <input matInput formControlName="telefono" maxlength="30" placeholder="(2) 345 6789" />
               </mat-form-field>
 
               <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
                 <mat-label>Celular</mat-label>
                 <mat-icon matPrefix class="tf-field-icon">smartphone</mat-icon>
-                <input matInput formControlName="celular" placeholder="300 123 4567" />
+                <input matInput formControlName="celular" maxlength="30" placeholder="300 123 4567" />
               </mat-form-field>
 
             </div>
@@ -199,14 +199,14 @@
 
                     <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
                       <mat-label>Nombre del punto</mat-label>
-                      <input matInput formControlName="nombre_sucursal" placeholder="Ej: Oficina principal" />
+                      <input matInput formControlName="nombre_sucursal" maxlength="255" placeholder="Ej: Oficina principal" />
                     </mat-form-field>
                   </div>
 
                   <div class="tf-dir-row">
                     <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
                       <mat-label>Departamento *</mat-label>
-                      <input matInput formControlName="departamento"
+                      <input matInput formControlName="departamento" maxlength="100"
                              [matAutocomplete]="autoDepC"
                              (input)="onDeptoInput($event)"
                              placeholder="Buscar…" />
@@ -223,7 +223,7 @@
 
                     <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
                       <mat-label>Ciudad *</mat-label>
-                      <input matInput formControlName="ciudad"
+                      <input matInput formControlName="ciudad" maxlength="100"
                              [matAutocomplete]="autoCityC"
                              (input)="onCityInput($event)"
                              placeholder="Buscar…" />
@@ -240,7 +240,7 @@
 
                   <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
                     <mat-label>Dirección (línea 1) *</mat-label>
-                    <input matInput formControlName="direccion_linea1" placeholder="Calle 5 # 12-34" />
+                    <input matInput formControlName="direccion_linea1" maxlength="255" placeholder="Calle 5 # 12-34" />
                     @if (dirForm.get('direccion_linea1')?.invalid && dirForm.get('direccion_linea1')?.touched) {
                       <mat-error>Obligatorio.</mat-error>
                     }
@@ -248,12 +248,12 @@
 
                   <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
                     <mat-label>Dirección (línea 2)</mat-label>
-                    <input matInput formControlName="direccion_linea2" placeholder="Apto 201, Oficina 3" />
+                    <input matInput formControlName="direccion_linea2" maxlength="255" placeholder="Apto 201, Oficina 3" />
                   </mat-form-field>
 
                   <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
                     <mat-label>Nombre de contacto</mat-label>
-                    <input matInput formControlName="nombre_contacto" />
+                    <input matInput formControlName="nombre_contacto" maxlength="255" />
                   </mat-form-field>
 
                   <div class="tf-dir-row">
@@ -321,14 +321,14 @@
 
                         <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
                           <mat-label>Nombre del punto</mat-label>
-                          <input matInput formControlName="nombre_sucursal" />
+                          <input matInput formControlName="nombre_sucursal" maxlength="255" />
                         </mat-form-field>
                       </div>
 
                       <div class="tf-dir-row">
                         <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
                           <mat-label>Departamento *</mat-label>
-                          <input matInput formControlName="departamento"
+                          <input matInput formControlName="departamento" maxlength="100"
                                  [matAutocomplete]="autoDepE"
                                  (input)="onDeptoInput($event)"
                                  placeholder="Buscar…" />
@@ -345,7 +345,7 @@
 
                         <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
                           <mat-label>Ciudad *</mat-label>
-                          <input matInput formControlName="ciudad"
+                          <input matInput formControlName="ciudad" maxlength="100"
                                  [matAutocomplete]="autoCityE"
                                  (input)="onCityInput($event)"
                                  placeholder="Buscar…" />
@@ -362,7 +362,7 @@
 
                       <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
                         <mat-label>Dirección (línea 1) *</mat-label>
-                        <input matInput formControlName="direccion_linea1" placeholder="Calle 5 # 12-34" />
+                        <input matInput formControlName="direccion_linea1" maxlength="255" placeholder="Calle 5 # 12-34" />
                         @if (dirForm.get('direccion_linea1')?.invalid && dirForm.get('direccion_linea1')?.touched) {
                           <mat-error>Obligatorio.</mat-error>
                         }
@@ -370,18 +370,18 @@
 
                       <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
                         <mat-label>Dirección (línea 2)</mat-label>
-                        <input matInput formControlName="direccion_linea2" />
+                        <input matInput formControlName="direccion_linea2" maxlength="255" />
                       </mat-form-field>
 
                       <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
                         <mat-label>Nombre de contacto</mat-label>
-                        <input matInput formControlName="nombre_contacto" />
+                        <input matInput formControlName="nombre_contacto" maxlength="255" />
                       </mat-form-field>
 
                       <div class="tf-dir-row">
                         <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
                           <mat-label>Teléfono contacto</mat-label>
-                          <input matInput formControlName="telefono_contacto" />
+                          <input matInput formControlName="telefono_contacto" maxlength="30" />
                         </mat-form-field>
 
                         <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
@@ -476,14 +476,14 @@
 
                       <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
                         <mat-label>Nombre del punto</mat-label>
-                        <input matInput formControlName="nombre_sucursal" placeholder="Ej: Bodega Norte" />
+                        <input matInput formControlName="nombre_sucursal" maxlength="255" placeholder="Ej: Bodega Norte" />
                       </mat-form-field>
                     </div>
 
                     <div class="tf-dir-row">
                       <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
                         <mat-label>Departamento *</mat-label>
-                        <input matInput formControlName="departamento"
+                        <input matInput formControlName="departamento" maxlength="100"
                                [matAutocomplete]="autoDepN"
                                (input)="onDeptoInput($event)"
                                placeholder="Buscar…" />
@@ -500,7 +500,7 @@
 
                       <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
                         <mat-label>Ciudad *</mat-label>
-                        <input matInput formControlName="ciudad"
+                        <input matInput formControlName="ciudad" maxlength="100"
                                [matAutocomplete]="autoCityN"
                                (input)="onCityInput($event)"
                                placeholder="Buscar…" />
@@ -517,7 +517,7 @@
 
                     <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
                       <mat-label>Dirección (línea 1) *</mat-label>
-                      <input matInput formControlName="direccion_linea1" placeholder="Calle 5 # 12-34" />
+                      <input matInput formControlName="direccion_linea1" maxlength="255" placeholder="Calle 5 # 12-34" />
                       @if (dirForm.get('direccion_linea1')?.invalid && dirForm.get('direccion_linea1')?.touched) {
                         <mat-error>Obligatorio.</mat-error>
                       }
@@ -525,18 +525,18 @@
 
                     <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
                       <mat-label>Dirección (línea 2)</mat-label>
-                      <input matInput formControlName="direccion_linea2" placeholder="Apto 201, Oficina 3" />
+                      <input matInput formControlName="direccion_linea2" maxlength="255" placeholder="Apto 201, Oficina 3" />
                     </mat-form-field>
 
                     <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
                       <mat-label>Nombre de contacto</mat-label>
-                      <input matInput formControlName="nombre_contacto" />
+                      <input matInput formControlName="nombre_contacto" maxlength="255" />
                     </mat-form-field>
 
                     <div class="tf-dir-row">
                       <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
                         <mat-label>Teléfono contacto</mat-label>
-                        <input matInput formControlName="telefono_contacto" />
+                        <input matInput formControlName="telefono_contacto" maxlength="30" />
                       </mat-form-field>
 
                       <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
@@ -567,7 +567,7 @@
                   <mat-icon>location_off</mat-icon>
                   <p>No hay direcciones registradas.</p>
                   <button mat-stroked-button color="primary" type="button" (click)="abrirNuevaDir()">
-                    <mat-icon>add</mat-icon> Agregar primera dirección
+                    Agregar primera dirección
                   </button>
                 </div>
               }

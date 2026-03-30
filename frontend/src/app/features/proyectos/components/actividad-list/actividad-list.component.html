@@ -239,7 +239,7 @@
       <!-- Nombre -->
       <mat-form-field appearance="outline" class="al-field-full">
         <mat-label>Nombre</mat-label>
-        <input matInput formControlName="nombre" placeholder="Ej: Excavación manual" />
+        <input matInput formControlName="nombre" maxlength="255" placeholder="Ej: Excavación manual" />
         @if (form.get('nombre')?.hasError('required')) {
           <mat-error>El nombre es obligatorio</mat-error>
         }
@@ -247,7 +247,7 @@
 
       <mat-form-field appearance="outline" class="al-field-full">
         <mat-label>Descripción (opcional)</mat-label>
-        <textarea matInput formControlName="descripcion" rows="2"></textarea>
+        <textarea matInput formControlName="descripcion" rows="2" maxlength="500"></textarea>
       </mat-form-field>
 
       <div class="al-form-row">
@@ -255,6 +255,7 @@
           <mat-label>Unidad de medida</mat-label>
           <input matInput
                  formControlName="unidad_medida"
+                 maxlength="50"
                  placeholder="hora, m², kg…"
                  (input)="onUnidadInput($event)"
                  [matAutocomplete]="unidadAuto" />

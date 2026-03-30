@@ -41,11 +41,11 @@
     <mat-progress-bar mode="indeterminate" class="ul-progress" />
   }
 
-  <mat-table [dataSource]="users()" class="ul-table">
+  <mat-table [dataSource]="dataSource" matSort class="ul-table">
 
     <!-- Nombre -->
     <ng-container matColumnDef="nombre">
-      <mat-header-cell *matHeaderCellDef>Nombre</mat-header-cell>
+      <mat-header-cell *matHeaderCellDef mat-sort-header>Nombre</mat-header-cell>
       <mat-cell *matCellDef="let u">
         <div class="ul-user-cell">
           <div class="ul-avatar">{{ (u.full_name || u.email).charAt(0).toUpperCase() }}</div>
@@ -56,13 +56,13 @@
 
     <!-- Email -->
     <ng-container matColumnDef="email">
-      <mat-header-cell *matHeaderCellDef>Correo</mat-header-cell>
+      <mat-header-cell *matHeaderCellDef mat-sort-header>Correo</mat-header-cell>
       <mat-cell *matCellDef="let u">{{ u.email }}</mat-cell>
     </ng-container>
 
     <!-- Rol -->
     <ng-container matColumnDef="rol">
-      <mat-header-cell *matHeaderCellDef>Rol</mat-header-cell>
+      <mat-header-cell *matHeaderCellDef mat-sort-header>Rol</mat-header-cell>
       <mat-cell *matCellDef="let u">
         <span class="ul-chip ul-chip--{{ u.role }}">
           {{ getRoleLabel(u.role) }}
@@ -72,7 +72,7 @@
 
     <!-- Estado -->
     <ng-container matColumnDef="estado">
-      <mat-header-cell *matHeaderCellDef>Estado</mat-header-cell>
+      <mat-header-cell *matHeaderCellDef mat-sort-header>Estado</mat-header-cell>
       <mat-cell *matCellDef="let u">
         @if (u.is_active) {
           <span class="ul-badge ul-badge--active">Activo</span>

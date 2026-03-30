@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 class AuthService:
 
     @staticmethod
-    def login(email: str, password: str) -> dict:
+    def login(email: str, password: str, ip_address: str | None = None, user_agent: str = '') -> dict:
         user: User | None = authenticate(request=None, username=email, password=password)
         if user is None or not user.is_active:
             logger.info('login_failed', extra={'email': email})
@@ -35,8 +35,48 @@ class AuthService:
                 'Tu usuario no está asociado a ninguna empresa. Contacta al administrador.'
             )
 
+        # Verificar licencia y concurrencia (solo para usuarios normales)
+        is_exempt = getattr(user, 'is_superadmin', False) or getattr(user, 'is_staff', False)
+        company = getattr(user, 'effective_company', None)
+
+        if not is_exempt and company:
+            from apps.companies.services import LicenseService
+            from apps.companies.models import CompanyLicense
+            try:
+                lic = CompanyLicense.objects.get(company=company)
+                if not lic.is_active_and_valid:
+                    logger.info('login_blocked_license', extra={'user_id': str(user.id), 'status': lic.status})
+                    raise AuthenticationFailed(
+                        'Tu empresa no tiene una licencia activa. Contacta a ventas@valmentech.com.'
+                    )
+                # Verificar concurrencia (excluir el usuario actual — tendrá nueva sesión)
+                can_access, activos, permitidos = LicenseService.verify_concurrent_limit(
+                    company, exclude_user=user
+                )
+                if not can_access:
+                    logger.info('login_blocked_concurrent', extra={
+                        'user_id': str(user.id), 'activos': activos, 'permitidos': permitidos
+                    })
+                    raise AuthenticationFailed(
+                        f'Se alcanzó el límite de {permitidos} usuarios simultáneos. '
+                        f'Contacta al administrador de tu empresa.'
+                    )
+            except CompanyLicense.DoesNotExist:
+                logger.warning('login_no_license', extra={'user_id': str(user.id), 'company_id': str(company.id)})
+                raise AuthenticationFailed(
+                    'Tu empresa no tiene una licencia configurada. Contacta a ventas@valmentech.com.'
+                )
+
+        # Crear sesión (invalida la anterior del mismo usuario)
+        from apps.companies.services import SessionService
+        session = SessionService.create_session(user, ip_address=ip_address, user_agent=user_agent)
+
+        # Generar JWT con session_id en el payload
         refresh = RefreshToken.for_user(user)
-        logger.info('login_success', extra={'user_id': str(user.id)})
+        refresh['session_id'] = str(session.session_id)
+        refresh.access_token['session_id'] = str(session.session_id)
+
+        logger.info('login_success', extra={'user_id': str(user.id), 'session_id': str(session.session_id)})
         return {
             'access':  str(refresh.access_token),
             'refresh': str(refresh),
@@ -44,10 +84,16 @@ class AuthService:
         }
 
     @staticmethod
-    def logout(refresh_token_str: str) -> None:
+    def logout(refresh_token_str: str, user=None) -> None:
         try:
-            RefreshToken(refresh_token_str).blacklist()
-            logger.info('logout_success')
+            token = RefreshToken(refresh_token_str)
+            # Invalidar la sesión asociada al token
+            session_id = token.get('session_id')
+            if session_id:
+                from apps.companies.services import SessionService
+                SessionService.invalidate_session(session_id)
+            token.blacklist()
+            logger.info('logout_success', extra={'user_id': str(user.id) if user else 'unknown'})
         except TokenError:
             raise ValidationError('Token inválido o expirado.')
 
@@ -144,6 +190,20 @@ class UserService:
         if User.objects.filter(email=email).exists():
             raise ValidationError({'email': 'Ya existe un usuario con este email.'})
 
+        # Validar límite de usuarios de la licencia
+        from apps.companies.models import CompanyLicense
+        try:
+            lic = CompanyLicense.objects.get(company=company)
+            current_count = User.objects.filter(company=company, is_active=True).count()
+            if current_count >= lic.max_users:
+                raise ValidationError({
+                    'non_field_errors': [
+                        f'Se alcanzó el límite de {lic.max_users} usuario(s) permitido(s) por la licencia.'
+                    ]
+                })
+        except CompanyLicense.DoesNotExist:
+            pass  # Sin licencia configurada, permitir creación
+
         user = User.objects.create_user(
             email=email,
             password=data['password'],
@@ -158,7 +218,7 @@ class UserService:
             user=user,
             company=company,
             role=data.get('role', User.Role.VIEWER),
-            modules_access=[],
+            modules_access=data.get('modules_access', []),
             is_active=True,
         )
 
@@ -182,7 +242,7 @@ class UserService:
         - is_active: True/False o None para todos
         """
         from django.db.models import Q
-        qs = User.objects.filter(company=company)
+        qs = User.objects.filter(company=company, is_staff=False, is_superadmin=False)
         if search:
             qs = qs.filter(
                 Q(email__icontains=search) |
@@ -232,6 +292,20 @@ class UserService:
                 modules_access=data['modules_access']
             )
 
+        # Asignación de rol granular
+        if 'rol_granular_id' in data:
+            from apps.users.models import Role
+            rol_id = data['rol_granular_id']
+            if rol_id is None:
+                user.rol_granular = None
+            else:
+                try:
+                    user.rol_granular = Role.objects.get(id=rol_id, empresa=company)
+                except Role.DoesNotExist:
+                    from rest_framework.exceptions import ValidationError as DRFValidationError
+                    raise DRFValidationError({'rol_granular_id': 'Rol no encontrado en esta empresa.'})
+            user.save(update_fields=['rol_granular', 'updated_at'])
+
         logger.info(
             'user_updated',
             extra={
@@ -240,6 +314,27 @@ class UserService:
                 'fields':     update_fields + (['modules_access'] if 'modules_access' in data else []),
             },
         )
+        return user
+
+    @staticmethod
+    @transaction.atomic
+    def create_internal_user(data: dict) -> 'User':
+        """Crea un usuario interno ValMen Tech (superadmin o soporte), sin company."""
+        email = data['email']
+        if User.objects.filter(email=email).exists():
+            raise ValidationError({'email': 'Ya existe un usuario con este email.'})
+
+        user = User.objects.create_user(
+            email=email,
+            password=data['password'],
+            first_name=data.get('first_name', ''),
+            last_name=data.get('last_name', ''),
+            is_staff=data.get('is_staff', True),
+            is_superadmin=data.get('is_superadmin', False),
+            company=None,
+            is_active=True,
+        )
+        logger.info('internal_user_created', extra={'user_id': str(user.id), 'email': user.email})
         return user
 
     @staticmethod

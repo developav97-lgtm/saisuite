@@ -5,6 +5,7 @@ DEBUG = True
 SECRET_KEY = env('SECRET_KEY', default='dev-secret-key-cambiar-en-produccion')
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0', 'backend', 'saisuite-api']
 CORS_ALLOWED_ORIGINS = env.list('CORS_ALLOWED_ORIGINS', default=['http://localhost:4200'])
+CORS_ALLOW_ALL_ORIGINS = True  # dev only — Vite proxy reescribe Origin
 CORS_ALLOW_CREDENTIALS = True
 
 # Email: en dev imprime en consola

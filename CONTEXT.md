@@ -1,6 +1,113 @@
 # CONTEXT.md - Estado del Proyecto Saicloud
 
-**Última actualización:** 28 Marzo 2026
+**Última actualización:** 29 Marzo 2026
+**Sesión:** Feature #8 — Sistema de Licencias Multi-Tenant — COMPLETA (Backend: modelos, migraciones, servicios, middleware, management command. Frontend: pantalla bloqueante, guard, panel superadmin, alertas)
+
+---
+
+## ✅ COMPLETADO (29 Marzo 2026) — Feature #8: Sistema de Licencias Multi-Tenant
+
+### Backend — Chunk 1: Modelos + Migraciones
+
+- ✅ `CompanyLicense` extendido: `concurrent_users`, `modules_included` (JSON), `messages_quota/used`, `ai_tokens_quota/used`, `last_reset_date`, `created_by` (FK User)
+- ✅ `LicenseHistory` nuevo modelo: historial de cambios de licencia por tipo (created/renewed/extended/suspended/activated/modified)
+- ✅ `UserSession` nuevo modelo en `apps/users`: `session_id` UUID único, `login_time`, `last_activity`, `ip_address`, `user_agent`. Método `is_active()` con timeout 8h. Método `touch()` para actualizar actividad.
+- ✅ Migración `0005_license_concurrent_modules_history.py` — companies
+- ✅ Migración `0003_usersession.py` — users
+- ✅ Fix `check=Q(` → `condition=Q(` en `proyectos/models.py` y migraciones 0015 y 0018 (bug Django 5 CheckConstraint)
+
+### Backend — Chunk 2: Servicios
+
+- ✅ `LicenseService.create_license_with_history()` — crea licencia + registra en historial
+- ✅ `LicenseService.update_license_with_history()` — actualiza licencia + detecta tipo de cambio automáticamente
+- ✅ `LicenseService.get_license_history()` — historial de una licencia
+- ✅ `LicenseService.reset_monthly_usage_all()` — reset masivo de mensajes/tokens
+- ✅ `LicenseService.count_active_sessions()` — sesiones activas de empresa
+- ✅ `LicenseService.verify_concurrent_limit()` — verifica si puede admitir nuevo usuario
+- ✅ `SessionService` (nuevo en `companies/services.py`): `create_session`, `validate_session`, `invalidate_session`, `invalidate_user_sessions`
+- ✅ `AuthService.login()` extendido: verifica licencia + concurrencia al login, crea `UserSession`, incluye `session_id` en JWT payload
+- ✅ `AuthService.logout()` extendido: invalida `UserSession` al hacer logout
+
+### Backend — Chunk 3: Middleware + Serializers
+
+- ✅ `LicensePermission` extendida: valida `session_id` del JWT en cada request, llama `session.touch()`, bloquea con 401 si sesión inválida
+- ✅ `CompanyLicenseSerializer` actualizado: incluye todos los nuevos campos + historial + is_active_and_valid
+- ✅ `CompanyLicenseSummarySerializer` — versión ligera para listas
+- ✅ `LicenseHistorySerializer` — solo lectura
+- ✅ `CompanyLicenseWriteSerializer` — reescrito con Serializer (no ModelSerializer) para incluir nuevos campos
+- ✅ `TenantCreateSerializer` — crear empresa + licencia en un paso
+- ✅ `TenantWithLicenseSerializer` — empresa con resumen de licencia + usuarios activos + módulos
+- ✅ `LicenseSummarySerializer` en users/serializers — incluido en `UserMeSerializer`/`CompanySummarySerializer`
+
+### Backend — Chunk 4: Views + URLs
+
+- ✅ `AdminTenantListView` — GET/POST `/api/v1/admin/tenants/`
+- ✅ `AdminTenantDetailView` — GET/PATCH `/api/v1/admin/tenants/{pk}/`
+- ✅ `AdminTenantLicenseView` — GET/POST/PATCH `/api/v1/admin/tenants/{pk}/license/`
+- ✅ `AdminLicenseHistoryView` — GET `/api/v1/admin/tenants/{pk}/license/history/`
+- ✅ `AdminLicensePaymentView` — POST `/api/v1/admin/tenants/{pk}/license/payments/`
+- ✅ `AdminTenantActivateView` — POST `/api/v1/admin/tenants/{pk}/activate/`
+- ✅ `apps/companies/admin_urls.py` creado
+- ✅ `config/urls.py` actualizado: agrega `/api/v1/admin/tenants/`
+- ✅ `LoginView` actualizado: pasa ip_address y user_agent al service
+
+### Backend — Chunk 5: Management Command
+
+- ✅ `management/commands/reset_monthly_usage.py` — reset masivo contadores IA
+- ✅ Flags: `--dry-run`
+- ✅ Scheduling: AWS EventBridge `cron(0 0 1 * ? *)` o `0 0 1 * * /app/manage.py reset_monthly_usage`
+
+### Frontend — Chunk 6: Modelos + Guard + Pantalla bloqueante
+
+- ✅ `auth.models.ts` actualizado: `LicenseSummary`, `CompanySummary.license`, `UserProfile.is_staff`
+- ✅ `license.guard.ts` creado: redirige a `/license-expired` si sin licencia válida. Exentos: superadmin, staff.
+- ✅ `app.routes.ts` actualizado: `licenseGuard` en rutas privadas
+- ✅ `LicenseExpiredComponent` mejorado: 2 modos (`no_license` y `session_expired` por query param)
+- ✅ `auth.interceptor.ts` actualizado: detecta "otro dispositivo" en 401 → redirige a `/license-expired?reason=session_expired`
+- ✅ `AuthService.clearStoragePublic()` expuesto para el interceptor
+
+### Frontend — Chunk 7: Panel Superadmin Tenants
+
+- ✅ `tenant.model.ts` — todos los tipos TypeScript (Tenant, TenantLicense, LicenseHistory, LicensePayment, etc.)
+- ✅ `tenant.service.ts` — listTenants, getTenant, createTenant, updateTenant, setTenantActive, getLicense, createLicense, updateLicense, getLicenseHistory, addPayment
+- ✅ `TenantListComponent` — tabla con chips de estado, días hasta vencimiento, usuarios activos, acciones
+- ✅ `TenantFormComponent` — formulario tabs (empresa / licencia / historial), crear y editar
+- ✅ `admin.routes.ts` actualizado: rutas `/admin/tenants`, `/admin/tenants/nuevo`, `/admin/tenants/:id`
+- ✅ `SidebarComponent` actualizado: inyecta AuthService, muestra "Tenants (Superadmin)" solo para superadmins/staff
+
+### Frontend — Chunk 8: Alertas de Vencimiento
+
+- ✅ `ShellComponent` actualizado: `licenseWarning` signal (computed), banner de alerta con 3 niveles
+  - 30-8 días: warning amarillo
+  - 7-2 días: danger rojo claro
+  - 1 día: critical rojo + animación pulse
+- ✅ Banner descartable con botón X
+
+### Estado de tests
+
+- ⚠️ Tests unitarios del sistema de licencias pendientes (deuda técnica)
+- ✅ `python manage.py check` — 0 issues
+- ✅ `npx tsc --noEmit` — 0 errores TypeScript
+- ✅ `ng build --configuration=production` — compila (solo errores de budget pre-existentes)
+
+### Endpoints disponibles — Feature #8 (Sistema de Licencias)
+
+```
+GET/POST  /api/v1/admin/tenants/
+GET/PATCH /api/v1/admin/tenants/{pk}/
+POST      /api/v1/admin/tenants/{pk}/activate/
+GET/POST/PATCH /api/v1/admin/tenants/{pk}/license/
+GET       /api/v1/admin/tenants/{pk}/license/history/
+POST      /api/v1/admin/tenants/{pk}/license/payments/
+```
+
+### Decisiones
+
+- DEC-030: Extender CompanyLicense vs nuevo modelo
+- DEC-031: LicensePermission como DRF Permission vs Middleware WSGI
+
+---
+
 **Sesión:** Feature #7 — Budget & Cost Tracking — COMPLETA (Chunks 1-10: modelos, migraciones, servicios, vistas, URLs, tests services, Angular, tests vistas, management command, documentación)
 
 ---

@@ -1,8 +1,32 @@
+export interface LicenseSummary {
+  status: 'trial' | 'active' | 'expired' | 'suspended';
+  expires_at: string;
+  days_until_expiry: number;
+  is_active_and_valid: boolean;
+  concurrent_users: number;
+  modules_included: string[];
+}
+
 export interface CompanySummary {
   id: string;
   name: string;
   nit: string;
   plan?: string;
+  license?: LicenseSummary | null;
+}
+
+export interface PermissionSummary {
+  id: number;
+  codigo: string;
+  modulo: string;
+  accion: string;
+}
+
+export interface RolGranularSummary {
+  id: number;
+  nombre: string;
+  tipo: 'admin' | 'readonly' | 'custom';
+  permisos?: PermissionSummary[];
 }
 
 export interface UserProfile {
@@ -13,7 +37,13 @@ export interface UserProfile {
   full_name: string;
   role: string;
   is_superadmin?: boolean;
+  is_staff?: boolean;
+  is_superuser?: boolean;
   company: CompanySummary | null;
+  effective_company?: CompanySummary | null;
+  tipo_usuario?: 'superadmin' | 'soporte' | 'admin_tenant' | 'usuario_tenant';
+  tenant_activo?: { id: string; name: string; nit: string } | null;
+  rol_granular?: RolGranularSummary | null;
 }
 
 export interface LoginRequest {

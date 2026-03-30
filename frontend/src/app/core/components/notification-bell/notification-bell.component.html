@@ -3,6 +3,7 @@
   mat-icon-button
   [matMenuTriggerFor]="menu"
   (menuOpened)="onMenuOpened()"
+  (menuClosed)="onMenuClosed()"
   matTooltip="Notificaciones"
   aria-label="Notificaciones">
 
@@ -76,19 +77,6 @@
                 <mat-icon>more_vert</mat-icon>
               </button>
             </div>
-
-            <!-- Panel snooze/remind-me del grupo -->
-            @if (accionesId() === item.id) {
-              <div class="nb-acciones-panel" (click)="$event.stopPropagation()">
-                <span class="nb-acciones-label">Posponer grupo</span>
-                @for (opt of snoozeOpts; track opt.minutos) {
-                  <button mat-menu-item class="nb-accion-opt"
-                    (click)="onSnoozeGrupo($event, item, opt.minutos)">
-                    <mat-icon>snooze</mat-icon>{{ opt.label }}
-                  </button>
-                }
-              </div>
-            }
           </div>
 
         <!-- ── INDIVIDUAL ─────────────────────────────────────────────── -->
@@ -111,7 +99,7 @@
               <span class="nb-item-tiempo">{{ formatTiempo(item.notificacion.created_at) }}</span>
             </div>
 
-            <!-- Acciones: dot + menú -->
+            <!-- Acciones: dot + botón -->
             <div class="nb-item-actions" (click)="$event.stopPropagation()">
               @if (!item.notificacion.leida) {
                 <span class="nb-dot" aria-hidden="true"></span>
@@ -122,27 +110,6 @@
                 <mat-icon>more_vert</mat-icon>
               </button>
             </div>
-
-            <!-- Panel snooze/remind-me individual -->
-            @if (accionesId() === item.notificacion.id) {
-              <div class="nb-acciones-panel" (click)="$event.stopPropagation()">
-                <span class="nb-acciones-label">Posponer</span>
-                @for (opt of snoozeOpts; track opt.minutos) {
-                  <button mat-menu-item class="nb-accion-opt"
-                    (click)="onSnooze($event, item.notificacion.id, opt.minutos)">
-                    <mat-icon>snooze</mat-icon>{{ opt.label }}
-                  </button>
-                }
-                <mat-divider />
-                <span class="nb-acciones-label">Recordarme en</span>
-                @for (opt of snoozeOpts; track opt.minutos) {
-                  <button mat-menu-item class="nb-accion-opt"
-                    (click)="onRemindMe($event, item.notificacion.id, opt.minutos)">
-                    <mat-icon>alarm</mat-icon>{{ opt.label }}
-                  </button>
-                }
-              </div>
-            }
           </div>
         }
       }
@@ -164,3 +131,37 @@
   }
 
 </mat-menu>
+
+<!-- ── Panel de acciones (renderizado via CDK Overlay fuera del mat-menu) ── -->
+<ng-template #accionesPanel>
+  <div class="nb-acciones-panel" (click)="$event.stopPropagation()">
+    @for (item of items(); track item.tipo === 'grupo' ? item.id : item.notificacion.id) {
+      @if (item.tipo === 'grupo' && accionesId() === item.id) {
+        <span class="nb-acciones-label">Posponer grupo</span>
+        @for (opt of snoozeOpts; track opt.minutos) {
+          <button mat-menu-item class="nb-accion-opt"
+            (click)="onSnoozeGrupo($event, item, opt.minutos)">
+            <mat-icon>snooze</mat-icon>{{ opt.label }}
+          </button>
+        }
+      }
+      @if (item.tipo === 'individual' && accionesId() === item.notificacion.id) {
+        <span class="nb-acciones-label">Posponer</span>
+        @for (opt of snoozeOpts; track opt.minutos) {
+          <button mat-menu-item class="nb-accion-opt"
+            (click)="onSnooze($event, item.notificacion.id, opt.minutos)">
+            <mat-icon>snooze</mat-icon>{{ opt.label }}
+          </button>
+        }
+        <mat-divider />
+        <span class="nb-acciones-label">Recordarme en</span>
+        @for (opt of snoozeOpts; track opt.minutos) {
+          <button mat-menu-item class="nb-accion-opt"
+            (click)="onRemindMe($event, item.notificacion.id, opt.minutos)">
+            <mat-icon>alarm</mat-icon>{{ opt.label }}
+          </button>
+        }
+      }
+    }
+  </div>
+</ng-template>

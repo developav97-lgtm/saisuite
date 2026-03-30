@@ -226,6 +226,97 @@ Para componentes que viven dentro de un tab (ej: `fase-list`, `actividad-proyect
 - Botón **Guardar**: `mat-raised-button color="primary"`, tipo `submit`.
 - Spinner de 18px dentro del botón mientras guarda, no reemplaza el texto.
 
+### 4.0 Límites de longitud en inputs (estándar obligatorio)
+
+Todo `input` y `textarea` de texto **debe** declarar `maxlength` (y `minlength` cuando aplique) igual al `max_length` del campo Django correspondiente. Esto previene errores de BD y da feedback inmediato al usuario.
+
+**Reglas:**
+- `maxlength` en el HTML siempre igual al `max_length` del modelo Django.
+- `minlength` cuando el validador del formulario lo requiere (ej: contraseñas).
+- Campos `type="number"` deben tener `min` y `max` cuando el campo Django es un rango acotado.
+- Campos `readonly` o de sólo visualización están exentos.
+- Campos autocomplete (FK lookups) están exentos — el valor final lo pone el selector.
+- `textarea` con `TextField` (sin límite en Django) usan `maxlength="500"` por convención UX.
+
+**Tabla de referencia rápida (modelos principales):**
+
+| Modelo | Campo | maxlength |
+|---|---|---|
+| User | first_name, last_name | 150 |
+| Company | name | 255 |
+| Company | nit | 20 |
+| Project | nombre | 255 |
+| Project | codigo | 50 |
+| Phase | nombre | 255 |
+| Task | nombre | 200 |
+| Task | codigo | 50 |
+| Tercero | numero_identificacion | 50 |
+| Tercero | razon_social | 255 |
+| Tercero | primer_nombre, segundo_nombre, primer_apellido, segundo_apellido | 100 |
+| Tercero | telefono, celular | 30 |
+| TerceroDireccion | nombre_sucursal, direccion_linea1/2, nombre_contacto | 255 |
+| TerceroDireccion | departamento, ciudad | 100 |
+| TerceroDireccion | telefono_contacto | 30 |
+| ProjectExpense | description | 255 |
+| TextField (cualquier) | notas, descripcion | 500 (convención UX) |
+
+### 4.1 Campos monetarios y numéricos formateados (estándar obligatorio)
+
+Todo campo que reciba un valor monetario o numérico grande **debe** formatearse en tiempo real mientras el usuario escribe. Patrón canónico (igual a `proyecto-form`):
+
+**TypeScript:**
+```typescript
+// 1. Signal numérico que almacena el valor crudo
+readonly amountRaw = signal(0);
+
+// 2. Computed que formatea — se actualiza en cada keystroke sin blur
+readonly amountDisplay = computed(() => this.formatCOP(this.amountRaw()));
+
+// 3. Handler de input: strips separadores, parsea entero, actualiza signal Y form
+onAmountInput(event: Event): void {
+  const raw = (event.target as HTMLInputElement).value.replace(/[^\d]/g, '');
+  const num = raw ? parseInt(raw, 10) : 0;
+  this.amountRaw.set(num);
+  this.form.controls['amount'].setValue(num, { emitEvent: false });
+}
+
+// 4. Formateador: Intl.NumberFormat es-CO sin decimales para COP
+private formatCOP(value: number): string {
+  if (!value) return '';
+  return new Intl.NumberFormat('es-CO', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+```
+
+**HTML:**
+```html
+<!-- Usar matTextPrefix / matTextSuffix (NO matPrefix / matSuffix para texto) -->
+<mat-form-field appearance="outline" subscriptSizing="dynamic">
+  <mat-label>Monto (COP)</mat-label>
+  <span matTextPrefix>$&nbsp;</span>
+  <input matInput type="text" inputmode="numeric"
+         [value]="amountDisplay()"
+         (input)="onAmountInput($event)"
+         placeholder="0" />
+</mat-form-field>
+
+<!-- Para porcentajes -->
+<mat-form-field appearance="outline" subscriptSizing="dynamic">
+  <mat-label>Umbral</mat-label>
+  <input matInput type="number" formControlName="threshold" />
+  <span matTextSuffix>%</span>
+</mat-form-field>
+```
+
+**Reglas:**
+- Siempre `matTextPrefix` / `matTextSuffix` para texto (`$`, `%`, `COP`) — dan el espaciado correcto de Material.
+- Nunca `matPrefix` / `matSuffix` para texto plano (es para iconos o botones).
+- Siempre `type="text" inputmode="numeric"` en campos monetarios — permite controlar el formato sin que el browser ponga flechas ni notación científica.
+- El `computed()` garantiza formateo instantáneo sin `blur`; **nunca** formatear solo en `blur`.
+- Moneda: por defecto `COP` hardcodeado hasta implementar multimoneda. El campo moneda va `readonly` con `matTooltip="Soporte multimoneda próximamente"` y `<mat-icon matSuffix>lock</mat-icon>`.
+
 ```scss
 .form-actions {
   display: flex;
@@ -234,6 +325,67 @@ Para componentes que viven dentro de un tab (ej: `fase-list`, `actividad-proyect
   margin-top: 24px;
 }
 ```
+
+### 4.2 Layout de formularios en modales (estándar obligatorio)
+
+Todo formulario dentro de un `MatDialog` **debe** usar grid de 2 columnas como layout base. Es el mismo patrón del modal "Editar fase" (`fase-list.component.scss`) y aplica a todos los diálogos de creación/edición del proyecto.
+
+**SCSS canónico:**
+```scss
+.xxx-form {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  column-gap: 1.25rem;
+  row-gap: 0.75rem;
+  padding-top: 0.5rem;
+  align-items: start;   // evita que campos de 1 línea se estiren al alto del vecino
+
+  @media (max-width: 480px) {  // ajustar breakpoint según ancho del dialog
+    grid-template-columns: 1fr;
+  }
+}
+
+// Campo que ocupa las 2 columnas (título, textarea, campos únicos)
+.xxx-full {
+  grid-column: 1 / -1;
+}
+```
+
+**HTML — reglas:**
+- Campos de 1 columna: sin clase extra → el grid los coloca automáticamente en pares.
+- Campos de ancho completo: `class="xxx-full"` → `grid-column: 1 / -1`.
+- **No usar** divs `.xxx-row` ni `flex` para agrupar pares de campos — el grid lo hace solo.
+- Los `mat-form-field` que naturalmente forman un par (ej: fecha inicio / fecha fin, monto / moneda) se colocan consecutivos sin wrapper.
+
+**Ejemplo HTML:**
+```html
+<form [formGroup]="form" class="xxx-form">
+  <!-- Ancho completo -->
+  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="xxx-full">
+    <mat-label>Nombre</mat-label>
+    <input matInput formControlName="nombre" />
+  </mat-form-field>
+
+  <!-- Par automático — 1 columna cada uno -->
+  <mat-form-field appearance="outline" subscriptSizing="dynamic">
+    <mat-label>Fecha inicio</mat-label>
+    ...
+  </mat-form-field>
+
+  <mat-form-field appearance="outline" subscriptSizing="dynamic">
+    <mat-label>Fecha fin</mat-label>
+    ...
+  </mat-form-field>
+
+  <!-- Textarea ancho completo -->
+  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="xxx-full">
+    <mat-label>Notas (opcional)</mat-label>
+    <textarea matInput rows="2"></textarea>
+  </mat-form-field>
+</form>
+```
+
+**Referencia canónica:** `fase-list.component.scss` → clase `.fl-form`
 
 ---
 
@@ -510,6 +662,10 @@ En `sidebar.component.ts`, en el array `PROYECTOS_NAV` (o el nav correspondiente
 - [ ] Eliminaciones con `MatDialog` de confirmación, nunca `confirm()`
 - [ ] Feedback con `MatSnackBar` con panelClass correcto, nunca `alert()`
 - [ ] No hay suscripciones manuales sin `async pipe` o `takeUntilDestroyed`
+- [ ] Campos monetarios: `signal` numérico + `computed` formateador + `matTextPrefix="$&nbsp;"` (sección 4.1)
+- [ ] Nunca `matPrefix`/`matSuffix` para texto — usar `matTextPrefix`/`matTextSuffix`
+- [ ] Formularios en modales: grid 2 columnas con `column-gap: 1.25rem` + `row-gap: 0.75rem` + `align-items: start` (sección 4.2)
+- [ ] Todo `input`/`textarea` tiene `maxlength` (y `min`/`max` si aplica) igual al modelo Django (sección 4.0)
 - [ ] Toggle Lista/Cards: un solo `mat-stroked-button` con el nombre de la vista alternativa (sección 8)
 - [ ] Toggle guarda preferencia en `localStorage` con clave `saisuite.[feature]View` (sección 8)
 - [ ] Quick Access modal: usa `QuickAccessDialogComponent`, no `MatDialog` genérico (sección 9)

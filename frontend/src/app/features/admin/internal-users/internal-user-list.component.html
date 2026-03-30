@@ -1,0 +1,82 @@
+<div class="sc-page">
+
+  <div class="sc-page-header">
+    <h1 class="sc-page-header__title">Usuarios internos</h1>
+    <button mat-raised-button color="primary" (click)="crear()">
+      <mat-icon>person_add</mat-icon> Nuevo usuario
+    </button>
+  </div>
+
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate" />
+  }
+
+  <mat-table [dataSource]="users()" class="iu-table mat-elevation-z1">
+
+    <ng-container matColumnDef="nombre">
+      <mat-header-cell *matHeaderCellDef>Nombre</mat-header-cell>
+      <mat-cell *matCellDef="let u">
+        <div class="iu-user-cell">
+          <div class="iu-avatar">{{ (u.full_name || u.email).charAt(0).toUpperCase() }}</div>
+          <span>{{ u.full_name || u.email }}</span>
+        </div>
+      </mat-cell>
+    </ng-container>
+
+    <ng-container matColumnDef="email">
+      <mat-header-cell *matHeaderCellDef>Correo</mat-header-cell>
+      <mat-cell *matCellDef="let u">{{ u.email }}</mat-cell>
+    </ng-container>
+
+    <ng-container matColumnDef="tipo">
+      <mat-header-cell *matHeaderCellDef>Tipo</mat-header-cell>
+      <mat-cell *matCellDef="let u">
+        <mat-chip [color]="tipoColor(u)" highlighted>{{ tipoLabel(u) }}</mat-chip>
+      </mat-cell>
+    </ng-container>
+
+    <ng-container matColumnDef="estado">
+      <mat-header-cell *matHeaderCellDef>Estado</mat-header-cell>
+      <mat-cell *matCellDef="let u">
+        @if (u.is_active) {
+          <span class="iu-badge iu-badge--active">Activo</span>
+        } @else {
+          <span class="iu-badge iu-badge--inactive">Inactivo</span>
+        }
+      </mat-cell>
+    </ng-container>
+
+    <ng-container matColumnDef="acciones">
+      <mat-header-cell *matHeaderCellDef class="iu-col-acciones"></mat-header-cell>
+      <mat-cell *matCellDef="let u" class="iu-col-acciones">
+        <button mat-icon-button matTooltip="Editar" (click)="editar(u)">
+          <mat-icon>edit</mat-icon>
+        </button>
+        @if (u.is_active) {
+          <button mat-icon-button color="warn" matTooltip="Desactivar" (click)="toggleActive(u)">
+            <mat-icon>person_off</mat-icon>
+          </button>
+        } @else {
+          <button mat-icon-button color="primary" matTooltip="Activar" (click)="toggleActive(u)">
+            <mat-icon>person_check</mat-icon>
+          </button>
+        }
+      </mat-cell>
+    </ng-container>
+
+    <mat-header-row *matHeaderRowDef="columns" />
+    <mat-row *matRowDef="let row; columns: columns;" />
+
+  </mat-table>
+
+  @if (!loading() && users().length === 0) {
+    <div class="sc-empty-state">
+      <mat-icon>supervised_user_circle</mat-icon>
+      <p>No hay usuarios internos registrados.</p>
+      <button mat-raised-button color="primary" (click)="crear()">
+        <mat-icon>person_add</mat-icon> Nuevo usuario
+      </button>
+    </div>
+  }
+
+</div>

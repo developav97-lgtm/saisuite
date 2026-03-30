@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject, signal, computed } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, ViewChild, inject, signal, computed } from '@angular/core';
+import { MatTabGroup } from '@angular/material/tabs';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { MatTabsModule } from '@angular/material/tabs';
@@ -60,22 +61,26 @@ export class ProyectoDetailComponent implements OnInit {
   private readonly router          = inject(Router);
   private readonly proyectoService = inject(ProyectoService);
   private readonly dialog          = inject(MatDialog);
-  private readonly toast       = inject(ToastService);
+  private readonly toast           = inject(ToastService);
 
-  readonly proyecto = signal<ProyectoDetail | null>(null);
-  readonly loading  = signal(true);
+  @ViewChild('tabGroup') tabGroup?: MatTabGroup;
+
+  readonly proyecto    = signal<ProyectoDetail | null>(null);
+  readonly loading     = signal(true);
   readonly selectedTab = signal(0);
-  // Tab indices:
-  // General(0) Fases(1) Terceros(2) Docs(3) Hitos(4) Tareas(5) Kanban(6)
-  // Actividades(7) Gantt(8) Equipo(9) Timesheets(10)
-  // Analytics(11) Baselines(12) Escenarios(13) Presupuesto(14)
+  /** Vista activa dentro de la pestaña Tareas: 'list' | 'kanban' */
+  readonly tareasView  = signal<'list' | 'kanban'>('list');
+  // Tab indices (Kanban eliminado — ahora es toggle dentro de Tareas):
+  // General(0) Fases(1) Terceros(2) Docs(3) Hitos(4) Tareas(5)
+  // Actividades(6) Gantt(7) Equipo(8) Timesheets(9)
+  // Analytics(10) Baselines(11) Escenarios(12) Presupuesto(13)
   readonly tareasTabLoaded       = computed(() => this.selectedTab() >= 5);
-  readonly kanbanTabLoaded       = computed(() => this.selectedTab() >= 6);
-  readonly timesheetsTabLoaded   = computed(() => this.selectedTab() >= 10);
-  readonly analyticsTabActive    = computed(() => this.selectedTab() === 11);
-  readonly baselinesTabLoaded    = computed(() => this.selectedTab() >= 12);
-  readonly escenariosTabLoaded   = computed(() => this.selectedTab() >= 13);
-  readonly presupuestoTabLoaded  = computed(() => this.selectedTab() >= 14);
+  readonly kanbanTabLoaded       = computed(() => false); // ya no existe como tab separado
+  readonly timesheetsTabLoaded   = computed(() => this.selectedTab() >= 9);
+  readonly analyticsTabActive    = computed(() => this.selectedTab() === 10);
+  readonly baselinesTabLoaded    = computed(() => this.selectedTab() >= 11);
+  readonly escenariosTabLoaded   = computed(() => this.selectedTab() >= 12);
+  readonly presupuestoTabLoaded  = computed(() => this.selectedTab() >= 13);
 
   readonly actividadesTabLabel = computed(() =>
     this.proyecto()?.tipo === 'civil_works' ? 'Actividades de obra' : 'Actividades'
@@ -101,6 +106,22 @@ export class ProyectoDetailComponent implements OnInit {
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');
     if (!id) { this.router.navigate(['/proyectos']); return; }
+
+    // Restaurar pestaña activa si viene de un formulario con returnTo
+    const tabParam = this.route.snapshot.queryParamMap.get('tab');
+    if (tabParam) {
+      const tabIndex = parseInt(tabParam, 10);
+      if (!isNaN(tabIndex)) {
+        // Esperar a que las tabs estén renderizadas
+        setTimeout(() => {
+          this.selectedTab.set(tabIndex);
+          if (this.tabGroup) this.tabGroup.selectedIndex = tabIndex;
+        }, 0);
+      }
+      // Limpiar el query param de la URL sin navegar
+      this.router.navigate([], { queryParams: {}, replaceUrl: true });
+    }
+
     this.loadProyecto(id);
   }
 

@@ -40,4 +40,11 @@ export class FaseService {
   completar(faseId: string): Observable<FaseDetail> {
     return this.http.post<FaseDetail>(`${this.baseUrl}/phases/${faseId}/completar/`, {});
   }
+
+  reorder(proyectoId: string, orderedIds: string[]): Observable<FaseList[]> {
+    return this.http.post<FaseList[]>(
+      `${this.baseUrl}/${proyectoId}/phases/reorder/`,
+      { ordered_ids: orderedIds },
+    );
+  }
 }

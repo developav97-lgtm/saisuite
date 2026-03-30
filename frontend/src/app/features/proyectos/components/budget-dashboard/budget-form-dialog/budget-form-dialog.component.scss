@@ -1,0 +1,19 @@
+// Budget Form Dialog — Feature #7
+
+.bfd-form {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  column-gap: 1.25rem;
+  row-gap: 0.75rem;
+  padding-top: 0.5rem;
+  align-items: start;
+
+  @media (max-width: 540px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+// Ocupa las 2 columnas
+.bfd-full {
+  grid-column: 1 / -1;
+}

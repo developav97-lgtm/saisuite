@@ -675,6 +675,39 @@ class FaseService:
         fase.save(update_fields=['activo', 'updated_at'])
         logger.info('Fase eliminada (soft)', extra={'fase_id': str(fase.id)})
 
+    @staticmethod
+    @transaction.atomic
+    def reorder_fases(proyecto: Project, ordered_ids: list) -> QuerySet:
+        """
+        Reasigna el orden de las fases activas de un proyecto.
+
+        ordered_ids: lista de UUIDs en el nuevo orden deseado (posición 0 → orden 1).
+
+        El unique_together(proyecto, orden) está marcado DEFERRABLE INITIALLY DEFERRED
+        (migración 0021), por lo que PostgreSQL valida la unicidad al final de la
+        transacción y no fila a fila. Esto permite hacer los UPDATEs secuenciales
+        dentro del mismo atomic() sin conflictos intermedios.
+        """
+        fases_qs = Phase.all_objects.select_for_update().filter(
+            proyecto=proyecto, activo=True
+        )
+        fases_por_id = {str(f.id): f for f in fases_qs}
+
+        for fid in ordered_ids:
+            if str(fid) not in fases_por_id:
+                raise ProyectoException(
+                    f'La fase {fid} no pertenece a este proyecto o está inactiva.'
+                )
+
+        for i, fid in enumerate(ordered_ids):
+            Phase.all_objects.filter(id=fid).update(orden=i + 1)
+
+        logger.info(
+            'Fases reordenadas',
+            extra={'proyecto_id': str(proyecto.id), 'nuevo_orden': [str(x) for x in ordered_ids]},
+        )
+        return FaseService.list_fases(proyecto)
+
 
 # ──────────────────────────────────────────────
 # TerceroProyectoService

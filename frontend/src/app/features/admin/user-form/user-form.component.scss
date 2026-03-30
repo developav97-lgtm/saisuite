@@ -50,10 +50,19 @@
 }
 
 .uf-modules-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   font-size: 0.9375rem;
   font-weight: 600;
   margin: 0 0 0.75rem;
   color: var(--sc-text-color);
+}
+
+.uf-modules-hint {
+  font-size: 0.8rem;
+  font-weight: 400;
+  color: var(--sc-text-muted);
 }
 
 .uf-modules-grid {
@@ -86,6 +95,16 @@
     border-color: var(--sc-primary);
     background: color-mix(in srgb, var(--sc-primary) 8%, transparent);
     color: var(--sc-primary);
+  }
+
+  &--locked {
+    cursor: default;
+    opacity: 0.85;
+
+    &:hover {
+      border-color: var(--sc-primary);
+      color: var(--sc-primary);
+    }
   }
 }
 

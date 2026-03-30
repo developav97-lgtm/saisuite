@@ -7,6 +7,7 @@ import localeEsCO from '@angular/common/locales/es-CO';
 import { MatPaginatorIntl } from '@angular/material/paginator';
 import { routes } from './app.routes';
 import { authInterceptor } from './core/interceptors/auth.interceptor';
+import { baseUrlInterceptor } from './core/interceptors/base-url.interceptor';
 
 registerLocaleData(localeEsCO);
 
@@ -30,7 +31,7 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideZoneChangeDetection({ eventCoalescing: true }),
     provideRouter(routes),
-    provideHttpClient(withInterceptors([authInterceptor])),
+    provideHttpClient(withInterceptors([baseUrlInterceptor, authInterceptor])),
     provideAnimationsAsync(),
     { provide: LOCALE_ID, useValue: 'es-CO' },
     { provide: MatPaginatorIntl, useFactory: paginatorIntlEs },

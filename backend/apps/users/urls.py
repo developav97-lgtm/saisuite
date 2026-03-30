@@ -13,6 +13,17 @@ from .views import (
     SwitchCompanyView,
     PasswordResetRequestView,
     PasswordResetConfirmView,
+    SoporteTenantsView,
+    SoporteSeleccionarTenantView,
+    SoporteLiberarTenantView,
+    InternalUserListCreateView,
+    InternalUserDetailView,
+)
+from .roles_views import (
+    PermissionListView,
+    PermissionByModuleView,
+    RoleListCreateView,
+    RoleDetailView,
 )
 
 urlpatterns = [
@@ -26,6 +37,16 @@ urlpatterns = [
     path('users/<uuid:pk>/',           UserDetailView.as_view(),         name='user-detail'),
     path('me/companies/',              UserMeCompaniesView.as_view(),    name='user-me-companies'),
     path('switch-company/',            SwitchCompanyView.as_view(),      name='auth-switch-company'),
-    path('password-reset/',            PasswordResetRequestView.as_view(), name='password-reset-request'),
-    path('password-reset/confirm/',    PasswordResetConfirmView.as_view(), name='password-reset-confirm'),
+    path('password-reset/',                     PasswordResetRequestView.as_view(),       name='password-reset-request'),
+    path('password-reset/confirm/',             PasswordResetConfirmView.as_view(),       name='password-reset-confirm'),
+    path('soporte/tenants/',                    SoporteTenantsView.as_view(),             name='soporte-tenants'),
+    path('soporte/seleccionar-tenant/',         SoporteSeleccionarTenantView.as_view(),   name='soporte-seleccionar'),
+    path('soporte/liberar-tenant/',             SoporteLiberarTenantView.as_view(),       name='soporte-liberar'),
+    path('internal-users/',                     InternalUserListCreateView.as_view(),     name='internal-user-list-create'),
+    path('internal-users/<uuid:pk>/',           InternalUserDetailView.as_view(),         name='internal-user-detail'),
+    # ── Permisos y Roles granulares ────────────────────────────────────────
+    path('permissions/',               PermissionListView.as_view(),     name='permission-list'),
+    path('permissions/by-module/',     PermissionByModuleView.as_view(), name='permission-by-module'),
+    path('roles/',                     RoleListCreateView.as_view(),     name='role-list-create'),
+    path('roles/<int:pk>/',            RoleDetailView.as_view(),         name='role-detail'),
 ]

@@ -143,6 +143,11 @@ urlpatterns = [
         name='phase-detail',
     ),
     path(
+        '<uuid:proyecto_pk>/phases/reorder/',
+        PhaseViewSet.as_view({'post': 'reorder'}),
+        name='project-phases-reorder',
+    ),
+    path(
         'phases/<uuid:pk>/activate/',
         PhaseViewSet.as_view({'post': 'activar'}),
         name='phase-activate',

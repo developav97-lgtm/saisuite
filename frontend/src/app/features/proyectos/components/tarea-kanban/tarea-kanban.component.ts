@@ -6,8 +6,9 @@
  */
 import {
   ChangeDetectionStrategy, ChangeDetectorRef,
-  Component, OnInit, effect, inject, input, signal,
+  Component, DestroyRef, OnInit, OutputEmitterRef, effect, inject, input, output, signal,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router, ActivatedRoute } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { map } from 'rxjs/operators';
@@ -75,8 +76,9 @@ export class TareaKanbanComponent implements OnInit {
   private readonly router          = inject(Router);
   private readonly route           = inject(ActivatedRoute);
   private readonly dialog          = inject(MatDialog);
-  private readonly toast       = inject(ToastService);
+  private readonly toast           = inject(ToastService);
   private readonly cdr             = inject(ChangeDetectorRef);
+  private readonly destroyRef      = inject(DestroyRef);
   private readonly proyectoService = inject(ProyectoService);
   private readonly faseService     = inject(FaseService);
   private readonly adminService    = inject(AdminService);
@@ -87,6 +89,12 @@ export class TareaKanbanComponent implements OnInit {
    * Tiene prioridad sobre el query param ?proyecto= de la ruta.
    */
   readonly proyectoIdInput = input<string | null>(null);
+
+  /**
+   * Emite cuando el usuario pulsa "Lista" en modo embebido.
+   * El componente padre gestiona el cambio de vista sin navegar.
+   */
+  readonly listaToggled: OutputEmitterRef<void> = output<void>();
 
   readonly loading          = signal(false);
   readonly searchText       = signal('');
@@ -99,6 +107,9 @@ export class TareaKanbanComponent implements OnInit {
   readonly fases     = signal<FaseList[]>([]);
   readonly usuarios  = signal<AdminUser[]>([]);
   readonly faseFilter = signal<string | null>(null);
+
+  /** true cuando la vista se abrió desde "Mis Tareas" */
+  readonly esMisTareas = signal(false);
 
   /** Conservado para compatibilidad con nuevaTarea() */
   private get proyectoId(): string | null { return this.proyectoFilter(); }
@@ -133,26 +144,44 @@ export class TareaKanbanComponent implements OnInit {
 
   ngOnInit(): void {
     localStorage.setItem('saisuite.tareasView', 'kanban');
-    const snap    = this.route.snapshot.queryParamMap;
-    const inputId = this.proyectoIdInput();
-    // El input tiene prioridad sobre el query param (modo embebido vs. ruta directa).
-    const pid = inputId ?? snap.get('proyecto');
-    if (pid) {
-      this.proyectoFilter.set(pid);
-      this.loadFasesByProyecto(pid);
-    }
 
     this.loadProyectos();
     this.loadUsuarios();
-    // Solo cargar aquí cuando no hay inputId: el effect() maneja el caso embebido
-    // para evitar una carga duplicada en la inicialización.
-    if (!inputId) {
-      this.loadTareas();
-    }
 
-    // Auto-abrir modal si la URL contiene ?tarea=<uuid>
-    const tid = snap.get('tarea');
-    if (tid) this.abrirDialog(tid);
+    const inputId = this.proyectoIdInput();
+
+    // Suscribirse al observable para reaccionar cuando cambian los query params
+    // (mismo componente, distinto param: Tareas ↔ Mis Tareas)
+    this.route.queryParamMap
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(params => {
+        const esMis = params.get('mis_tareas') === '1';
+        this.esMisTareas.set(esMis);
+
+        // Ajustar filtro de responsable según contexto
+        if (esMis) {
+          this.responsableFilter.set('mis-tareas');
+        } else if (this.responsableFilter() === 'mis-tareas') {
+          // Venía de mis-tareas y ahora es tareas generales: limpiar
+          this.responsableFilter.set(null);
+        }
+
+        // El input tiene prioridad sobre el query param (modo embebido vs. ruta directa).
+        const pid = inputId ?? params.get('proyecto');
+        if (pid && pid !== this.proyectoFilter()) {
+          this.proyectoFilter.set(pid);
+          this.loadFasesByProyecto(pid);
+        }
+
+        // Solo cargar aquí cuando no hay inputId (el effect maneja el modo embebido)
+        if (!inputId) {
+          this.loadTareas();
+        }
+
+        // Auto-abrir modal si la URL contiene ?tarea=<uuid>
+        const tid = params.get('tarea');
+        if (tid) this.abrirDialog(tid);
+      });
   }
 
   private loadProyectos(): void {
@@ -257,8 +286,11 @@ export class TareaKanbanComponent implements OnInit {
 
   nuevaTarea(): void {
     const pid = this.proyectoFilter();
-    const extras = pid ? { queryParams: { proyecto: pid } } : {};
-    this.router.navigate(['/proyectos/tareas/nueva'], extras);
+    const inputId = this.proyectoIdInput();
+    const queryParams: Record<string, string> = {};
+    if (pid) queryParams['proyecto'] = pid;
+    if (inputId) queryParams['returnTo'] = `proyecto:${inputId}:tab:5`;
+    this.router.navigate(['/proyectos/tareas/nueva'], { queryParams });
   }
 
   limpiarFiltros(): void {
@@ -276,7 +308,11 @@ export class TareaKanbanComponent implements OnInit {
   }
 
   editarTarea(tarea: Tarea): void {
-    this.router.navigate(['/proyectos/tareas', tarea.id, 'editar']);
+    const inputId = this.proyectoIdInput();
+    const extras = inputId
+      ? { queryParams: { returnTo: `proyecto:${inputId}:tab:5` } }
+      : {};
+    this.router.navigate(['/proyectos/tareas', tarea.id, 'editar'], extras);
   }
 
   confirmarEliminar(tarea: Tarea): void {
@@ -390,6 +426,18 @@ export class TareaKanbanComponent implements OnInit {
   }
   irALista(): void {
     localStorage.setItem('saisuite.tareasView', 'list');
-    this.router.navigate(['/proyectos/tareas']);
+    if (this.proyectoIdInput()) {
+      // Modo embebido: notificar al padre para que cambie la vista sin navegar
+      this.listaToggled.emit();
+      return;
+    }
+    const returnTo = this.route.snapshot.queryParamMap.get('returnTo');
+    if (returnTo?.startsWith('proyecto:')) {
+      const proyectoId = returnTo.slice('proyecto:'.length);
+      this.router.navigate(['/proyectos', proyectoId]);
+      return;
+    }
+    const route = this.esMisTareas() ? '/proyectos/mis-tareas' : '/proyectos/tareas';
+    this.router.navigate([route]);
   }
 }

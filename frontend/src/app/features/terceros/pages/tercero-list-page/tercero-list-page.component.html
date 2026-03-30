@@ -3,7 +3,7 @@
   <!-- Header -->
   <div class="sc-page-header">
     <h1 class="sc-page-header__title">Terceros</h1>
-    <button mat-raised-button color="primary" (click)="nuevo()">
+    <button *hasPermission="'terceros.create'" mat-raised-button color="primary" (click)="nuevo()">
       <mat-icon>person_add</mat-icon> Nuevo tercero
     </button>
   </div>
@@ -41,10 +41,10 @@
     <mat-progress-bar mode="indeterminate" class="tl-progress" />
   }
 
-  <mat-table [dataSource]="terceros()" class="tl-table">
+  <mat-table [dataSource]="dataSource" matSort class="tl-table">
 
     <ng-container matColumnDef="nombre_completo">
-      <mat-header-cell *matHeaderCellDef>Nombre / Razón social</mat-header-cell>
+      <mat-header-cell *matHeaderCellDef mat-sort-header>Nombre / Razón social</mat-header-cell>
       <mat-cell *matCellDef="let t">
         <div class="tc-nombre">
           <span class="tc-nombre__text">{{ t.nombre_completo }}</span>
@@ -54,7 +54,7 @@
     </ng-container>
 
     <ng-container matColumnDef="numero_identificacion">
-      <mat-header-cell *matHeaderCellDef>Identificación</mat-header-cell>
+      <mat-header-cell *matHeaderCellDef mat-sort-header>Identificación</mat-header-cell>
       <mat-cell *matCellDef="let t">
         <span class="tc-id-tipo">{{ getTipoIdentificacionLabel(t.tipo_identificacion) }}</span>
         <span class="tc-id-numero">{{ t.numero_identificacion }}</span>
@@ -62,10 +62,10 @@
     </ng-container>
 
     <ng-container matColumnDef="tipo_tercero">
-      <mat-header-cell *matHeaderCellDef>Tipo</mat-header-cell>
+      <mat-header-cell *matHeaderCellDef mat-sort-header>Tipo</mat-header-cell>
       <mat-cell *matCellDef="let t">
         @if (t.tipo_tercero) {
-          <span [class]="'tc-tipo-chip tc-tipo-chip--' + t.tipo_tercero">
+          <span [class]="'tc-tipo-chip tc-tipo-chip--' + t.tipo_tercero.toLowerCase()">
             {{ getTipoTerceroLabel(t.tipo_tercero) }}
           </span>
         } @else {
@@ -87,10 +87,10 @@
     <ng-container matColumnDef="acciones">
       <mat-header-cell *matHeaderCellDef class="tc-col-acciones"></mat-header-cell>
       <mat-cell *matCellDef="let t" class="tc-col-acciones">
-        <button mat-icon-button matTooltip="Editar" (click)="editar(t)">
+        <button *hasPermission="'terceros.edit'" mat-icon-button matTooltip="Editar" (click)="editar(t)">
           <mat-icon>edit</mat-icon>
         </button>
-        <button mat-icon-button matTooltip="Eliminar" color="warn" (click)="confirmarEliminar(t)">
+        <button *hasPermission="'terceros.delete'" mat-icon-button matTooltip="Eliminar" color="warn" (click)="confirmarEliminar(t)">
           <mat-icon>delete_outline</mat-icon>
         </button>
       </mat-cell>
@@ -108,7 +108,7 @@
         <button mat-stroked-button (click)="limpiarFiltros()">Limpiar filtros</button>
       } @else {
         <p>No hay terceros registrados aún.</p>
-        <button mat-raised-button color="primary" (click)="nuevo()">
+        <button *hasPermission="'terceros.create'" mat-raised-button color="primary" (click)="nuevo()">
           <mat-icon>person_add</mat-icon> Nuevo tercero
         </button>
       }

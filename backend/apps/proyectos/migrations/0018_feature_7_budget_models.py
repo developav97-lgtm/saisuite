@@ -267,19 +267,19 @@ class Migration(migrations.Migration):
                 ],
                 "constraints": [
                     models.CheckConstraint(
-                        check=models.Q(
+                        condition=models.Q(
                             ("planned_labor_cost__gte", Decimal("0.00"))
                         ),
                         name="project_budget_labor_non_negative",
                     ),
                     models.CheckConstraint(
-                        check=models.Q(
+                        condition=models.Q(
                             ("planned_expense_cost__gte", Decimal("0.00"))
                         ),
                         name="project_budget_expense_non_negative",
                     ),
                     models.CheckConstraint(
-                        check=models.Q(
+                        condition=models.Q(
                             ("planned_total_budget__gte", Decimal("0.00"))
                         ),
                         name="project_budget_total_non_negative",
@@ -428,7 +428,7 @@ class Migration(migrations.Migration):
                 ],
                 "constraints": [
                     models.CheckConstraint(
-                        check=models.Q(("amount__gt", Decimal("0.00"))),
+                        condition=models.Q(("amount__gt", Decimal("0.00"))),
                         name="project_expense_amount_positive",
                     )
                 ],
@@ -516,7 +516,7 @@ class Migration(migrations.Migration):
                 ],
                 "constraints": [
                     models.CheckConstraint(
-                        check=models.Q(
+                        condition=models.Q(
                             ("start_date__lte", models.F("end_date")),
                             ("end_date__isnull", True),
                             _connector="OR",
@@ -524,7 +524,7 @@ class Migration(migrations.Migration):
                         name="resource_cost_rate_start_before_end",
                     ),
                     models.CheckConstraint(
-                        check=models.Q(("hourly_rate__gte", Decimal("0.00"))),
+                        condition=models.Q(("hourly_rate__gte", Decimal("0.00"))),
                         name="resource_cost_rate_non_negative",
                     ),
                 ],

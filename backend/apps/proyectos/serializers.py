@@ -136,12 +136,13 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
     coordinador         = UserSummarySerializer(read_only=True)
     fases_count         = serializers.SerializerMethodField()
     presupuesto_fases_total = serializers.SerializerMethodField()
+    cliente_nit         = serializers.SerializerMethodField()
 
     class Meta:
         model  = Project
         fields = [
             'id', 'codigo', 'nombre', 'tipo', 'estado',
-            'cliente_id', 'cliente_nombre',
+            'cliente_id', 'cliente_nombre', 'cliente_nit',
             'gerente', 'coordinador',
             'fecha_inicio_planificada', 'fecha_fin_planificada',
             'fecha_inicio_real', 'fecha_fin_real',
@@ -155,6 +156,24 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
 
     def get_fases_count(self, obj: Project) -> int:
         return obj.phases.filter(activo=True).count()
+
+    def get_cliente_nit(self, obj: Project) -> str:
+        """
+        Retorna el número de identificación real del cliente.
+        Si cliente_id ya es un NIT/cédula lo devuelve tal cual.
+        Si cliente_id es un UUID (datos legacy), busca el Tercero y devuelve su numero_identificacion.
+        """
+        cid = obj.cliente_id or ''
+        if not cid:
+            return ''
+        if _UUID_PATTERN.match(cid):
+            from apps.terceros.models import Tercero
+            try:
+                tercero = Tercero.objects.filter(company=obj.company, id=cid).values('numero_identificacion').first()
+                return tercero['numero_identificacion'] if tercero else cid
+            except Exception:
+                return cid
+        return cid
 
     def get_presupuesto_fases_total(self, obj: Project) -> str:
         from django.db.models import Sum
@@ -773,7 +792,7 @@ class TaskDetailSerializer(serializers.ModelSerializer):
         from apps.proyectos.tarea_services import DependencyService
 
         request = self.context.get('request')
-        company = getattr(request.user, 'company', None) if request else None
+        company = getattr(request.user, 'effective_company', None) if request else None
         if not company:
             return False
 

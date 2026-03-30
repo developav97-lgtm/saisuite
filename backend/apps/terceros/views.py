@@ -9,6 +9,7 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import ViewSet
+from .permissions import HasTerceroPermission
 
 
 class TerceroPagination(PageNumberPagination):
@@ -28,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 
 class TerceroViewSet(ViewSet):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasTerceroPermission]
 
     def list(self, request):
         search             = request.query_params.get('search', '')
@@ -38,7 +39,7 @@ class TerceroViewSet(ViewSet):
         activo             = None if activo_raw is None else activo_raw.lower() == 'true'
 
         qs = TerceroService.list(
-            request.user.company,
+            request.user.effective_company,
             search=search,
             tipo_tercero=tipo_tercero,
             tipo_identificacion=tipo_identificacion,
@@ -54,7 +55,7 @@ class TerceroViewSet(ViewSet):
 
     def retrieve(self, request, pk=None):
         try:
-            tercero = TerceroService.get_by_id(pk, request.user.company)
+            tercero = TerceroService.get_by_id(pk, request.user.effective_company)
         except Tercero.DoesNotExist:
             return Response({'detail': 'No encontrado.'}, status=status.HTTP_404_NOT_FOUND)
         return Response(TerceroDetailSerializer(tercero).data)
@@ -63,7 +64,7 @@ class TerceroViewSet(ViewSet):
         serializer = TerceroCreateUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         try:
-            tercero = TerceroService.create(request.user.company, serializer.validated_data)
+            tercero = TerceroService.create(request.user.effective_company, serializer.validated_data)
         except Exception as exc:
             logger.error('error_crear_tercero', extra={'error': str(exc)})
             return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
@@ -71,7 +72,7 @@ class TerceroViewSet(ViewSet):
 
     def partial_update(self, request, pk=None):
         try:
-            tercero = TerceroService.get_by_id(pk, request.user.company)
+            tercero = TerceroService.get_by_id(pk, request.user.effective_company)
         except Tercero.DoesNotExist:
             return Response({'detail': 'No encontrado.'}, status=status.HTTP_404_NOT_FOUND)
         serializer = TerceroCreateUpdateSerializer(tercero, data=request.data, partial=True)
@@ -81,7 +82,7 @@ class TerceroViewSet(ViewSet):
 
     def destroy(self, request, pk=None):
         try:
-            tercero = TerceroService.get_by_id(pk, request.user.company)
+            tercero = TerceroService.get_by_id(pk, request.user.effective_company)
         except Tercero.DoesNotExist:
             return Response({'detail': 'No encontrado.'}, status=status.HTTP_404_NOT_FOUND)
         TerceroService.delete(tercero)
@@ -92,16 +93,16 @@ class TerceroViewSet(ViewSet):
     @action(detail=True, methods=['get'], url_path='direcciones')
     def direcciones_list(self, request, pk=None):
         try:
-            tercero = TerceroService.get_by_id(pk, request.user.company)
+            tercero = TerceroService.get_by_id(pk, request.user.effective_company)
         except Tercero.DoesNotExist:
             return Response({'detail': 'No encontrado.'}, status=status.HTTP_404_NOT_FOUND)
-        direcciones = TerceroDireccionService.list_by_tercero(tercero.id, request.user.company)
+        direcciones = TerceroDireccionService.list_by_tercero(tercero.id, request.user.effective_company)
         return Response(TerceroDireccionSerializer(direcciones, many=True).data)
 
     @action(detail=True, methods=['post'], url_path='direcciones/crear')
     def direcciones_crear(self, request, pk=None):
         try:
-            tercero = TerceroService.get_by_id(pk, request.user.company)
+            tercero = TerceroService.get_by_id(pk, request.user.effective_company)
         except Tercero.DoesNotExist:
             return Response({'detail': 'No encontrado.'}, status=status.HTTP_404_NOT_FOUND)
         serializer = TerceroDireccionSerializer(data=request.data)
@@ -112,11 +113,11 @@ class TerceroViewSet(ViewSet):
     @action(detail=True, methods=['patch'], url_path=r'direcciones/(?P<dir_pk>[^/.]+)')
     def direcciones_update(self, request, pk=None, dir_pk=None):
         try:
-            TerceroService.get_by_id(pk, request.user.company)
+            TerceroService.get_by_id(pk, request.user.effective_company)
         except Tercero.DoesNotExist:
             return Response({'detail': 'No encontrado.'}, status=status.HTTP_404_NOT_FOUND)
         try:
-            direccion = TerceroDireccion.objects.get(id=dir_pk, company=request.user.company)
+            direccion = TerceroDireccion.objects.get(id=dir_pk, company=request.user.effective_company)
         except TerceroDireccion.DoesNotExist:
             return Response({'detail': 'Dirección no encontrada.'}, status=status.HTTP_404_NOT_FOUND)
         serializer = TerceroDireccionSerializer(direccion, data=request.data, partial=True)
@@ -127,11 +128,11 @@ class TerceroViewSet(ViewSet):
     @action(detail=True, methods=['delete'], url_path=r'direcciones/(?P<dir_pk>[^/.]+)/eliminar')
     def direcciones_delete(self, request, pk=None, dir_pk=None):
         try:
-            TerceroService.get_by_id(pk, request.user.company)
+            TerceroService.get_by_id(pk, request.user.effective_company)
         except Tercero.DoesNotExist:
             return Response({'detail': 'No encontrado.'}, status=status.HTTP_404_NOT_FOUND)
         try:
-            direccion = TerceroDireccion.objects.get(id=dir_pk, company=request.user.company)
+            direccion = TerceroDireccion.objects.get(id=dir_pk, company=request.user.effective_company)
         except TerceroDireccion.DoesNotExist:
             return Response({'detail': 'Dirección no encontrada.'}, status=status.HTTP_404_NOT_FOUND)
         TerceroDireccionService.delete(direccion)

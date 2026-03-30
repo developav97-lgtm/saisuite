@@ -140,7 +140,7 @@ export class NotificacionesListComponent implements OnInit {
       });
     }
     const url = n.ancla ? `${n.url_accion}${n.ancla}` : n.url_accion;
-    if (url) this.router.navigateByUrl(url);
+    if (url?.startsWith('/')) this.router.navigateByUrl(url);
   }
 
   marcarLeida(event: Event, n: Notificacion): void {

@@ -40,6 +40,13 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
         return throwError(() => error);
       }
 
+      // Sesión inválida/cerrada desde otro dispositivo (mensaje específico del backend)
+      if (error.status === 401 && error.error?.detail?.includes('otro dispositivo')) {
+        authService.clearStoragePublic();
+        router.navigate(['/license-expired'], { queryParams: { reason: 'session_expired' } });
+        return throwError(() => error);
+      }
+
       if (error.status !== 401 || isAuthRoute) {
         return throwError(() => error);
       }

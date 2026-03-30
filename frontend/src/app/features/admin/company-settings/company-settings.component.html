@@ -82,22 +82,24 @@
           </div>
           <div class="sc-card__body">
             <div class="cs-modules">
-              @for (mod of c.modules; track mod.module) {
-                <div class="cs-module" [class.cs-module--active]="mod.is_active" [class.cs-module--inactive]="!mod.is_active">
-                  <div class="cs-module__icon-wrap">
-                    <mat-icon>
-                      {{ mod.module === 'ventas' ? 'shopping_cart' :
-                         mod.module === 'cobros' ? 'account_balance_wallet' :
-                         mod.module === 'dashboard' ? 'home' : 'work' }}
-                    </mat-icon>
+              @if (license(); as lic) {
+                @for (mod of lic.modules_included; track mod) {
+                  <div class="cs-module cs-module--active">
+                    <div class="cs-module__icon-wrap">
+                      <mat-icon>
+                        {{ mod === 'ventas' ? 'shopping_cart' :
+                           mod === 'cobros' ? 'account_balance_wallet' :
+                           mod === 'dashboard' ? 'home' : 'work' }}
+                      </mat-icon>
+                    </div>
+                    <span class="cs-module__name">{{ moduleLabels[mod] ?? mod }}</span>
+                    <mat-icon class="cs-module__status-icon">check_circle</mat-icon>
                   </div>
-                  <span class="cs-module__name">{{ moduleLabels[mod.module] ?? mod.module }}</span>
-                  <mat-icon class="cs-module__status-icon">
-                    {{ mod.is_active ? 'check_circle' : 'cancel' }}
-                  </mat-icon>
-                </div>
-              }
-              @if (c.modules.length === 0) {
+                }
+                @if (lic.modules_included.length === 0) {
+                  <p class="cs-empty">Sin módulos en la licencia.</p>
+                }
+              } @else if (!loading()) {
                 <p class="cs-empty">Sin módulos configurados.</p>
               }
             </div>

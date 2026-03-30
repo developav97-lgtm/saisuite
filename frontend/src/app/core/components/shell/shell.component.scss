@@ -24,3 +24,59 @@
     overflow-x: hidden;
     background: var(--sc-surface-ground);
 }
+
+// ── Banner de alerta de licencia ──────────────────────────────────────────────
+
+.sc-license-banner {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.6rem 1.5rem;
+    font-size: 0.875rem;
+    position: relative;
+
+    mat-icon:first-child {
+        font-size: 1.1rem;
+        width: 1.1rem;
+        height: 1.1rem;
+        flex-shrink: 0;
+    }
+
+    span { flex: 1; }
+
+    &__close {
+        flex-shrink: 0;
+        width: 28px;
+        height: 28px;
+        line-height: 28px;
+
+        ::ng-deep mat-icon {
+            font-size: 1rem;
+        }
+    }
+
+    &--warning {
+        background: #fff3e0;
+        color: #e65100;
+        border-bottom: 1px solid #ffcc02;
+    }
+
+    &--danger {
+        background: #fce4ec;
+        color: #c62828;
+        border-bottom: 1px solid #ef9a9a;
+    }
+
+    &--critical {
+        background: var(--mat-sys-error, #d32f2f);
+        color: #fff;
+        border-bottom: 2px solid rgba(0, 0, 0, 0.2);
+        font-weight: 600;
+        animation: pulse 1.5s infinite;
+    }
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.88; }
+}

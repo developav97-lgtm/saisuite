@@ -1,35 +1,36 @@
 .le-page {
-  min-height: 100vh;
+  position: fixed;
+  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--sc-surface-ground);
+  background: var(--sc-surface-ground, #f5f5f5);
+  z-index: 9999;
 }
 
 .le-card {
-  max-width: 440px;
+  max-width: 460px;
   width: 100%;
   padding: 3rem 2.5rem;
-  background: var(--sc-surface-card);
+  background: var(--sc-surface-card, #fff);
   border-radius: 16px;
-  box-shadow: 0 4px 32px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 4px 32px rgba(0, 0, 0, 0.14);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1rem;
+  gap: 1.25rem;
   text-align: center;
 }
 
 .le-icon {
-  font-size: 4rem;
-  width: 4rem;
-  height: 4rem;
-  color: var(--mat-sys-error);
-  opacity: 0.85;
+  font-size: 4.5rem;
+  width: 4.5rem;
+  height: 4.5rem;
+  color: var(--mat-sys-error, #d32f2f);
 }
 
 .le-title {
-  font-size: 1.6rem;
+  font-size: 1.7rem;
   font-weight: 700;
   margin: 0;
   color: var(--mat-sys-on-surface);
@@ -39,16 +40,41 @@
   font-size: 1rem;
   color: var(--mat-sys-on-surface-variant);
   margin: 0;
+  line-height: 1.5;
 }
 
-.le-contact {
-  font-size: 0.95rem;
-  color: var(--mat-sys-on-surface-variant);
-  margin: 0;
-  padding: 0.75rem 1rem;
-  background: var(--sc-surface-ground);
-  border-radius: 8px;
+.le-contact-box {
   width: 100%;
+  background: var(--sc-surface-ground, #f5f5f5);
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.le-contact-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--mat-sys-on-surface-variant);
+  margin: 0 0 0.25rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.le-contact-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.95rem;
+  color: var(--mat-sys-on-surface);
+
+  mat-icon {
+    font-size: 1.1rem;
+    width: 1.1rem;
+    height: 1.1rem;
+    color: var(--mat-sys-primary);
+  }
 }
 
 .le-actions {

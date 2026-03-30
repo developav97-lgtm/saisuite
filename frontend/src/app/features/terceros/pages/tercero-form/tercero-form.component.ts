@@ -17,6 +17,7 @@ import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { TerceroService } from '../../../../core/services/tercero.service';
 import { ConfirmDialogComponent } from '../../../../shared/components/confirm-dialog/confirm-dialog.component';
 import { ToastService } from '../../../../core/services/toast.service';
+import { QuickAccessNavigatorService } from '../../../../shared/services/quick-access-navigator.service';
 import {
   TerceroCreate, TerceroDireccion,
   TipoIdentificacion, TipoPersona, TipoTercero, TipoDireccion,
@@ -68,12 +69,13 @@ const DIR_EMPTY = {
   ],
 })
 export class TerceroFormComponent implements OnInit {
-  private readonly service = inject(TerceroService);
-  private readonly fb      = inject(FormBuilder);
-  private readonly router  = inject(Router);
-  private readonly route   = inject(ActivatedRoute);
-  private readonly toast   = inject(ToastService);
-  private readonly dialog  = inject(MatDialog);
+  private readonly service    = inject(TerceroService);
+  private readonly fb         = inject(FormBuilder);
+  private readonly router     = inject(Router);
+  private readonly route      = inject(ActivatedRoute);
+  private readonly toast      = inject(ToastService);
+  private readonly dialog     = inject(MatDialog);
+  private readonly navigator  = inject(QuickAccessNavigatorService);
 
   readonly editId  = signal<string | null>(null);
   readonly loading = signal(false);
@@ -187,7 +189,11 @@ export class TerceroFormComponent implements OnInit {
         },
         error: () => {
           this.toast.error('No se encontró el tercero.');
-          this.router.navigate(['/terceros']);
+          if (this.navigator.isActive) {
+            this.navigator.requestGoBack();
+          } else {
+            this.router.navigate(['/terceros']);
+          }
         },
       });
     }
@@ -285,7 +291,11 @@ export class TerceroFormComponent implements OnInit {
         }
         this.saving.set(false);
         this.toast.success(`Tercero ${id ? 'actualizado' : 'creado'} correctamente.`);
-        this.router.navigate(['/terceros']);
+        if (this.navigator.isActive) {
+          this.navigator.requestGoBack();
+        } else {
+          this.router.navigate(['/terceros']);
+        }
       },
       error: (err: { error?: Record<string, string[]> }) => {
         this.saving.set(false);
@@ -419,6 +429,10 @@ export class TerceroFormComponent implements OnInit {
   }
 
   cancelar(): void {
-    this.router.navigate(['/terceros']);
+    if (this.navigator.isActive) {
+      this.navigator.requestGoBack();
+    } else {
+      this.router.navigate(['/terceros']);
+    }
   }
 }

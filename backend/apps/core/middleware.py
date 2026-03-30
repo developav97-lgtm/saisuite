@@ -22,8 +22,9 @@ class CompanyMiddleware:
     def __call__(self, request):
         _thread_locals.company = None
         if hasattr(request, 'user') and request.user.is_authenticated:
-            if hasattr(request.user, 'company') and request.user.company:
-                _thread_locals.company = request.user.company
+            effective = getattr(request.user, 'effective_company', None)
+            if effective:
+                _thread_locals.company = effective
         response = self.get_response(request)
         _thread_locals.company = None
         return response

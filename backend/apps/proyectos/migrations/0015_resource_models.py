@@ -298,7 +298,7 @@ class Migration(migrations.Migration):
         migrations.AddConstraint(
             model_name="resourceassignment",
             constraint=models.CheckConstraint(
-                check=models.Q(("fecha_fin__gte", models.F("fecha_inicio"))),
+                condition=models.Q(("fecha_fin__gte", models.F("fecha_inicio"))),
                 name="ck_rassign_fecha_fin_gte_inicio",
             ),
         ),
@@ -322,7 +322,7 @@ class Migration(migrations.Migration):
         migrations.AddConstraint(
             model_name="resourceavailability",
             constraint=models.CheckConstraint(
-                check=models.Q(("fecha_fin__gte", models.F("fecha_inicio"))),
+                condition=models.Q(("fecha_fin__gte", models.F("fecha_inicio"))),
                 name="ck_ravail_fecha_fin_gte_inicio",
             ),
         ),
@@ -344,7 +344,7 @@ class Migration(migrations.Migration):
         migrations.AddConstraint(
             model_name="resourcecapacity",
             constraint=models.CheckConstraint(
-                check=models.Q(
+                condition=models.Q(
                     ("fecha_fin__isnull", True),
                     ("fecha_fin__gt", models.F("fecha_inicio")),
                     _connector="OR",
@@ -355,7 +355,7 @@ class Migration(migrations.Migration):
         migrations.AddConstraint(
             model_name="resourcecapacity",
             constraint=models.CheckConstraint(
-                check=models.Q(("horas_por_semana__gt", 0)),
+                condition=models.Q(("horas_por_semana__gt", 0)),
                 name="ck_rcap_horas_positivas",
             ),
         ),

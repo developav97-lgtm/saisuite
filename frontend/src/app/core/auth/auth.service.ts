@@ -1,7 +1,7 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
-import { Observable, tap } from 'rxjs';
+import { Observable, tap, map } from 'rxjs';
 import {
   LoginRequest, LoginResponse, TokenRefreshResponse,
   UserProfile, RegisterRequest, RegisterResponse, UserCompanyInfo,
@@ -73,6 +73,15 @@ export class AuthService {
     return this.http.post<{ detail: string }>('/api/v1/auth/password-reset/confirm/', { uid, token, password });
   }
 
+  refreshUserProfile(): Observable<UserProfile> {
+    return this.http.get<UserProfile>('/api/v1/auth/me/').pipe(
+      tap(user => {
+        this.currentUser.set(user);
+        localStorage.setItem(USER_KEY, JSON.stringify(user));
+      }),
+    );
+  }
+
   getAccessToken(): string | null {
     return localStorage.getItem(ACCESS_KEY);
   }
@@ -95,10 +104,19 @@ export class AuthService {
     this.currentUser.set(null);
   }
 
+  /** Limpia el storage sin llamar al backend (para uso desde interceptor). */
+  clearStoragePublic(): void {
+    this.clearStorage();
+  }
+
   private loadFromStorage(): void {
     const raw = localStorage.getItem(USER_KEY);
     if (raw) {
       this.currentUser.set(JSON.parse(raw) as UserProfile);
+      // Refrescar desde el backend en background para asegurar permisos actualizados
+      if (localStorage.getItem(ACCESS_KEY)) {
+        this.refreshUserProfile().subscribe({ error: () => {} });
+      }
     }
   }
 }

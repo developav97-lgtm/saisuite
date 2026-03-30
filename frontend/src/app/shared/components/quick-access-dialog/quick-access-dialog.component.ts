@@ -117,6 +117,7 @@ export class QuickAccessDialogComponent implements OnInit, OnDestroy {
   readonly canGoBack        = signal(false);
 
   private navSub?: Subscription;
+  private goBackSub?: Subscription;
 
   ngOnInit(): void {
     // Estado inicial
@@ -130,11 +131,21 @@ export class QuickAccessDialogComponent implements OnInit, OnDestroy {
     this.navSub = this.navigator.intercepted$.subscribe(url => {
       this.handleInternalNavigation(url);
     });
+
+    // Escuchar solicitudes de "volver" desde componentes internos
+    this.goBackSub = this.navigator.goBack$.subscribe(() => {
+      if (this.history.length > 1) {
+        this.goBack();
+      } else {
+        this.dialogRef.close();
+      }
+    });
   }
 
   ngOnDestroy(): void {
     this.navigator.unregister();
     this.navSub?.unsubscribe();
+    this.goBackSub?.unsubscribe();
   }
 
   goBack(): void {

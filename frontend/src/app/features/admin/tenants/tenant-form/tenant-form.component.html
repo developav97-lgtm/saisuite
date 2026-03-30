@@ -1,0 +1,345 @@
+<div class="tf-page">
+  <!-- Encabezado -->
+  <div class="tf-header">
+    <button mat-icon-button matTooltip="Volver" (click)="volver()">
+      <mat-icon>arrow_back</mat-icon>
+    </button>
+    <div>
+      <h1 class="tf-title">{{ pageTitle() }}</h1>
+      @if (isEdit() && tenant()) {
+        <p class="tf-subtitle">{{ tenant()!.name }} · NIT {{ tenant()!.nit }}</p>
+      }
+    </div>
+  </div>
+
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate" />
+  }
+
+  <mat-tab-group [class.tf-tabs-hidden]="!isEdit()">
+
+    <!-- ── Tab 1: Empresa ──────────────────────────────────────────────────── -->
+    <mat-tab label="Datos empresa">
+      <div class="tf-section">
+        <form [formGroup]="empresaForm" class="tf-form">
+          <mat-form-field appearance="outline">
+            <mat-label>Nombre empresa</mat-label>
+            <input matInput formControlName="name" maxlength="255" />
+            @if (empresaForm.get('name')?.hasError('required') && empresaForm.get('name')?.touched) {
+              <mat-error>El nombre es requerido</mat-error>
+            }
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>NIT</mat-label>
+            <input matInput formControlName="nit" maxlength="20" />
+            @if (empresaForm.get('nit')?.hasError('required') && empresaForm.get('nit')?.touched) {
+              <mat-error>El NIT es requerido</mat-error>
+            }
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Plan</mat-label>
+            <mat-select formControlName="plan">
+              @for (entry of PLAN_LABELS | keyvalue; track entry.key) {
+                <mat-option [value]="entry.key">{{ entry.value }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+        </form>
+      </div>
+    </mat-tab>
+
+    <!-- ── Tab 2: Licencia ─────────────────────────────────────────────────── -->
+    <mat-tab [label]="isEdit() ? 'Gestión de licencia' : 'Licencia inicial'">
+      <div class="tf-section">
+
+        <!-- ── Licencia actual (solo edición) ─────────────────────────────── -->
+        @if (isEdit() && license()) {
+          <div class="lm-card lm-card--current">
+            <div class="lm-card-header">
+              <div class="lm-card-title-row">
+                <h3 class="lm-card-title">Licencia actual</h3>
+                <mat-chip [color]="licenseStatusColor()" highlighted>
+                  {{ STATUS_LABELS[license()!.status] }}
+                </mat-chip>
+              </div>
+            </div>
+
+            <div class="lm-stats-grid">
+              <div class="lm-stat">
+                <span class="lm-stat-label">Período</span>
+                <span class="lm-stat-value">{{ PERIOD_LABELS[license()!.period] }}</span>
+              </div>
+              <div class="lm-stat">
+                <span class="lm-stat-label">Inicio</span>
+                <span class="lm-stat-value">{{ license()!.starts_at | date:'dd/MM/yyyy' }}</span>
+              </div>
+              <div class="lm-stat">
+                <span class="lm-stat-label">Vencimiento</span>
+                <span class="lm-stat-value" [class.lm-stat-value--danger]="license()!.is_expired">
+                  {{ license()!.expires_at | date:'dd/MM/yyyy' }}
+                  @if (!license()!.is_expired) {
+                    <span class="lm-days-badge"
+                      [class.lm-days-badge--warn]="license()!.days_until_expiry <= 10"
+                      [class.lm-days-badge--ok]="license()!.days_until_expiry > 10">
+                      {{ license()!.days_until_expiry }} días
+                    </span>
+                  } @else {
+                    <span class="lm-days-badge lm-days-badge--expired">Vencida</span>
+                  }
+                </span>
+              </div>
+              <div class="lm-stat">
+                <span class="lm-stat-label">Usuarios</span>
+                <span class="lm-stat-value">{{ license()!.max_users }} ({{ license()!.concurrent_users }} simultáneos)</span>
+              </div>
+              <div class="lm-stat">
+                <span class="lm-stat-label">Mensajes IA</span>
+                <span class="lm-stat-value">{{ license()!.messages_used | number }}/{{ license()!.messages_quota | number }}</span>
+              </div>
+              <div class="lm-stat">
+                <span class="lm-stat-label">Tokens IA</span>
+                <span class="lm-stat-value">{{ license()!.ai_tokens_used | number }}/{{ license()!.ai_tokens_quota | number }}</span>
+              </div>
+            </div>
+
+            <div class="lm-card-actions">
+              <button mat-stroked-button (click)="licenseEditExpanded.set(!licenseEditExpanded())">
+                <mat-icon>{{ licenseEditExpanded() ? 'expand_less' : 'edit' }}</mat-icon>
+                {{ licenseEditExpanded() ? 'Cerrar edición' : 'Editar licencia' }}
+              </button>
+              @if (!pendingRenewal()) {
+                <button mat-stroked-button color="primary"
+                  [disabled]="creatingRenewal()"
+                  (click)="generarRenovacion()">
+                  <mat-icon>autorenew</mat-icon>
+                  Crear renovación
+                </button>
+              }
+            </div>
+          </div>
+        }
+
+        <!-- ── Renovación pendiente ────────────────────────────────────────── -->
+        @if (isEdit() && pendingRenewal()) {
+          <div class="lm-card"
+            [class.lm-card--renewal-pending]="pendingRenewal()!.status === 'pending'"
+            [class.lm-card--renewal-confirmed]="pendingRenewal()!.status === 'confirmed'">
+
+            <div class="lm-card-header">
+              <div class="lm-card-title-row">
+                <h3 class="lm-card-title">
+                  <mat-icon class="lm-title-icon">schedule</mat-icon>
+                  Renovación pendiente
+                </h3>
+                <mat-chip
+                  [color]="pendingRenewal()!.status === 'confirmed' ? 'primary' : 'accent'"
+                  highlighted>
+                  {{ pendingRenewal()!.status_display }}
+                </mat-chip>
+              </div>
+            </div>
+
+            <div class="lm-stats-grid">
+              <div class="lm-stat">
+                <span class="lm-stat-label">Período</span>
+                <span class="lm-stat-value">{{ PERIOD_LABELS[pendingRenewal()!.period] }}</span>
+              </div>
+              <div class="lm-stat">
+                <span class="lm-stat-label">Nuevo inicio</span>
+                <span class="lm-stat-value">{{ pendingRenewal()!.new_starts_at | date:'dd/MM/yyyy' }}</span>
+              </div>
+              <div class="lm-stat">
+                <span class="lm-stat-label">Nuevo vencimiento</span>
+                <span class="lm-stat-value">{{ pendingRenewal()!.new_expires_at | date:'dd/MM/yyyy' }}</span>
+              </div>
+              @if (pendingRenewal()!.auto_generated) {
+                <div class="lm-stat lm-stat--full">
+                  <span class="lm-auto-badge">
+                    <mat-icon>smart_toy</mat-icon> Generada automáticamente por el sistema
+                  </span>
+                </div>
+              }
+            </div>
+
+            @if (pendingRenewal()!.status === 'confirmed') {
+              <div class="lm-confirmed-note">
+                <mat-icon>check_circle</mat-icon>
+                Pago confirmado. La renovación se activará automáticamente cuando venza la licencia actual.
+              </div>
+            }
+
+            <div class="lm-card-actions">
+              @if (pendingRenewal()!.status === 'pending') {
+                <button mat-raised-button color="primary"
+                  [disabled]="confirmingPayment()"
+                  (click)="confirmarPago()">
+                  <mat-icon>payments</mat-icon>
+                  Confirmar pago
+                </button>
+              }
+              <button mat-stroked-button color="warn"
+                [disabled]="cancellingRenewal()"
+                (click)="cancelarRenovacion()">
+                <mat-icon>cancel</mat-icon>
+                Cancelar renovación
+              </button>
+            </div>
+          </div>
+        }
+
+        <!-- ── Formulario licencia (siempre visible en creación, colapsable en edición) ── -->
+        @if (!isEdit() || licenseEditExpanded()) {
+          <div class="lm-edit-section">
+            @if (isEdit()) {
+              <mat-divider class="tf-divider" />
+              <h3 class="lm-edit-title">Editar licencia</h3>
+            }
+
+            <form [formGroup]="licenciaForm" class="tf-form">
+
+              <!-- Período -->
+              <div class="lm-period-field">
+                <p class="lm-field-label">Período *</p>
+                <div class="lm-period-chips">
+                  @for (p of PERIODS; track p) {
+                    <mat-chip-option
+                      [selected]="licenciaForm.get('period')?.value === p"
+                      (click)="licenciaForm.get('period')?.setValue(p)">
+                      {{ PERIOD_LABELS[p] }}
+                    </mat-chip-option>
+                  }
+                </div>
+              </div>
+
+              <!-- Fecha inicio + preview vencimiento -->
+              <mat-form-field appearance="outline">
+                <mat-label>Fecha de inicio</mat-label>
+                <input matInput [matDatepicker]="pickerStart" formControlName="starts_at" placeholder="dd/mm/aaaa" />
+                <mat-datepicker-toggle matIconSuffix [for]="pickerStart"></mat-datepicker-toggle>
+                <mat-datepicker #pickerStart></mat-datepicker>
+                @if (expiryPreview()) {
+                  <mat-hint>Vence: {{ expiryPreview() | date:'dd/MM/yyyy' }}</mat-hint>
+                }
+                @if (licenciaForm.get('starts_at')?.hasError('required') && licenciaForm.get('starts_at')?.touched) {
+                  <mat-error>Requerido</mat-error>
+                }
+              </mat-form-field>
+
+              <!-- Estado -->
+              <mat-form-field appearance="outline">
+                <mat-label>Estado</mat-label>
+                <mat-select formControlName="status">
+                  @for (entry of STATUS_LABELS | keyvalue; track entry.key) {
+                    <mat-option [value]="entry.key">{{ entry.value }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+
+              <!-- Usuarios -->
+              <mat-form-field appearance="outline">
+                <mat-label>Usuarios concurrentes</mat-label>
+                <input matInput type="number" formControlName="concurrent_users" min="1" max="9999" />
+                <mat-hint>Sesiones simultáneas permitidas</mat-hint>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Máx. usuarios totales</mat-label>
+                <input matInput type="number" formControlName="max_users" min="1" max="9999" />
+              </mat-form-field>
+
+              <!-- Módulos -->
+              <div class="tf-modules">
+                <p class="tf-modules-label">Módulos incluidos:</p>
+                <div class="tf-modules-grid">
+                  @for (mod of modules; track mod) {
+                    <mat-checkbox [formControlName]="'modules_' + mod">
+                      {{ MODULE_LABELS[mod] }}
+                    </mat-checkbox>
+                  }
+                </div>
+              </div>
+
+              <!-- Cuota IA -->
+              <mat-divider class="tf-divider" />
+              <p class="tf-section-label">Cuota mensual IA</p>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Mensajes IA / mes</mat-label>
+                <input matInput inputmode="numeric"
+                  [value]="formatMiles(licenciaForm.get('messages_quota')?.value)"
+                  (input)="onMilesInput($event, 'messages_quota')" />
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Tokens IA / mes</mat-label>
+                <input matInput inputmode="numeric"
+                  [value]="formatMiles(licenciaForm.get('ai_tokens_quota')?.value)"
+                  (input)="onMilesInput($event, 'ai_tokens_quota')" />
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="tf-full-width">
+                <mat-label>Notas internas</mat-label>
+                <textarea matInput formControlName="notes" rows="3"></textarea>
+              </mat-form-field>
+
+            </form>
+          </div>
+        }
+
+      </div>
+    </mat-tab>
+
+    <!-- ── Tab 3: Historial (solo edición) ────────────────────────────────── -->
+    @if (isEdit()) {
+      <mat-tab label="Historial de licencia">
+        <div class="tf-section">
+          @if (history().length === 0) {
+            <div class="sc-empty-state">
+              <mat-icon>history</mat-icon>
+              <p>Sin historial registrado</p>
+            </div>
+          } @else {
+            <table mat-table [dataSource]="history()" class="tf-history-table mat-elevation-z1">
+              <ng-container matColumnDef="date">
+                <th mat-header-cell *matHeaderCellDef>Fecha</th>
+                <td mat-cell *matCellDef="let h">{{ h.created_at | date:'dd/MM/yyyy HH:mm' }}</td>
+              </ng-container>
+              <ng-container matColumnDef="change_type">
+                <th mat-header-cell *matHeaderCellDef>Cambio</th>
+                <td mat-cell *matCellDef="let h">{{ getChangeTypeLabel(h.change_type) }}</td>
+              </ng-container>
+              <ng-container matColumnDef="by">
+                <th mat-header-cell *matHeaderCellDef>Por</th>
+                <td mat-cell *matCellDef="let h">{{ h.changed_by_email ?? '—' }}</td>
+              </ng-container>
+              <ng-container matColumnDef="notes">
+                <th mat-header-cell *matHeaderCellDef>Notas</th>
+                <td mat-cell *matCellDef="let h">{{ h.notes || '—' }}</td>
+              </ng-container>
+              <tr mat-header-row *matHeaderRowDef="historyColumns"></tr>
+              <tr mat-row *matRowDef="let row; columns: historyColumns;"></tr>
+            </table>
+          }
+        </div>
+      </mat-tab>
+    }
+
+  </mat-tab-group>
+
+  <!-- Acciones footer -->
+  <div class="tf-footer">
+    <button mat-stroked-button (click)="volver()">Cancelar</button>
+    <button mat-raised-button color="primary"
+      [disabled]="saving() || loading()"
+      (click)="guardar()">
+      @if (saving()) {
+        <mat-icon>hourglass_empty</mat-icon>
+      } @else {
+        <mat-icon>save</mat-icon>
+      }
+      {{ isEdit() ? 'Guardar cambios' : 'Crear empresa' }}
+    </button>
+  </div>
+</div>

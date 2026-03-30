@@ -6,6 +6,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   OnInit,
+  computed,
   inject,
   signal,
 } from '@angular/core';
@@ -62,9 +63,13 @@ export class CostRateFormComponent implements OnInit {
 
   readonly isEditMode = !!this.dialogData.rate;
 
+  // Patrón estándar campos monetarios: signal numérico + computed formateado
+  readonly rateRaw     = signal(this.parseRate(this.dialogData.rate?.hourly_rate));
+  readonly rateDisplay = computed(() => this.formatCOP(this.rateRaw()));
+
   readonly form = this.fb.group({
     user:         [this.dialogData.rate?.user ?? '', Validators.required],
-    hourly_rate:  [this.dialogData.rate?.hourly_rate ?? '', [Validators.required, Validators.min(0)]],
+    hourly_rate:  [this.parseRate(this.dialogData.rate?.hourly_rate), [Validators.required, Validators.min(0)]],
     start_date:   [
       this.dialogData.rate ? this.parseDate(this.dialogData.rate.start_date) : null as Date | null,
       Validators.required,
@@ -81,6 +86,13 @@ export class CostRateFormComponent implements OnInit {
     });
   }
 
+  onRateInput(event: Event): void {
+    const raw = (event.target as HTMLInputElement).value.replace(/[^\d]/g, '');
+    const num = raw ? parseInt(raw, 10) : 0;
+    this.rateRaw.set(num);
+    this.form.get('hourly_rate')!.setValue(num, { emitEvent: false });
+  }
+
   guardar(): void {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
@@ -90,7 +102,7 @@ export class CostRateFormComponent implements OnInit {
     const v = this.form.getRawValue();
     const payload = {
       user:        v.user!,
-      hourly_rate: v.hourly_rate!,
+      hourly_rate: String(v.hourly_rate!),
       start_date:  this.formatDate(v.start_date!),
       end_date:    v.end_date ? this.formatDate(v.end_date) : null,
       notes:       v.notes ?? '',
@@ -121,6 +133,20 @@ export class CostRateFormComponent implements OnInit {
 
   cancelar(): void {
     this.dialogRef.close(null);
+  }
+
+  private parseRate(value: string | undefined | null): number {
+    if (!value) return 0;
+    const n = parseFloat(value);
+    return isNaN(n) ? 0 : Math.round(n);
+  }
+
+  private formatCOP(value: number): string {
+    if (!value) return '';
+    return new Intl.NumberFormat('es-CO', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(value);
   }
 
   private formatDate(d: Date): string {

@@ -19,6 +19,7 @@ import { MatDialogModule } from '@angular/material/dialog';
 import { Subscription } from 'rxjs';
 import { filter } from 'rxjs/operators';
 import { QuickAccessRoute } from '../../../shared/services/quick-access-navigator.service';
+import { AuthService } from '../../auth/auth.service';
 
 const TAREAS_VIEW_KEY = 'saisuite.tareasView';
 
@@ -31,6 +32,8 @@ export interface NavItem {
   badge?: string | number;
   children?: NavItem[];
   exact?: boolean;
+  /** Código de permiso granular requerido para mostrar este ítem (ej: 'proyectos.view') */
+  permission?: string;
 }
 
 export interface NavSection {
@@ -50,9 +53,10 @@ export class SidebarComponent implements OnInit, OnDestroy {
   readonly visible = input(true);
   @Output() visibleChange = new EventEmitter<boolean>();
 
-  private readonly cdr    = inject(ChangeDetectorRef);
-  private readonly router = inject(Router);
-  private readonly dialog = inject(MatDialog);
+  private readonly cdr         = inject(ChangeDetectorRef);
+  private readonly router      = inject(Router);
+  private readonly dialog      = inject(MatDialog);
+  private readonly authService = inject(AuthService);
   private routerSub?: Subscription;
 
   isDesktop      = true;
@@ -70,10 +74,9 @@ export class SidebarComponent implements OnInit, OnDestroy {
     {
       sectionLabel: 'Módulos',
       items: [
-        { label: 'Proyectos',       icon: 'engineering',         route: '/proyectos' },
-        { label: 'Terceros',        icon: 'contacts',            route: '/terceros' },
+        { label: 'Proyectos',       icon: 'engineering',          route: '/proyectos' },
+        { label: 'Terceros',        icon: 'contacts',             route: '/terceros' },
         { label: 'Administración',  icon: 'admin_panel_settings', route: '/admin/usuarios' },
-        { label: 'Configuración',   icon: 'settings',            route: '/configuracion' },
       ],
     },
   ];
@@ -88,22 +91,30 @@ export class SidebarComponent implements OnInit, OnDestroy {
       {
         sectionLabel: 'Gestión de Proyectos',
         items: [
-          { label: 'Dashboard', icon: 'dashboard', route: '/proyectos/dashboard', exact: true },
+          { label: 'Dashboard', icon: 'dashboard', route: '/proyectos/dashboard', exact: true, permission: 'proyectos.view' },
           {
-            label: 'Lista',
+            label: 'Proyectos',
             icon: 'work',
             action: () => this.router.navigate(['/proyectos/lista']),
             activeCheck: () => this.isProyectosListaActive(),
+            permission: 'proyectos.view',
           },
-          { label: 'Actividades',   icon: 'construction', route: '/proyectos/actividades' },
           {
             label: 'Tareas',
             icon: 'task_alt',
             action: () => this.navigateToTareas(),
             activeCheck: () => this.isTareasActive(),
+            permission: 'tareas.view',
           },
-          { label: 'Timesheets',    icon: 'schedule',     route: '/proyectos/timesheets' },
-          { label: 'Mis Tareas',    icon: 'person',       route: '/proyectos/mis-tareas' },
+          {
+            label: 'Mis Tareas',
+            icon: 'person',
+            action: () => this.navigateToMisTareas(),
+            activeCheck: () => this.isMisTareasActive(),
+            permission: 'tareas.view',
+          },
+          { label: 'Registro de Horas', icon: 'schedule', route: '/proyectos/timesheets', permission: 'timesheets.view' },
+          { label: 'Actividades',   icon: 'construction', route: '/proyectos/actividades', permission: 'actividades.view' },
           { label: 'Configuración', icon: 'tune',         route: '/proyectos/configuracion' },
         ],
       },
@@ -167,22 +178,41 @@ export class SidebarComponent implements OnInit, OnDestroy {
     ];
   }
 
-  private readonly ADMIN_NAV: NavSection[] = [
-    {
-      items: [
-        { label: 'Módulos', icon: 'apps', route: '/dashboard' },
-      ],
-    },
-    {
-      sectionLabel: 'Administración',
-      items: [
-        { label: 'Usuarios',     icon: 'manage_accounts', route: '/admin/usuarios' },
-        { label: 'Empresa',      icon: 'business',        route: '/admin/empresa' },
-        { label: 'Módulos',      icon: 'extension',       route: '/admin/modulos' },
-        { label: 'Consecutivos', icon: 'tag',             route: '/admin/consecutivos' },
-      ],
-    },
-  ];
+  private get ADMIN_NAV(): NavSection[] {
+    const user = this.authService.currentUser();
+    const isSuperadmin = user?.is_superadmin || user?.is_superuser;
+
+    // SuperAdmin solo ve gestión de tenants y usuarios internos
+    if (isSuperadmin) {
+      return [
+        {
+          sectionLabel: 'Superadmin ValMen Tech',
+          items: [
+            { label: 'Tenants',           icon: 'domain',               route: '/admin/tenants' },
+            { label: 'Usuarios internos', icon: 'supervised_user_circle', route: '/admin/usuarios-internos' },
+          ],
+        },
+      ];
+    }
+
+    // Soporte ve los mismos items que un admin de empresa (sin tenants)
+    return [
+      {
+        items: [
+          { label: 'Módulos', icon: 'apps', route: '/dashboard' },
+        ],
+      },
+      {
+        sectionLabel: 'Administración',
+        items: [
+          { label: 'Usuarios',     icon: 'manage_accounts', route: '/admin/usuarios' },
+          { label: 'Roles',        icon: 'security',        route: '/admin/roles' },
+          { label: 'Empresa',      icon: 'business',        route: '/admin/empresa' },
+          { label: 'Consecutivos', icon: 'tag',             route: '/admin/consecutivos' },
+        ],
+      },
+    ];
+  }
 
   private readonly TERCEROS_NAV: NavSection[] = [
     {
@@ -194,20 +224,6 @@ export class SidebarComponent implements OnInit, OnDestroy {
       sectionLabel: 'Terceros',
       items: [
         { label: 'Listado', icon: 'contacts', route: '/terceros' },
-      ],
-    },
-  ];
-
-  private readonly CONFIG_NAV: NavSection[] = [
-    {
-      items: [
-        { label: 'Módulos', icon: 'apps', route: '/dashboard' },
-      ],
-    },
-    {
-      sectionLabel: 'Configuración',
-      items: [
-        { label: 'Sistema', icon: 'settings', route: '/configuracion' },
       ],
     },
   ];
@@ -238,21 +254,44 @@ export class SidebarComponent implements OnInit, OnDestroy {
   // ── Lógica de navegación ─────────────────────────────────────
 
   private updateNav(url: string): void {
-    const mod = this.detectModule(url);
-    switch (mod) {
-      case 'proyectos': this.navSections = this.PROYECTOS_NAV; break;
-      case 'admin':     this.navSections = this.ADMIN_NAV;     break;
-      case 'terceros':  this.navSections = this.TERCEROS_NAV;  break;
-      case 'config':    this.navSections = this.CONFIG_NAV;    break;
-      default:          this.navSections = this.HOME_NAV;
+    const user = this.authService.currentUser();
+
+    // SuperAdmin siempre ve el nav de admin — nunca el de modulos de tenant
+    if (user?.is_superadmin || user?.is_superuser) {
+      this.navSections = this.ADMIN_NAV;
+      return;
     }
+
+    const mod = this.detectModule(url);
+    let sections: NavSection[];
+    switch (mod) {
+      case 'proyectos': sections = this.PROYECTOS_NAV; break;
+      case 'admin':     sections = this.ADMIN_NAV;     break;
+      case 'terceros':  sections = this.TERCEROS_NAV;  break;
+      default:          sections = this.HOME_NAV;
+    }
+
+    // Filtrar ítems que requieren permiso que el usuario no tiene
+    this.navSections = sections.map(section => ({
+      ...section,
+      items: section.items.filter(item => this._tienePermiso(item.permission)),
+    }));
+  }
+
+  /** Verifica si el usuario tiene un permiso granular. Sin permiso definido → siempre visible. */
+  private _tienePermiso(codigo?: string): boolean {
+    if (!codigo) return true;
+    const user = this.authService.currentUser();
+    if (!user) return false;
+    if (user.is_superadmin || user.is_superuser || user.is_staff) return true;
+    const permisos = user.rol_granular?.permisos ?? [];
+    return permisos.some(p => p.codigo === codigo);
   }
 
   private detectModule(url: string): string {
     if (url.startsWith('/proyectos'))    return 'proyectos';
     if (url.startsWith('/admin'))        return 'admin';
     if (url.startsWith('/terceros'))     return 'terceros';
-    if (url.startsWith('/configuracion')) return 'config';
     return 'home';
   }
 
@@ -285,6 +324,25 @@ export class SidebarComponent implements OnInit, OnDestroy {
     this.router.navigate([route]);
   }
 
+  /** Navega a Mis Tareas respetando la última vista guardada */
+  private navigateToMisTareas(): void {
+    const view = localStorage.getItem(TAREAS_VIEW_KEY) ?? 'kanban';
+    if (view === 'kanban') {
+      this.router.navigate(['/proyectos/tareas/kanban'], { queryParams: { mis_tareas: '1' } });
+    } else {
+      this.router.navigate(['/proyectos/mis-tareas']);
+    }
+  }
+
+  isMisTareasActive(): boolean {
+    const url = this.router.url.split('?')[0];
+    if (url === '/proyectos/mis-tareas') return true;
+    if (url === '/proyectos/tareas/kanban') {
+      return this.router.url.includes('mis_tareas=1');
+    }
+    return false;
+  }
+
   // ── Template helpers ─────────────────────────────────────────
 
   handleItemClick(item: NavItem): void {
@@ -314,7 +372,10 @@ export class SidebarComponent implements OnInit, OnDestroy {
   }
 
   isTareasActive(): boolean {
-    return this.router.url.startsWith('/proyectos/tareas');
+    if (!this.router.url.startsWith('/proyectos/tareas')) return false;
+    // No marcar activo si es el kanban de "Mis Tareas"
+    if (this.router.url.includes('mis_tareas=1')) return false;
+    return true;
   }
 
   closeDrawer(): void {

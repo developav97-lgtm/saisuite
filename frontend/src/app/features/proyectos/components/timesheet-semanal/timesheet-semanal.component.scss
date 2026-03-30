@@ -1,15 +1,21 @@
+// ── Contenedor página ──────────────────────────────────────────────────────────
+:host {
+  display: block;
+  padding: 24px;
+}
+
 // ── Navegación ─────────────────────────────────────────────────────────────────
 .ts-nav {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 0 16px;
+  padding: 0 0 20px;
 }
 
 .ts-nav__rango {
   font-size: 15px;
   font-weight: 500;
-  color: var(--sc-text-primary, #212121);
+  color: var(--sc-text-color);
   min-width: 200px;
   text-align: center;
 }
@@ -21,7 +27,7 @@
 // ── Tabla ──────────────────────────────────────────────────────────────────────
 .ts-table-wrapper {
   overflow-x: auto;
-  border: 1px solid var(--sc-border-color, #e0e0e0);
+  border: 1px solid var(--sc-surface-border);
   border-radius: 8px;
 }
 
@@ -40,7 +46,7 @@
 .ts-tarea-codigo {
   display: block;
   font-size: 11px;
-  color: var(--sc-text-secondary, #757575);
+  color: var(--sc-text-muted);
   font-family: monospace;
 }
 
@@ -72,38 +78,49 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  color: var(--sc-text-color);
 }
 
 .ts-header-dia__fecha {
   font-size: 11px;
-  color: var(--sc-text-secondary, #757575);
+  color: var(--sc-text-muted);
   font-weight: normal;
 }
 
 .ts-col-hoy {
-  background: color-mix(in srgb, var(--mat-primary-color, #1976d2) 7%, transparent) !important;
+  background: color-mix(in srgb, var(--sc-primary) 10%, transparent) !important;
 
   .ts-header-dia__label {
-    color: var(--mat-primary-color, #1976d2);
+    color: var(--sc-primary);
+  }
+
+  .ts-header-dia__fecha {
+    color: var(--sc-primary);
+    opacity: 0.8;
   }
 }
 
 .ts-col-finde {
-  background: var(--sc-background-alt, #f9f9f9) !important;
-  color: var(--sc-text-secondary, #757575);
+  background: color-mix(in srgb, var(--sc-text-muted) 8%, transparent) !important;
+
+  .ts-header-dia__label,
+  .ts-header-dia__fecha {
+    color: var(--sc-text-muted);
+  }
 }
 
 // ── Horas ──────────────────────────────────────────────────────────────────────
 .ts-horas {
   font-size: 13px;
   font-variant-numeric: tabular-nums;
+  color: var(--sc-text-color);
 
   &--vacio {
-    color: var(--sc-text-disabled, #bdbdbd);
+    color: var(--sc-text-light);
   }
 
   &--total {
-    color: var(--mat-primary-color, #1976d2);
+    color: var(--sc-primary);
   }
 }
 
@@ -112,7 +129,7 @@
   text-align: right !important;
   min-width: 72px;
   padding: 6px 12px !important;
-  border-left: 2px solid var(--sc-border-color, #e0e0e0);
+  border-left: 2px solid var(--sc-surface-border);
 }
 
 .ts-total-label,
@@ -121,5 +138,5 @@
 }
 
 .ts-grand-total {
-  color: var(--mat-primary-color, #1976d2);
+  color: var(--sc-primary);
 }

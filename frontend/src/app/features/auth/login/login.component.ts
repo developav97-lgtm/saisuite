@@ -45,9 +45,16 @@ export class LoginComponent {
     const { email, password } = this.form.getRawValue();
 
     this.authService.login({ email: email!, password: password! }).subscribe({
-      next: () => {
+      next: (res) => {
         this.loading.set(false);
-        this.router.navigate(['/dashboard']);
+        const user = res.user;
+        if (user.tipo_usuario === 'superadmin') {
+          this.router.navigate(['/admin/tenants']);
+        } else if (user.tipo_usuario === 'soporte') {
+          this.router.navigate(['/seleccionar-tenant']);
+        } else {
+          this.router.navigate(['/dashboard']);
+        }
       },
       error: (err: { status?: number; error?: { detail?: string } }) => {
         this.loading.set(false);

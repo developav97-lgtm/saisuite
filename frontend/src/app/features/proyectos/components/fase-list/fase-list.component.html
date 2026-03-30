@@ -111,7 +111,7 @@
       <!-- Nombre | Descripción -->
       <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
         <mat-label>Nombre *</mat-label>
-        <input matInput formControlName="nombre" placeholder="Ej: Fase de cimentación" />
+        <input matInput formControlName="nombre" maxlength="255" placeholder="Ej: Fase de cimentación" />
         @if (form.get('nombre')?.invalid && form.get('nombre')?.touched) {
           <mat-error>El nombre es obligatorio.</mat-error>
         }
@@ -119,7 +119,7 @@
 
       <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
         <mat-label>Descripción</mat-label>
-        <textarea matInput formControlName="descripcion" rows="3" placeholder="Descripción opcional…"></textarea>
+        <textarea matInput formControlName="descripcion" rows="3" maxlength="500" placeholder="Descripción opcional…"></textarea>
       </mat-form-field>
 
       <!-- Inicio | Fin planificado -->

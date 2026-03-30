@@ -47,6 +47,8 @@ export interface ProyectoList {
 /** Proyecto en detalle — todos los campos */
 export interface ProyectoDetail extends ProyectoList {
   cliente_id: string;
+  /** NIT/cédula real del cliente (resuelve UUID legacy si aplica) */
+  cliente_nit: string;
   coordinador: UserSummary | null;
   fecha_inicio_real: string | null;
   fecha_fin_real: string | null;

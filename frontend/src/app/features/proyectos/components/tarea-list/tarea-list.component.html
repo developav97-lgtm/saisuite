@@ -10,7 +10,7 @@
         <mat-icon>view_kanban</mat-icon>
         Kanban
       </button>
-      <button mat-raised-button color="primary" (click)="nuevaTarea()">
+      <button *hasPermission="'tareas.create'" mat-raised-button color="primary" (click)="nuevaTarea()">
         <mat-icon>add</mat-icon>
         Nueva tarea
       </button>
@@ -73,17 +73,17 @@
   }
 
   <!-- Tabla -->
-  <mat-table [dataSource]="tareas()" class="tl-table">
+  <mat-table [dataSource]="dataSource" matSort class="tl-table">
 
     <ng-container matColumnDef="codigo">
-      <mat-header-cell *matHeaderCellDef>Código</mat-header-cell>
+      <mat-header-cell *matHeaderCellDef mat-sort-header>Código</mat-header-cell>
       <mat-cell *matCellDef="let t">
         <span class="tl-codigo">{{ t.codigo }}</span>
       </mat-cell>
     </ng-container>
 
     <ng-container matColumnDef="nombre">
-      <mat-header-cell *matHeaderCellDef>Nombre</mat-header-cell>
+      <mat-header-cell *matHeaderCellDef mat-sort-header>Nombre</mat-header-cell>
       <mat-cell *matCellDef="let t" class="tl-cell-nombre">{{ t.nombre }}</mat-cell>
     </ng-container>
 
@@ -93,14 +93,14 @@
     </ng-container>
 
     <ng-container matColumnDef="estado">
-      <mat-header-cell *matHeaderCellDef>Estado</mat-header-cell>
+      <mat-header-cell *matHeaderCellDef mat-sort-header>Estado</mat-header-cell>
       <mat-cell *matCellDef="let t">
         <span [class]="estadoClass(t.estado)">{{ ESTADO_LABELS[t.estado] }}</span>
       </mat-cell>
     </ng-container>
 
     <ng-container matColumnDef="prioridad">
-      <mat-header-cell *matHeaderCellDef>Prioridad</mat-header-cell>
+      <mat-header-cell *matHeaderCellDef mat-sort-header>Prioridad</mat-header-cell>
       <mat-cell *matCellDef="let t">
         <span [class]="prioridadClass(t.prioridad)">{{ PRIORIDAD_LABELS[t.prioridad] }}</span>
       </mat-cell>
@@ -120,7 +120,7 @@
     </ng-container>
 
     <ng-container matColumnDef="fecha_limite">
-      <mat-header-cell *matHeaderCellDef>Fecha límite</mat-header-cell>
+      <mat-header-cell *matHeaderCellDef mat-sort-header>Fecha límite</mat-header-cell>
       <mat-cell *matCellDef="let t">
         <span [class.tl-vencida]="t.es_vencida">{{ formatDate(t.fecha_limite) }}</span>
       </mat-cell>
@@ -132,10 +132,10 @@
         <button mat-icon-button matTooltip="Ver detalle" (click)="verDetalle(t.id)">
           <mat-icon>chevron_right</mat-icon>
         </button>
-        <button mat-icon-button matTooltip="Editar" (click)="editarTarea(t.id)">
+        <button *hasPermission="'tareas.edit'" mat-icon-button matTooltip="Editar" (click)="editarTarea(t.id)">
           <mat-icon>edit</mat-icon>
         </button>
-        <button mat-icon-button matTooltip="Eliminar" color="warn" (click)="confirmarEliminar(t)">
+        <button *hasPermission="'tareas.delete'" mat-icon-button matTooltip="Eliminar" color="warn" (click)="confirmarEliminar(t)">
           <mat-icon>delete_outline</mat-icon>
         </button>
       </mat-cell>
@@ -151,7 +151,7 @@
     <div class="sc-empty-state tl-empty">
       <mat-icon>task_alt</mat-icon>
       <p>No hay tareas que coincidan con los filtros.</p>
-      <button mat-raised-button color="primary" (click)="nuevaTarea()">
+      <button *hasPermission="'tareas.create'" mat-raised-button color="primary" (click)="nuevaTarea()">
         <mat-icon>add</mat-icon> Nueva tarea
       </button>
     </div>

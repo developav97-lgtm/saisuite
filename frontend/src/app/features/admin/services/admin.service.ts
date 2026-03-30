@@ -42,7 +42,7 @@ export class AdminService {
     return this.http.post<AdminUser>('/api/v1/auth/users/', data);
   }
 
-  updateUser(id: string, data: Partial<CreateUserDto>): Observable<AdminUser> {
+  updateUser(id: string, data: Partial<CreateUserDto> & { rol_granular_id?: number | null }): Observable<AdminUser> {
     return this.http.patch<AdminUser>(`/api/v1/auth/users/${id}/`, data);
   }
 

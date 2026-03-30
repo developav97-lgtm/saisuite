@@ -77,6 +77,19 @@
     color: var(--sc-primary);
   }
 
+  &__soporte-badge {
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    background: #fff3e0;
+    color: #e65100;
+    border: 1px solid #ffcc80;
+    border-radius: 4px;
+    padding: 1px 5px;
+    margin-left: 4px;
+  }
+
   &__action {
     color: var(--sc-text-muted) !important;
   }

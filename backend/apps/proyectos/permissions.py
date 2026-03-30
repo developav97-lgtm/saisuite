@@ -4,6 +4,85 @@ SaiSuite — Proyectos: Permisos custom
 from rest_framework.permissions import BasePermission, SAFE_METHODS
 
 
+# Mapa acción HTTP → código de permiso por módulo
+# accion: (codigo_lectura, codigo_escritura, codigo_eliminacion)
+_ACTION_TO_PERM = {
+    # Proyectos
+    'proyectos': {
+        'view':   'proyectos.view',
+        'create': 'proyectos.create',
+        'edit':   'proyectos.edit',
+        'delete': 'proyectos.delete',
+    },
+    'actividades': {
+        'view':   'actividades.view',
+        'create': 'actividades.create',
+        'edit':   'actividades.edit',
+        'delete': 'actividades.delete',
+    },
+    'tareas': {
+        'view':   'tareas.view',
+        'create': 'tareas.create',
+        'edit':   'tareas.edit',
+        'delete': 'tareas.delete',
+    },
+    'timesheets': {
+        'view':   'timesheets.view',
+        'create': 'timesheets.create',
+        'edit':   'timesheets.edit',
+        'delete': 'timesheets.delete',
+    },
+}
+
+
+def _accion_from_method(method: str, is_delete: bool = False) -> str:
+    """Convierte método HTTP a acción semántica."""
+    if method in SAFE_METHODS:
+        return 'view'
+    if method == 'DELETE':
+        return 'delete'
+    if method == 'POST':
+        return 'create'
+    return 'edit'
+
+
+class HasGranularPermission(BasePermission):
+    """
+    Verifica permisos granulares del rol_granular del usuario.
+
+    Uso en un ViewSet:
+        class MyViewSet(viewsets.ModelViewSet):
+            permission_classes = [CanAccessProyectos, HasGranularPermission]
+            granular_module = 'proyectos'  # clave en _ACTION_TO_PERM
+
+    Superusers y staff siempre tienen acceso.
+    Si el usuario no tiene rol_granular, se deniega (salvo superuser/staff).
+    """
+
+    def has_permission(self, request, view):
+        user = request.user
+        if not user or not user.is_authenticated:
+            return False
+        # Superadmin y soporte siempre tienen acceso
+        if user.is_superuser or user.is_staff:
+            return True
+
+        module = getattr(view, 'granular_module', None)
+        if not module:
+            return True  # Sin módulo definido no se restringe
+
+        perms_map = _ACTION_TO_PERM.get(module, {})
+        if not perms_map:
+            return True
+
+        accion   = _accion_from_method(request.method)
+        codigo   = perms_map.get(accion)
+        if not codigo:
+            return True
+
+        return user.tiene_permiso(codigo)
+
+
 class CanAccessProyectos(BasePermission):
     """
     Verifica que la empresa del usuario tiene el módulo 'proyectos' activo.

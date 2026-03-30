@@ -1,10 +1,10 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
+import { AfterViewInit, ChangeDetectionStrategy, Component, OnInit, ViewChild, effect, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
 const PROYECTOS_VIEW_KEY = 'saisuite.proyectosView';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { MatTableModule } from '@angular/material/table';
+import { MatTableModule, MatTableDataSource } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -13,6 +13,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatSortModule, MatSort } from '@angular/material/sort';
 import { MatDialog } from '@angular/material/dialog';
 import { ProyectoService, ProyectoListParams } from '../../services/proyecto.service';
 import { ProyectoList, EstadoProyecto, TipoProyecto, ESTADO_LABELS, TIPO_LABELS } from '../../models/proyecto.model';
@@ -20,6 +21,7 @@ import { AdminService } from '../../../admin/services/admin.service';
 import { AdminUser } from '../../../admin/models/admin.models';
 import { ConfirmDialogComponent } from '../../../../shared/components/confirm-dialog/confirm-dialog.component';
 import { ToastService } from '../../../../core/services/toast.service';
+import { HasPermissionDirective } from '../../../../core/directives/has-permission.directive';
 
 interface SelectOption { label: string; value: string | null; }
 
@@ -33,9 +35,10 @@ interface SelectOption { label: string; value: string | null; }
     MatTableModule, MatButtonModule, MatIconModule,
     MatInputModule, MatFormFieldModule, MatSelectModule,
     MatPaginatorModule, MatProgressBarModule, MatTooltipModule,
+    MatSortModule, HasPermissionDirective,
   ],
 })
-export class ProyectoListComponent implements OnInit {
+export class ProyectoListComponent implements OnInit, AfterViewInit {
   private readonly proyectoService = inject(ProyectoService);
   private readonly adminService    = inject(AdminService);
   private readonly router          = inject(Router);
@@ -45,6 +48,19 @@ export class ProyectoListComponent implements OnInit {
   readonly proyectos     = signal<ProyectoList[]>([]);
   readonly totalCount    = signal(0);
   readonly loading       = signal(false);
+
+  readonly dataSource = new MatTableDataSource<ProyectoList>([]);
+  @ViewChild(MatSort) sort!: MatSort;
+
+  constructor() {
+    effect(() => {
+      this.dataSource.data = this.proyectos();
+    });
+  }
+
+  ngAfterViewInit(): void {
+    this.dataSource.sort = this.sort;
+  }
   readonly searchText    = signal('');
   readonly estadoFilter  = signal<EstadoProyecto | null>(null);
   readonly tipoFilter    = signal<TipoProyecto | null>(null);

@@ -1,5 +1,5 @@
 <!-- Cost Rate Form Dialog -->
-<h2 mat-dialog-title>
+<h2 mat-dialog-title class="dialog-title">
   <mat-icon>payments</mat-icon>
   {{ isEditMode ? 'Editar tarifa' : 'Agregar tarifa' }}
 </h2>
@@ -7,7 +7,6 @@
 <mat-dialog-content>
   <form [formGroup]="form" class="crf-form">
 
-    <!-- Usuario -->
     <mat-form-field appearance="outline" class="crf-full">
       <mat-label>Usuario</mat-label>
       <mat-select formControlName="user">
@@ -21,11 +20,14 @@
       }
     </mat-form-field>
 
-    <!-- Tarifa por hora -->
-    <mat-form-field appearance="outline" class="crf-full">
-      <mat-label>Tarifa por hora</mat-label>
-      <input matInput type="number" formControlName="hourly_rate" min="0" step="0.01" />
-      <span matSuffix>/ hora</span>
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="crf-full">
+      <mat-label>Tarifa por hora (COP)</mat-label>
+      <span matTextPrefix>$&nbsp;</span>
+      <input matInput type="text" inputmode="numeric"
+             [value]="rateDisplay()"
+             (input)="onRateInput($event)"
+             placeholder="0" />
+      <span matTextSuffix>&nbsp;/ hora</span>
       @if (form.get('hourly_rate')?.hasError('required') && form.get('hourly_rate')?.touched) {
         <mat-error>Campo requerido.</mat-error>
       }
@@ -34,27 +36,23 @@
       }
     </mat-form-field>
 
-    <!-- Fechas -->
-    <div class="crf-row">
-      <mat-form-field appearance="outline" class="crf-half">
-        <mat-label>Fecha inicio</mat-label>
-        <input matInput [matDatepicker]="pickerInicio" formControlName="start_date" />
-        <mat-datepicker-toggle matIconSuffix [for]="pickerInicio" />
-        <mat-datepicker #pickerInicio />
-        @if (form.get('start_date')?.hasError('required') && form.get('start_date')?.touched) {
-          <mat-error>Requerida.</mat-error>
-        }
-      </mat-form-field>
+    <mat-form-field appearance="outline" class="crf-full" subscriptSizing="dynamic">
+      <mat-label>Fecha inicio</mat-label>
+      <input matInput [matDatepicker]="pickerInicio" formControlName="start_date" />
+      <mat-datepicker-toggle matIconSuffix [for]="pickerInicio" />
+      <mat-datepicker #pickerInicio />
+      @if (form.get('start_date')?.hasError('required') && form.get('start_date')?.touched) {
+        <mat-error>Requerida.</mat-error>
+      }
+    </mat-form-field>
 
-      <mat-form-field appearance="outline" class="crf-half">
-        <mat-label>Fecha fin (opcional)</mat-label>
-        <input matInput [matDatepicker]="pickerFin" formControlName="end_date" />
-        <mat-datepicker-toggle matIconSuffix [for]="pickerFin" />
-        <mat-datepicker #pickerFin />
-      </mat-form-field>
-    </div>
+    <mat-form-field appearance="outline" subscriptSizing="dynamic">
+      <mat-label>Fecha fin (opcional)</mat-label>
+      <input matInput [matDatepicker]="pickerFin" formControlName="end_date" />
+      <mat-datepicker-toggle matIconSuffix [for]="pickerFin" />
+      <mat-datepicker #pickerFin />
+    </mat-form-field>
 
-    <!-- Notas -->
     <mat-form-field appearance="outline" class="crf-full">
       <mat-label>Notas (opcional)</mat-label>
       <textarea matInput formControlName="notes" rows="2" maxlength="500"></textarea>

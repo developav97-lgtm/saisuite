@@ -21,11 +21,10 @@ import { NotificationBellComponent } from '../notification-bell/notification-bel
 
 const MODULO_LABELS: Record<string, string> = {
   dashboard:      'Dashboard',
-  ventas:         'SaiVentas',
-  cobros:         'SaiCobros',
+  crm:            'CRM',
+  soporte:        'Soporte',
   proyectos:      'Proyectos',
   terceros:       'Terceros',
-  configuracion:  'Configuración',
   admin:          'Administración',
   notificaciones: 'Notificaciones',
 };
@@ -71,12 +70,23 @@ export class TopbarComponent {
   });
 
   readonly rolLabel = computed(() => {
-    const role = this.currentUser()?.role ?? '';
+    const user = this.currentUser();
+    if (user?.is_superadmin || user?.is_superuser) return 'Super Admin';
+    if (user?.is_staff) return 'Soporte';
+    const role = user?.role ?? '';
     return ROLE_LABELS[role] ?? role;
   });
 
   readonly perfilUrl = computed(() => {
     const id = this.currentUser()?.id;
     return id ? `/admin/usuarios/${id}` : '/admin/usuarios';
+  });
+
+  /** Empresa activa visible en el topbar (para soporte y usuarios de tenant). */
+  readonly empresaActiva = computed(() => {
+    const user = this.currentUser();
+    if (!user || user.is_superadmin || user.is_superuser) return null;
+    const ec = user.effective_company ?? user.company;
+    return ec ? { name: ec.name, isSoporte: !!user.is_staff } : null;
   });
 }

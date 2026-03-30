@@ -9,7 +9,7 @@ from rest_framework.generics import RetrieveAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from .models import Company
+from .models import Company, CompanyLicense
 from .permissions import IsSuperAdmin
 from .serializers import (
     CompanyListSerializer,
@@ -18,10 +18,15 @@ from .serializers import (
     CompanyUpdateSerializer,
     CompanyModuleSerializer,
     CompanyLicenseSerializer,
+    CompanyLicenseSummarySerializer,
     CompanyLicenseWriteSerializer,
     LicensePaymentSerializer,
+    LicenseHistorySerializer,
+    LicenseRenewalSerializer,
+    TenantCreateSerializer,
+    TenantWithLicenseSerializer,
 )
-from .services import CompanyService, LicenseService
+from .services import CompanyService, LicenseService, RenewalService
 
 logger = logging.getLogger(__name__)
 
@@ -84,7 +89,7 @@ class CompanyMeView(RetrieveAPIView):
     serializer_class = CompanyDetailSerializer
 
     def get_object(self):
-        company = getattr(self.request.user, 'company', None)
+        company = getattr(self.request.user, 'effective_company', None)
         if company is None:
             from rest_framework.exceptions import NotFound
             raise NotFound('El usuario no tiene una empresa asignada.')
@@ -172,10 +177,13 @@ class LicenseMeView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        company = getattr(request.user, 'company', None)
+        company = getattr(request.user, 'effective_company', None)
         if not company:
             return Response({'detail': 'Sin empresa asignada.'}, status=status.HTTP_404_NOT_FOUND)
-        license_obj = LicenseService.get_license(company)
+        try:
+            license_obj = LicenseService.get_license(company)
+        except Exception:
+            return Response({'detail': 'Sin licencia configurada.'}, status=status.HTTP_404_NOT_FOUND)
         return Response(CompanyLicenseSerializer(license_obj).data)
 
 
@@ -190,3 +198,239 @@ class LicensePaymentCreateView(APIView):
         serializer.is_valid(raise_exception=True)
         payment = LicenseService.add_payment(license_obj, serializer.validated_data)
         return Response(LicensePaymentSerializer(payment).data, status=status.HTTP_201_CREATED)
+
+
+# ── Panel Superadmin — Tenants ────────────────────────────────────────────────
+
+class AdminTenantListView(APIView):
+    """
+    GET  /api/v1/admin/tenants/ — lista todas las empresas con resumen de licencia.
+    POST /api/v1/admin/tenants/ — crea empresa + licencia inicial.
+    Solo superadmins.
+    """
+
+    permission_classes = [IsSuperAdmin]
+
+    def get(self, request):
+        companies = (
+            Company.objects.all()
+            .prefetch_related('license', 'modules')
+            .order_by('name')
+        )
+        return Response(TenantWithLicenseSerializer(companies, many=True).data)
+
+    def post(self, request):
+        serializer = TenantCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        d = serializer.validated_data
+
+        company = CompanyService.create_company({
+            'name': d['name'],
+            'nit':  d['nit'],
+            'plan': d['plan'],
+            'saiopen_enabled': d.get('saiopen_enabled', False),
+        })
+
+        license_data = {
+            'company':          company,
+            'plan':             d['plan'],
+            'status':           d['license_status'],
+            'starts_at':        d['license_starts_at'],
+            'period':           d.get('license_period', 'trial'),
+            'concurrent_users': d.get('concurrent_users', 1),
+            'max_users':        d.get('max_users', 5),
+            'modules_included': d.get('modules_included', []),
+            'messages_quota':   d.get('messages_quota', 0),
+            'ai_tokens_quota':  d.get('ai_tokens_quota', 0),
+            'notes':            d.get('license_notes', ''),
+        }
+        # expires_at is optional override; if provided, use it; otherwise calculated from period
+        if d.get('license_expires_at'):
+            license_data['expires_at'] = d['license_expires_at']
+
+        LicenseService.create_license_with_history(license_data, created_by=request.user)
+
+        out = TenantWithLicenseSerializer(
+            Company.objects.prefetch_related('license', 'modules').get(id=company.id)
+        )
+        return Response(out.data, status=status.HTTP_201_CREATED)
+
+
+class AdminTenantDetailView(APIView):
+    """
+    GET   /api/v1/admin/tenants/{pk}/ — detalle de empresa con licencia completa.
+    PATCH /api/v1/admin/tenants/{pk}/ — editar datos de la empresa.
+    Solo superadmins.
+    """
+
+    permission_classes = [IsSuperAdmin]
+
+    def get(self, request, pk):
+        company = CompanyService.get_company(str(pk))
+        return Response(TenantWithLicenseSerializer(company).data)
+
+    def patch(self, request, pk):
+        company = CompanyService.get_company(str(pk))
+        serializer = CompanyUpdateSerializer(company, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        updated = CompanyService.update_company(company, serializer.validated_data)
+        return Response(TenantWithLicenseSerializer(updated).data)
+
+
+class AdminTenantLicenseView(APIView):
+    """
+    GET  /api/v1/admin/tenants/{pk}/license/ — licencia completa (con historial).
+    POST /api/v1/admin/tenants/{pk}/license/ — crea nueva licencia (si no existe aún).
+    PATCH /api/v1/admin/tenants/{pk}/license/ — actualiza licencia (renovación/modificación).
+    Solo superadmins.
+    """
+
+    permission_classes = [IsSuperAdmin]
+
+    def get(self, request, pk):
+        company = CompanyService.get_company(str(pk))
+        license_obj = LicenseService.get_license(company)
+        return Response(CompanyLicenseSerializer(license_obj).data)
+
+    def post(self, request, pk):
+        company = CompanyService.get_company(str(pk))
+        serializer = CompanyLicenseWriteSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        data['company'] = company
+        license_obj = LicenseService.create_license_with_history(data, created_by=request.user)
+        return Response(CompanyLicenseSerializer(license_obj).data, status=status.HTTP_201_CREATED)
+
+    def patch(self, request, pk):
+        company = CompanyService.get_company(str(pk))
+        license_obj = LicenseService.get_license(company)
+        serializer = CompanyLicenseWriteSerializer(data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        updated = LicenseService.update_license_with_history(
+            license_obj, serializer.validated_data, changed_by=request.user
+        )
+        return Response(CompanyLicenseSerializer(updated).data)
+
+
+class AdminLicenseHistoryView(APIView):
+    """
+    GET /api/v1/admin/tenants/{pk}/license/history/ — historial de cambios de licencia.
+    Solo superadmins.
+    """
+
+    permission_classes = [IsSuperAdmin]
+
+    def get(self, request, pk):
+        company = CompanyService.get_company(str(pk))
+        license_obj = LicenseService.get_license(company)
+        history = LicenseService.get_license_history(license_obj)
+        return Response(LicenseHistorySerializer(history, many=True).data)
+
+
+class AdminLicensePaymentView(APIView):
+    """
+    POST /api/v1/admin/tenants/{pk}/license/payments/ — registra un pago.
+    Solo superadmins.
+    """
+
+    permission_classes = [IsSuperAdmin]
+
+    def post(self, request, pk):
+        company = CompanyService.get_company(str(pk))
+        license_obj = LicenseService.get_license(company)
+        serializer = LicensePaymentSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        payment = LicenseService.add_payment(license_obj, serializer.validated_data)
+        return Response(LicensePaymentSerializer(payment).data, status=status.HTTP_201_CREATED)
+
+
+class AdminTenantActivateView(APIView):
+    """
+    POST /api/v1/admin/tenants/{pk}/activate/ — activa/desactiva empresa.
+    Solo superadmins.
+    """
+
+    permission_classes = [IsSuperAdmin]
+
+    def post(self, request, pk):
+        company = CompanyService.get_company(str(pk))
+        is_active = request.data.get('is_active', True)
+        company.is_active = bool(is_active)
+        company.save(update_fields=['is_active'])
+        logger.info('company_activation_changed', extra={
+            'company_id': str(company.id), 'is_active': company.is_active
+        })
+        return Response({'id': str(company.id), 'is_active': company.is_active})
+
+
+class AdminLicenseRenewalView(APIView):
+    """
+    GET  /api/v1/admin/tenants/{pk}/license/renewal/ — obtiene renovación pendiente.
+    POST /api/v1/admin/tenants/{pk}/license/renewal/ — crea renovación manual.
+    """
+
+    permission_classes = [IsSuperAdmin]
+
+    def get(self, request, pk):
+        company = CompanyService.get_company(str(pk))
+        license_obj = LicenseService.get_license(company)
+        renewal = RenewalService.get_pending_renewal(license_obj)
+        if not renewal:
+            return Response(None)
+        return Response(LicenseRenewalSerializer(renewal).data)
+
+    def post(self, request, pk):
+        company = CompanyService.get_company(str(pk))
+        license_obj = LicenseService.get_license(company)
+        period = request.data.get('period')
+        if not period or period not in CompanyLicense.PERIOD_DAYS:
+            return Response(
+                {'period': f'Período requerido. Opciones: {list(CompanyLicense.PERIOD_DAYS.keys())}'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        renewal = RenewalService.create_renewal(license_obj, period, auto_generated=False)
+        return Response(LicenseRenewalSerializer(renewal).data, status=status.HTTP_201_CREATED)
+
+
+class AdminRenewalConfirmView(APIView):
+    """
+    POST /api/v1/admin/tenants/{pk}/license/renewal/confirm/
+    Confirma el pago de la renovación pendiente.
+    Punto de extensión para futura pasarela de pago.
+    """
+
+    permission_classes = [IsSuperAdmin]
+
+    def post(self, request, pk):
+        company = CompanyService.get_company(str(pk))
+        license_obj = LicenseService.get_license(company)
+        renewal = RenewalService.get_pending_renewal(license_obj)
+        if not renewal or renewal.status != 'pending':
+            return Response(
+                {'detail': 'No hay renovación pendiente de confirmación.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        notes = request.data.get('notes', '')
+        renewal = RenewalService.confirm_renewal(renewal, confirmed_by=request.user, notes=notes)
+        return Response(LicenseRenewalSerializer(renewal).data)
+
+
+class AdminRenewalCancelView(APIView):
+    """
+    POST /api/v1/admin/tenants/{pk}/license/renewal/cancel/
+    Cancela la renovación pendiente o confirmada.
+    """
+
+    permission_classes = [IsSuperAdmin]
+
+    def post(self, request, pk):
+        company = CompanyService.get_company(str(pk))
+        license_obj = LicenseService.get_license(company)
+        renewal = RenewalService.get_pending_renewal(license_obj)
+        if not renewal:
+            return Response(
+                {'detail': 'No hay renovación activa para cancelar.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        renewal = RenewalService.cancel_renewal(renewal, cancelled_by=request.user)
+        return Response(LicenseRenewalSerializer(renewal).data)

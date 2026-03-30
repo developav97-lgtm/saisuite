@@ -44,7 +44,7 @@ class ConfiguracionConsecutivoViewSet(viewsets.ModelViewSet):
     ordering           = ['tipo', 'nombre']
 
     def get_queryset(self):
-        company = getattr(self.request.user, 'company', None)
+        company = getattr(self.request.user, 'effective_company', None)
         qs = ConfiguracionConsecutivo.all_objects.all()
         if company is not None:
             qs = qs.filter(company=company)
@@ -65,5 +65,5 @@ class ConfiguracionConsecutivoViewSet(viewsets.ModelViewSet):
         return ConfiguracionConsecutivoSerializer
 
     def perform_create(self, serializer):
-        company = self.request.user.company
+        company = self.request.user.effective_company
         serializer.save(company=company)

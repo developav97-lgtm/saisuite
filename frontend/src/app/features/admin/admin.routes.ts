@@ -28,11 +28,6 @@ export const ADMIN_ROUTES: Routes = [
           import('./company-settings/company-settings.component').then(m => m.CompanySettingsComponent),
       },
       {
-        path: 'modulos',
-        loadComponent: () =>
-          import('./modules/modules.component').then(m => m.ModulesComponent),
-      },
-      {
         path: 'consecutivos',
         loadComponent: () =>
           import('./consecutivos/consecutivo-list.component').then(m => m.ConsecutivoListComponent),
@@ -41,6 +36,41 @@ export const ADMIN_ROUTES: Routes = [
         path: 'proyectos-config',
         loadComponent: () =>
           import('./proyectos-config/proyectos-config.component').then(m => m.ProyectosConfigComponent),
+      },
+      {
+        path: 'roles',
+        loadComponent: () =>
+          import('./roles/roles-list.component').then(m => m.RolesListComponent),
+      },
+      {
+        path: 'tenants',
+        loadComponent: () =>
+          import('./tenants/tenant-list/tenant-list.component').then(m => m.TenantListComponent),
+      },
+      {
+        path: 'tenants/nuevo',
+        loadComponent: () =>
+          import('./tenants/tenant-form/tenant-form.component').then(m => m.TenantFormComponent),
+      },
+      {
+        path: 'tenants/:id',
+        loadComponent: () =>
+          import('./tenants/tenant-form/tenant-form.component').then(m => m.TenantFormComponent),
+      },
+      {
+        path: 'usuarios-internos',
+        loadComponent: () =>
+          import('./internal-users/internal-user-list.component').then(m => m.InternalUserListComponent),
+      },
+      {
+        path: 'usuarios-internos/nuevo',
+        loadComponent: () =>
+          import('./internal-users/internal-user-form.component').then(m => m.InternalUserFormComponent),
+      },
+      {
+        path: 'usuarios-internos/:id',
+        loadComponent: () =>
+          import('./internal-users/internal-user-form.component').then(m => m.InternalUserFormComponent),
       },
       { path: '', redirectTo: 'usuarios', pathMatch: 'full' },
     ],

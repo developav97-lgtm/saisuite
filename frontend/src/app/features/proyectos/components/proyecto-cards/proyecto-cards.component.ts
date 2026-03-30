@@ -31,6 +31,7 @@ import {
 import { AdminService } from '../../../admin/services/admin.service';
 import { AdminUser } from '../../../admin/models/admin.models';
 import { ToastService } from '../../../../core/services/toast.service';
+import { HasPermissionDirective } from '../../../../core/directives/has-permission.directive';
 
 @Component({
   selector: 'app-proyecto-cards',
@@ -40,6 +41,7 @@ import { ToastService } from '../../../../core/services/toast.service';
     MatButtonModule, MatIconModule,
     MatInputModule, MatFormFieldModule, MatSelectModule,
     MatPaginatorModule, MatProgressBarModule, MatTooltipModule,
+    HasPermissionDirective,
   ],
   templateUrl: './proyecto-cards.component.html',
   styleUrl: './proyecto-cards.component.scss',

@@ -15,7 +15,7 @@
 
           <mat-form-field appearance="outline" class="sc-form-field-full">
             <mat-label>Nombre de la empresa</mat-label>
-            <input matInput formControlName="company_name" autocomplete="organization" />
+            <input matInput formControlName="company_name" maxlength="255" autocomplete="organization" />
             <mat-icon matPrefix>business</mat-icon>
             @if (empresaForm.controls.company_name.invalid && empresaForm.controls.company_name.touched) {
               <mat-error>Mínimo 3 caracteres.</mat-error>
@@ -24,7 +24,7 @@
 
           <mat-form-field appearance="outline" class="sc-form-field-full">
             <mat-label>NIT (sin dígito de verificación)</mat-label>
-            <input matInput formControlName="company_nit" autocomplete="off" />
+            <input matInput formControlName="company_nit" maxlength="20" autocomplete="off" />
             <mat-icon matPrefix>badge</mat-icon>
             @if (empresaForm.controls.company_nit.invalid && empresaForm.controls.company_nit.touched) {
               <mat-error>Ingresa un NIT válido (6–15 dígitos).</mat-error>
@@ -59,7 +59,7 @@
           <div class="sc-register-row">
             <mat-form-field appearance="outline" class="sc-form-field-full">
               <mat-label>Nombre</mat-label>
-              <input matInput formControlName="first_name" autocomplete="given-name" />
+              <input matInput formControlName="first_name" maxlength="150" autocomplete="given-name" />
               @if (usuarioForm.controls.first_name.invalid && usuarioForm.controls.first_name.touched) {
                 <mat-error>Requerido.</mat-error>
               }
@@ -67,7 +67,7 @@
 
             <mat-form-field appearance="outline" class="sc-form-field-full">
               <mat-label>Apellido</mat-label>
-              <input matInput formControlName="last_name" autocomplete="family-name" />
+              <input matInput formControlName="last_name" maxlength="150" autocomplete="family-name" />
               @if (usuarioForm.controls.last_name.invalid && usuarioForm.controls.last_name.touched) {
                 <mat-error>Requerido.</mat-error>
               }

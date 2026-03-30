@@ -59,7 +59,7 @@
     </div>
 
     <!-- ── Tabs ── -->
-    <mat-tab-group class="pd-tabs" (selectedTabChange)="selectedTab.set($event.index)">
+    <mat-tab-group #tabGroup class="pd-tabs" (selectedTabChange)="selectedTab.set($event.index)">
 
       <!-- Tab 1: General -->
       <mat-tab label="General">
@@ -102,7 +102,7 @@
                   </div>
                   <div class="pd-field">
                     <span class="pd-field__label">NIT / ID</span>
-                    <span class="pd-field__value">{{ p.cliente_id }}</span>
+                    <span class="pd-field__value">{{ p.cliente_nit || p.cliente_id }}</span>
                   </div>
                 </div>
               </div>
@@ -243,24 +243,20 @@
         </div>
       </mat-tab>
 
-      <!-- Tab 5: Tareas -->
+      <!-- Tab 5: Tareas (lista + toggle kanban embebido) -->
       <mat-tab label="Tareas">
         <div class="pd-tab-content">
           @defer (when tareasTabLoaded()) {
-            <app-tarea-list [proyectoIdInput]="p.id" />
-          } @placeholder {
-            <div class="sc-loading-state" style="height: 200px;">
-              <mat-progress-bar mode="indeterminate"></mat-progress-bar>
-            </div>
-          }
-        </div>
-      </mat-tab>
-
-      <!-- Tab 6: Kanban -->
-      <mat-tab label="Kanban">
-        <div class="pd-tab-content">
-          @defer (when kanbanTabLoaded()) {
-            <app-tarea-kanban [proyectoIdInput]="p.id" />
+            @if (tareasView() === 'list') {
+              <app-tarea-list
+                [proyectoIdInput]="p.id"
+                [returnProyectoId]="p.id"
+                (kanbanToggled)="tareasView.set('kanban')" />
+            } @else {
+              <app-tarea-kanban
+                [proyectoIdInput]="p.id"
+                (listaToggled)="tareasView.set('list')" />
+            }
           } @placeholder {
             <div class="sc-loading-state" style="height: 200px;">
               <mat-progress-bar mode="indeterminate"></mat-progress-bar>

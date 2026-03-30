@@ -47,7 +47,7 @@
             <mat-form-field appearance="outline" subscriptSizing="dynamic"
               floatLabel="always" class="sc-field--full">
               <mat-label>Nombre *</mat-label>
-              <input matInput formControlName="nombre"
+              <input matInput formControlName="nombre" maxlength="200"
                 placeholder="Ej: Diseñar mockup de pantalla de inicio" />
               @if (form.controls.nombre.invalid && form.controls.nombre.touched) {
                 <mat-error>El nombre es obligatorio (máx. 200 caracteres).</mat-error>

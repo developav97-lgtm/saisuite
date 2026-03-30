@@ -316,7 +316,7 @@ export class ProyectoFormComponent implements OnInit {
 
   cancelar(): void {
     const id = this.proyectoId();
-    if (id) this.router.navigate(['/proyectos', id]); else this.router.navigate(['/proyectos']);
+    if (id) this.router.navigate(['/proyectos', id]); else this.router.navigate(['/proyectos/lista']);
   }
 
   private formatDate(date: Date | null | string): string {

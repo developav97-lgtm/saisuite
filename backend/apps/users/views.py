@@ -26,6 +26,8 @@ from .serializers import (
     SwitchCompanySerializer,
     PasswordResetRequestSerializer,
     PasswordResetConfirmSerializer,
+    InternalUserCreateSerializer,
+    InternalUserUpdateSerializer,
 )
 from .services import AuthService, UserService
 
@@ -38,9 +40,15 @@ class LoginView(APIView):
     def post(self, request):
         serializer = LoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        ip = (
+            request.META.get('HTTP_X_FORWARDED_FOR', '').split(',')[0].strip()
+            or request.META.get('REMOTE_ADDR')
+        )
         data = AuthService.login(
             email=serializer.validated_data['email'],
             password=serializer.validated_data['password'],
+            ip_address=ip or None,
+            user_agent=request.META.get('HTTP_USER_AGENT', ''),
         )
         return Response(data, status=status.HTTP_200_OK)
 
@@ -51,7 +59,7 @@ class LogoutView(APIView):
     def post(self, request):
         serializer = LogoutSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        AuthService.logout(serializer.validated_data['refresh'])
+        AuthService.logout(serializer.validated_data['refresh'], user=request.user)
         return Response(status=status.HTTP_200_OK)
 
 
@@ -126,7 +134,7 @@ class UserListCreateView(generics.ListCreateAPIView):
         elif is_active_raw == 'false':
             is_active = False
         return UserService.list_users(
-            self.request.user.company,
+            self.request.user.effective_company,
             search=search,
             role=role,
             is_active=is_active,
@@ -138,12 +146,12 @@ class UserListCreateView(generics.ListCreateAPIView):
         return UserListSerializer
 
     def perform_create(self, serializer):
-        UserService.create_user(self.request.user.company, serializer.validated_data)
+        UserService.create_user(self.request.user.effective_company, serializer.validated_data)
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        user = UserService.create_user(request.user.company, serializer.validated_data)
+        user = UserService.create_user(request.user.effective_company, serializer.validated_data)
         out = UserListSerializer(user)
         return Response(out.data, status=status.HTTP_201_CREATED)
 
@@ -161,13 +169,13 @@ class UserDetailView(APIView):
     permission_classes = [IsAuthenticated, IsCompanyAdmin]
 
     def get(self, request, pk):
-        user = UserService.get_user(request.user.company, str(pk))
+        user = UserService.get_user(request.user.effective_company, str(pk))
         return Response(UserListSerializer(user).data, status=status.HTTP_200_OK)
 
     def patch(self, request, pk):
         serializer = UserUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        user = UserService.update_user(request.user.company, str(pk), serializer.validated_data)
+        user = UserService.update_user(request.user.effective_company, str(pk), serializer.validated_data)
         return Response(UserListSerializer(user).data, status=status.HTTP_200_OK)
 
 
@@ -191,7 +199,7 @@ class UserMeCompaniesView(APIView):
             data = UserCompanySummarySerializer(user_companies, many=True).data
         else:
             # Fallback: si no hay UserCompany, usar la empresa del FK
-            company = getattr(request.user, 'company', None)
+            company = getattr(request.user, 'effective_company', None)
             if company:
                 data = [
                     {
@@ -241,7 +249,7 @@ class UserMencionesView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        company = getattr(request.user, 'company', None)
+        company = getattr(request.user, 'effective_company', None)
         if not company:
             return Response([])
         q = request.query_params.get('q', '').strip()
@@ -260,6 +268,189 @@ class UserMencionesView(APIView):
             for u in qs[:10]
         ]
         return Response(data)
+
+
+# ---------------------------------------------------------------------------
+# Gestión de usuarios internos ValMen Tech (superadmin + soporte)
+# Solo accesible por superadmins
+# ---------------------------------------------------------------------------
+
+class InternalUserListCreateView(APIView):
+    """
+    GET  /api/v1/auth/internal-users/ — lista usuarios sin company (superadmin/soporte).
+    POST /api/v1/auth/internal-users/ — crea un usuario interno.
+    """
+
+    def get_permissions(self):
+        from apps.companies.permissions import IsSuperAdmin
+        return [IsAuthenticated(), IsSuperAdmin()]
+
+    def get(self, request):
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        qs = User.objects.filter(company__isnull=True).order_by('email')
+        data = [
+            {
+                'id':           str(u.id),
+                'email':        u.email,
+                'first_name':   u.first_name,
+                'last_name':    u.last_name,
+                'full_name':    u.full_name,
+                'is_superadmin': u.is_superadmin,
+                'is_staff':     u.is_staff,
+                'is_active':    u.is_active,
+                'tipo_usuario': u.tipo_usuario,
+            }
+            for u in qs
+        ]
+        return Response(data)
+
+    def post(self, request):
+        serializer = InternalUserCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = UserService.create_internal_user(serializer.validated_data)
+        return Response({
+            'id':           str(user.id),
+            'email':        user.email,
+            'first_name':   user.first_name,
+            'last_name':    user.last_name,
+            'full_name':    user.full_name,
+            'is_superadmin': user.is_superadmin,
+            'is_staff':     user.is_staff,
+            'is_active':    user.is_active,
+            'tipo_usuario': user.tipo_usuario,
+        }, status=status.HTTP_201_CREATED)
+
+
+class InternalUserDetailView(APIView):
+    """
+    GET   /api/v1/auth/internal-users/<pk>/ — detalle.
+    PATCH /api/v1/auth/internal-users/<pk>/ — actualizar.
+    DELETE /api/v1/auth/internal-users/<pk>/ — desactivar.
+    """
+
+    def get_permissions(self):
+        from apps.companies.permissions import IsSuperAdmin
+        return [IsAuthenticated(), IsSuperAdmin()]
+
+    def _get_user(self, pk):
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        try:
+            return User.objects.get(id=pk, company__isnull=True)
+        except User.DoesNotExist:
+            from rest_framework.exceptions import NotFound
+            raise NotFound('Usuario interno no encontrado.')
+
+    def get(self, request, pk):
+        u = self._get_user(pk)
+        return Response({
+            'id':           str(u.id),
+            'email':        u.email,
+            'first_name':   u.first_name,
+            'last_name':    u.last_name,
+            'full_name':    u.full_name,
+            'is_superadmin': u.is_superadmin,
+            'is_staff':     u.is_staff,
+            'is_active':    u.is_active,
+            'tipo_usuario': u.tipo_usuario,
+        })
+
+    def patch(self, request, pk):
+        u = self._get_user(pk)
+        serializer = InternalUserUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        d = serializer.validated_data
+        if 'first_name' in d:
+            u.first_name = d['first_name']
+        if 'last_name' in d:
+            u.last_name = d['last_name']
+        if 'is_staff' in d:
+            u.is_staff = d['is_staff']
+        if 'is_superadmin' in d:
+            u.is_superadmin = d['is_superadmin']
+        if 'is_active' in d:
+            u.is_active = d['is_active']
+        if 'password' in d and d['password']:
+            u.set_password(d['password'])
+        u.save()
+        return Response({
+            'id':           str(u.id),
+            'email':        u.email,
+            'first_name':   u.first_name,
+            'last_name':    u.last_name,
+            'full_name':    u.full_name,
+            'is_superadmin': u.is_superadmin,
+            'is_staff':     u.is_staff,
+            'is_active':    u.is_active,
+            'tipo_usuario': u.tipo_usuario,
+        })
+
+
+class SoporteTenantsView(APIView):
+    """GET /api/v1/auth/soporte/tenants/ — lista todos los tenants para usuario soporte."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        from apps.companies.permissions import IsSuperAdmin
+        return [IsAuthenticated(), IsSuperAdmin()]
+
+    def get(self, request):
+        from apps.companies.models import Company
+        tenants = Company.objects.filter(is_active=True).order_by('name')
+        data = [
+            {'id': str(t.id), 'name': t.name, 'nit': t.nit, 'plan': t.plan}
+            for t in tenants
+        ]
+        return Response(data)
+
+
+class SoporteSeleccionarTenantView(APIView):
+    """POST /api/v1/auth/soporte/seleccionar-tenant/ — selecciona tenant activo para soporte."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        if not request.user.is_staff:
+            return Response({'error': 'No autorizado'}, status=status.HTTP_403_FORBIDDEN)
+
+        tenant_id = request.data.get('tenant_id')
+        if not tenant_id:
+            return Response({'error': 'tenant_id requerido'}, status=status.HTTP_400_BAD_REQUEST)
+
+        from apps.companies.models import Company
+        try:
+            tenant = Company.objects.get(id=tenant_id, is_active=True)
+        except Company.DoesNotExist:
+            return Response({'error': 'Tenant no encontrado'}, status=status.HTTP_404_NOT_FOUND)
+
+        request.user.tenant_activo = tenant
+        request.user.save(update_fields=['tenant_activo'])
+
+        logger.info('soporte_selecciono_tenant', extra={
+            'user_id': str(request.user.id), 'tenant_id': str(tenant.id)
+        })
+
+        return Response({
+            'mensaje': f'Entrando como soporte a: {tenant.name}',
+            'tenant': {'id': str(tenant.id), 'name': tenant.name, 'nit': tenant.nit},
+        })
+
+
+class SoporteLiberarTenantView(APIView):
+    """POST /api/v1/auth/soporte/liberar-tenant/ — libera tenant seleccionado."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        if not request.user.is_staff:
+            return Response({'error': 'No autorizado'}, status=status.HTTP_403_FORBIDDEN)
+
+        request.user.tenant_activo = None
+        request.user.save(update_fields=['tenant_activo'])
+
+        return Response({'mensaje': 'Tenant liberado'})
 
 
 class PasswordResetRequestView(APIView):

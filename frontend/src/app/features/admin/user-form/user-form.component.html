@@ -1,7 +1,7 @@
 <div class="uf-container">
 
   <div class="uf-header">
-    <button mat-icon-button routerLink="/admin/usuarios" matTooltip="Volver">
+    <button mat-icon-button (click)="volver()" matTooltip="Volver">
       <mat-icon>arrow_back</mat-icon>
     </button>
     <h2 class="uf-title">{{ editingId() ? 'Editar usuario' : 'Nuevo usuario' }}</h2>
@@ -10,12 +10,12 @@
   @if (loading()) {
     <div class="uf-loading"><mat-spinner diameter="40" /></div>
   } @else {
-    <form [formGroup]="form" (ngSubmit)="guardar()" class="uf-form mat-elevation-z1">
+    <form [formGroup]="form" (ngSubmit)="guardar()" class="uf-form mat-elevation-z1" autocomplete="off">
 
       <div class="uf-row">
         <mat-form-field appearance="outline">
           <mat-label>Nombre</mat-label>
-          <input matInput formControlName="first_name" />
+          <input matInput formControlName="first_name" maxlength="150" autocomplete="off" />
           @if (form.controls.first_name.invalid && form.controls.first_name.touched) {
             <mat-error>Requerido.</mat-error>
           }
@@ -23,7 +23,7 @@
 
         <mat-form-field appearance="outline">
           <mat-label>Apellido</mat-label>
-          <input matInput formControlName="last_name" />
+          <input matInput formControlName="last_name" maxlength="150" autocomplete="off" />
           @if (form.controls.last_name.invalid && form.controls.last_name.touched) {
             <mat-error>Requerido.</mat-error>
           }
@@ -32,7 +32,7 @@
 
       <mat-form-field appearance="outline" class="uf-full">
         <mat-label>Correo electrónico</mat-label>
-        <input matInput type="email" formControlName="email" [readonly]="!!editingId()" />
+        <input matInput type="email" formControlName="email" [readonly]="!!editingId()" autocomplete="off" />
         <mat-icon matPrefix>mail</mat-icon>
         @if (form.controls.email.invalid && form.controls.email.touched) {
           <mat-error>Ingresa un correo válido.</mat-error>
@@ -51,7 +51,7 @@
 
       <mat-form-field appearance="outline" class="uf-full">
         <mat-label>{{ editingId() ? 'Nueva contraseña (dejar en blanco para no cambiar)' : 'Contraseña' }}</mat-label>
-        <input matInput [type]="hidePass() ? 'password' : 'text'" formControlName="password" />
+        <input matInput [type]="hidePass() ? 'password' : 'text'" formControlName="password" autocomplete="new-password" />
         <mat-icon matPrefix>lock</mat-icon>
         <button type="button" mat-icon-button matSuffix (click)="hidePass.set(!hidePass())">
           <mat-icon>{{ hidePass() ? 'visibility' : 'visibility_off' }}</mat-icon>
@@ -61,18 +61,40 @@
         }
       </mat-form-field>
 
+      <!-- Rol granular de permisos -->
+      @if (!rolGranularFijo) {
+        <mat-form-field appearance="outline" class="uf-full">
+          <mat-label>Rol de permisos</mat-label>
+          <mat-select formControlName="rol_granular_id">
+            @for (r of rolesCustom; track r.id) {
+              <mat-option [value]="r.id">{{ r.nombre }}</mat-option>
+            }
+          </mat-select>
+          <mat-icon matPrefix>security</mat-icon>
+          @if (form.controls.rol_granular_id.invalid && form.controls.rol_granular_id.touched) {
+            <mat-error>Selecciona un rol de permisos.</mat-error>
+          }
+        </mat-form-field>
+      }
+
       <!-- Módulos de acceso -->
       <div class="uf-modules-section">
-        <h3 class="uf-modules-title">Acceso a módulos</h3>
+        <h3 class="uf-modules-title">
+          Acceso a módulos
+          @if (isAdmin) {
+            <span class="uf-modules-hint">El administrador accede a todos los módulos</span>
+          }
+        </h3>
         <div class="uf-modules-grid">
           @for (entry of moduleEntries; track entry[0]) {
             <div class="uf-module-item"
               [class.uf-module-item--selected]="isModuleSelected(entry[0])"
+              [class.uf-module-item--locked]="isAdmin"
               (click)="toggleModule(entry[0])">
               <mat-icon>{{ entry[0] === 'ventas' ? 'shopping_cart' : entry[0] === 'cobros' ? 'account_balance_wallet' : entry[0] === 'dashboard' ? 'home' : 'work' }}</mat-icon>
               <span>{{ entry[1] }}</span>
               @if (isModuleSelected(entry[0])) {
-                <mat-icon class="uf-module-check">check_circle</mat-icon>
+                <mat-icon class="uf-module-check">{{ isAdmin ? 'lock' : 'check_circle' }}</mat-icon>
               }
             </div>
           }
@@ -80,7 +102,7 @@
       </div>
 
       <div class="uf-actions">
-        <button type="button" mat-stroked-button routerLink="/admin/usuarios" [disabled]="saving()">
+        <button type="button" mat-stroked-button (click)="volver()" [disabled]="saving()">
           Cancelar
         </button>
         <button mat-raised-button color="primary" type="submit" [disabled]="saving()">

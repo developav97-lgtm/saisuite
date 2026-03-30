@@ -15,7 +15,7 @@ export interface QuickAccessRoute {
 
 @Injectable({ providedIn: 'root' })
 export class QuickAccessNavigatorService {
-  /** true mientras algún QuickAccessDialog está abierto */
+  /** true mientras algún QuickAccessDialog está activo */
   isActive = false;
 
   /** Rutas que este servicio puede manejar internamente */
@@ -24,6 +24,10 @@ export class QuickAccessNavigatorService {
   /** Emite la URL interceptada para que el dialog la procese */
   private readonly interceptedSubject = new Subject<string>();
   readonly intercepted$ = this.interceptedSubject.asObservable();
+
+  /** Emite cuando un componente interno solicita retroceder en el historial */
+  private readonly goBackSubject = new Subject<void>();
+  readonly goBack$ = this.goBackSubject.asObservable();
 
   register(routes: QuickAccessRoute[]): void {
     this.routes = routes;
@@ -52,6 +56,15 @@ export class QuickAccessNavigatorService {
     const path = url.split('?')[0];
     const route = this.routes.find(r => this.matchPattern(r.pattern, path));
     return route ? route.loader() : null;
+  }
+
+  /**
+   * Solicita retroceder dentro del dialog activo.
+   * Los componentes internos deben llamar esto en lugar de router.navigate(listUrl)
+   * cuando están dentro de un QuickAccessDialog.
+   */
+  requestGoBack(): void {
+    this.goBackSubject.next();
   }
 
   private matchPattern(pattern: string, path: string): boolean {

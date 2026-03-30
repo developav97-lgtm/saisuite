@@ -2,6 +2,8 @@
 import { Routes } from '@angular/router';
 import { ShellComponent } from './core/components/shell/shell.component';
 import { authGuard } from './core/guards/auth.guard';
+import { licenseGuard } from './core/guards/license.guard';
+import { noSuperAdminGuard } from './core/guards/no-superadmin.guard';
 
 export const routes: Routes = [
     // ── Rutas PÚBLICAS (sin shell — login, recuperar contraseña) ────
@@ -11,14 +13,24 @@ export const routes: Routes = [
             import('./features/auth/auth.routes').then(m => m.AUTH_ROUTES),
     },
 
+    // ── Selector de tenant para usuario soporte (sin shell propio) ──
+    {
+        path: 'seleccionar-tenant',
+        canActivate: [authGuard],
+        loadComponent: () =>
+            import('./features/soporte/selector-tenant/selector-tenant.component')
+                .then(m => m.SelectorTenantComponent),
+    },
+
     // ── Rutas PRIVADAS dentro del shell (autenticadas) ───────────────
     {
         path: '',
         component: ShellComponent,
-        canActivate: [authGuard],
+        canActivate: [authGuard, licenseGuard],
         children: [
             {
                 path: 'dashboard',
+                canActivate: [noSuperAdminGuard],
                 loadChildren: () =>
                     import('./features/dashboard/dashboard.routes').then(m => m.DASHBOARD_ROUTES),
             },
@@ -34,12 +46,8 @@ export const routes: Routes = [
                 loadChildren: () =>
                     import('./features/cobros/cobros.routes').then(m => m.COBROS_ROUTES),
             },
-            // Configuración
-            {
-                path: 'configuracion',
-                loadChildren: () =>
-                    import('./features/configuracion/configuracion.routes').then(m => m.CONFIGURACION_ROUTES),
-            },
+            // Configuración — redirige a admin
+            { path: 'configuracion', redirectTo: '/admin/empresa', pathMatch: 'full' },
             // Proyectos
             {
                 path: 'proyectos',

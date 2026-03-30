@@ -8,7 +8,6 @@ import {
   computed,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -17,12 +16,7 @@ import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatDialog } from '@angular/material/dialog';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
-import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatDividerModule } from '@angular/material/divider';
-import { MatExpansionModule } from '@angular/material/expansion';
 import { forkJoin } from 'rxjs';
 
 import { BudgetService } from '../../services/budget.service';
@@ -30,18 +24,17 @@ import { ExpenseService } from '../../services/expense.service';
 import { CostRateService } from '../../services/cost-rate.service';
 import {
   ProjectBudget,
-  ProjectBudgetWrite,
   BudgetAlert,
   EvmMetrics,
   CostBreakdownByResource,
   CostBreakdownByTask,
   ProjectExpense,
-  ProjectExpenseWrite,
-  ExpenseCategory,
   ResourceCostRate,
 } from '../../models/budget.model';
 import { ConfirmDialogComponent, ConfirmDialogData } from '../../../../shared/components/confirm-dialog/confirm-dialog.component';
 import { CostRateFormComponent, CostRateFormData } from './cost-rate-form/cost-rate-form.component';
+import { ExpenseFormDialogComponent, ExpenseFormDialogData } from './expense-form-dialog/expense-form-dialog.component';
+import { BudgetFormDialogComponent, BudgetFormDialogData } from './budget-form-dialog/budget-form-dialog.component';
 import { ToastService } from '../../../../core/services/toast.service';
 
 @Component({
@@ -51,7 +44,6 @@ import { ToastService } from '../../../../core/services/toast.service';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CommonModule,
-    ReactiveFormsModule,
     MatCardModule,
     MatButtonModule,
     MatIconModule,
@@ -59,12 +51,7 @@ import { ToastService } from '../../../../core/services/toast.service';
     MatTableModule,
     MatTooltipModule,
     MatChipsModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatSelectModule,
-    MatDatepickerModule,
     MatDividerModule,
-    MatExpansionModule,
   ],
 })
 export class BudgetDashboardComponent implements OnInit {
@@ -73,9 +60,8 @@ export class BudgetDashboardComponent implements OnInit {
   private readonly budgetService   = inject(BudgetService);
   private readonly expenseService  = inject(ExpenseService);
   private readonly costRateService = inject(CostRateService);
-  private readonly toast       = inject(ToastService);
+  private readonly toast           = inject(ToastService);
   private readonly dialog          = inject(MatDialog);
-  private readonly fb              = inject(FormBuilder);
 
   // ── State signals ──────────────────────────────────────────────────────────
   readonly loading         = signal(true);
@@ -87,8 +73,6 @@ export class BudgetDashboardComponent implements OnInit {
   readonly expenses        = signal<ProjectExpense[]>([]);
   readonly costRates       = signal<ResourceCostRate[]>([]);
   readonly loadingRates    = signal(false);
-  readonly showBudgetForm  = signal(false);
-  readonly showExpenseForm = signal(false);
 
   // ── Computed ───────────────────────────────────────────────────────────────
   readonly hasBudget = computed(() => this.budget() !== null);
@@ -108,36 +92,6 @@ export class BudgetDashboardComponent implements OnInit {
     if (al.some(a => a.type === 'info'))     return 'info';
     return 'none';
   });
-
-  // ── Forms ──────────────────────────────────────────────────────────────────
-  readonly budgetForm = this.fb.group({
-    planned_labor_cost:       ['', Validators.required],
-    planned_expense_cost:     ['', Validators.required],
-    planned_total_budget:     ['', [Validators.required, Validators.min(0)]],
-    alert_threshold_percentage: ['80', [Validators.required, Validators.min(1), Validators.max(100)]],
-    currency:                 ['COP', Validators.required],
-    notes:                    [''],
-  });
-
-  readonly expenseForm = this.fb.group({
-    category:     ['materials' as ExpenseCategory, Validators.required],
-    description:  ['', Validators.required],
-    amount:       ['', [Validators.required, Validators.min(0.01)]],
-    currency:     ['COP', Validators.required],
-    expense_date: ['', Validators.required],
-    billable:     [true],
-    notes:        [''],
-  });
-
-  readonly EXPENSE_CATEGORIES: { value: ExpenseCategory; label: string }[] = [
-    { value: 'materials',     label: 'Materiales' },
-    { value: 'equipment',     label: 'Equipos' },
-    { value: 'travel',        label: 'Viajes' },
-    { value: 'subcontractor', label: 'Subcontratistas' },
-    { value: 'software',      label: 'Software' },
-    { value: 'training',      label: 'Capacitación' },
-    { value: 'other',         label: 'Otro' },
-  ];
 
   readonly RESOURCE_COLUMNS   = ['user', 'hours', 'rate', 'cost', 'pct'];
   readonly TASK_COLUMNS       = ['task', 'hours', 'labor_cost', 'total_cost'];
@@ -169,19 +123,7 @@ export class BudgetDashboardComponent implements OnInit {
 
     // Budget, EVM and cost breakdown load independently
     this.budgetService.getBudget(pid).subscribe({
-      next: b => {
-        this.budget.set(b);
-        if (b) {
-          this.budgetForm.patchValue({
-            planned_labor_cost:         b.planned_labor_cost,
-            planned_expense_cost:       b.planned_expense_cost,
-            planned_total_budget:       b.planned_total_budget,
-            alert_threshold_percentage: b.alert_threshold_percentage,
-            currency:                   b.currency,
-            notes:                      b.notes,
-          });
-        }
-      },
+      next: b => this.budget.set(b),
       error: () => {},
     });
 
@@ -203,21 +145,19 @@ export class BudgetDashboardComponent implements OnInit {
 
   // ── Budget actions ─────────────────────────────────────────────────────────
 
-  saveBudget(): void {
-    if (this.budgetForm.invalid) return;
-
-    const data = this.budgetForm.value as ProjectBudgetWrite;
-    const request$ = this.hasBudget()
-      ? this.budgetService.updateBudget(this.projectId(), data)
-      : this.budgetService.createBudget(this.projectId(), data);
-
-    request$.subscribe({
-      next: b => {
-        this.budget.set(b);
-        this.showBudgetForm.set(false);
-        this.toast.success('Presupuesto guardado.');
-      },
-      error: () => this.toast.error('Error al guardar el presupuesto.'),
+  openBudgetForm(): void {
+    const data: BudgetFormDialogData = {
+      projectId: this.projectId(),
+      budget:    this.budget(),
+    };
+    const ref = this.dialog.open(BudgetFormDialogComponent, {
+      data,
+      width: '560px',
+      disableClose: true,
+    });
+    ref.afterClosed().subscribe((saved: ProjectBudget | null | undefined) => {
+      if (!saved) return;
+      this.budget.set(saved);
     });
   }
 
@@ -230,28 +170,16 @@ export class BudgetDashboardComponent implements OnInit {
 
   // ── Expense actions ────────────────────────────────────────────────────────
 
-  saveExpense(): void {
-    if (this.expenseForm.invalid) return;
-
-    const raw  = this.expenseForm.value;
-    const data: ProjectExpenseWrite = {
-      category:     raw['category'] as ExpenseCategory,
-      description:  raw['description'] as string,
-      amount:       raw['amount'] as string,
-      currency:     raw['currency'] as string,
-      expense_date: raw['expense_date'] as string,
-      billable:     raw['billable'] as boolean,
-      notes:        raw['notes'] as string,
-    };
-
-    this.expenseService.createExpense(this.projectId(), data).subscribe({
-      next: exp => {
-        this.expenses.update(list => [exp, ...list]);
-        this.expenseForm.reset({ category: 'materials', currency: 'COP', billable: true });
-        this.showExpenseForm.set(false);
-        this.toast.success('Gasto registrado.');
-      },
-      error: () => this.toast.error('Error al registrar el gasto.'),
+  openExpenseForm(): void {
+    const data: ExpenseFormDialogData = { projectId: this.projectId() };
+    const ref = this.dialog.open(ExpenseFormDialogComponent, {
+      data,
+      width: '520px',
+      disableClose: true,
+    });
+    ref.afterClosed().subscribe((saved: ProjectExpense | null | undefined) => {
+      if (!saved) return;
+      this.expenses.update(list => [saved, ...list]);
     });
   }
 

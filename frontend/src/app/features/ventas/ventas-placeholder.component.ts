@@ -7,9 +7,9 @@ import { CommonModule } from '@angular/common';
     standalone: true,
     imports: [CommonModule],
     template: `
-    <div class="sc-page-header"><h2>SaiVentas</h2></div>
+    <div class="sc-page-header"><h2>CRM</h2></div>
     <div class="sc-page-card">
-      <p>Módulo SaiVentas — pendiente de confirmación con Saiopen.</p>
+      <p>Módulo CRM — pendiente de confirmación con Saiopen.</p>
     </div>
   `,
     changeDetection: ChangeDetectionStrategy.OnPush,

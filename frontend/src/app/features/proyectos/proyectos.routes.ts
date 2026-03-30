@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { permissionGuard } from '../../core/guards/permission.guard';
 
 export const PROYECTOS_ROUTES: Routes = [
   { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
@@ -35,6 +36,7 @@ export const PROYECTOS_ROUTES: Routes = [
   },
   {
     path: 'tareas/nueva',
+    canActivate: [permissionGuard('tareas.create')],
     loadComponent: () =>
       import('./components/tarea-form/tarea-form.component').then(
         (m) => m.TareaFormComponent
@@ -42,6 +44,7 @@ export const PROYECTOS_ROUTES: Routes = [
   },
   {
     path: 'tareas/:id',
+    canActivate: [permissionGuard('tareas.view')],
     loadComponent: () =>
       import('./components/tarea-detail/tarea-detail.component').then(
         (m) => m.TareaDetailComponent
@@ -49,6 +52,7 @@ export const PROYECTOS_ROUTES: Routes = [
   },
   {
     path: 'tareas/:id/editar',
+    canActivate: [permissionGuard('tareas.edit')],
     loadComponent: () =>
       import('./components/tarea-form/tarea-form.component').then(
         (m) => m.TareaFormComponent
@@ -96,6 +100,7 @@ export const PROYECTOS_ROUTES: Routes = [
   },
   {
     path: 'nuevo',
+    canActivate: [permissionGuard('proyectos.create')],
     loadComponent: () =>
       import('./components/proyecto-form/proyecto-form.component').then(
         (m) => m.ProyectoFormComponent
@@ -103,6 +108,7 @@ export const PROYECTOS_ROUTES: Routes = [
   },
   {
     path: ':id',
+    canActivate: [permissionGuard('proyectos.view')],
     loadComponent: () =>
       import('./components/proyecto-detail/proyecto-detail.component').then(
         (m) => m.ProyectoDetailComponent
@@ -110,6 +116,7 @@ export const PROYECTOS_ROUTES: Routes = [
   },
   {
     path: ':id/editar',
+    canActivate: [permissionGuard('proyectos.edit')],
     loadComponent: () =>
       import('./components/proyecto-form/proyecto-form.component').then(
         (m) => m.ProyectoFormComponent

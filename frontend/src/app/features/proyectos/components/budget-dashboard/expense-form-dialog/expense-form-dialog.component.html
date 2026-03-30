@@ -1,0 +1,78 @@
+<h2 mat-dialog-title class="dialog-title">
+  <mat-icon>receipt_long</mat-icon>
+  Registrar gasto
+</h2>
+
+<mat-dialog-content>
+  <form [formGroup]="form" class="efd-form">
+
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="efd-full">
+      <mat-label>Categoría</mat-label>
+      <mat-select formControlName="category">
+        @for (cat of EXPENSE_CATEGORIES; track cat.value) {
+          <mat-option [value]="cat.value">{{ cat.label }}</mat-option>
+        }
+      </mat-select>
+      @if (form.get('category')?.hasError('required') && form.get('category')?.touched) {
+        <mat-error>Selecciona una categoría.</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="efd-full">
+      <mat-label>Descripción</mat-label>
+      <input matInput formControlName="description" maxlength="255" />
+      @if (form.get('description')?.hasError('required') && form.get('description')?.touched) {
+        <mat-error>Campo requerido.</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" subscriptSizing="dynamic">
+      <mat-label>Monto (COP)</mat-label>
+      <span matTextPrefix>$&nbsp;</span>
+      <input matInput type="text" inputmode="numeric"
+             [value]="amountDisplay()"
+             (input)="onAmountInput($event)"
+             placeholder="0" />
+      @if (form.get('amount')?.hasError('required') && form.get('amount')?.touched) {
+        <mat-error>Campo requerido.</mat-error>
+      }
+      @if (form.get('amount')?.hasError('min') && form.get('amount')?.touched) {
+        <mat-error>Debe ser mayor a 0.</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" subscriptSizing="dynamic"
+                    matTooltip="Soporte multimoneda próximamente">
+      <mat-label>Moneda</mat-label>
+      <input matInput value="COP" readonly />
+      <mat-icon matSuffix>lock</mat-icon>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="efd-full">
+      <mat-label>Fecha del gasto</mat-label>
+      <input matInput type="date" formControlName="expense_date" />
+      @if (form.get('expense_date')?.hasError('required') && form.get('expense_date')?.touched) {
+        <mat-error>Campo requerido.</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="efd-full">
+      <mat-label>Notas (opcional)</mat-label>
+      <textarea matInput formControlName="notes" rows="2" maxlength="500"></textarea>
+      <mat-icon matSuffix>notes</mat-icon>
+    </mat-form-field>
+
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="cancelar()" [disabled]="saving()">Cancelar</button>
+  <button mat-raised-button color="primary" (click)="guardar()" [disabled]="saving() || form.invalid">
+    @if (saving()) {
+      <mat-spinner diameter="18" />
+    } @else {
+      <mat-icon>save</mat-icon>
+    }
+    Registrar
+  </button>
+</mat-dialog-actions>

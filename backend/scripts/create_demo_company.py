@@ -90,7 +90,7 @@ def create_demo() -> None:
         company=company,
         defaults={
             'role':           User.Role.COMPANY_ADMIN,
-            'modules_access': ['proyectos', 'ventas', 'cobros', 'dashboard'],
+            'modules_access': ['proyectos', 'crm', 'soporte', 'dashboard'],
             'is_active':      True,
         },
     )

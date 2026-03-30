@@ -84,7 +84,7 @@ class ProjectKPIsView(APIView):
     permission_classes = [CanAccessProyectos]
 
     def get(self, request, project_pk):
-        company = getattr(request.user, 'company', None)
+        company = getattr(request.user, 'effective_company', None)
         project = _get_project_for_company(project_pk, company)
 
         data = get_project_kpis(
@@ -107,7 +107,7 @@ class ProjectTaskDistributionView(APIView):
     permission_classes = [CanAccessProyectos]
 
     def get(self, request, project_pk):
-        company = getattr(request.user, 'company', None)
+        company = getattr(request.user, 'effective_company', None)
         project = _get_project_for_company(project_pk, company)
 
         data = get_task_distribution(
@@ -130,7 +130,7 @@ class ProjectVelocityView(APIView):
     permission_classes = [CanAccessProyectos]
 
     def get(self, request, project_pk):
-        company = getattr(request.user, 'company', None)
+        company = getattr(request.user, 'effective_company', None)
         project = _get_project_for_company(project_pk, company)
 
         try:
@@ -171,7 +171,7 @@ class ProjectBurnRateView(APIView):
     permission_classes = [CanAccessProyectos]
 
     def get(self, request, project_pk):
-        company = getattr(request.user, 'company', None)
+        company = getattr(request.user, 'effective_company', None)
         project = _get_project_for_company(project_pk, company)
 
         try:
@@ -212,7 +212,7 @@ class ProjectBurnDownView(APIView):
     permission_classes = [CanAccessProyectos]
 
     def get(self, request, project_pk):
-        company = getattr(request.user, 'company', None)
+        company = getattr(request.user, 'effective_company', None)
         project = _get_project_for_company(project_pk, company)
 
         granularity = request.query_params.get('granularity', 'week')
@@ -244,7 +244,7 @@ class ProjectResourceUtilizationView(APIView):
     permission_classes = [CanAccessProyectos]
 
     def get(self, request, project_pk):
-        company = getattr(request.user, 'company', None)
+        company = getattr(request.user, 'effective_company', None)
         project = _get_project_for_company(project_pk, company)
 
         start_date = None
@@ -286,7 +286,7 @@ class ProjectTimelineView(APIView):
     permission_classes = [CanAccessProyectos]
 
     def get(self, request, project_pk):
-        company = getattr(request.user, 'company', None)
+        company = getattr(request.user, 'effective_company', None)
         project = _get_project_for_company(project_pk, company)
 
         data = get_project_timeline(
@@ -310,7 +310,7 @@ class CompareProjectsView(APIView):
     permission_classes = [CanAccessProyectos]
 
     def post(self, request):
-        company = getattr(request.user, 'company', None)
+        company = getattr(request.user, 'effective_company', None)
 
         request_serializer = CompareProjectsRequestSerializer(data=request.data)
         if not request_serializer.is_valid():
@@ -343,7 +343,7 @@ class ExportExcelView(APIView):
     permission_classes = [CanAccessProyectos]
 
     def post(self, request):
-        company = getattr(request.user, 'company', None)
+        company = getattr(request.user, 'effective_company', None)
 
         request_serializer = ExportExcelRequestSerializer(data=request.data)
         if not request_serializer.is_valid():

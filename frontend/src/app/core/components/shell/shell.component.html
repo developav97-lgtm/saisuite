@@ -1,6 +1,49 @@
 <!-- frontend/src/app/core/components/shell/shell.component.html -->
 <div class="sc-shell">
     <app-topbar [sidebarVisible]="sidebarVisible" (toggleSidebar)="toggleSidebar()" />
+
+    <!-- Banner soporte: empresa sin licencia activa -->
+    @if (soporteNoLicense()) {
+      <div class="sc-license-banner sc-license-banner--critical">
+        <mat-icon>lock</mat-icon>
+        <span>
+          <strong>Esta empresa no tiene una licencia activa.</strong>
+          Puedes navegar en modo soporte pero algunas funciones pueden estar limitadas.
+        </span>
+      </div>
+    }
+
+    <!-- Banner de alerta de licencia próxima a vencer -->
+    @if (licenseWarningInfo() !== null && !dismissedWarning) {
+      <div class="sc-license-banner" [class]="licenseWarningClass()">
+        <mat-icon>warning</mat-icon>
+        <span>
+          @if (licenseWarningInfo()!.days <= 1) {
+            @if (licenseWarningInfo()!.isTrial) {
+              <strong>¡Tu licencia de prueba vence mañana!</strong> Contacta a ventas&#64;valmentech.com para activar tu plan.
+            } @else {
+              <strong>¡La licencia de tu empresa vence mañana!</strong> Contacta a ventas&#64;valmentech.com para renovarla.
+            }
+          } @else if (licenseWarningInfo()!.days <= 7) {
+            @if (licenseWarningInfo()!.isTrial) {
+              Tu <strong>licencia de prueba</strong> vence en <strong>{{ licenseWarningInfo()!.days }} días</strong>. Contacta a ventas&#64;valmentech.com para activar tu plan.
+            } @else {
+              <strong>La licencia vence en {{ licenseWarningInfo()!.days }} días.</strong> Contacta a tu asesor de ventas para renovarla.
+            }
+          } @else {
+            @if (licenseWarningInfo()!.isTrial) {
+              Tu <strong>licencia de prueba</strong> vence en <strong>{{ licenseWarningInfo()!.days }} días</strong>. Recuerda activar tu plan a tiempo.
+            } @else {
+              Tu licencia vence en <strong>{{ licenseWarningInfo()!.days }} días</strong>. Recuerda renovarla a tiempo.
+            }
+          }
+        </span>
+        <button mat-icon-button class="sc-license-banner__close" (click)="dismissedWarning = true">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+    }
+
     <div class="sc-shell__body">
         <app-sidebar [(visible)]="sidebarVisible" />
         <main class="sc-shell__main">

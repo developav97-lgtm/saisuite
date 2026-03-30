@@ -1025,7 +1025,7 @@ class ResourceAssignment(BaseModel):
         ]
         constraints = [
             models.CheckConstraint(
-                check=Q(fecha_fin__gte=models.F('fecha_inicio')),
+                condition=Q(fecha_fin__gte=models.F('fecha_inicio')),
                 name='ck_rassign_fecha_fin_gte_inicio',
             ),
         ]
@@ -1095,11 +1095,11 @@ class ResourceCapacity(BaseModel):
         ]
         constraints = [
             models.CheckConstraint(
-                check=Q(fecha_fin__isnull=True) | Q(fecha_fin__gt=models.F('fecha_inicio')),
+                condition=Q(fecha_fin__isnull=True) | Q(fecha_fin__gt=models.F('fecha_inicio')),
                 name='ck_rcap_fecha_fin_gt_inicio',
             ),
             models.CheckConstraint(
-                check=Q(horas_por_semana__gt=0),
+                condition=Q(horas_por_semana__gt=0),
                 name='ck_rcap_horas_positivas',
             ),
         ]
@@ -1177,7 +1177,7 @@ class ResourceAvailability(BaseModel):
         ]
         constraints = [
             models.CheckConstraint(
-                check=Q(fecha_fin__gte=models.F('fecha_inicio')),
+                condition=Q(fecha_fin__gte=models.F('fecha_inicio')),
                 name='ck_ravail_fecha_fin_gte_inicio',
             ),
         ]
@@ -1464,12 +1464,12 @@ class ResourceCostRate(BaseModel):
         ]
         constraints = [
             models.CheckConstraint(
-                check=Q(start_date__lte=models.F('end_date'))
+                condition=Q(start_date__lte=models.F('end_date'))
                     | Q(end_date__isnull=True),
                 name='resource_cost_rate_start_before_end',
             ),
             models.CheckConstraint(
-                check=Q(hourly_rate__gte=Decimal('0.00')),
+                condition=Q(hourly_rate__gte=Decimal('0.00')),
                 name='resource_cost_rate_non_negative',
             ),
         ]
@@ -1579,15 +1579,15 @@ class ProjectBudget(BaseModel):
         ]
         constraints = [
             models.CheckConstraint(
-                check=Q(planned_labor_cost__gte=Decimal('0.00')),
+                condition=Q(planned_labor_cost__gte=Decimal('0.00')),
                 name='project_budget_labor_non_negative',
             ),
             models.CheckConstraint(
-                check=Q(planned_expense_cost__gte=Decimal('0.00')),
+                condition=Q(planned_expense_cost__gte=Decimal('0.00')),
                 name='project_budget_expense_non_negative',
             ),
             models.CheckConstraint(
-                check=Q(planned_total_budget__gte=Decimal('0.00')),
+                condition=Q(planned_total_budget__gte=Decimal('0.00')),
                 name='project_budget_total_non_negative',
             ),
         ]
@@ -1691,7 +1691,7 @@ class ProjectExpense(BaseModel):
         ]
         constraints = [
             models.CheckConstraint(
-                check=Q(amount__gt=Decimal('0.00')),
+                condition=Q(amount__gt=Decimal('0.00')),
                 name='project_expense_amount_positive',
             ),
         ]

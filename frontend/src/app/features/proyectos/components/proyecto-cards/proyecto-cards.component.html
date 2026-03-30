@@ -9,7 +9,7 @@
         <mat-icon>view_list</mat-icon>
         Lista
       </button>
-      <button mat-raised-button color="primary" (click)="nuevoProyecto()">
+      <button *hasPermission="'proyectos.create'" mat-raised-button color="primary" (click)="nuevoProyecto()">
         <mat-icon>add</mat-icon>
         Nuevo proyecto
       </button>
@@ -134,7 +134,7 @@
     <div class="sc-empty-state">
       <mat-icon>work_outline</mat-icon>
       <p>No hay proyectos que coincidan con los filtros.</p>
-      <button mat-raised-button color="primary" (click)="nuevoProyecto()">
+      <button *hasPermission="'proyectos.create'" mat-raised-button color="primary" (click)="nuevoProyecto()">
         <mat-icon>add</mat-icon> Nuevo proyecto
       </button>
     </div>

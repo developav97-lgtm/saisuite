@@ -135,10 +135,12 @@ export interface CostSummary {
 
 export interface CostBreakdownByResource {
   user_id: string;
-  user_full_name: string;
-  hours_worked: string;
-  cost: string;
-  percentage_of_total: string;
+  user_name: string;
+  user_email: string;
+  hours: string;
+  hourly_rate_avg: string;
+  total_cost: string;
+  pct: string;
 }
 
 export interface CostBreakdownByTask {

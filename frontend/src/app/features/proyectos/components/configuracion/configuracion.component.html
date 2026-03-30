@@ -135,33 +135,24 @@
 
       </div><!-- /cfg-body -->
 
-      <!-- Barra de acciones fija -->
-      <div class="cfg-actions" [class.cfg-actions--dirty]="form.dirty">
-        <span class="cfg-actions-status">
-          @if (form.dirty) {
-            <mat-icon>edit</mat-icon>
-            Cambios sin guardar
+      <!-- Acciones -->
+      <div class="cfg-actions">
+        <button mat-stroked-button type="button"
+          [disabled]="!form.dirty || saving()"
+          (click)="cancelar()">
+          Cancelar
+        </button>
+        <button mat-raised-button color="primary" type="submit"
+          [disabled]="form.invalid || saving()">
+          @if (saving()) {
+            <mat-spinner diameter="20" />
           } @else {
-            <mat-icon>check_circle</mat-icon>
-            Configuración guardada
-          }
-        </span>
-        <div class="cfg-actions-buttons">
-          <button mat-stroked-button type="button"
-            [disabled]="!form.dirty || saving()"
-            (click)="cancelar()">
-            Cancelar
-          </button>
-          <button mat-flat-button color="primary" type="submit"
-            [disabled]="form.invalid || saving()">
-            @if (saving()) {
-              <mat-spinner diameter="18" class="cfg-spinner-btn" />
-            } @else {
+            <ng-container>
               <mat-icon>save</mat-icon>
-            }
-            Guardar cambios
-          </button>
-        </div>
+              Guardar cambios
+            </ng-container>
+          }
+        </button>
       </div>
 
     </form>

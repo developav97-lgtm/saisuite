@@ -73,7 +73,7 @@ from apps.proyectos.services import (
 from apps.proyectos.tarea_services import TimesheetService, DependencyService, TimesheetEntryService
 from apps.notifications.services import NotificacionService
 from apps.proyectos.filters import ProjectFilter, TaskFilter
-from apps.proyectos.permissions import CanAccessProyectos, CanEditProyecto, TaskPermission
+from apps.proyectos.permissions import CanAccessProyectos, CanEditProyecto, TaskPermission, HasGranularPermission
 
 logger = logging.getLogger(__name__)
 
@@ -87,11 +87,12 @@ class ProjectViewSet(viewsets.ModelViewSet):
     search_fields    = ['codigo', 'nombre', 'cliente_nombre']
     ordering_fields  = ['codigo', 'nombre', 'estado', 'fecha_inicio_planificada', 'created_at']
     ordering         = ['-created_at']
-    permission_classes = [CanAccessProyectos, CanEditProyecto]
+    permission_classes = [CanAccessProyectos, CanEditProyecto, HasGranularPermission]
+    granular_module  = 'proyectos'
 
     def get_queryset(self):
         # Pasar company explícitamente — el middleware no intercepta DRF/JWT auth
-        company = getattr(self.request.user, 'company', None)
+        company = getattr(self.request.user, 'effective_company', None)
         return ProyectoService.list_proyectos(company=company)
 
     def get_serializer_class(self):
@@ -207,7 +208,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
         Retorna lista de IDs de tareas que están en el camino crítico del proyecto.
         """
         proyecto = self.get_object()
-        company  = getattr(request.user, 'company', None)
+        company  = getattr(request.user, 'effective_company', None)
         criticas = DependencyService.calcular_camino_critico(
             str(proyecto.id), company
         )
@@ -251,6 +252,24 @@ class PhaseViewSet(viewsets.ModelViewSet):
         FaseService.soft_delete_fase(fase)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+    @action(detail=False, methods=['post'], url_path='reorder')
+    def reorder(self, request, proyecto_pk=None, **kwargs):
+        """POST /api/v1/projects/{proyecto_pk}/phases/reorder/
+        Body: {"ordered_ids": ["uuid1", "uuid2", ...]}
+        """
+        proyecto = Project.all_objects.get(id=proyecto_pk)
+        ordered_ids = request.data.get('ordered_ids')
+        if not isinstance(ordered_ids, list) or not ordered_ids:
+            return Response(
+                {'error': 'Se requiere "ordered_ids" con la lista de IDs en el nuevo orden.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            fases = FaseService.reorder_fases(proyecto, ordered_ids)
+        except ProyectoException as exc:
+            return Response({'error': str(exc.detail)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(PhaseListSerializer(fases, many=True).data)
+
     @action(detail=True, methods=['post'], url_path='activar')
     def activar(self, request, pk=None, **kwargs):
         """POST /api/v1/fases/{id}/activar/"""
@@ -285,7 +304,7 @@ class SaiopenActivityViewSet(viewsets.ModelViewSet):
     ordering           = ['codigo']
 
     def get_queryset(self):
-        company = getattr(self.request.user, 'company', None)
+        company = getattr(self.request.user, 'effective_company', None)
         qs = SaiopenActivity.all_objects.filter(activo=True)
         if company:
             qs = qs.filter(company=company)
@@ -299,7 +318,7 @@ class SaiopenActivityViewSet(viewsets.ModelViewSet):
         return SaiopenActivityDetailSerializer
 
     def perform_create(self, serializer):
-        company = getattr(self.request.user, 'company', None)
+        company = getattr(self.request.user, 'effective_company', None)
         serializer.save(company=company)
 
     def destroy(self, request, *args, **kwargs):
@@ -436,10 +455,11 @@ class ActivityViewSet(viewsets.ModelViewSet):
     search_fields      = ['codigo', 'nombre', 'unidad_medida']
     ordering_fields    = ['codigo', 'nombre', 'tipo', 'created_at']
     ordering           = ['codigo']
-    permission_classes = [CanAccessProyectos]
+    permission_classes = [CanAccessProyectos, HasGranularPermission]
+    granular_module    = 'actividades'
 
     def get_queryset(self):
-        company = getattr(self.request.user, 'company', None)
+        company = getattr(self.request.user, 'effective_company', None)
         return ActividadService.list_actividades(company=company)
 
     def get_serializer_class(self):
@@ -526,14 +546,14 @@ class ModuleSettingsView(APIView):
     permission_classes = [CanAccessProyectos]
 
     def get(self, request):
-        config = ConfiguracionModuloService.get_or_create(request.user.company)
+        config = ConfiguracionModuloService.get_or_create(request.user.effective_company)
         return Response(ModuleSettingsSerializer(config).data)
 
     def patch(self, request):
-        config     = ConfiguracionModuloService.get_or_create(request.user.company)
+        config     = ConfiguracionModuloService.get_or_create(request.user.effective_company)
         serializer = ModuleSettingsSerializer(config, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
-        updated = ConfiguracionModuloService.update(request.user.company, serializer.validated_data)
+        updated = ConfiguracionModuloService.update(request.user.effective_company, serializer.validated_data)
         return Response(ModuleSettingsSerializer(updated).data)
 
 
@@ -550,14 +570,15 @@ class TaskViewSet(viewsets.ModelViewSet):
     """
 
     serializer_class   = TaskDetailSerializer
-    permission_classes = [TaskPermission]
+    permission_classes = [TaskPermission, HasGranularPermission]
+    granular_module    = 'tareas'
     filter_backends    = [DjangoFilterBackend, OrderingFilter]
     filterset_class    = TaskFilter
     ordering_fields    = ['prioridad', 'fecha_limite', 'created_at', 'nombre']
     ordering           = ['-prioridad', 'fecha_limite']
 
     def get_queryset(self):
-        company = getattr(self.request.user, 'company', None)
+        company = getattr(self.request.user, 'effective_company', None)
         qs = Task.all_objects.select_related(
             'proyecto', 'fase', 'responsable', 'tarea_padre', 'cliente',
             'actividad_saiopen', 'actividad_proyecto__actividad',
@@ -577,7 +598,7 @@ class TaskViewSet(viewsets.ModelViewSet):
         return qs
 
     def perform_create(self, serializer):
-        company = getattr(self.request.user, 'company', None)
+        company = getattr(self.request.user, 'effective_company', None)
         serializer.save(company=company)
 
     def update(self, request, *args, **kwargs):
@@ -603,7 +624,7 @@ class TaskViewSet(viewsets.ModelViewSet):
                     f'te asignó la tarea "{instance.nombre}"'
                 ),
                 objeto_relacionado=instance,
-                url_accion=f'/projects/tasks/{instance.id}',
+                url_accion=f'/proyectos/tareas/{instance.id}',
             )
 
         return response
@@ -705,7 +726,7 @@ class TaskViewSet(viewsets.ModelViewSet):
             f'{request.user.full_name or request.user.email} '
             f'cambió el estado de "{tarea.nombre}" a {nuevo_estado.replace("_", " ").title()}'
         )
-        url     = f'/projects/tasks/{tarea.id}'
+        url     = f'/proyectos/tareas/{tarea.id}'
         meta    = {'estado_anterior': estado_anterior, 'estado_nuevo': nuevo_estado}
 
         destinatarios = set()
@@ -882,7 +903,7 @@ class TaskViewSet(viewsets.ModelViewSet):
         predecesora_id = request.data.get('predecesora_id')
         tipo           = request.data.get('tipo', 'FS')
         retraso_dias   = request.data.get('retraso_dias', 0)
-        company        = getattr(request.user, 'company', None)
+        company        = getattr(request.user, 'effective_company', None)
 
         if not predecesora_id:
             return Response(
@@ -921,7 +942,7 @@ class TaskViewSet(viewsets.ModelViewSet):
         """
         tarea          = self.get_object()
         dependencia_id = request.query_params.get('dependencia_id')
-        company        = getattr(request.user, 'company', None)
+        company        = getattr(request.user, 'effective_company', None)
 
         if not dependencia_id:
             return Response(
@@ -974,14 +995,14 @@ class TaskTagViewSet(viewsets.ModelViewSet):
     permission_classes = [CanAccessProyectos]
 
     def get_queryset(self):
-        company = getattr(self.request.user, 'company', None)
+        company = getattr(self.request.user, 'effective_company', None)
         qs = TaskTag.all_objects.all()
         if company:
             qs = qs.filter(company=company)
         return qs
 
     def perform_create(self, serializer):
-        company = getattr(self.request.user, 'company', None)
+        company = getattr(self.request.user, 'effective_company', None)
         serializer.save(company=company)
 
 
@@ -997,10 +1018,11 @@ class TimesheetViewSet(viewsets.GenericViewSet):
     POST   /api/v1/proyectos/timesheets/{id}/validar/
     """
     serializer_class   = TimesheetEntrySerializer
-    permission_classes = [CanAccessProyectos]
+    permission_classes = [CanAccessProyectos, HasGranularPermission]
+    granular_module    = 'timesheets'
 
     def get_queryset(self):
-        company = getattr(self.request.user, 'company', None)
+        company = getattr(self.request.user, 'effective_company', None)
         qs = TimesheetEntry.objects.select_related(
             'tarea', 'usuario', 'validado_por',
         ).filter(usuario=self.request.user)
@@ -1032,7 +1054,7 @@ class TimesheetViewSet(viewsets.GenericViewSet):
         ser = TimesheetEntryCreateSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
         d = ser.validated_data
-        company = getattr(request.user, 'company', None)
+        company = getattr(request.user, 'effective_company', None)
         try:
             entry = TimesheetEntryService.registrar_horas(
                 tarea_id=str(d['tarea_id']),
@@ -1052,7 +1074,7 @@ class TimesheetViewSet(viewsets.GenericViewSet):
 
     def partial_update(self, request, pk=None):
         """PATCH /api/v1/proyectos/timesheets/{id}/"""
-        company = getattr(request.user, 'company', None)
+        company = getattr(request.user, 'effective_company', None)
         try:
             entry = TimesheetEntry.objects.get(
                 id=pk, usuario=request.user, company=company,
@@ -1099,7 +1121,7 @@ class TimesheetViewSet(viewsets.GenericViewSet):
                 {'detail': 'Formato de fecha inválido. Use YYYY-MM-DD.'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        company = getattr(request.user, 'company', None)
+        company = getattr(request.user, 'effective_company', None)
         qs = TimesheetEntryService.mis_horas(request.user, fi, ff, company)
         return Response(TimesheetEntrySerializer(qs, many=True).data)
 
@@ -1155,7 +1177,7 @@ class ResourceAssignmentViewSet(viewsets.ViewSet):
     permission_classes = [CanAccessProyectos]
 
     def _get_tarea(self, request, task_pk):
-        company = getattr(request.user, 'company', None)
+        company = getattr(request.user, 'effective_company', None)
         try:
             return Task.objects.select_related('proyecto').get(
                 id=task_pk, company=company
@@ -1167,7 +1189,7 @@ class ResourceAssignmentViewSet(viewsets.ViewSet):
     def list(self, request, task_pk=None):
         """GET /api/v1/projects/tasks/{task_pk}/assignments/"""
         tarea   = self._get_tarea(request, task_pk)
-        company = getattr(request.user, 'company', None)
+        company = getattr(request.user, 'effective_company', None)
         qs = ResourceAssignment.objects.filter(
             company=company, tarea=tarea
         ).select_related('usuario').order_by('fecha_inicio')
@@ -1200,7 +1222,7 @@ class ResourceAssignmentViewSet(viewsets.ViewSet):
     def retrieve(self, request, pk=None, task_pk=None):
         """GET /api/v1/projects/tasks/{task_pk}/assignments/{pk}/"""
         self._get_tarea(request, task_pk)
-        company = getattr(request.user, 'company', None)
+        company = getattr(request.user, 'effective_company', None)
         try:
             asignacion = ResourceAssignment.objects.select_related(
                 'usuario', 'tarea'
@@ -1213,7 +1235,7 @@ class ResourceAssignmentViewSet(viewsets.ViewSet):
     def destroy(self, request, pk=None, task_pk=None):
         """DELETE /api/v1/projects/tasks/{task_pk}/assignments/{pk}/ — soft delete"""
         self._get_tarea(request, task_pk)
-        company = getattr(request.user, 'company', None)
+        company = getattr(request.user, 'effective_company', None)
         try:
             remove_resource_from_task(
                 asignacion_id=str(pk),
@@ -1250,7 +1272,7 @@ class ResourceAssignmentViewSet(viewsets.ViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        company    = getattr(request.user, 'company', None)
+        company    = getattr(request.user, 'effective_company', None)
         conflicts  = detect_overallocation_conflicts(
             usuario_id=usuario_id,
             company_id=str(company.id),
@@ -1284,7 +1306,7 @@ class ResourceCapacityViewSet(viewsets.ViewSet):
     permission_classes = [CanAccessProyectos]
 
     def _get_company(self, request):
-        return getattr(request.user, 'company', None)
+        return getattr(request.user, 'effective_company', None)
 
     def list(self, request):
         """GET — filtra por usuario_id si se pasa como query param."""
@@ -1383,7 +1405,7 @@ class ResourceAvailabilityViewSet(viewsets.ViewSet):
     permission_classes = [CanAccessProyectos]
 
     def _get_company(self, request):
-        return getattr(request.user, 'company', None)
+        return getattr(request.user, 'effective_company', None)
 
     def list(self, request):
         """GET — query params: usuario_id, aprobado, tipo."""
@@ -1501,7 +1523,7 @@ class WorkloadView(APIView):
         except ValidationError as exc:
             return Response(exc.message_dict, status=status.HTTP_400_BAD_REQUEST)
 
-        company = getattr(request.user, 'company', None)
+        company = getattr(request.user, 'effective_company', None)
 
         try:
             workload = calculate_user_workload(
@@ -1553,7 +1575,7 @@ class TeamAvailabilityView(APIView):
         except ValidationError as exc:
             return Response(exc.message_dict, status=status.HTTP_400_BAD_REQUEST)
 
-        company = getattr(request.user, 'company', None)
+        company = getattr(request.user, 'effective_company', None)
 
         timeline = get_team_availability_timeline(
             proyecto_id=str(proyecto_pk),
@@ -1604,7 +1626,7 @@ class UserCalendarView(APIView):
         except ValidationError as exc:
             return Response(exc.message_dict, status=status.HTTP_400_BAD_REQUEST)
 
-        company = getattr(request.user, 'company', None)
+        company = getattr(request.user, 'effective_company', None)
 
         # Asignaciones activas en el período
         asignaciones = list(

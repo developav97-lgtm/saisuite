@@ -1,0 +1,80 @@
+<h2 mat-dialog-title class="dialog-title">
+  <mat-icon>account_balance_wallet</mat-icon>
+  {{ isEditMode ? 'Editar presupuesto' : 'Definir presupuesto' }}
+</h2>
+
+<mat-dialog-content>
+  <form [formGroup]="form" class="bfd-form">
+
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bfd-full">
+      <mat-label>Presupuesto total planificado (COP)</mat-label>
+      <span matTextPrefix>$&nbsp;</span>
+      <input matInput type="text" inputmode="numeric"
+             [value]="totalDisplay()"
+             (input)="onMoneyInput($event, 'planned_total_budget', totalRaw)"
+             placeholder="0" />
+      @if (form.get('planned_total_budget')?.hasError('required') && form.get('planned_total_budget')?.touched) {
+        <mat-error>Campo requerido.</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" subscriptSizing="dynamic">
+      <mat-label>Costo mano de obra (COP)</mat-label>
+      <span matTextPrefix>$&nbsp;</span>
+      <input matInput type="text" inputmode="numeric"
+             [value]="laborDisplay()"
+             (input)="onMoneyInput($event, 'planned_labor_cost', laborRaw)"
+             placeholder="0" />
+      @if (form.get('planned_labor_cost')?.hasError('required') && form.get('planned_labor_cost')?.touched) {
+        <mat-error>Campo requerido.</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" subscriptSizing="dynamic">
+      <mat-label>Costo gastos directos (COP)</mat-label>
+      <span matTextPrefix>$&nbsp;</span>
+      <input matInput type="text" inputmode="numeric"
+             [value]="expenseDisplay()"
+             (input)="onMoneyInput($event, 'planned_expense_cost', expenseRaw)"
+             placeholder="0" />
+      @if (form.get('planned_expense_cost')?.hasError('required') && form.get('planned_expense_cost')?.touched) {
+        <mat-error>Campo requerido.</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" subscriptSizing="dynamic">
+      <mat-label>Umbral de alerta</mat-label>
+      <input matInput type="number" formControlName="alert_threshold_percentage" min="1" max="100" />
+      <span matTextSuffix>%</span>
+      @if (form.get('alert_threshold_percentage')?.hasError('min') || form.get('alert_threshold_percentage')?.hasError('max')) {
+        <mat-error>Debe ser entre 1 y 100.</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" subscriptSizing="dynamic"
+                    matTooltip="Soporte multimoneda próximamente">
+      <mat-label>Moneda</mat-label>
+      <input matInput value="COP" readonly />
+      <mat-icon matSuffix>lock</mat-icon>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bfd-full">
+      <mat-label>Notas (opcional)</mat-label>
+      <textarea matInput formControlName="notes" rows="2" maxlength="500"></textarea>
+      <mat-icon matSuffix>notes</mat-icon>
+    </mat-form-field>
+
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="cancelar()" [disabled]="saving()">Cancelar</button>
+  <button mat-raised-button color="primary" (click)="guardar()" [disabled]="saving() || form.invalid">
+    @if (saving()) {
+      <mat-spinner diameter="18" />
+    } @else {
+      <mat-icon>save</mat-icon>
+    }
+    {{ isEditMode ? 'Actualizar' : 'Guardar' }}
+  </button>
+</mat-dialog-actions>

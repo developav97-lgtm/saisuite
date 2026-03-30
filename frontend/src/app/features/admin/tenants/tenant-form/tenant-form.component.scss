@@ -1,0 +1,316 @@
+.tf-page {
+  padding: 1.5rem 2rem;
+}
+
+.tf-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.tf-title {
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin: 0 0 0.2rem;
+  color: var(--mat-sys-on-surface);
+}
+
+.tf-subtitle {
+  font-size: 0.875rem;
+  color: var(--mat-sys-on-surface-variant);
+  margin: 0;
+}
+
+.tf-section {
+  padding: 1.5rem 0;
+}
+
+.tf-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem 1.5rem;
+}
+
+.tf-full-width {
+  grid-column: 1 / -1;
+}
+
+.tf-modules {
+  grid-column: 1 / -1;
+
+  .tf-modules-label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--mat-sys-on-surface-variant);
+    margin: 0 0 0.5rem;
+  }
+
+  .tf-modules-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.5rem;
+  }
+}
+
+.tf-section-label {
+  grid-column: 1 / -1;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--mat-sys-on-surface-variant);
+  margin: 0.5rem 0 0;
+}
+
+.tf-divider {
+  grid-column: 1 / -1;
+  margin: 0.5rem 0;
+}
+
+.tf-license-current {
+  background: var(--sc-surface-ground, #f5f5f5);
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.tf-license-status {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.tf-license-usage {
+  display: flex;
+  gap: 1.5rem;
+  font-size: 0.85rem;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.tf-days {
+  font-size: 0.875rem;
+  color: var(--mat-sys-on-surface-variant);
+
+  &--expired {
+    color: var(--mat-sys-error);
+    font-weight: 600;
+  }
+}
+
+.tf-history-table {
+  width: 100%;
+}
+
+.tf-tabs-hidden {
+  // En modo crear: ocultar tabs y mostrar solo el contenido del primer tab
+  ::ng-deep .mat-mdc-tab-header {
+    display: none;
+  }
+}
+
+.tf-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--mat-sys-outline-variant);
+}
+
+.sc-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 2rem 0;
+  color: var(--mat-sys-on-surface-variant);
+
+  mat-icon {
+    font-size: 2.5rem;
+    width: 2.5rem;
+    height: 2.5rem;
+    opacity: 0.4;
+  }
+
+  p { margin: 0; }
+}
+
+// ── License Management Cards ──────────────────────────────────────────────
+.lm-card {
+  border: 1px solid var(--mat-sys-outline-variant, #ccc);
+  border-radius: 8px;
+  padding: 1.25rem;
+  margin-bottom: 1.25rem;
+  background: var(--mat-sys-surface-container-lowest, #fff);
+
+  &--current {
+    border-color: var(--mat-sys-primary, #1976d2);
+    border-left: 4px solid var(--mat-sys-primary, #1976d2);
+  }
+
+  &--renewal-pending {
+    border-color: var(--mat-sys-tertiary, #f9a825);
+    border-left: 4px solid var(--mat-sys-tertiary, #f9a825);
+    background: var(--mat-sys-tertiary-container, #fff8e1);
+  }
+
+  &--renewal-confirmed {
+    border-color: var(--mat-sys-primary, #1976d2);
+    border-left: 4px solid var(--mat-sys-primary, #1976d2);
+    background: var(--mat-sys-primary-container, #e3f2fd);
+  }
+}
+
+.lm-card-header {
+  margin-bottom: 1rem;
+}
+
+.lm-card-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.lm-card-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.lm-title-icon {
+  font-size: 1.1rem;
+  height: 1.1rem;
+  width: 1.1rem;
+  vertical-align: middle;
+}
+
+.lm-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 0.75rem 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.lm-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+
+  &--full {
+    grid-column: 1 / -1;
+  }
+}
+
+.lm-stat-label {
+  font-size: 0.72rem;
+  color: var(--mat-sys-on-surface-variant, #666);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.lm-stat-value {
+  font-size: 0.9rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+
+  &--danger {
+    color: var(--mat-sys-error, #d32f2f);
+  }
+}
+
+.lm-days-badge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 10px;
+
+  &--ok {
+    background: #e8f5e9;
+    color: #2e7d32;
+  }
+
+  &--warn {
+    background: #fff3e0;
+    color: #e65100;
+  }
+
+  &--expired {
+    background: #fce4ec;
+    color: #c62828;
+  }
+}
+
+.lm-card-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--mat-sys-outline-variant, #eee);
+}
+
+.lm-auto-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.78rem;
+  color: var(--mat-sys-on-surface-variant, #666);
+
+  mat-icon {
+    font-size: 1rem;
+    height: 1rem;
+    width: 1rem;
+  }
+}
+
+.lm-confirmed-note {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background: var(--mat-sys-primary-container, #e3f2fd);
+  border-radius: 6px;
+  font-size: 0.85rem;
+  color: var(--mat-sys-on-primary-container, #0d47a1);
+  margin-bottom: 0.75rem;
+
+  mat-icon {
+    color: var(--mat-sys-primary, #1976d2);
+    font-size: 1.1rem;
+    height: 1.1rem;
+    width: 1.1rem;
+  }
+}
+
+.lm-edit-section {
+  margin-top: 0.5rem;
+}
+
+.lm-edit-title {
+  font-size: 0.9rem;
+  font-weight: 500;
+  margin: 1rem 0 0.5rem;
+  color: var(--mat-sys-on-surface-variant, #555);
+}
+
+.lm-period-field {
+  grid-column: 1 / -1;
+  margin-bottom: 0.25rem;
+}
+
+.lm-field-label {
+  font-size: 0.8rem;
+  color: var(--mat-sys-on-surface-variant, #666);
+  margin: 0 0 0.5rem;
+}
+
+.lm-period-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}

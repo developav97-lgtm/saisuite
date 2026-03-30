@@ -101,42 +101,20 @@ export class FaseListComponent implements OnInit {
     moveItemInArray(fasesActuales, event.previousIndex, event.currentIndex);
     this.fases.set(fasesActuales);
 
-    // Recalcular orden: asignar posición 1-based según nuevo índice
-    const fasesAfectadas = fasesActuales
-      .map((f, idx) => ({ fase: f, nuevoOrden: idx + 1 }))
-      .filter(({ fase, nuevoOrden }) => fase.orden !== nuevoOrden);
-
-    if (fasesAfectadas.length === 0) return;
-
     this.reordering.set(true);
 
-    // PATCH individual para cada fase cuyo orden cambió
-    let pendientes = fasesAfectadas.length;
-    let huboError = false;
-
-    fasesAfectadas.forEach(({ fase, nuevoOrden }) => {
-      this.faseService.update(fase.id, { orden: nuevoOrden }).subscribe({
-        next: () => {
-          pendientes--;
-          if (pendientes === 0) {
-            this.reordering.set(false);
-            if (!huboError) {
-              // Recargar para sincronizar con el backend
-              this.loadFases();
-            }
-          }
-        },
-        error: () => {
-          huboError = true;
-          pendientes--;
-          if (pendientes === 0) {
-            this.reordering.set(false);
-            this.toast.error('No se pudo reordenar las fases.');
-            // Revertir al estado del servidor
-            this.loadFases();
-          }
-        },
-      });
+    // Una sola petición bulk al backend para evitar conflictos unique_together
+    const orderedIds = fasesActuales.map(f => f.id);
+    this.faseService.reorder(this.proyectoId(), orderedIds).subscribe({
+      next: (fases) => {
+        this.fases.set(fases);
+        this.reordering.set(false);
+      },
+      error: () => {
+        this.reordering.set(false);
+        this.toast.error('No se pudo reordenar las fases.');
+        this.loadFases();
+      },
     });
   }
 

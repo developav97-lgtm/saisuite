@@ -8,7 +8,15 @@
       <span class="sc-topbar__brand-name">Saicloud</span>
     </a>
 
-    @if (moduloActual()) {
+    @if (empresaActiva()) {
+      <div class="sc-topbar__module">
+        <mat-icon class="sc-topbar__module-sep">chevron_right</mat-icon>
+        <span class="sc-topbar__module-name">{{ empresaActiva()!.name }}</span>
+        @if (empresaActiva()!.isSoporte) {
+          <span class="sc-topbar__soporte-badge">soporte</span>
+        }
+      </div>
+    } @else if (moduloActual()) {
       <div class="sc-topbar__module">
         <mat-icon class="sc-topbar__module-sep">chevron_right</mat-icon>
         <span class="sc-topbar__module-name">{{ moduloActual() }}</span>
@@ -44,6 +52,13 @@
         <mat-icon>manage_accounts</mat-icon>
         <span>Mi perfil</span>
       </button>
+      @if (currentUser()?.is_staff && !currentUser()?.is_superadmin) {
+        <mat-divider />
+        <button mat-menu-item routerLink="/seleccionar-tenant">
+          <mat-icon>swap_horiz</mat-icon>
+          <span>Cambiar empresa</span>
+        </button>
+      }
       <mat-divider />
       <button mat-menu-item (click)="authService.logout()">
         <mat-icon>logout</mat-icon>

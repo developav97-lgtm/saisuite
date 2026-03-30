@@ -35,7 +35,7 @@ def webhook_tercero_desde_saiopen(request: Request) -> Response:
     from apps.terceros.services import recibir_tercero_desde_saiopen
 
     payload = request.data
-    company = request.user.company
+    company = request.user.effective_company
     logger.info(
         'webhook_tercero_saiopen_recibido',
         extra={'company_id': str(company.id), 'sai_key': payload.get('sai_key')},

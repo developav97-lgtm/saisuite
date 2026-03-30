@@ -1,18 +1,45 @@
 <div class="le-page">
   <div class="le-card">
-    <mat-icon class="le-icon">lock</mat-icon>
-    <h1 class="le-title">Acceso bloqueado</h1>
-    <p class="le-subtitle">
-      Tu empresa no tiene una licencia activa o ésta ha vencido.
-    </p>
-    <p class="le-contact">
-      Contacta a <strong>ValMen Tech</strong> para activar o renovar tu licencia.
-    </p>
-    <div class="le-actions">
-      <button mat-raised-button color="primary" (click)="logout()">
-        <mat-icon>logout</mat-icon>
-        Cerrar sesión
-      </button>
-    </div>
+
+    @if (isSessionExpired) {
+      <mat-icon class="le-icon le-icon--session">devices_off</mat-icon>
+      <h1 class="le-title">Sesión cerrada</h1>
+      <p class="le-subtitle">
+        Tu sesión fue cerrada porque iniciaste sesión en otro dispositivo,
+        o tu sesión expiró por inactividad.
+      </p>
+      <div class="le-actions">
+        <button mat-raised-button color="primary" (click)="logout()">
+          <mat-icon>login</mat-icon>
+          Volver a iniciar sesión
+        </button>
+      </div>
+    } @else {
+      <mat-icon class="le-icon">lock_outline</mat-icon>
+      <h1 class="le-title">Licencia no activa</h1>
+      <p class="le-subtitle">
+        Tu empresa no tiene una licencia activa para acceder a Saicloud.
+      </p>
+
+      <div class="le-contact-box">
+        <p class="le-contact-label">Comunícate con tu asesor de ventas:</p>
+        <div class="le-contact-item">
+          <mat-icon>email</mat-icon>
+          <span>ventas&#64;valmentech.com</span>
+        </div>
+        <div class="le-contact-item">
+          <mat-icon>phone</mat-icon>
+          <span>+57 300 000 0000</span>
+        </div>
+      </div>
+
+      <div class="le-actions">
+        <button mat-raised-button color="warn" (click)="logout()">
+          <mat-icon>logout</mat-icon>
+          Cerrar sesión
+        </button>
+      </div>
+    }
+
   </div>
 </div>

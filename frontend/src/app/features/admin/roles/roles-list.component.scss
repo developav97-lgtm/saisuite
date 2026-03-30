@@ -1,0 +1,72 @@
+.rl-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: flex-start;
+  padding: 1rem;
+  margin-bottom: 1rem;
+
+  .rl-search {
+    flex: 1 1 280px;
+    min-width: 220px;
+  }
+
+  .rl-filter {
+    flex: 0 1 200px;
+    min-width: 160px;
+  }
+}
+
+.rl-progress {
+  border-radius: 4px;
+}
+
+.rl-table {
+  width: 100%;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.rl-nombre {
+  font-weight: 500;
+}
+
+.rl-badge-sistema {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 6px;
+  background: var(--mat-sys-surface-variant, #e8eaf6);
+  color: var(--mat-sys-on-surface-variant, #757575);
+  border-radius: 10px;
+  font-size: 11px;
+}
+
+.rl-cell-desc {
+  color: var(--mat-sys-on-surface-variant, #757575);
+  font-size: 13px;
+}
+
+// Reutiliza clases de user-list para consistencia visual
+.ul-chip {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: var(--mat-sys-surface-variant);
+  color: var(--mat-sys-on-surface-variant);
+
+  &--admin    { background: #e3f2fd; color: #0d47a1; }
+  &--readonly { background: #f5f5f5; color: #424242; }
+  &--custom   { background: #e8f5e9; color: #1b5e20; }
+}
+
+.ul-col-acciones {
+  width: 96px;
+  flex: 0 0 96px;
+  justify-content: flex-end !important;
+}
+
+.rl-empty {
+  padding: 3rem 1rem;
+}

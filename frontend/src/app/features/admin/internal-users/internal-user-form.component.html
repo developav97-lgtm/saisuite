@@ -1,0 +1,95 @@
+<div class="iuf-container">
+
+  <div class="iuf-header">
+    <button mat-icon-button routerLink="/admin/usuarios-internos" matTooltip="Volver">
+      <mat-icon>arrow_back</mat-icon>
+    </button>
+    <h2 class="iuf-title">{{ pageTitle }}</h2>
+  </div>
+
+  @if (loading()) {
+    <div class="iuf-loading"><mat-spinner diameter="40" /></div>
+  } @else {
+    <form [formGroup]="form" (ngSubmit)="guardar()" class="iuf-form mat-elevation-z1">
+
+      <div class="iuf-row">
+        <mat-form-field appearance="outline">
+          <mat-label>Nombre</mat-label>
+          <input matInput formControlName="first_name" maxlength="150" />
+          @if (form.controls.first_name.invalid && form.controls.first_name.touched) {
+            <mat-error>Requerido.</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Apellido</mat-label>
+          <input matInput formControlName="last_name" maxlength="150" />
+          @if (form.controls.last_name.invalid && form.controls.last_name.touched) {
+            <mat-error>Requerido.</mat-error>
+          }
+        </mat-form-field>
+      </div>
+
+      <mat-form-field appearance="outline" class="iuf-full">
+        <mat-label>Correo electrónico</mat-label>
+        <input matInput type="email" formControlName="email" />
+        <mat-icon matPrefix>mail</mat-icon>
+        @if (form.controls.email.invalid && form.controls.email.touched) {
+          <mat-error>Ingresa un correo válido.</mat-error>
+        }
+      </mat-form-field>
+
+      <!-- Tipo de usuario -->
+      <div class="iuf-tipo-section">
+        <p class="iuf-tipo-label">Tipo de usuario *</p>
+        <div class="iuf-tipo-options">
+          <div class="iuf-tipo-card"
+            [class.iuf-tipo-card--selected]="form.controls.tipo.value === 'soporte'"
+            (click)="form.controls.tipo.setValue('soporte')">
+            <mat-icon>support_agent</mat-icon>
+            <div>
+              <strong>Soporte</strong>
+              <p>Puede acceder a los tenants para dar soporte. No gestiona la plataforma.</p>
+            </div>
+          </div>
+          <div class="iuf-tipo-card"
+            [class.iuf-tipo-card--selected]="form.controls.tipo.value === 'superadmin'"
+            (click)="form.controls.tipo.setValue('superadmin')">
+            <mat-icon>admin_panel_settings</mat-icon>
+            <div>
+              <strong>Super Admin</strong>
+              <p>Acceso total a la plataforma: tenants, licencias y usuarios internos.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <mat-form-field appearance="outline" class="iuf-full">
+        <mat-label>{{ editingId() ? 'Nueva contraseña (dejar en blanco para no cambiar)' : 'Contraseña' }}</mat-label>
+        <input matInput [type]="hidePass() ? 'password' : 'text'" formControlName="password" />
+        <mat-icon matPrefix>lock</mat-icon>
+        <button type="button" mat-icon-button matSuffix (click)="hidePass.set(!hidePass())">
+          <mat-icon>{{ hidePass() ? 'visibility' : 'visibility_off' }}</mat-icon>
+        </button>
+        @if (form.controls.password.invalid && form.controls.password.touched) {
+          <mat-error>Mínimo 8 caracteres.</mat-error>
+        }
+      </mat-form-field>
+
+      <div class="iuf-actions">
+        <button type="button" mat-stroked-button routerLink="/admin/usuarios-internos" [disabled]="saving()">
+          Cancelar
+        </button>
+        <button mat-raised-button color="primary" type="submit" [disabled]="saving()">
+          @if (saving()) {
+            <mat-spinner diameter="20" />
+          } @else {
+            {{ editingId() ? 'Guardar cambios' : 'Crear usuario' }}
+          }
+        </button>
+      </div>
+
+    </form>
+  }
+
+</div>

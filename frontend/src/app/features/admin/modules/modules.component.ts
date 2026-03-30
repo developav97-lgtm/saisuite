@@ -31,8 +31,8 @@ export class ModulesComponent implements OnInit {
 
   readonly moduleLabels = MODULE_LABELS;
   readonly moduleIcons: Record<ModuleKey, string> = {
-    ventas:    'shopping_cart',
-    cobros:    'account_balance_wallet',
+    crm:       'shopping_cart',
+    soporte:   'account_balance_wallet',
     dashboard: 'home',
     proyectos: 'work',
   };

@@ -8,7 +8,7 @@
         <mat-icon>view_module</mat-icon>
         Cards
       </button>
-      <button mat-raised-button color="primary" (click)="nuevoProyecto()">
+      <button *hasPermission="'proyectos.create'" mat-raised-button color="primary" (click)="nuevoProyecto()">
         <mat-icon>add</mat-icon>
         Nuevo proyecto
       </button>
@@ -65,17 +65,17 @@
   }
 
   <!-- Tabla -->
-  <mat-table [dataSource]="proyectos()" class="pl-table">
+  <mat-table [dataSource]="dataSource" matSort class="pl-table">
 
     <ng-container matColumnDef="codigo">
-      <mat-header-cell *matHeaderCellDef>Código</mat-header-cell>
+      <mat-header-cell *matHeaderCellDef mat-sort-header>Código</mat-header-cell>
       <mat-cell *matCellDef="let p">
         <span class="pl-codigo">{{ p.codigo }}</span>
       </mat-cell>
     </ng-container>
 
     <ng-container matColumnDef="nombre">
-      <mat-header-cell *matHeaderCellDef>Nombre</mat-header-cell>
+      <mat-header-cell *matHeaderCellDef mat-sort-header>Nombre</mat-header-cell>
       <mat-cell *matCellDef="let p" class="pl-cell-nombre">{{ p.nombre }}</mat-cell>
     </ng-container>
 
@@ -87,14 +87,14 @@
     </ng-container>
 
     <ng-container matColumnDef="estado">
-      <mat-header-cell *matHeaderCellDef>Estado</mat-header-cell>
+      <mat-header-cell *matHeaderCellDef mat-sort-header>Estado</mat-header-cell>
       <mat-cell *matCellDef="let p">
         <span [class]="estadoClass(p.estado)">{{ estadoLabel(p.estado) }}</span>
       </mat-cell>
     </ng-container>
 
     <ng-container matColumnDef="cliente">
-      <mat-header-cell *matHeaderCellDef>Cliente</mat-header-cell>
+      <mat-header-cell *matHeaderCellDef mat-sort-header>Cliente</mat-header-cell>
       <mat-cell *matCellDef="let p">{{ p.cliente_nombre }}</mat-cell>
     </ng-container>
 
@@ -104,7 +104,7 @@
     </ng-container>
 
     <ng-container matColumnDef="fecha_fin">
-      <mat-header-cell *matHeaderCellDef>Fecha fin</mat-header-cell>
+      <mat-header-cell *matHeaderCellDef mat-sort-header>Fecha fin</mat-header-cell>
       <mat-cell *matCellDef="let p">{{ p.fecha_fin_planificada | date: 'dd/MM/yyyy' }}</mat-cell>
     </ng-container>
 
@@ -121,7 +121,7 @@
         <button mat-icon-button matTooltip="Ver detalle" (click)="verDetalle(p.id)">
           <mat-icon>chevron_right</mat-icon>
         </button>
-        <button mat-icon-button matTooltip="Eliminar" color="warn" (click)="confirmarEliminar(p)">
+        <button *hasPermission="'proyectos.delete'" mat-icon-button matTooltip="Eliminar" color="warn" (click)="confirmarEliminar(p)">
           <mat-icon>delete_outline</mat-icon>
         </button>
       </mat-cell>
@@ -136,7 +136,7 @@
     <div class="sc-empty-state pl-empty">
       <mat-icon>work_outline</mat-icon>
       <p>No hay proyectos que coincidan con los filtros.</p>
-      <button mat-raised-button color="primary" (click)="nuevoProyecto()">
+      <button *hasPermission="'proyectos.create'" mat-raised-button color="primary" (click)="nuevoProyecto()">
         <mat-icon>add</mat-icon> Nuevo proyecto
       </button>
     </div>

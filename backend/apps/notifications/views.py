@@ -225,7 +225,7 @@ class PreferenciaNotificacionViewSet(
         """Lookup por 'tipo' en lugar de pk para simplificar el frontend."""
         tipo = self.kwargs.get('pk')
         obj, _ = PreferenciaNotificacion.objects.get_or_create(
-            company=self.request.user.company,
+            company=self.request.user.effective_company,
             usuario=self.request.user,
             tipo=tipo,
             defaults={'habilitado_app': True},

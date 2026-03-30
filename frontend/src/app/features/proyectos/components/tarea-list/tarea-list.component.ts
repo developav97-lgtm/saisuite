@@ -3,12 +3,12 @@
  * Lista de tareas con filtros server-side, paginación client-side y acciones CRUD.
  * Soporta modo "Mis Tareas" cuando la ruta lleva data.misTareas = true.
  */
-import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, effect, inject, input, signal } from '@angular/core';
+import { AfterViewInit, ChangeDetectionStrategy, Component, DestroyRef, OnInit, OutputEmitterRef, ViewChild, effect, inject, input, output, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router, ActivatedRoute } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { MatTableModule } from '@angular/material/table';
+import { MatTableModule, MatTableDataSource } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -17,6 +17,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatSortModule, MatSort } from '@angular/material/sort';
 import { MatDialog } from '@angular/material/dialog';
 import { TareaService } from '../../services/tarea.service';
 import { Tarea, TareaEstado, TareaPrioridad, TareaFilters } from '../../models/tarea.model';
@@ -24,6 +25,7 @@ import { FaseService } from '../../services/fase.service';
 import { FaseList } from '../../models/fase.model';
 import { ConfirmDialogComponent } from '../../../../shared/components/confirm-dialog/confirm-dialog.component';
 import { ToastService } from '../../../../core/services/toast.service';
+import { HasPermissionDirective } from '../../../../core/directives/has-permission.directive';
 
 export const ESTADO_LABELS: Record<string, string> = {
   todo:        'Por Hacer',
@@ -53,9 +55,10 @@ interface SelectOption<T> { label: string; value: T; }
     MatTableModule, MatButtonModule, MatIconModule,
     MatInputModule, MatFormFieldModule, MatSelectModule,
     MatPaginatorModule, MatProgressBarModule, MatTooltipModule,
+    MatSortModule, HasPermissionDirective,
   ],
 })
-export class TareaListComponent implements OnInit {
+export class TareaListComponent implements OnInit, AfterViewInit {
   private readonly tareaService = inject(TareaService);
   private readonly faseService  = inject(FaseService);
   private readonly router       = inject(Router);
@@ -70,8 +73,23 @@ export class TareaListComponent implements OnInit {
    */
   readonly proyectoIdInput = input<string | null>(null);
 
+  /**
+   * Cuando se provee, los botones "Kanban" y "Nueva tarea" navegan con
+   * returnTo=proyecto:<id> para que el formulario sepa a dónde volver.
+   */
+  readonly returnProyectoId = input<string | null>(null);
+
+  /**
+   * Emite cuando el usuario pulsa "Kanban" en modo embebido (returnProyectoId está seteado).
+   * El componente padre gestiona el cambio de vista sin navegar.
+   */
+  readonly kanbanToggled: OutputEmitterRef<void> = output<void>();
+
   readonly tareas          = signal<Tarea[]>([]);
   readonly totalCount      = signal(0);
+
+  readonly dataSource = new MatTableDataSource<Tarea>([]);
+  @ViewChild(MatSort) sort!: MatSort;
   readonly loading         = signal(false);
   readonly searchText      = signal('');
   readonly estadoFilter    = signal<TareaEstado | null>(null);
@@ -97,6 +115,15 @@ export class TareaListComponent implements OnInit {
         this.loadTareas();
       }
     }, { allowSignalWrites: true });
+
+    // Sincronizar el signal de tareas con MatTableDataSource para el sort.
+    effect(() => {
+      this.dataSource.data = this.tareas();
+    });
+  }
+
+  ngAfterViewInit(): void {
+    this.dataSource.sort = this.sort;
   }
 
   readonly displayedColumns = [
@@ -124,8 +151,6 @@ export class TareaListComponent implements OnInit {
   readonly PRIORIDAD_LABELS = PRIORIDAD_LABELS;
 
   ngOnInit(): void {
-    localStorage.setItem('saisuite.tareasView', 'list');
-
     // Detectar modo "Mis Tareas" desde route data
     const routeData = this.route.snapshot.data;
     if (routeData['misTareas'] === true) {
@@ -182,14 +207,25 @@ export class TareaListComponent implements OnInit {
   onPage(_event: PageEvent): void { /* paginación client-side vía mat-paginator */ }
   irAKanban(): void {
     localStorage.setItem('saisuite.tareasView', 'kanban');
-    this.router.navigate(['/proyectos/tareas/kanban']);
+    const returnId = this.returnProyectoId();
+    if (returnId) {
+      // Modo embebido: notificar al padre para que cambie la vista sin navegar
+      this.kanbanToggled.emit();
+      return;
+    }
+    const extras = this.esMisTareas()
+      ? { queryParams: { mis_tareas: '1' } }
+      : {};
+    this.router.navigate(['/proyectos/tareas/kanban'], extras);
   }
 
   nuevaTarea(): void {
-    const extras = this.proyectoId()
-      ? { queryParams: { proyecto: this.proyectoId() } }
-      : {};
-    this.router.navigate(['/proyectos/tareas/nueva'], extras);
+    const returnId = this.returnProyectoId();
+    const pid = returnId ?? this.proyectoId();
+    const queryParams: Record<string, string> = {};
+    if (pid) queryParams['proyecto'] = pid;
+    if (returnId) queryParams['returnTo'] = `proyecto:${returnId}:tab:5`;
+    this.router.navigate(['/proyectos/tareas/nueva'], { queryParams });
   }
 
   verDetalle(id: string): void {
@@ -197,7 +233,13 @@ export class TareaListComponent implements OnInit {
       queryParams: { returnTo: 'list' },
     });
   }
-  editarTarea(id: string): void { this.router.navigate(['/proyectos/tareas', id, 'editar']); }
+  editarTarea(id: string): void {
+    const returnId = this.returnProyectoId();
+    const extras = returnId
+      ? { queryParams: { returnTo: `proyecto:${returnId}:tab:5` } }
+      : {};
+    this.router.navigate(['/proyectos/tareas', id, 'editar'], extras);
+  }
 
   confirmarEliminar(tarea: Tarea): void {
     const ref = this.dialog.open(ConfirmDialogComponent, {

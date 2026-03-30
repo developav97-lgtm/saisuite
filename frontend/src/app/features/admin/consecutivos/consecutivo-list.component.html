@@ -174,7 +174,7 @@
               }
             </mat-select>
           } @else {
-            <input matInput formControlName="subtipo" placeholder="Opcional" [disabled]="!form.get('tipo')?.value" />
+            <input matInput formControlName="subtipo" maxlength="50" placeholder="Opcional" [disabled]="!form.get('tipo')?.value" />
           }
         </mat-form-field>
       </div>
@@ -182,7 +182,7 @@
       <!-- Nombre -->
       <mat-form-field appearance="outline" floatLabel="always" class="cl-field-full">
         <mat-label>Nombre</mat-label>
-        <input matInput formControlName="nombre" placeholder="Ej: Proyectos obra civil" />
+        <input matInput formControlName="nombre" maxlength="100" placeholder="Ej: Proyectos obra civil" />
         @if (form.get('nombre')?.hasError('required')) {
           <mat-error>Obligatorio</mat-error>
         }
@@ -192,7 +192,7 @@
       <div class="cl-form-row">
         <mat-form-field appearance="outline" floatLabel="always" class="cl-field-sm">
           <mat-label>Prefijo</mat-label>
-          <input matInput formControlName="prefijo" placeholder="Ej: PRY" />
+          <input matInput formControlName="prefijo" maxlength="20" placeholder="Ej: PRY" />
           @if (form.get('prefijo')?.hasError('required')) {
             <mat-error>Obligatorio</mat-error>
           }

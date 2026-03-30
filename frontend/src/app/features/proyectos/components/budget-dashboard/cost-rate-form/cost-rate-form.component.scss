@@ -2,31 +2,19 @@
 // Variables exclusivamente con var(--sc-*)
 
 .crf-form {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding-top: 8px;
-  min-width: 420px;
-
-  @media (max-width: 480px) {
-    min-width: unset;
-  }
-}
-
-.crf-full {
-  width: 100%;
-}
-
-.crf-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  grid-template-columns: repeat(2, 1fr);
+  column-gap: 1.25rem;
+  row-gap: 0.75rem;
+  padding-top: 0.5rem;
+  align-items: start;
 
   @media (max-width: 480px) {
     grid-template-columns: 1fr;
   }
 }
 
-.crf-half {
-  width: 100%;
+// Ocupa las 2 columnas
+.crf-full {
+  grid-column: 1 / -1;
 }

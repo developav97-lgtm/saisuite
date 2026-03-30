@@ -1,9 +1,9 @@
 import {
-  ChangeDetectionStrategy, Component, OnInit,
-  computed, inject, signal,
+  AfterViewInit, ChangeDetectionStrategy, Component, OnInit,
+  ViewChild, computed, effect, inject, signal,
 } from '@angular/core';
 import { RouterModule } from '@angular/router';
-import { MatTableModule } from '@angular/material/table';
+import { MatTableModule, MatTableDataSource } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatChipsModule } from '@angular/material/chips';
@@ -14,6 +14,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
+import { MatSortModule, MatSort } from '@angular/material/sort';
 import { AdminService } from '../services/admin.service';
 import { AdminUser, UserRole, ROLE_LABELS, ROLE_OPTIONS } from '../models/admin.models';
 import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
@@ -29,16 +30,29 @@ import { ToastService } from '../../../core/services/toast.service';
     MatTableModule, MatButtonModule, MatIconModule,
     MatChipsModule, MatTooltipModule, MatDialogModule,
     MatFormFieldModule, MatInputModule, MatSelectModule,
-    MatProgressBarModule, MatPaginatorModule,
+    MatProgressBarModule, MatPaginatorModule, MatSortModule,
   ],
 })
-export class UserListComponent implements OnInit {
+export class UserListComponent implements OnInit, AfterViewInit {
   private readonly adminService = inject(AdminService);
   private readonly dialog       = inject(MatDialog);
   private readonly toast       = inject(ToastService);
 
   readonly users       = signal<AdminUser[]>([]);
   readonly loading     = signal(false);
+
+  readonly dataSource = new MatTableDataSource<AdminUser>([]);
+  @ViewChild(MatSort) sort!: MatSort;
+
+  constructor() {
+    effect(() => {
+      this.dataSource.data = this.users();
+    });
+  }
+
+  ngAfterViewInit(): void {
+    this.dataSource.sort = this.sort;
+  }
   readonly totalCount  = signal(0);
   readonly currentPage = signal(1);
   readonly pageSize    = 25;

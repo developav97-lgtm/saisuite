@@ -1,0 +1,133 @@
+<div class="sc-page">
+
+  <!-- Header -->
+  <div class="sc-page-header">
+    <h1 class="sc-page-header__title">Roles</h1>
+    <button mat-raised-button color="primary" (click)="crearRol()">
+      <mat-icon>add</mat-icon> Nuevo Rol
+    </button>
+  </div>
+
+  <!-- Filtros -->
+  <div class="rl-filters sc-card">
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="rl-search">
+      <mat-label>Buscar por nombre o descripción…</mat-label>
+      <input
+        matInput
+        [value]="searchText()"
+        (input)="searchText.set($any($event.target).value)"
+        (keyup.enter)="onSearch()"
+      />
+      <button mat-icon-button matSuffix (click)="onSearch()" aria-label="Buscar">
+        <mat-icon>search</mat-icon>
+      </button>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="rl-filter">
+      <mat-label>Tipo</mat-label>
+      <mat-select [value]="tipoFilter()" (selectionChange)="tipoFilter.set($event.value); aplicarFiltros()">
+        @for (op of tipoOptions; track op.value) {
+          <mat-option [value]="op.value">{{ op.label }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+  </div>
+
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate" class="rl-progress" />
+  }
+
+  <mat-table [dataSource]="roles()" class="rl-table">
+
+    <!-- Nombre -->
+    <ng-container matColumnDef="nombre">
+      <mat-header-cell *matHeaderCellDef>Nombre</mat-header-cell>
+      <mat-cell *matCellDef="let r">
+        <span class="rl-nombre">{{ r.nombre }}</span>
+        @if (r.es_sistema) {
+          <span class="rl-badge-sistema" matTooltip="Rol de sistema, no se puede eliminar">Sistema</span>
+        }
+      </mat-cell>
+    </ng-container>
+
+    <!-- Tipo -->
+    <ng-container matColumnDef="tipo">
+      <mat-header-cell *matHeaderCellDef>Tipo</mat-header-cell>
+      <mat-cell *matCellDef="let r">
+        <span class="ul-chip ul-chip--tipo ul-chip--{{ r.tipo }}">
+          {{ getTipoLabel(r.tipo) }}
+        </span>
+      </mat-cell>
+    </ng-container>
+
+    <!-- Descripción -->
+    <ng-container matColumnDef="descripcion">
+      <mat-header-cell *matHeaderCellDef>Descripción</mat-header-cell>
+      <mat-cell *matCellDef="let r" class="rl-cell-desc">{{ r.descripcion || '—' }}</mat-cell>
+    </ng-container>
+
+    <!-- Permisos -->
+    <ng-container matColumnDef="permisos">
+      <mat-header-cell *matHeaderCellDef>Permisos</mat-header-cell>
+      <mat-cell *matCellDef="let r">{{ r.permisos.length }}</mat-cell>
+    </ng-container>
+
+    <!-- Usuarios -->
+    <ng-container matColumnDef="usuarios">
+      <mat-header-cell *matHeaderCellDef>Usuarios</mat-header-cell>
+      <mat-cell *matCellDef="let r">{{ r.usuarios_count }}</mat-cell>
+    </ng-container>
+
+    <!-- Acciones -->
+    <ng-container matColumnDef="acciones">
+      <mat-header-cell *matHeaderCellDef class="ul-col-acciones"></mat-header-cell>
+      <mat-cell *matCellDef="let r" class="ul-col-acciones">
+        <button
+          mat-icon-button
+          (click)="editarRol(r)"
+          [disabled]="r.es_sistema"
+          [matTooltip]="r.es_sistema ? 'Los roles de sistema no se pueden editar' : 'Editar'"
+        >
+          <mat-icon>edit</mat-icon>
+        </button>
+        <button
+          mat-icon-button
+          color="warn"
+          (click)="eliminarRol(r)"
+          [disabled]="r.es_sistema || r.usuarios_count > 0"
+          [matTooltip]="r.es_sistema ? 'No se puede eliminar' : (r.usuarios_count > 0 ? 'Tiene usuarios asignados' : 'Eliminar')"
+        >
+          <mat-icon>delete</mat-icon>
+        </button>
+      </mat-cell>
+    </ng-container>
+
+    <mat-header-row *matHeaderRowDef="columnas" />
+    <mat-row *matRowDef="let row; columns: columnas;" />
+
+  </mat-table>
+
+  @if (!loading() && roles().length === 0) {
+    <div class="sc-empty-state rl-empty">
+      <mat-icon>security</mat-icon>
+      @if (hayFiltros()) {
+        <p>Sin resultados para los filtros aplicados.</p>
+        <button mat-stroked-button (click)="limpiarFiltros()">Limpiar filtros</button>
+      } @else {
+        <p>No hay roles personalizados aún.</p>
+        <button mat-raised-button color="primary" (click)="crearRol()">
+          <mat-icon>add</mat-icon> Nuevo Rol
+        </button>
+      }
+    </div>
+  }
+
+  <mat-paginator
+    [length]="totalCount()"
+    [pageSize]="pageSize"
+    [pageSizeOptions]="[25, 50, 100]"
+    [pageIndex]="currentPage() - 1"
+    (page)="onPageChange($event)"
+    showFirstLastButtons />
+
+</div>

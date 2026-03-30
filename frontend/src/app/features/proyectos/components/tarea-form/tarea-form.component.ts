@@ -627,7 +627,7 @@ export class TareaFormComponent implements OnInit {
         this.saving.set(false);
         const accion = id ? 'actualizada' : 'creada';
         this.toast.success(`Tarea "${t.nombre}" ${accion} correctamente.`);
-        setTimeout(() => this.router.navigate(['/proyectos/tareas']), 800);
+        setTimeout(() => this.volverATareas(), 800);
       },
       error: (err: { error?: unknown }) => {
         this.saving.set(false);
@@ -638,7 +638,26 @@ export class TareaFormComponent implements OnInit {
   }
 
   cancelar(): void {
-    this.router.navigate(['/proyectos/tareas']);
+    this.volverATareas();
+  }
+
+  private volverATareas(): void {
+    const returnTo = this.route.snapshot.queryParamMap.get('returnTo');
+    if (returnTo?.startsWith('proyecto:')) {
+      // Formato: proyecto:<id>:tab:<n>
+      const parts = returnTo.split(':');
+      const proyectoId = parts[1];
+      const tabIndex   = parts[3] ? parseInt(parts[3], 10) : null;
+      const queryParams = tabIndex !== null && !isNaN(tabIndex) ? { tab: tabIndex } : {};
+      this.router.navigate(['/proyectos', proyectoId], { queryParams });
+      return;
+    }
+    const view = localStorage.getItem('saisuite.tareasView') ?? 'kanban';
+    if (view === 'kanban') {
+      this.router.navigate(['/proyectos/tareas/kanban']);
+    } else {
+      this.router.navigate(['/proyectos/tareas']);
+    }
   }
 
   private formatDate(date: Date | null): string | null {

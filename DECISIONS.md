@@ -1,3 +1,42 @@
+## DEC-030: Sistema de Licencias — Extender CompanyLicense vs nuevo modelo Licencia
+**Fecha:** 2026-03-29
+**Estado:** ✅ Decidido e implementado
+
+**Contexto:** El plan de licencias requería historial, sesiones concurrentes, cuotas de mensajes/tokens IA y módulos por licencia. Existía ya `CompanyLicense` con campos básicos.
+
+**Opciones consideradas:**
+1. **Nuevo modelo `Licencia`** — reemplazar `CompanyLicense` con un modelo nuevo con `OneToMany` (historial de licencias)
+2. **Extender `CompanyLicense` + nuevo `LicenseHistory`** — mantener la relación `OneToOne` empresa-licencia activa, agregar campos faltantes y crear tabla de historial separada
+
+**Decisión:** Opción 2 — extender `CompanyLicense` con campos nuevos + crear `LicenseHistory`.
+
+**Razón:**
+1. `CompanyLicense` ya tenía migración, serializers y servicios — cambiar la FK rompería el historial de migraciones y los tests existentes.
+2. El modelo de negocio es: una empresa tiene UNA licencia activa. El historial es auditoría, no estado.
+3. Menor riesgo de ruptura de datos en producción.
+
+**Consecuencia:** `CompanyLicense` ahora tiene `concurrent_users`, `modules_included` (JSON), `messages_quota/used`, `ai_tokens_quota/used`, `last_reset_date`, `created_by`. `LicenseHistory` registra cada cambio.
+
+---
+
+## DEC-031: Control de Sesiones — LicensePermission como DRF Permission vs Middleware WSGI
+**Fecha:** 2026-03-29
+**Estado:** ✅ Decidido e implementado
+
+**Contexto:** Validar sesiones activas (session_id en JWT) y licencias en cada request autenticado.
+
+**Opciones consideradas:**
+1. **Django WSGI Middleware** — intercepta antes de que DRF procese el request
+2. **DRF Permission Class (DEFAULT_PERMISSION_CLASSES)** — ya existe `LicensePermission`, extender con validación de sesión
+
+**Decisión:** Opción 2 — extender `LicensePermission` existente para validar también `session_id`.
+
+**Razón:** `LicensePermission` ya está en `DEFAULT_PERMISSION_CLASSES` y tiene acceso al `request.auth` (JWT payload). El middleware WSGI no tiene acceso a `request.auth` todavía (JWT se procesa después). Centraliza toda la lógica de acceso en un solo lugar.
+
+**Consecuencia:** `LicensePermission` ahora también llama `SessionService.validate_session(session_id)` y `session.touch()` en cada request. Rutas exentas incluyen `/api/v1/admin/`.
+
+---
+
 ## DEC-029: Automatización de Snapshots — Management Command vs Celery
 **Fecha:** 2026-03-28
 **Estado:** ✅ Decidido e implementado

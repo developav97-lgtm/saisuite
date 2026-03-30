@@ -46,7 +46,7 @@
           <div class="sc-form-grid">
             <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
               <mat-label>Código</mat-label>
-              <input matInput formControlName="codigo" [placeholder]="editMode() ? '' : 'Auto-generado'" />
+              <input matInput formControlName="codigo" maxlength="50" [placeholder]="editMode() ? '' : 'Auto-generado'" />
               @if (!editMode()) { <mat-icon matSuffix class="pf-codigo-icon">auto_awesome</mat-icon> }
               @if (!editMode()) { <mat-hint>Se generará automáticamente</mat-hint> }
             </mat-form-field>
@@ -93,7 +93,7 @@
 
             <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always" class="sc-field--full">
               <mat-label>Nombre del proyecto</mat-label>
-              <input matInput formControlName="nombre" placeholder="Ej: Construcción sede principal" />
+              <input matInput formControlName="nombre" maxlength="255" placeholder="Ej: Construcción sede principal" />
               @if (form.get('nombre')?.invalid && form.get('nombre')?.touched) {
                 <mat-error>El nombre es obligatorio.</mat-error>
               }

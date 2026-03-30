@@ -277,7 +277,7 @@
   padding: 2.5rem 1rem;
   text-align: center;
   color: var(--sc-text-muted);
-  background: var(--sc-surface-hover, #fafafa);
+  background: var(--sc-surface-ground);
   border-radius: var(--sc-radius);
   border: 1px dashed var(--sc-surface-border);
 
@@ -292,5 +292,9 @@
   p {
     margin: 0 0 1rem;
     font-size: 0.875rem;
+  }
+
+  button {
+    align-self: center;
   }
 }

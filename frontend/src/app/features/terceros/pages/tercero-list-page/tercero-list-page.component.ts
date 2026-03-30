@@ -1,10 +1,10 @@
 import {
-  ChangeDetectionStrategy, Component, OnInit,
-  computed, inject, signal,
+  AfterViewInit, ChangeDetectionStrategy, Component, OnInit,
+  ViewChild, computed, effect, inject, signal,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
-import { MatTableModule } from '@angular/material/table';
+import { MatTableModule, MatTableDataSource } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -15,6 +15,7 @@ import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
+import { MatSortModule, MatSort } from '@angular/material/sort';
 import { TerceroService } from '../../../../core/services/tercero.service';
 import { ConfirmDialogComponent } from '../../../../shared/components/confirm-dialog/confirm-dialog.component';
 import { ToastService } from '../../../../core/services/toast.service';
@@ -24,6 +25,7 @@ import {
   TIPO_IDENTIFICACION_LABELS,
   getTipoTerceroLabel as getTipoTerceroLabelFn,
 } from '../../../../core/models/tercero.model';
+import { HasPermissionDirective } from '../../../../core/directives/has-permission.directive';
 
 @Component({
   selector: 'app-tercero-list-page',
@@ -35,10 +37,10 @@ import {
     MatTableModule, MatButtonModule, MatIconModule,
     MatFormFieldModule, MatInputModule, MatSelectModule,
     MatTooltipModule, MatDialogModule, MatProgressBarModule,
-    MatChipsModule, MatPaginatorModule,
+    MatChipsModule, MatPaginatorModule, MatSortModule, HasPermissionDirective,
   ],
 })
-export class TerceroListPageComponent implements OnInit {
+export class TerceroListPageComponent implements OnInit, AfterViewInit {
   private readonly service  = inject(TerceroService);
   private readonly router   = inject(Router);
   private readonly dialog   = inject(MatDialog);
@@ -46,6 +48,19 @@ export class TerceroListPageComponent implements OnInit {
 
   readonly terceros    = signal<TerceroList[]>([]);
   readonly loading     = signal(false);
+
+  readonly dataSource = new MatTableDataSource<TerceroList>([]);
+  @ViewChild(MatSort) sort!: MatSort;
+
+  constructor() {
+    effect(() => {
+      this.dataSource.data = this.terceros();
+    });
+  }
+
+  ngAfterViewInit(): void {
+    this.dataSource.sort = this.sort;
+  }
   readonly searchText  = signal('');
   readonly tipoFilter  = signal<TipoTercero | ''>('');
   readonly tipoIdFilter = signal<TipoIdentificacion | ''>('');
