@@ -1,4 +1,6 @@
-import { ChangeDetectionStrategy, Component, OnInit, OnDestroy, inject, computed, effect } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, OnDestroy, inject, computed, signal } from '@angular/core';
+import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
+import { filter } from 'rxjs';
 import { Router, RouterOutlet } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
@@ -7,13 +9,16 @@ import { TopbarComponent } from '../topbar/topbar.component';
 import { SidebarComponent } from '../sidebar/sidebar.component';
 import { ThemeService } from '../../services/theme.service';
 import { AuthService } from '../../auth/auth.service';
-import { NotificationSocketService } from '../../services/notification-socket.service';
+import { NotificationSocketService, WsNotification } from '../../services/notification-socket.service';
+import { ChatStateService } from '../../services/chat-state.service';
 import { NgxSonnerToaster, toast } from 'ngx-sonner';
+import { ChatFabComponent } from '../../../features/chat/components/chat-fab/chat-fab.component';
+import { ChatPanelComponent } from '../../../features/chat/components/chat-panel/chat-panel.component';
 
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [RouterOutlet, CommonModule, TopbarComponent, SidebarComponent, NgxSonnerToaster, MatIconModule, MatButtonModule],
+  imports: [RouterOutlet, CommonModule, TopbarComponent, SidebarComponent, NgxSonnerToaster, MatIconModule, MatButtonModule, ChatFabComponent, ChatPanelComponent],
   templateUrl: './shell.component.html',
   styleUrls: ['./shell.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -22,29 +27,35 @@ export class ShellComponent implements OnInit, OnDestroy {
   private readonly themeService   = inject(ThemeService);
   private readonly authService    = inject(AuthService);
   private readonly socketService  = inject(NotificationSocketService);
+  readonly chatState              = inject(ChatStateService);
   private readonly router         = inject(Router);
+  private readonly destroyRef     = inject(DestroyRef);
 
   constructor() {
-    // Show toast when a new notification arrives via WebSocket
-    effect(() => {
-      const notif = this.socketService.latestNotification();
-      if (notif) {
-        toast(notif.titulo, {
-          description: notif.mensaje,
-          duration: 5000,
-          action: notif.url_accion
-            ? {
-                label: 'Ver',
-                onClick: () => {
-                  const url = notif.ancla
-                    ? `${notif.url_accion}${notif.ancla}`
-                    : notif.url_accion;
-                  if (url) this.router.navigateByUrl(url);
-                },
-              }
-            : undefined,
-        });
-      }
+    // Use toObservable instead of effect() so the toast call runs in a plain
+    // RxJS subscription — outside any reactive context — avoiding interactions
+    // between ngx-sonner's internal signal store and Angular's effect scheduler.
+    toObservable(this.socketService.latestNotification).pipe(
+      filter((notif): notif is WsNotification => notif !== null),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe(notif => {
+      toast(notif.titulo, {
+        description: notif.mensaje,
+        duration: 5000,
+        action: {
+          label: 'Ver',
+          onClick: () => {
+            if (notif.tipo === 'chat' && notif.metadata?.['conversacion_id']) {
+              this.chatState.open(notif.metadata['conversacion_id'] as string);
+            } else if (notif.url_accion) {
+              const url = notif.ancla
+                ? `${notif.url_accion}${notif.ancla}`
+                : notif.url_accion;
+              this.router.navigateByUrl(url);
+            }
+          },
+        },
+      });
     });
   }
 
@@ -89,6 +100,9 @@ export class ShellComponent implements OnInit, OnDestroy {
   });
 
   dismissedWarning = false;
+
+  /** Total unread messages — fed by ChatPanelComponent via output */
+  readonly chatUnreadCount = signal(0);
 
   private readonly SIDEBAR_EXPANDED_KEY = 'saisuite.sidebarExpanded';
 

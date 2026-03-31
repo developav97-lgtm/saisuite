@@ -87,4 +87,9 @@ export class NotificacionesService {
   remindMe(id: string, minutos: number): Observable<Notificacion> {
     return this.http.post<Notificacion>(`${this.apiUrl}/${id}/remind-me/`, { minutos });
   }
+
+  // ── C.5: Eliminar ───────────────────────────────────────────────────────────
+  eliminar(id: string): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/${id}/`);
+  }
 }

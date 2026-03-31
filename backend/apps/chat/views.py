@@ -17,9 +17,10 @@ from .serializers import (
     ConversacionCreateSerializer,
     ConversacionListSerializer,
     MensajeCreateSerializer,
+    MensajeEditSerializer,
     MensajeSerializer,
 )
-from .services import ChatService
+from .services import ChatService, PresenceService
 
 logger = logging.getLogger(__name__)
 
@@ -104,10 +105,17 @@ def enviar_mensaje_view(request, conversacion_id):
             remitente=request.user,
             contenido=serializer.validated_data.get('contenido', ''),
             imagen_url=serializer.validated_data.get('imagen_url', ''),
+            thumbnail_url=serializer.validated_data.get('thumbnail_url', ''),
             responde_a_id=serializer.validated_data.get('responde_a_id'),
+            archivo_url=serializer.validated_data.get('archivo_url', ''),
+            archivo_nombre=serializer.validated_data.get('archivo_nombre', ''),
+            archivo_tamaño=serializer.validated_data.get('archivo_tamaño'),
         )
     except PermissionError as e:
         return Response({'error': str(e)}, status=status.HTTP_403_FORBIDDEN)
+
+    # Push WS broadcast desde contexto sync HTTP — sin deadlock posible
+    ChatService.broadcast_nuevo_mensaje(mensaje, conversacion_id)
 
     output = MensajeSerializer(mensaje)
     return Response(output.data, status=status.HTTP_201_CREATED)
@@ -131,40 +139,47 @@ def marcar_leido_view(request, mensaje_id):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def autocomplete_entidades_view(request):
-    """GET: Autocomplete para entidades de proyecto como [PRY-001]."""
+    """
+    GET: Autocomplete para entidades enlazables en chat.
+
+    Busca por código O nombre en todos los catálogos registrados en ENTITY_REGISTRY.
+    No filtra por prefijo — cada empresa define sus propios consecutivos.
+    Parámetro opcional ?tipo=proyecto|tarea|... para limitar la búsqueda.
+    """
+    import importlib
+    from .services import ENTITY_REGISTRY
+
     query = request.query_params.get('query', '').strip()
-    tipo = request.query_params.get('tipo', '').strip()
+    tipo_filtro = request.query_params.get('tipo', '').strip()
     company = request.user.effective_company
 
-    if not query or len(query) < 2:
+    if not query:
         return Response([])
-
-    from apps.proyectos.models import Project, Task
 
     results = []
 
-    type_map = {
-        'proyecto': (Project, 'PRY'),
-        'tarea': (Task, 'TAR'),
-    }
+    for module_path, class_name, entity_type, _base_url, nombre_field in ENTITY_REGISTRY:
+        if tipo_filtro and entity_type != tipo_filtro:
+            continue
+        try:
+            mod = importlib.import_module(module_path)
+            model_class = getattr(mod, class_name)
+            entities = model_class.all_objects.filter(
+                company=company,
+            ).filter(
+                Q(codigo__icontains=query) | Q(**{f'{nombre_field}__icontains': query})
+            )[:10]
 
-    # Si se especifica tipo, buscar solo ese tipo
-    search_types = {tipo: type_map[tipo]} if tipo in type_map else type_map
-
-    for entity_type, (model_class, prefix) in search_types.items():
-        entities = model_class.all_objects.filter(
-            company=company,
-        ).filter(
-            Q(codigo__icontains=query) | Q(nombre__icontains=query)
-        )[:10]
-
-        for entity in entities:
-            results.append({
-                'id': entity.id,
-                'codigo': entity.codigo,
-                'nombre': entity.nombre,
-                'tipo': entity_type,
-            })
+            for entity in entities:
+                results.append({
+                    'id': entity.id,
+                    'codigo': entity.codigo,
+                    'nombre': getattr(entity, nombre_field, '') or '',
+                    'tipo': entity_type,
+                })
+        except Exception:
+            logger.exception('autocomplete_entity_failed',
+                             extra={'module': module_path, 'class': class_name})
 
     serializer = AutocompleteEntidadSerializer(results, many=True)
     return Response(serializer.data)
@@ -177,7 +192,7 @@ def autocomplete_usuarios_view(request):
     query = request.query_params.get('query', '').strip()
     company = request.user.effective_company
 
-    if not query or len(query) < 2:
+    if not query:
         return Response([])
 
     from apps.users.models import User
@@ -197,3 +212,109 @@ def autocomplete_usuarios_view(request):
     ]
     serializer = AutocompleteUsuarioSerializer(results, many=True)
     return Response(serializer.data)
+
+
+# ── Archivos ─────────────────────────────────────────────────────
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def upload_archivo_view(request):
+    """POST /api/v1/chat/upload-archivo/ — Sube archivo a R2."""
+    file_obj = request.FILES.get('archivo')
+    if not file_obj:
+        return Response({'error': 'No se envió ningún archivo.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        result = ChatService.upload_archivo_r2(file_obj, str(request.user.company_id))
+        return Response(result, status=status.HTTP_200_OK)
+    except ValueError as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    except Exception:
+        logger.exception('error_subiendo_archivo_r2', extra={'user': str(request.user.id)})
+        return Response({'error': 'Error al subir el archivo.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def upload_imagen_view(request):
+    """POST /api/v1/chat/upload-imagen/ — Sube imagen a R2, genera thumbnail WEBP."""
+    file_obj = request.FILES.get('imagen')
+    if not file_obj:
+        return Response({'error': 'No se envió ninguna imagen.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        result = ChatService.upload_imagen_r2(file_obj, str(request.user.company_id))
+        return Response(result, status=status.HTTP_200_OK)
+    except ValueError as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    except Exception:
+        logger.exception('error_subiendo_imagen_r2', extra={'user': str(request.user.id)})
+        return Response({'error': 'Error al subir la imagen.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['PATCH'])
+@permission_classes([IsAuthenticated])
+def editar_mensaje_view(request, mensaje_id):
+    """PATCH /api/v1/chat/mensajes/{id}/editar/ — Edita contenido de un mensaje propio."""
+    serializer = MensajeEditSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+
+    try:
+        mensaje = ChatService.editar_mensaje(
+            mensaje_id=str(mensaje_id),
+            nuevo_contenido=serializer.validated_data['contenido'],
+            usuario=request.user,
+        )
+    except LookupError as e:
+        return Response({'error': str(e)}, status=status.HTTP_404_NOT_FOUND)
+    except PermissionError as e:
+        return Response({'error': str(e)}, status=status.HTTP_403_FORBIDDEN)
+    except Exception:
+        logger.exception('error_editando_mensaje', extra={'user': str(request.user.id)})
+        return Response({'error': 'Error al editar el mensaje.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    return Response(MensajeSerializer(mensaje).data)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def presencia_view(request):
+    """
+    GET /api/v1/chat/presencia/ — Estado online/offline de los peers del usuario.
+    Retorna {user_id: 'online'|'offline'} para todos los interlocutores.
+    """
+    from django.db.models import Q as _Q
+    from apps.chat.models import Conversacion
+
+    convs = Conversacion.all_objects.filter(
+        _Q(participante_1=request.user) | _Q(participante_2=request.user),
+        company=request.user.effective_company,
+    ).values_list('participante_1_id', 'participante_2_id')
+
+    peer_ids = set()
+    user_id = str(request.user.id)
+    for p1, p2 in convs:
+        peer = str(p2) if str(p1) == user_id else str(p1)
+        peer_ids.add(peer)
+
+    statuses = PresenceService.get_statuses(list(peer_ids))
+    return Response(statuses)
+
+
+# ── Búsqueda ─────────────────────────────────────────────────────
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def buscar_mensajes_view(request, conversacion_id):
+    """GET /api/v1/chat/conversaciones/{id}/buscar/?q=texto"""
+    query = request.GET.get('q', '').strip()
+    if len(query) < 2:
+        return Response({'results': [], 'query': query})
+
+    mensajes = ChatService.buscar_mensajes(
+        str(conversacion_id), query, str(request.user.id)
+    )
+    serializer = MensajeSerializer(mensajes, many=True, context={'request': request})
+    return Response({'results': serializer.data, 'query': query})

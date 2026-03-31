@@ -16,18 +16,26 @@ class MensajeSerializer(serializers.ModelSerializer):
         read_only=True,
         default=None,
     )
+    responde_a_remitente_nombre = serializers.CharField(
+        source='responde_a.remitente.full_name',
+        read_only=True,
+        default=None,
+    )
 
     class Meta:
         model = Mensaje
         fields = [
             'id', 'conversacion', 'remitente', 'remitente_nombre', 'remitente_email',
-            'contenido', 'contenido_html', 'imagen_url',
-            'responde_a', 'responde_a_contenido',
+            'contenido', 'contenido_html', 'imagen_url', 'thumbnail_url',
+            'archivo_url', 'archivo_nombre', 'archivo_tamaño',
+            'responde_a', 'responde_a_contenido', 'responde_a_remitente_nombre',
+            'editado', 'editado_at',
             'leido_por_destinatario', 'leido_at',
             'created_at', 'updated_at',
         ]
         read_only_fields = [
-            'id', 'contenido_html', 'leido_por_destinatario', 'leido_at',
+            'id', 'contenido_html', 'editado', 'editado_at',
+            'leido_por_destinatario', 'leido_at',
             'created_at', 'updated_at',
         ]
 
@@ -36,11 +44,15 @@ class MensajeCreateSerializer(serializers.Serializer):
     """Serializer de escritura para enviar un mensaje."""
     contenido = serializers.CharField(required=False, allow_blank=True, default='')
     imagen_url = serializers.CharField(required=False, allow_blank=True, default='')
+    thumbnail_url = serializers.CharField(required=False, allow_blank=True, default='')
+    archivo_url = serializers.CharField(required=False, allow_blank=True, default='')
+    archivo_nombre = serializers.CharField(required=False, allow_blank=True, default='')
+    archivo_tamaño = serializers.IntegerField(required=False, allow_null=True, default=None)
     responde_a_id = serializers.UUIDField(required=False, allow_null=True, default=None)
 
     def validate(self, data):
-        if not data.get('contenido') and not data.get('imagen_url'):
-            raise serializers.ValidationError('Se requiere contenido o imagen')
+        if not data.get('contenido') and not data.get('imagen_url') and not data.get('archivo_url'):
+            raise serializers.ValidationError('Se requiere contenido, imagen o archivo')
         return data
 
 
@@ -98,6 +110,11 @@ class AutocompleteEntidadSerializer(serializers.Serializer):
     codigo = serializers.CharField()
     nombre = serializers.CharField()
     tipo = serializers.CharField()
+
+
+class MensajeEditSerializer(serializers.Serializer):
+    """Serializer de escritura para editar un mensaje."""
+    contenido = serializers.CharField(min_length=1)
 
 
 class AutocompleteUsuarioSerializer(serializers.Serializer):

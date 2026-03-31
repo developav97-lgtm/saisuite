@@ -263,6 +263,12 @@ class NotificacionService:
         return count
 
     @staticmethod
+    def eliminar(notificacion_id: str, usuario: User) -> None:
+        """Elimina una notificación del usuario."""
+        Notificacion.objects.filter(id=notificacion_id, usuario=usuario).delete()
+        logger.info('notificacion_eliminada', extra={'id': str(notificacion_id), 'usuario': str(usuario.id)})
+
+    @staticmethod
     def snooze(notificacion_id: str, usuario: User, minutos: int) -> Notificacion:
         """Pospone una notificación por N minutos."""
         notificacion = Notificacion.objects.get(id=notificacion_id, usuario=usuario)

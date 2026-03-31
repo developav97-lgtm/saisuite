@@ -110,11 +110,13 @@ SIMPLE_JWT = {
 }
 
 # ── Channels / WebSocket ─────────────────────────────────────────
+REDIS_URL = env('UPSTASH_REDIS_URL', default='redis://localhost:6379')
+
 CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
         'CONFIG': {
-            'hosts': [env('UPSTASH_REDIS_URL', default='redis://localhost:6379')],
+            'hosts': [REDIS_URL],
         },
     },
 }
@@ -122,6 +124,15 @@ CHANNEL_LAYERS = {
 AWS_ACCESS_KEY_ID = env('AWS_ACCESS_KEY_ID', default='')
 AWS_SECRET_ACCESS_KEY = env('AWS_SECRET_ACCESS_KEY', default='')
 AWS_DEFAULT_REGION = env('AWS_DEFAULT_REGION', default='us-east-1')
+
+# ── Cloudflare R2 ─────────────────────────────────────────────────
+CLOUDFLARE_R2_ACCESS_KEY_ID = env('CLOUDFLARE_R2_ACCESS_KEY_ID', default='')
+CLOUDFLARE_R2_SECRET_ACCESS_KEY = env('CLOUDFLARE_R2_SECRET_ACCESS_KEY', default='')
+CLOUDFLARE_R2_ENDPOINT = env('CLOUDFLARE_R2_ENDPOINT', default='')
+CLOUDFLARE_R2_BUCKET_NAME = env('CLOUDFLARE_R2_BUCKET_NAME', default='')
+# URL pública del bucket (CDN custom domain o r2.dev subdomain).
+# Si está vacío, se usan presigned URLs con expiración de 1 año.
+CLOUDFLARE_R2_PUBLIC_URL = env('CLOUDFLARE_R2_PUBLIC_URL', default='')
 SQS_TO_CLOUD_URL = env('SQS_TO_CLOUD_URL', default='')
 SQS_TO_SAI_URL = env('SQS_TO_SAI_URL', default='')
 OPENAI_API_KEY = env('OPENAI_API_KEY', default='')

@@ -51,4 +51,15 @@
         </main>
     </div>
 </div>
+
+<app-chat-fab
+  [isOpen]="chatState.isOpen()"
+  [unreadCount]="chatUnreadCount()"
+  (toggle)="chatState.isOpen() ? chatState.close() : chatState.open()" />
+<app-chat-panel
+  [isOpen]="chatState.isOpen()"
+  [openConversacionId]="chatState.requestedConversacionId()"
+  (close)="chatState.close()"
+  (unreadCountChange)="chatUnreadCount.set($event)" />
+
 <ngx-sonner-toaster position="top-right" [richColors]="true" [duration]="5000" [visibleToasts]="5" />

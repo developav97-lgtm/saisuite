@@ -31,6 +31,7 @@ logger = logging.getLogger(__name__)
 class NotificacionViewSet(
     mixins.ListModelMixin,
     mixins.RetrieveModelMixin,
+    mixins.DestroyModelMixin,
     viewsets.GenericViewSet,
 ):
     """
@@ -120,6 +121,11 @@ class NotificacionViewSet(
         except Notificacion.DoesNotExist:
             return Response({'detail': 'No encontrada.'}, status=status.HTTP_404_NOT_FOUND)
         return Response(NotificacionSerializer(recordatorio).data, status=status.HTTP_201_CREATED)
+
+    def destroy(self, request, pk=None):
+        """DELETE /notificaciones/{id}/ — elimina la notificación del usuario."""
+        NotificacionService.eliminar(pk, request.user)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class ComentarioViewSet(viewsets.ModelViewSet):

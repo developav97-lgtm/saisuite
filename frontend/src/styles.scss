@@ -542,3 +542,10 @@ h2[mat-dialog-title].dialog-title {
   border-top: 1px solid var(--sc-surface-border);
   padding: 0 0.5rem;
 }
+
+// ── Image viewer dialog ───────────────────────────────────────
+.image-viewer-panel .mat-mdc-dialog-container .mdc-dialog__surface {
+  padding: 0 !important;
+  overflow: hidden;
+  border-radius: 8px;
+}

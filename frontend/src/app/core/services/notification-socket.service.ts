@@ -1,4 +1,4 @@
-import { Injectable, signal, inject, OnDestroy } from '@angular/core';
+import { Injectable, NgZone, signal, inject, OnDestroy } from '@angular/core';
 import { AuthService } from '../auth/auth.service';
 import { environment } from '../../../environments/environment';
 
@@ -16,6 +16,7 @@ export interface WsNotification {
 @Injectable({ providedIn: 'root' })
 export class NotificationSocketService implements OnDestroy {
   private readonly auth = inject(AuthService);
+  private readonly zone = inject(NgZone);
 
   private socket: WebSocket | null = null;
   private reconnectAttempts = 0;
@@ -47,40 +48,48 @@ export class NotificationSocketService implements OnDestroy {
     this.intentionalClose = false;
     const url = `${environment.wsUrl}/ws/notifications/?token=${token}`;
 
-    this.socket = new WebSocket(url);
+    // Same as ChatSocketService: run outside Angular zone so zone.js does NOT
+    // patch the WebSocket callbacks. Without this, every incoming notification
+    // triggers ApplicationRef.tick() — a full change-detection tree walk —
+    // which, combined with the signal scheduler, freezes the browser.
+    this.zone.runOutsideAngular(() => {
+      this.socket = new WebSocket(url);
 
-    this.socket.onopen = (): void => {
-      this._isConnected.set(true);
-      this.reconnectAttempts = 0;
-    };
+      this.socket.onopen = (): void => {
+        this._isConnected.set(true);
+        this.reconnectAttempts = 0;
+      };
 
-    this.socket.onmessage = (event: MessageEvent): void => {
-      try {
-        const msg = JSON.parse(event.data as string) as Record<string, unknown>;
-        if (msg['type'] === 'notification' && msg['data']) {
-          this._latestNotification.set(msg['data'] as WsNotification);
-        } else if (msg['type'] === 'unread_count' && typeof msg['count'] === 'number') {
-          this._unreadCount.set(msg['count'] as number);
+      this.socket.onmessage = (event: MessageEvent): void => {
+        try {
+          const msg = JSON.parse(event.data as string) as Record<string, unknown>;
+          // zone.run() so toObservable subscribers in ShellComponent and
+          // NotificationBellComponent see the update in the current tick.
+          if (msg['type'] === 'notification' && msg['data']) {
+            this.zone.run(() => this._latestNotification.set(msg['data'] as WsNotification));
+          } else if (msg['type'] === 'unread_count' && typeof msg['count'] === 'number') {
+            this.zone.run(() => this._unreadCount.set(msg['count'] as number));
+          }
+        } catch {
+          // Ignore malformed messages
         }
-      } catch {
-        // Ignore malformed messages
-      }
-    };
+      };
 
-    this.socket.onclose = (event: CloseEvent): void => {
-      this._isConnected.set(false);
-      this.socket = null;
+      this.socket.onclose = (event: CloseEvent): void => {
+        this._isConnected.set(false);
+        this.socket = null;
 
-      if (event.code === NotificationSocketService.AUTH_FAILURE_CODE || this.intentionalClose) {
-        return;
-      }
+        if (event.code === NotificationSocketService.AUTH_FAILURE_CODE || this.intentionalClose) {
+          return;
+        }
 
-      this.scheduleReconnect();
-    };
+        this.zone.runOutsideAngular(() => this.scheduleReconnect());
+      };
 
-    this.socket.onerror = (): void => {
-      // onclose fires after onerror; reconnection is handled there
-    };
+      this.socket.onerror = (): void => {
+        // onclose fires after onerror; reconnection is handled there
+      };
+    });
   }
 
   disconnect(): void {

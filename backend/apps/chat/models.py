@@ -76,6 +76,13 @@ class Mensaje(BaseModel):
         blank=True,
         related_name='respuestas',
     )
+    thumbnail_url = models.CharField(max_length=500, blank=True, default='')
+    archivo_url = models.CharField(max_length=500, blank=True, default='')
+    archivo_nombre = models.CharField(max_length=255, blank=True, default='')
+    archivo_tamaño = models.PositiveIntegerField(null=True, blank=True)
+    editado = models.BooleanField(default=False)
+    editado_at = models.DateTimeField(null=True, blank=True)
+    contenido_original = models.TextField(blank=True, default='')
     leido_por_destinatario = models.BooleanField(default=False)
     leido_at = models.DateTimeField(null=True, blank=True)
 

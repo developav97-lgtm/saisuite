@@ -313,7 +313,21 @@
       "Bash(python -c \"import ast; ast.parse\\(open\\(''apps/chat/serializers.py''\\).read\\(\\)\\); print\\(''serializers.py: OK''\\)\")",
       "Bash(python -c \"import ast; ast.parse\\(open\\(''apps/chat/views.py''\\).read\\(\\)\\); print\\(''views.py: OK''\\)\")",
       "Bash(python -c \"import ast; ast.parse\\(open\\(''apps/chat/urls.py''\\).read\\(\\)\\); print\\(''urls.py: OK''\\)\")",
-      "Bash(python -c \"import ast; ast.parse\\(open\\(''apps/chat/tests/test_services.py''\\).read\\(\\)\\); print\\(''test_services.py: OK''\\)\")"
+      "Bash(python -c \"import ast; ast.parse\\(open\\(''apps/chat/tests/test_services.py''\\).read\\(\\)\\); print\\(''test_services.py: OK''\\)\")",
+      "mcp__playwright__browser_type",
+      "Bash(python manage.py makemigrations chat --name add_archivo_fields_to_mensaje)",
+      "Bash(.venv/bin/python manage.py makemigrations chat --name add_archivo_fields_to_mensaje)",
+      "Bash(DJANGO_SETTINGS_MODULE=config.settings.base .venv/bin/python manage.py makemigrations chat --name add_archivo_fields_to_mensaje)",
+      "Bash(DJANGO_SETTINGS_MODULE=config.settings.testing .venv/bin/python manage.py makemigrations chat --name add_archivo_fields_to_mensaje)",
+      "mcp__playwright__browser_file_upload",
+      "Bash(find /Users/juanandrade/Desktop/saisuite/frontend -path */rxjs-interop* -name *.js)",
+      "Bash(find /Users/juanandrade/Desktop/saisuite/frontend/.angular/cache -name *.js)",
+      "Bash(find /Users/juanandrade/Desktop/saisuite -name Dockerfile*)",
+      "Bash(grep:*)",
+      "mcp__playwright__browser_hover",
+      "mcp__playwright__browser_resize",
+      "Bash(docker-compose restart:*)",
+      "Bash(find /Users/juanandrade/Desktop/saisuite -name *.env -o -name .env*)"
     ]
   }
 }

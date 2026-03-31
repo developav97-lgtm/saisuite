@@ -37,6 +37,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         { "type": "chat.typing",           "conversacion_id" }
         { "type": "chat.mark_read",        "mensaje_id" }
         { "type": "chat.join_conversation", "conversacion_id" }
+        { "type": "chat.heartbeat" }       ← refresh presence TTL (every 25s)
     """
 
     # ── Connection lifecycle ─────────────────────────────────────
@@ -65,6 +66,10 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 
         await self.accept()
 
+        # Mark user as online in Redis and broadcast to conversation partners
+        await self._set_presence_online()
+        await self._broadcast_presence('online')
+
         logger.info(
             'chat_ws_connected',
             extra={
@@ -82,6 +87,8 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             await self.channel_layer.group_discard(self.user_group, self.channel_name)
 
         if hasattr(self, 'user'):
+            await self._set_presence_offline()
+            await self._broadcast_presence('offline')
             logger.info(
                 'chat_ws_disconnected',
                 extra={
@@ -104,6 +111,8 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             await self._handle_mark_read(content)
         elif msg_type == 'chat.join_conversation':
             await self._handle_join_conversation(content)
+        elif msg_type == 'chat.heartbeat':
+            await self._set_presence_online()
         else:
             logger.warning(
                 'chat_ws_unknown_message_type',
@@ -153,6 +162,23 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                 },
             })
 
+    async def chat_message_edited(self, event):
+        """Forward message_edited broadcast to the client."""
+        await self.send_json({
+            'type': 'message_edited',
+            'data': event['data'],
+        })
+
+    async def chat_presence_changed(self, event):
+        """Forward presence_changed broadcast to the client."""
+        await self.send_json({
+            'type': 'presence_changed',
+            'data': {
+                'user_id': event['user_id'],
+                'status': event['status'],
+            },
+        })
+
     async def chat_new_conversation(self, event):
         """
         Notification that a new conversation was created involving this user.
@@ -184,9 +210,18 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             return
 
         try:
-            mensaje = await self._create_message(
+            # _create_message returns (mensaje, message_data) — serialization happens
+            # inside database_sync_to_async to avoid re-entering sync from async context.
+            mensaje, message_data = await self._create_message(
                 conversacion_id, self.user, contenido, imagen_url, responde_a_id,
             )
+
+            # Broadcast directly in async context — no async_to_sync, no deadlock.
+            await self.channel_layer.group_send(
+                f'chat_{conversacion_id}',
+                {'type': 'chat.new_message', 'data': message_data},
+            )
+
             logger.info(
                 'chat_ws_message_sent',
                 extra={
@@ -278,14 +313,20 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
     @database_sync_to_async
     def _create_message(self, conversacion_id, user, contenido, imagen_url, responde_a_id):
         from apps.chat.services import ChatService
+        from .serializers import MensajeSerializer
 
-        return ChatService.enviar_mensaje(
+        mensaje = ChatService.enviar_mensaje(
             conversacion_id=conversacion_id,
             remitente=user,
             contenido=contenido,
             imagen_url=imagen_url,
             responde_a_id=responde_a_id,
         )
+        # Serialize while still in sync context — avoids calling async_to_sync
+        # from inside database_sync_to_async (which causes a deadlock).
+        # Use _serialize_para_ws to convert UUID/datetime/Decimal to msgpack-safe types.
+        message_data = ChatService._serialize_para_ws(MensajeSerializer(mensaje).data)
+        return mensaje, message_data
 
     @database_sync_to_async
     def _mark_message_read(self, mensaje_id, user):
@@ -305,3 +346,22 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             Q(participante_1=self.user) | Q(participante_2=self.user),
             id=conversacion_id,
         ).exists()
+
+    @database_sync_to_async
+    def _set_presence_online(self):
+        from apps.chat.services import PresenceService
+        PresenceService.set_online(str(self.user.id))
+
+    @database_sync_to_async
+    def _set_presence_offline(self):
+        from apps.chat.services import PresenceService
+        PresenceService.set_offline(str(self.user.id))
+
+    async def _broadcast_presence(self, status: str):
+        """Broadcast presence change to all conversation groups so partners receive it."""
+        for group in getattr(self, 'conversation_groups', []):
+            await self.channel_layer.group_send(group, {
+                'type': 'chat.presence_changed',
+                'user_id': str(self.user.id),
+                'status': status,
+            })

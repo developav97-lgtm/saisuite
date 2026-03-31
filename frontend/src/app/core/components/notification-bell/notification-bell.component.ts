@@ -1,14 +1,16 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
   OnDestroy,
   TemplateRef,
   ViewContainerRef,
-  effect,
   inject,
   signal,
   viewChild,
 } from '@angular/core';
+import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
+import { filter } from 'rxjs';
 import { Router, RouterLink } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -22,6 +24,7 @@ import { TemplatePortal } from '@angular/cdk/portal';
 
 import { NotificacionesService } from '../../services/notificaciones.service';
 import { NotificationSocketService } from '../../services/notification-socket.service';
+import { ChatStateService } from '../../services/chat-state.service';
 import { Notificacion, NotificacionGrupo, NotificacionItem } from '../../../shared/models/notificacion.model';
 
 const TIPO_ICONS: Record<string, string> = {
@@ -36,6 +39,9 @@ const TIPO_ICONS: Record<string, string> = {
   chat:                 'message',
   recordatorio:         'alarm',
 };
+
+// Tipos sin destino de navegación — se eliminan al hacer clic (no abren ninguna ruta)
+const TIPOS_SIN_DESTINO = new Set<string>(['sistema', 'recordatorio']);
 
 // Opciones de snooze y remind-me en minutos
 export const SNOOZE_OPTIONS = [
@@ -64,11 +70,13 @@ export const SNOOZE_OPTIONS = [
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class NotificationBellComponent implements OnDestroy {
-  private readonly svc             = inject(NotificacionesService);
-  private readonly router          = inject(Router);
-  private readonly socketService   = inject(NotificationSocketService);
-  private readonly overlay         = inject(Overlay);
+  private readonly svc              = inject(NotificacionesService);
+  private readonly router           = inject(Router);
+  private readonly socketService    = inject(NotificationSocketService);
+  private readonly chatState        = inject(ChatStateService);
+  private readonly overlay          = inject(Overlay);
   private readonly viewContainerRef = inject(ViewContainerRef);
+  private readonly destroyRef       = inject(DestroyRef);
 
   sinLeer        = signal(0);
   items          = signal<NotificacionItem[]>([]);
@@ -86,11 +94,12 @@ export class NotificationBellComponent implements OnDestroy {
   private _docClickListener: ((e: MouseEvent) => void) | null = null;
 
   constructor() {
-    // Sync badge count from WebSocket unread_count signal
-    effect(() => {
-      const wsCount = this.socketService.unreadCount();
-      this.sinLeer.set(wsCount);
-    });
+    // Use toObservable instead of effect() to avoid writing to a signal (sinLeer)
+    // inside an effect — which can interfere with Angular's signal scheduler.
+    toObservable(this.socketService.unreadCount).pipe(
+      filter(count => count >= 0),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe(count => this.sinLeer.set(count));
   }
 
   ngOnDestroy(): void {
@@ -112,9 +121,38 @@ export class NotificationBellComponent implements OnDestroy {
     this.accionesId.set(null);
   }
 
-  // ── Navegar / marcar leída ─────────────────────────────────────────────────
+  // ── Navegar / marcar leída / eliminar ─────────────────────────────────────
 
   onIndividualClick(n: Notificacion): void {
+    const tipo = n.tipo;
+
+    // chat → eliminar la notificación y abrir el panel de chat
+    if (tipo === 'chat') {
+      this.svc.eliminar(n.id).subscribe({
+        next: () => {
+          this._quitarIndividual(n.id);
+          this.sinLeer.update(c => Math.max(0, c - 1));
+        },
+      });
+      const convId = n.metadata?.['conversacion_id'] as string | undefined;
+      this.chatState.open(convId);
+      return;
+    }
+
+    // tipos sin destino → solo marcar leída (sin navegar)
+    if (TIPOS_SIN_DESTINO.has(tipo)) {
+      if (!n.leida) {
+        this.svc.marcarLeida(n.id).subscribe({
+          next: () => {
+            this._quitarIndividual(n.id);
+            this.sinLeer.update(c => Math.max(0, c - 1));
+          },
+        });
+      }
+      return;
+    }
+
+    // resto de tipos → marcar leída y navegar a url_accion
     if (!n.leida) {
       this.svc.marcarLeida(n.id).subscribe({
         next: () => {
@@ -128,6 +166,30 @@ export class NotificationBellComponent implements OnDestroy {
   }
 
   onGrupoClick(g: NotificacionGrupo): void {
+    const tipo = g.tipo_notificacion;
+
+    // chat → eliminar el grupo y abrir el panel de chat
+    if (tipo === 'chat') {
+      g.notificaciones_ids.forEach(id => this.svc.eliminar(id).subscribe());
+      this._quitarGrupo(g.id);
+      this.sinLeer.update(c => Math.max(0, c - g.cantidad));
+      const convId = g.metadata?.['conversacion_id'] as string | undefined;
+      this.chatState.open(convId);
+      return;
+    }
+
+    // tipos sin destino → solo marcar leídas
+    if (TIPOS_SIN_DESTINO.has(tipo)) {
+      this.svc.marcarGrupoLeidas(g.notificaciones_ids).subscribe({
+        next: ({ count }) => {
+          this._quitarGrupo(g.id);
+          this.sinLeer.update(c => Math.max(0, c - count));
+        },
+      });
+      return;
+    }
+
+    // resto → marcar leídas y navegar
     this.svc.marcarGrupoLeidas(g.notificaciones_ids).subscribe({
       next: ({ count }) => {
         this._quitarGrupo(g.id);
