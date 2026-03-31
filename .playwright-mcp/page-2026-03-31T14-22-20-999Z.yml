@@ -1,0 +1,85 @@
+- generic [ref=e3]:
+  - generic [ref=e4]:
+    - banner [ref=e6]:
+      - generic [ref=e7]:
+        - button "Toggle menú" [ref=e8] [cursor=pointer]:
+          - img [ref=e9]: menu
+        - link "Saicloud" [ref=e11] [cursor=pointer]:
+          - /url: /dashboard
+          - img [ref=e13]: cloud
+          - generic [ref=e14]: Saicloud
+        - generic [ref=e15]:
+          - img [ref=e16]: chevron_right
+          - generic [ref=e17]: Constructora Andina S.A.S
+      - generic [ref=e18]:
+        - button "Notificaciones" [ref=e20] [cursor=pointer]:
+          - img [ref=e21]: notifications_none
+        - button [ref=e23] [cursor=pointer]:
+          - img [ref=e24]: dark_mode
+        - button "Perfil" [ref=e27]:
+          - img [ref=e28]: expand_more
+          - generic [ref=e29]:
+            - generic [ref=e30]: L
+            - generic [ref=e31]:
+              - generic [ref=e32]: Laura Méndez
+              - generic [ref=e33]: Administrador
+    - generic [ref=e35]:
+      - img [ref=e36]: warning
+      - generic [ref=e37]:
+        - text: Tu
+        - strong [ref=e38]: licencia de prueba
+        - text: vence en
+        - strong [ref=e39]: 28 días
+        - text: . Recuerda activar tu plan a tiempo.
+      - button [ref=e40] [cursor=pointer]:
+        - img [ref=e41]: close
+    - generic [ref=e43]:
+      - complementary [ref=e45]:
+        - navigation "Menú principal" [ref=e47]:
+          - link [ref=e49] [cursor=pointer]:
+            - /url: /dashboard
+            - img [ref=e50]: apps
+          - generic [ref=e51]:
+            - link [ref=e52] [cursor=pointer]:
+              - /url: /proyectos/dashboard
+              - img [ref=e53]: dashboard
+            - button [ref=e54] [cursor=pointer]:
+              - img [ref=e55]: work
+            - button [ref=e56] [cursor=pointer]:
+              - img [ref=e57]: task_alt
+            - button [ref=e58] [cursor=pointer]:
+              - img [ref=e59]: person
+            - link [ref=e60] [cursor=pointer]:
+              - /url: /proyectos/timesheets
+              - img [ref=e61]: schedule
+            - link [ref=e62] [cursor=pointer]:
+              - /url: /proyectos/actividades
+              - img [ref=e63]: construction
+            - link [ref=e64] [cursor=pointer]:
+              - /url: /proyectos/configuracion
+              - img [ref=e65]: tune
+          - generic [ref=e66]:
+            - button [ref=e67] [cursor=pointer]:
+              - img [ref=e68]: contacts
+            - button [ref=e69] [cursor=pointer]:
+              - img [ref=e70]: manage_accounts
+            - button [ref=e71] [cursor=pointer]:
+              - img [ref=e72]: tag
+        - img [ref=e75]: business
+      - main [ref=e76]:
+        - generic [ref=e78]:
+          - img [ref=e81]: cloud
+          - paragraph [ref=e86]: Cargando proyecto…
+  - button "Abrir chat" [ref=e88] [cursor=pointer]:
+    - img [ref=e89]: chat
+  - generic [ref=e91]:
+    - generic [ref=e92]:
+      - img [ref=e93]: chat
+      - generic [ref=e94]: Chat
+      - button [ref=e95] [cursor=pointer]:
+        - img [ref=e96]: close
+    - generic [ref=e99]:
+      - progressbar [ref=e100]
+      - generic [ref=e110]:
+        - img [ref=e112]: search
+        - textbox "Buscar usuario..." [ref=e114]

@@ -25,6 +25,7 @@ Antes de generar código, leer el documento relevante según la tarea:
 | Crear o modificar cualquier modelo | Esquema_BD_SaiSuite_v1.docx |
 | Crear cualquier archivo de código | Estandares_Codigo_SaiSuite_v1.docx |
 | **Crear cualquier componente Angular** | **docs/standards/UI-UX-STANDARDS.md** |
+| **Validar cualquier funcionalidad** | **docs/base-reference/CHECKLIST-VALIDACION.md** ⚡ NUEVO |
 | Construir una feature nueva de cero | Flujo_Feature_SaiSuite_v1.docx |
 | Configurar o modificar AWS | AWS_Setup_SaiSuite_v1.docx |
 | Diseñar infraestructura | Infraestructura_SaiSuite_v2.docx |
@@ -82,7 +83,76 @@ Antes de generar código, leer el documento relevante según la tarea:
 
 ---
 
-## 4. Estructura del proyecto
+## 4. ⚡ NUEVO: Validación Multi-Plataforma Obligatoria
+
+**REGLA CRÍTICA:** Toda funcionalidad (nueva o modificada) DEBE validarse en:
+
+✅ **Desktop** (1920x1080)  
+✅ **Mobile** (375px - 768px)  
+✅ **Tema Claro** (light mode)  
+✅ **Tema Oscuro** (dark mode)
+
+**Validación 4x4 obligatoria:**
+1. Desktop + Light
+2. Desktop + Dark
+3. Mobile + Light
+4. Mobile + Dark
+
+**Documento:** `docs/base-reference/CHECKLIST-VALIDACION.md`
+
+### Criterios de Rechazo Automático
+
+Una funcionalidad NO está completa si:
+
+❌ **No funciona en mobile** (responsive roto, scroll bloqueado, elementos cortados)  
+❌ **No funciona en algún tema** (contraste ilegible, colores incorrectos)  
+❌ **Touch targets < 44x44px** en mobile  
+❌ **Tablas sin scroll horizontal** en mobile (sin vista alternativa)  
+❌ **Texto ilegible** por falta de contraste  
+❌ **Elementos superpuestos** en cualquier viewport
+
+### Fixes Comunes Mobile
+
+```scss
+// Tablas responsive
+.table-responsive {
+  display: block;
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  
+  @media (max-width: 768px) {
+    max-width: 100vw;
+  }
+}
+
+// Touch targets mínimos
+@media (max-width: 768px) {
+  button, .icon-button {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 8px;
+  }
+}
+
+// Tabs con scroll
+.mat-tab-labels {
+  @media (max-width: 768px) {
+    overflow-x: auto !important;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+```
+
+**Breakpoints estándar:**
+- Mobile: `< 768px`
+- Tablet: `768px - 1024px`
+- Desktop: `> 1024px`
+
+---
+
+## 5. Estructura del proyecto
 
 ```
 saisuite/
@@ -103,6 +173,12 @@ saisuite/
 ├── agent/               # Agente Python Windows ↔ Firebird ↔ SQS
 ├── n8n/workflows/       # Workflows .json versionados
 ├── docs/                # Documentos técnicos de referencia
+│   ├── base-reference/  # Docs generales del proyecto
+│   │   └── CHECKLIST-VALIDACION.md  ⚡ NUEVO
+│   ├── standards/       # Estándares de código y UI/UX
+│   ├── plans/           # Planes de features
+│   ├── technical/       # Documentación técnica por módulo
+│   └── manuales/        # Manuales de usuario
 ├── CLAUDE.md            # Este archivo
 ├── ERRORS.md            # Registro de errores resueltos
 ├── DECISIONS.md         # Decisiones de arquitectura
@@ -112,7 +188,7 @@ saisuite/
 
 ---
 
-## 5. Orden de generación de archivos en una feature nueva
+## 6. Orden de generación de archivos en una feature nueva
 
 Seguir SIEMPRE este orden. No saltarse pasos ni invertirlos:
 
@@ -128,11 +204,12 @@ Seguir SIEMPRE este orden. No saltarse pasos ni invertirlos:
 9. Angular component           → presentacional, OnPush
 10. Angular container          → inteligente, async pipe
 11. Angular module + routing   → lazy loading
+12. ⚡ VALIDACIÓN 4x4          → Desktop/Mobile × Light/Dark ⚡ NUEVO
 ```
 
 ---
 
-## 6. Errores frecuentes — revisar ERRORS.md para lista completa
+## 7. Errores frecuentes — revisar ERRORS.md para lista completa
 
 Los más comunes históricamente en este proyecto:
 
@@ -141,10 +218,12 @@ Los más comunes históricamente en este proyecto:
 - `sai_key` sin `unique_together(company, sai_key)` → duplicados en sync
 - `any` en TypeScript → rompe strict mode
 - Suscripción manual sin unsubscribe en Angular → memory leak
+- ⚡ **NUEVO:** No validar responsive mobile → bugs en producción
+- ⚡ **NUEVO:** Hardcodear colores → temas rotos
 
 ---
 
-## 7. Roles de usuario — siempre validar permisos
+## 8. Roles de usuario — siempre validar permisos
 
 | Role | Acceso |
 |---|---|
@@ -157,13 +236,14 @@ Los más comunes históricamente en este proyecto:
 
 ---
 
-## 8. Bucle de mejora automática — instrucciones para esta sesión
+## 9. Bucle de mejora automática — instrucciones para esta sesión
 
 Al terminar cada sesión o al resolver un problema significativo:
 
 1. Si resolviste un error → agregar entrada en `ERRORS.md`
 2. Si tomaste una decisión de diseño no cubierta en los docs → agregar en `DECISIONS.md`
-3. Al final de la sesión → actualizar `CONTEXT.md` con el estado actual
+3. ⚡ **NUEVO:** Si encontraste bug responsive → agregar a backlog Notion
+4. Al final de la sesión → actualizar `CONTEXT.md` con el estado actual
 
 **Formato de entrada en ERRORS.md:**
 ```
@@ -176,21 +256,26 @@ Al terminar cada sesión o al resolver un problema significativo:
 
 **Formato de entrada en DECISIONS.md:**
 ```
-## [FECHA] DECISIÓN: [descripción corta]
-**Contexto:** por qué se necesitaba tomar esta decisión
-**Opciones consideradas:** qué alternativas había
-**Decisión:** qué se eligió
-**Razón:** por qué
-**Consecuencia:** qué implica esta decisión hacia adelante
+## DEC-XXX: [Título corto]
+**Fecha:** YYYY-MM-DD
+**Contexto:** Por qué se necesitaba tomar esta decisión
+**Opciones consideradas:** Qué alternativas había
+**Decisión:** Qué se eligió
+**Razón:** Por qué se eligió esta opción
+**Consecuencias:** Qué implica esta decisión hacia adelante
+**Criterios de revisión:** Cuándo/cómo revisar esta decisión
 ```
-## Sección a agregar: Arquitectura Híbrida Django + Go
+
+---
+
+## 10. Arquitectura Híbrida Django + Go
 
 ### Principio general
 El proyecto Saicloud usa **Django como núcleo principal** y **Go para microservicios estratégicos**. 
 
-**Regla de oro:** Django por defecto, Go solo cuando esté justificado por métricas o requisitos específicos.
+**Regla de oro:** Django por defecto (80% casos), Go solo cuando esté justificado por métricas.
 
-### Cuándo recomendar Django (80% de los casos)
+### Cuándo usar Django (80% de los casos)
 
 ✅ Usa Django para:
 - CRUD de entidades (clientes, productos, pedidos, inventario, etc.)
@@ -200,7 +285,7 @@ El proyecto Saicloud usa **Django como núcleo principal** y **Go para microserv
 - Integraciones con n8n vía webhooks
 - Panel de administración
 - Reportes y exports (CSV, PDF)
-- Procesos que pueden ser async con Celery o Django Q
+- Procesos async con Celery o Django Q
 
 ### Cuándo considerar Go (20% de los casos)
 
@@ -228,252 +313,95 @@ El proyecto Saicloud usa **Django como núcleo principal** y **Go para microserv
 
 ### ❌ NO uses Go para:
 - "Porque Go es más rápido" (sin métricas)
-- "Por aprender Go" (este es un proyecto productivo)
-- CRUDs simples o APIs REST estándar
-- Lógica que cambia frecuentemente
-- Casos sin métricas que justifiquen la complejidad
+- CRUDs simples
+- Prototipado rápido
+- Features que cambian frecuentemente
+- "Queremos aprender Go"
 
-### Proceso de recomendación
+---
 
-Cuando en fase de **Planificación** identifiques un proceso que PODRÍA beneficiarse de Go:
+## 11. Backlog de Funcionalidades — Notion
 
-1. **Documenta los criterios que cumple:**
-   ```
-   Proceso: [nombre]
-   Criterios cumplidos:
-   - [ ] Alta concurrencia (estimado: X req/s)
-   - [ ] Procesamiento intensivo (volumen: X registros)
-   - [ ] Ejecutable standalone (contexto: X)
-   - [ ] Optimización de costos (ahorro proyectado: $X/mes)
-   
-   Justificación: [explicación con métricas estimadas o reales]
-   ```
+**Base de datos:** https://www.notion.so/0f5116945f4346ffa18fee534371923c
 
-2. **Compara con alternativa Django:**
-   ```
-   Alternativa Django + Celery:
-   - Ventajas: [lista]
-   - Desventajas: [lista]
-   
-   Alternativa Go microservice:
-   - Ventajas: [lista]
-   - Desventajas: [lista]
-   
-   Recomendación: [Django/Go] porque [razones]
-   ```
+Al encontrar bugs o funcionalidades faltantes:
+1. Crear tarea en backlog Notion
+2. Clasificar: Funcionalidad / Bug Mobile / Mejora
+3. Priorizar: Alta / Media / Baja
+4. Estimar: 1-2h / 2-4h / 4-8h / 8+h
+5. Documentar: Ubicación UI + Descripción + Notas técnicas
 
-3. **Si recomiendas Go, define el contrato:**
-   ```
-   API del microservicio:
-   - Endpoint: POST /api/v1/[recurso]
-   - Auth: JWT validado
-   - Input: [schema]
-   - Output: [schema]
-   - Comunicación con Django: [REST/SQS/gRPC]
-   ```
+**Módulos con backlog activo:**
+- Proyectos: https://www.notion.so/327ee9c3690a81f296a2ec384b557049
 
-### Estructura de microservicios Go
+---
 
-```
-backend/
-├── config/                    # Django principal
-├── apps/                      # Apps Django
-└── microservices/             # Microservicios Go
-    ├── saiopen-agent/         # Agente local Saiopen
-    │   ├── main.go
-    │   ├── go.mod
-    │   ├── Dockerfile
-    │   └── README.md          # Justificación y documentación
-    └── [nombre-servicio]/
-        ├── main.go
-        ├── handlers/
-        ├── models/
-        ├── go.mod
-        ├── Dockerfile
-        └── README.md          # REQUERIDO: justificación técnica
-```
+## 12. Estándares UI/UX — Angular
 
-### Stack Go aprobado
+**CRÍTICO:** Antes de generar CUALQUIER componente Angular, leer:
+- `docs/standards/UI-UX-STANDARDS.md`
 
-**Framework web:** Gin o Echo (similar a Django REST)
-**ORM (si necesario):** GORM
-**Base de datos:** PostgreSQL (compartida con Django)
-**Auth:** JWT validation (compatible con djangorestframework-simplejwt)
-**Logging:** Structured JSON a stdout → CloudWatch
-**Config:** Variables de entorno (misma filosofía que django-environ)
+Estos estándares se aplican a TODOS los componentes sin excepción:
+- Tablas vacías: `sc-empty-state` con icono + mensaje + botón, FUERA del `mat-table`
+- Formularios: `appearance="outline"`, errores con `@if` dentro del `mat-form-field`
+- Estados de carga: `mat-progress-bar` encima de la tabla (NUNCA spinner centrado en listados)
+- Feedback: `MatSnackBar` con `panelClass: ['snack-success'|'snack-error'|'snack-warning']`
+- Confirmaciones de eliminación: `MatDialog` con `ConfirmDialogComponent` (NUNCA `confirm()`)
+- Acciones en tablas: `mat-icon-button` con tooltip, orden: Ver | Editar | Eliminar
+- Sintaxis Angular 18: `@if` / `@for` / `@switch` — NUNCA `*ngIf` / `*ngFor`
+- SCSS: variables `var(--sc-*)` siempre, sin colores hardcodeados
+- ⚡ **NUEVO:** Responsive mobile: class `table-responsive` en TODAS las tablas
+- ⚡ **NUEVO:** Dark mode: usar variables CSS del tema, nunca hardcodear colores
+- Referencia canónica de listados: `proyecto-list` component
 
-### Comunicación entre servicios
+---
 
-#### Opción 1: REST (síncrono, <100ms latencia)
-```
-Django → HTTP → Go Microservice
-Auth: Bearer JWT (mismo que Django)
-```
+## 13. Lecciones Aprendidas — Sistema de Chat
 
-#### Opción 2: SQS (asíncrono, procesos batch)
-```
-Django → SQS Queue → Go Worker
-Auth: IAM roles (AWS)
-```
+**Del desarrollo del Sistema de Comunicaciones (Fases 1-9):**
 
-#### Opción 3: gRPC (alto rendimiento, baja latencia)
-```
-Django → gRPC → Go Service
-Auth: Metadata con JWT
-```
+### Multi-Agent Parallel Execution
+✅ **Usar 3 agentes en paralelo** para features complejas:
+- Backend Agent: modelos + serializers + services + tests
+- Frontend Agent: componentes + servicios + templates
+- Integration Agent: tests E2E + validación
 
-**Regla:** Prefiere REST para simplicidad, SQS para desacoplamiento, gRPC solo si latencia <10ms es crítica.
+**Beneficio:** ~10x más rápido que secuencial
 
-### Deployment
+### Testing Browser Manual es Esencial
+✅ **E2E browser testing encuentra bugs reales** que unit/integration tests NO detectan
 
-- Cada microservicio Go en su propio contenedor Docker
-- Mismo ECS cluster que Django
-- Variables de entorno compartidas donde aplique
-- Logs centralizados en CloudWatch
-- Métricas en CloudWatch Metrics
+**Bugs encontrados en Fase 8 del Chat:**
+1. Mensajes en tiempo real no actualizaban → signals refactored
+2. Menciones @usuario no funcionaban → NotificacionService integration fixed
+3. Enlaces [PRY-001] no navegaban → bleach whitelist updated
+4. Imágenes no se visualizaban → lazy loading directive applied
 
-**docker-compose.yml incluye todos los servicios:**
-```yaml
-services:
-  django:
-    # ... config Django
-  
-  go-service-name:
-    build: ./backend/microservices/service-name
-    environment:
-      DATABASE_URL: ${DATABASE_URL}
-      JWT_SECRET: ${JWT_SECRET}
-    ports:
-      - "8001:8001"
-```
+**Aprendizaje:** SIEMPRE validar en navegador real antes de dar por terminado.
 
-### Testing de integración
+### Claude Opus vs Sonnet
+✅ **Opus para arquitectura compleja**, **Sonnet para features incrementales**
 
-Cuando haya microservicios Go:
+- Opus: Fases 1-4 del Chat (infraestructura + decisiones arquitectónicas)
+- Sonnet: Fases 5-9 (features + validación) — ~10x más rápido
 
-1. **Unit tests Go:** `go test ./...`
-2. **Integration tests:** Django test que llama al microservicio
-3. **Contract tests:** Validar que el contrato API se cumple
-4. **E2E tests:** Flujo completo desde frontend
+### Docker Compose `down -v`
+✅ **Siempre hacer `docker-compose down -v`** cuando:
+- Cambias dependencias npm/pip
+- Angular no compila por paquetes cached
+- Volúmenes anónimos persisten datos stale
 
-### Skill aplicable
+**Síntoma:** `node_modules` desactualizados aunque rebuilds contenedor
 
-Cuando se decida usar Go, usar skill:
-- `saicloud-planificacion` → evalúa y documenta decisión
-- `saicloud-infraestructura-aws` → actualizado para soportar Go
-- (Futuro) `saicloud-microservicio-go` → generación de código Go
+### Upstash Redis + Cloudflare R2
+✅ **Proveedores serverless** ahorraron 82-93% vs AWS nativo
 
-### Ejemplo: Agente Saiopen (caso validado)
+**DEC-033:** Upstash Redis ($1.70/mes vs $9.79 ElastiCache)  
+**DEC-034:** Cloudflare R2 ($0.68/mes vs $9.91 S3, egress gratis)
 
-✅ **Justificación:**
-- Criterio 3: Ejecutable standalone que corre en PC del cliente
-- Requiere bajo consumo de recursos (PCs antiguos)
-- Binario sin dependencias externas
-- No cambia frecuentemente
+---
 
-**Implementación:**
-```
-backend/microservices/saiopen-agent/
-├── main.go                 # CLI entrypoint
-├── sync/
-│   ├── firebird.go        # Conexión a Firebird
-│   ├── api.go             # Llamadas a Django
-│   └── sqs.go             # Comunicación SQS
-├── config/
-│   └── config.go          # Variables de entorno
-├── go.mod
-├── Dockerfile             # Build multi-stage
-└── README.md              # Documentación de instalación
-```
-
-**Comunicación:**
-1. Agente lee Firebird local
-2. Envía a SQS mensaje cifrado
-3. Django worker procesa mensaje
-4. Respuesta vía SQS o polling API
-
-### Reglas de código para Go
-
-Cuando generes código Go:
-
-1. **Estructura de handlers similar a Django views:**
-   ```go
-   // Similar a Django view function
-   func CreateOrder(c *gin.Context) {
-       // Validación (como Django serializer)
-       // Lógica (como Django service)
-       // Response (como DRF Response)
-   }
-   ```
-
-2. **Logging estructurado:**
-   ```go
-   log.WithFields(log.Fields{
-       "user_id": userID,
-       "action": "create_order",
-   }).Info("Order created successfully")
-   ```
-
-3. **Error handling explícito:**
-   ```go
-   if err != nil {
-       log.WithError(err).Error("Failed to create order")
-       c.JSON(500, gin.H{"error": "Internal server error"})
-       return
-   }
-   ```
-
-4. **Config desde env (como Django):**
-   ```go
-   type Config struct {
-       DatabaseURL string `env:"DATABASE_URL,required"`
-       JWTSecret   string `env:"JWT_SECRET,required"`
-   }
-   ```
-
-### Documentación requerida
-
-Cada microservicio Go DEBE tener `README.md` con:
-
-```markdown
-# [Nombre del Microservicio]
-
-## Justificación técnica
-[Por qué este servicio está en Go y no en Django]
-
-## Criterios cumplidos
-- [ ] Alta concurrencia: [detalles]
-- [ ] Procesamiento intensivo: [detalles]
-- [ ] Ejecutable standalone: [detalles]
-- [ ] Optimización de costos: [ahorro proyectado]
-
-## Contrato API
-[Endpoints, inputs, outputs]
-
-## Comunicación con Django
-[REST/SQS/gRPC + auth]
-
-## Deploy
-[Instrucciones específicas]
-
-## Métricas
-[Cómo medir éxito]
-```
-
-### Checklist antes de aprobar Go
-
-Antes de generar código Go para un microservicio:
-
-- [ ] ¿Cumple al menos 1 criterio de los 4?
-- [ ] ¿La alternativa Django+Celery fue considerada?
-- [ ] ¿La justificación está documentada?
-- [ ] ¿El contrato API está definido?
-- [ ] ¿El usuario aprobó la complejidad adicional?
-- [ ] ¿Hay plan de métricas para validar el beneficio?
-
-**Si alguna respuesta es NO → Recomienda Django.**
-
-## Documentación Base del Proyecto
+## 14. Documentación Base del Proyecto
 
 Hay 5 documentos Word en `docs/base-reference/` con información técnica general:
 
@@ -482,6 +410,7 @@ Hay 5 documentos Word en `docs/base-reference/` con información técnica genera
 3. **Estandares_Codigo_SaiSuite_v1.docx** → Convenciones de código
 4. **Flujo_Feature_SaiSuite_v1.docx** → Metodología de desarrollo
 5. **Infraestructura_SaiSuite_v2.docx** → Arquitectura del sistema
+6. ⚡ **CHECKLIST-VALIDACION.md** → Validación multi-plataforma ⚡ NUEVO
 
 **Cuándo consultarlos:**
 - Al configurar nuevos servicios AWS → AWS_Setup
@@ -489,25 +418,52 @@ Hay 5 documentos Word en `docs/base-reference/` con información técnica genera
 - Al escribir código → Estandares_Codigo
 - Al seguir metodología → Flujo_Feature
 - Al entender arquitectura → Infraestructura
+- ⚡ **Al validar cualquier feature** → CHECKLIST-VALIDACION ⚡ NUEVO
 
 Estos NO reemplazan la documentación por feature.
 Cada feature genera su propia documentación en `docs/plans/`, `docs/technical/`, etc.
 
-## Documentación Base
-Ver docs/base-reference/ para docs técnicos generales del proyecto.
+---
 
-## Estándares UI/UX — Angular
+## 15. Metodología de 10 Fases
 
-CRITICO: Antes de generar CUALQUIER componente Angular, leer:
-- `docs/standards/UI-UX-STANDARDS.md`
+**Cada módulo sigue este flujo:**
 
-Estos estándares se aplican a TODOS los componentes sin excepción:
-- Tablas vacías: `sc-empty-state` con icono + mensaje + botón, FUERA del `mat-table`
-- Formularios: `appearance="outline"`, errores con `@if` dentro del `mat-form-field`
-- Estados de carga: `mat-progress-bar` encima de la tabla (NUNCA spinner centrado en listados)
-- Feedback: `MatSnackBar` con `panelClass: ['snack-success'|'snack-error'|'snack-warning']`
-- Confirmaciones de eliminacion: `MatDialog` con `ConfirmDialogComponent` (NUNCA `confirm()`)
-- Acciones en tablas: `mat-icon-button` con tooltip, orden: Ver | Editar | Eliminar
-- Sintaxis Angular 18: `@if` / `@for` / `@switch` — NUNCA `*ngIf` / `*ngFor`
-- SCSS: variables `var(--sc-*)` siempre, sin colores hardcodeados
-- Referencia canónica de listados: `proyecto-list` component
+1. **Planificación** — skill: saicloud-planificacion
+2. **Gestión de Contexto** — skill: saicloud-contexto
+3. **Skills/MCP/APIs** — preparar herramientas
+4. **Agente Único** — setup inicial con Claude Code CLI
+5. **Iteración** — ciclos de desarrollo + validación
+6. **Protección de Ventana** — skill: saicloud-proteccion-ventana
+7. **Revisión Final** — skill: saicloud-revision-final
+8. **Panel Admin** — skill: saicloud-panel-admin
+9. **Validación UI/UX** — skill: saicloud-validacion-ui + ⚡ **CHECKLIST-VALIDACION.md**
+10. **Despliegue** — skill: saicloud-despliegue
+
+**NUNCA saltarse fases.**
+
+---
+
+## 16. ⚡ NUEVO: Prioridades Actuales
+
+**Módulo de Proyectos — Backlog Activo:**
+
+### Fase 1: Quick Wins Mobile (10-16h) — EN CURSO
+6 bugs de Alta Prioridad responsive mobile
+
+### Fase 2: Funcionalidades Alta Prioridad (12-16h)
+1. Notificaciones automáticas de tareas (4-8h)
+2. Nivelación de recursos (8+h)
+
+### Fase 3: Mobile Media/Baja (8-12h)
+7 bugs responsive prioridad media/baja
+
+### Fase 4: Funcionalidades Media/Baja (16-24h)
+3 funcionalidades restantes
+
+**Estado:** Manual de usuario actualizado (v1.1), auditoría completa, backlog planificado.
+
+---
+
+**Última actualización:** 31 de Marzo de 2026  
+**Mantenido por:** Equipo Saicloud — ValMen Tech

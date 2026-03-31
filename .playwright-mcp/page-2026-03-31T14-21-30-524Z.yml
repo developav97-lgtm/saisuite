@@ -1,0 +1,604 @@
+- generic [ref=e3]:
+  - generic [ref=e4]:
+    - banner [ref=e6]:
+      - generic [ref=e7]:
+        - button "Toggle menú" [ref=e8] [cursor=pointer]:
+          - img [ref=e9]: menu
+        - link "Saicloud" [ref=e11] [cursor=pointer]:
+          - /url: /dashboard
+          - img [ref=e13]: cloud
+          - generic [ref=e14]: Saicloud
+        - generic [ref=e15]:
+          - img [ref=e16]: chevron_right
+          - generic [ref=e17]: Constructora Andina S.A.S
+      - generic [ref=e18]:
+        - button "Notificaciones" [ref=e20] [cursor=pointer]:
+          - img [ref=e21]:
+            - text: notifications
+            - generic: "1"
+        - button [ref=e23] [cursor=pointer]:
+          - img [ref=e24]: dark_mode
+        - button "Perfil" [ref=e27]:
+          - img [ref=e28]: expand_more
+          - generic [ref=e29]:
+            - generic [ref=e30]: L
+            - generic [ref=e31]:
+              - generic [ref=e32]: Laura Méndez
+              - generic [ref=e33]: Administrador
+    - generic [ref=e35]:
+      - img [ref=e36]: warning
+      - generic [ref=e37]:
+        - text: Tu
+        - strong [ref=e38]: licencia de prueba
+        - text: vence en
+        - strong [ref=e39]: 28 días
+        - text: . Recuerda activar tu plan a tiempo.
+      - button [ref=e40] [cursor=pointer]:
+        - img [ref=e41]: close
+    - generic [ref=e43]:
+      - complementary [ref=e45]:
+        - navigation "Menú principal" [ref=e47]:
+          - link [ref=e49] [cursor=pointer]:
+            - /url: /dashboard
+            - img [ref=e50]: apps
+          - generic [ref=e51]:
+            - link [ref=e52] [cursor=pointer]:
+              - /url: /proyectos/dashboard
+              - img [ref=e53]: dashboard
+            - button [ref=e54] [cursor=pointer]:
+              - img [ref=e55]: work
+            - button [ref=e56] [cursor=pointer]:
+              - img [ref=e57]: task_alt
+            - button [ref=e58] [cursor=pointer]:
+              - img [ref=e59]: person
+            - link [ref=e60] [cursor=pointer]:
+              - /url: /proyectos/timesheets
+              - img [ref=e61]: schedule
+            - link [ref=e62] [cursor=pointer]:
+              - /url: /proyectos/actividades
+              - img [ref=e63]: construction
+            - link [ref=e64] [cursor=pointer]:
+              - /url: /proyectos/configuracion
+              - img [ref=e65]: tune
+          - generic [ref=e66]:
+            - button [ref=e67] [cursor=pointer]:
+              - img [ref=e68]: contacts
+            - button [ref=e69] [cursor=pointer]:
+              - img [ref=e70]: manage_accounts
+            - button [ref=e71] [cursor=pointer]:
+              - img [ref=e72]: tag
+        - img [ref=e75]: business
+      - main [ref=e76]:
+        - generic [ref=e491]:
+          - navigation "Navegación" [ref=e492]:
+            - link [ref=e493] [cursor=pointer]:
+              - /url: /
+              - img [ref=e494]: home
+            - img [ref=e495]: chevron_right
+            - link "Proyectos" [ref=e496] [cursor=pointer]:
+              - /url: /proyectos
+            - img [ref=e497]: chevron_right
+            - generic [ref=e498]: Implementacion ERP - Ferreteria Andina S.A.S
+          - generic [ref=e499]:
+            - generic [ref=e500]:
+              - generic [ref=e501]:
+                - generic [ref=e502]: PCON-0001
+                - generic [ref=e503]: Planificado
+              - heading "Implementacion ERP - Ferreteria Andina S.A.S" [level=1] [ref=e504]
+            - generic [ref=e505]:
+              - button "Iniciar ejecución" [ref=e506]:
+                - generic [ref=e507]: Iniciar ejecución
+              - button "Volver a borrador" [ref=e509]:
+                - generic [ref=e510]: Volver a borrador
+              - button "Scheduling" [ref=e512]:
+                - img [ref=e513]: event_note
+                - img [ref=e514]: arrow_drop_down
+                - generic [ref=e515]: Scheduling
+              - button "Editar" [ref=e517]:
+                - img [ref=e518]: edit
+                - generic [ref=e519]: Editar
+          - generic [ref=e521]:
+            - tablist [ref=e524]:
+              - generic [ref=e525]:
+                - tab "General" [ref=e526] [cursor=pointer]:
+                  - generic [ref=e528]: General
+                - tab "Fases (6)" [ref=e529] [cursor=pointer]:
+                  - generic [ref=e531]: Fases (6)
+                - tab "Terceros" [ref=e532] [cursor=pointer]:
+                  - generic [ref=e534]: Terceros
+                - tab "Documentos" [ref=e535] [cursor=pointer]:
+                  - generic [ref=e537]: Documentos
+                - tab "Hitos" [ref=e538] [cursor=pointer]:
+                  - generic [ref=e540]: Hitos
+                - tab "Tareas" [ref=e541] [cursor=pointer]:
+                  - generic [ref=e543]: Tareas
+                - tab "Actividades" [ref=e544] [cursor=pointer]:
+                  - generic [ref=e546]: Actividades
+                - tab "Gantt" [ref=e547] [cursor=pointer]:
+                  - generic [ref=e549]: Gantt
+                - tab "Equipo" [ref=e550] [cursor=pointer]:
+                  - generic [ref=e552]: Equipo
+                - tab "Timesheets" [ref=e553] [cursor=pointer]:
+                  - generic [ref=e555]: Timesheets
+                - tab "Analytics" [ref=e556] [cursor=pointer]:
+                  - generic [ref=e558]: Analytics
+                - tab "Baselines" [ref=e559] [cursor=pointer]:
+                  - generic [ref=e561]: Baselines
+                - tab "Escenarios" [ref=e562] [cursor=pointer]:
+                  - generic [ref=e564]: Escenarios
+                - tab "Presupuesto" [active] [selected] [ref=e565] [cursor=pointer]:
+                  - generic [ref=e567]: Presupuesto
+            - generic [ref=e570]:
+              - tabpanel [ref=e667]
+              - tabpanel [ref=e833]
+              - tabpanel [ref=e655]
+              - tabpanel [ref=e656]
+              - tabpanel [ref=e657]
+              - tabpanel [ref=e1350]
+              - tabpanel [ref=e659]
+              - tabpanel [ref=e1631]
+              - tabpanel [ref=e661]
+              - tabpanel [ref=e662]
+              - tabpanel [ref=e1700]
+              - tabpanel [ref=e1742]
+              - tabpanel [ref=e1780]
+              - tabpanel "Presupuesto" [ref=e1781]:
+                - generic [ref=e1785]:
+                  - generic [ref=e1786]:
+                    - generic [ref=e1787]:
+                      - generic [ref=e1788]:
+                        - img [ref=e1789]: account_balance_wallet
+                        - generic [ref=e1790]:
+                          - generic [ref=e1791]: Presupuesto
+                          - generic [ref=e1792]: Pendiente de aprobación
+                      - generic [ref=e1793]:
+                        - generic [ref=e1794]:
+                          - generic [ref=e1795]: Planificado
+                          - generic [ref=e1796]: $ 480.000.000
+                        - separator [ref=e1797]
+                        - generic [ref=e1798]:
+                          - generic [ref=e1799]: Costo real
+                          - generic [ref=e1800]: $ 0
+                        - generic [ref=e1801]:
+                          - generic [ref=e1802]: Ejecución 0%
+                          - progressbar [ref=e1803]
+                      - generic [ref=e1806]:
+                        - button "Editar" [ref=e1807]:
+                          - img [ref=e1808]: edit
+                          - generic [ref=e1809]: Editar
+                        - button "Snapshot" [ref=e1811]:
+                          - img [ref=e1812]: save_alt
+                          - generic [ref=e1813]: Snapshot
+                    - generic [ref=e1815]:
+                      - generic [ref=e1816]:
+                        - img [ref=e1817]: engineering
+                        - generic [ref=e1819]: Mano de obra
+                      - generic [ref=e1820]:
+                        - generic [ref=e1821]:
+                          - generic [ref=e1822]: Costo real
+                          - generic [ref=e1823]: $ 0
+                        - generic [ref=e1824]:
+                          - generic [ref=e1825]: Planificado
+                          - generic [ref=e1826]: $ 213.600.000
+                    - generic [ref=e1827]:
+                      - generic [ref=e1828]:
+                        - img [ref=e1829]: receipt_long
+                        - generic [ref=e1831]: Gastos directos
+                      - generic [ref=e1832]:
+                        - generic [ref=e1833]:
+                          - generic [ref=e1834]: Costo real
+                          - generic [ref=e1835]: $ 0
+                        - generic [ref=e1836]:
+                          - generic [ref=e1837]: Planificado
+                          - generic [ref=e1838]: $ 64.400.000
+                        - generic [ref=e1839]:
+                          - generic [ref=e1840]: Registrados
+                          - generic [ref=e1841]: "0"
+                      - button "Registrar gasto" [ref=e1843]:
+                        - img [ref=e1844]: add
+                        - generic [ref=e1845]: Registrar gasto
+                  - generic [ref=e1847]:
+                    - generic [ref=e1848]:
+                      - img [ref=e1849]: analytics
+                      - generic [ref=e1850]:
+                        - generic [ref=e1851]: Earned Value Management (EVM)
+                        - generic [ref=e1852]: Al 2026-03-31
+                    - generic [ref=e1854]:
+                      - generic [ref=e1855]:
+                        - generic [ref=e1856]: BAC
+                        - generic [ref=e1857]: —
+                        - generic [ref=e1858]: Presupuesto total
+                      - generic [ref=e1859]:
+                        - generic [ref=e1860]: EV
+                        - generic [ref=e1861]: —
+                        - generic [ref=e1862]: Valor ganado
+                      - generic [ref=e1863]:
+                        - generic [ref=e1864]: AC
+                        - generic [ref=e1865]: —
+                        - generic [ref=e1866]: Costo real
+                      - generic [ref=e1867]:
+                        - generic [ref=e1868]: PV
+                        - generic [ref=e1869]: —
+                        - generic [ref=e1870]: Valor planificado
+                      - generic [ref=e1871]:
+                        - generic [ref=e1872]: CPI
+                        - generic [ref=e1873]: —
+                        - generic [ref=e1874]: Eficiencia de costo
+                      - generic [ref=e1875]:
+                        - generic [ref=e1876]: SPI
+                        - generic [ref=e1877]: —
+                        - generic [ref=e1878]: Eficiencia de cronograma
+                      - generic [ref=e1879]:
+                        - generic [ref=e1880]: EAC
+                        - generic [ref=e1881]: —
+                        - generic [ref=e1882]: Estimado al completar
+                      - generic [ref=e1883]:
+                        - generic [ref=e1884]: Avance
+                        - generic [ref=e1885]: 1.43%
+                        - generic [ref=e1886]: "% completado"
+                  - generic [ref=e1887]:
+                    - generic [ref=e1888]:
+                      - img [ref=e1889]: people
+                      - generic [ref=e1891]: Costo por recurso
+                    - table [ref=e1893]:
+                      - rowgroup [ref=e1894]:
+                        - row "Recurso Horas Tarifa prom. Costo %" [ref=e1895]:
+                          - columnheader "Recurso" [ref=e1896]
+                          - columnheader "Horas" [ref=e1897]
+                          - columnheader "Tarifa prom." [ref=e1898]
+                          - columnheader "Costo" [ref=e1899]
+                          - columnheader "%" [ref=e1900]
+                      - rowgroup [ref=e1901]:
+                        - row "Laura Méndez 8.00 $ 0 $ 0 0.00%" [ref=e1902]:
+                          - cell "Laura Méndez" [ref=e1903]
+                          - cell "8.00" [ref=e1904]
+                          - cell "$ 0" [ref=e1905]
+                          - cell "$ 0" [ref=e1906]
+                          - cell "0.00%" [ref=e1907]
+                  - generic [ref=e1908]:
+                    - generic [ref=e1909]:
+                      - img [ref=e1910]: payments
+                      - generic [ref=e1911]:
+                        - generic [ref=e1912]: Tarifas por Recurso
+                        - generic [ref=e1913]: Tarifas de costo horario por usuario para el cálculo EVM
+                    - table [ref=e1915]:
+                      - rowgroup [ref=e1916]:
+                        - row "Usuario Tarifa / hora Fecha inicio Fecha fin Estado" [ref=e1917]:
+                          - columnheader "Usuario" [ref=e1918]
+                          - columnheader "Tarifa / hora" [ref=e1919]
+                          - columnheader "Fecha inicio" [ref=e1920]
+                          - columnheader "Fecha fin" [ref=e1921]
+                          - columnheader "Estado" [ref=e1922]
+                          - columnheader [ref=e1923]
+                      - rowgroup [ref=e1924]:
+                        - row "Ana Herrera ana.herrera@saicloud.com 35.000,00 COP 2026-01-01 — Activa" [ref=e1925]:
+                          - cell "Ana Herrera ana.herrera@saicloud.com" [ref=e1926]:
+                            - generic [ref=e1927]: Ana Herrera
+                            - generic [ref=e1928]: ana.herrera@saicloud.com
+                          - cell "35.000,00 COP" [ref=e1929]
+                          - cell "2026-01-01" [ref=e1930]
+                          - cell "—" [ref=e1931]
+                          - cell "Activa" [ref=e1932]:
+                            - generic [ref=e1936]: Activa
+                          - cell [ref=e1937]:
+                            - button [ref=e1938] [cursor=pointer]:
+                              - img [ref=e1939]: edit
+                            - button [ref=e1941] [cursor=pointer]:
+                              - img [ref=e1942]: delete
+                        - row "Andres Rojas andres.rojas@saicloud.com 55.000,00 COP 2026-01-01 — Activa" [ref=e1944]:
+                          - cell "Andres Rojas andres.rojas@saicloud.com" [ref=e1945]:
+                            - generic [ref=e1946]: Andres Rojas
+                            - generic [ref=e1947]: andres.rojas@saicloud.com
+                          - cell "55.000,00 COP" [ref=e1948]
+                          - cell "2026-01-01" [ref=e1949]
+                          - cell "—" [ref=e1950]
+                          - cell "Activa" [ref=e1951]:
+                            - generic [ref=e1955]: Activa
+                          - cell [ref=e1956]:
+                            - button [ref=e1957] [cursor=pointer]:
+                              - img [ref=e1958]: edit
+                            - button [ref=e1960] [cursor=pointer]:
+                              - img [ref=e1961]: delete
+                        - row "Camila Ortiz camila.ortiz@saicloud.com 70.000,00 COP 2026-01-01 — Activa" [ref=e1963]:
+                          - cell "Camila Ortiz camila.ortiz@saicloud.com" [ref=e1964]:
+                            - generic [ref=e1965]: Camila Ortiz
+                            - generic [ref=e1966]: camila.ortiz@saicloud.com
+                          - cell "70.000,00 COP" [ref=e1967]
+                          - cell "2026-01-01" [ref=e1968]
+                          - cell "—" [ref=e1969]
+                          - cell "Activa" [ref=e1970]:
+                            - generic [ref=e1974]: Activa
+                          - cell [ref=e1975]:
+                            - button [ref=e1976] [cursor=pointer]:
+                              - img [ref=e1977]: edit
+                            - button [ref=e1979] [cursor=pointer]:
+                              - img [ref=e1980]: delete
+                        - row "Carlos Mendoza carlos.mendoza@saicloud.com 120.000,00 COP 2026-01-01 — Activa" [ref=e1982]:
+                          - cell "Carlos Mendoza carlos.mendoza@saicloud.com" [ref=e1983]:
+                            - generic [ref=e1984]: Carlos Mendoza
+                            - generic [ref=e1985]: carlos.mendoza@saicloud.com
+                          - cell "120.000,00 COP" [ref=e1986]
+                          - cell "2026-01-01" [ref=e1987]
+                          - cell "—" [ref=e1988]
+                          - cell "Activa" [ref=e1989]:
+                            - generic [ref=e1993]: Activa
+                          - cell [ref=e1994]:
+                            - button [ref=e1995] [cursor=pointer]:
+                              - img [ref=e1996]: edit
+                            - button [ref=e1998] [cursor=pointer]:
+                              - img [ref=e1999]: delete
+                        - row "Daniela Velez daniela.velez@saicloud.com 85.000,00 COP 2026-01-01 — Activa" [ref=e2001]:
+                          - cell "Daniela Velez daniela.velez@saicloud.com" [ref=e2002]:
+                            - generic [ref=e2003]: Daniela Velez
+                            - generic [ref=e2004]: daniela.velez@saicloud.com
+                          - cell "85.000,00 COP" [ref=e2005]
+                          - cell "2026-01-01" [ref=e2006]
+                          - cell "—" [ref=e2007]
+                          - cell "Activa" [ref=e2008]:
+                            - generic [ref=e2012]: Activa
+                          - cell [ref=e2013]:
+                            - button [ref=e2014] [cursor=pointer]:
+                              - img [ref=e2015]: edit
+                            - button [ref=e2017] [cursor=pointer]:
+                              - img [ref=e2018]: delete
+                        - row "Diego Vargas diego.vargas@saicloud.com 75.000,00 COP 2026-01-01 — Activa" [ref=e2020]:
+                          - cell "Diego Vargas diego.vargas@saicloud.com" [ref=e2021]:
+                            - generic [ref=e2022]: Diego Vargas
+                            - generic [ref=e2023]: diego.vargas@saicloud.com
+                          - cell "75.000,00 COP" [ref=e2024]
+                          - cell "2026-01-01" [ref=e2025]
+                          - cell "—" [ref=e2026]
+                          - cell "Activa" [ref=e2027]:
+                            - generic [ref=e2031]: Activa
+                          - cell [ref=e2032]:
+                            - button [ref=e2033] [cursor=pointer]:
+                              - img [ref=e2034]: edit
+                            - button [ref=e2036] [cursor=pointer]:
+                              - img [ref=e2037]: delete
+                        - row "Felipe Arango felipe.arango@saicloud.com 65.000,00 COP 2026-01-01 — Activa" [ref=e2039]:
+                          - cell "Felipe Arango felipe.arango@saicloud.com" [ref=e2040]:
+                            - generic [ref=e2041]: Felipe Arango
+                            - generic [ref=e2042]: felipe.arango@saicloud.com
+                          - cell "65.000,00 COP" [ref=e2043]
+                          - cell "2026-01-01" [ref=e2044]
+                          - cell "—" [ref=e2045]
+                          - cell "Activa" [ref=e2046]:
+                            - generic [ref=e2050]: Activa
+                          - cell [ref=e2051]:
+                            - button [ref=e2052] [cursor=pointer]:
+                              - img [ref=e2053]: edit
+                            - button [ref=e2055] [cursor=pointer]:
+                              - img [ref=e2056]: delete
+                        - row "Isabella Restrepo isabella.restrepo@saicloud.com 95.000,00 COP 2026-01-01 — Activa" [ref=e2058]:
+                          - cell "Isabella Restrepo isabella.restrepo@saicloud.com" [ref=e2059]:
+                            - generic [ref=e2060]: Isabella Restrepo
+                            - generic [ref=e2061]: isabella.restrepo@saicloud.com
+                          - cell "95.000,00 COP" [ref=e2062]
+                          - cell "2026-01-01" [ref=e2063]
+                          - cell "—" [ref=e2064]
+                          - cell "Activa" [ref=e2065]:
+                            - generic [ref=e2069]: Activa
+                          - cell [ref=e2070]:
+                            - button [ref=e2071] [cursor=pointer]:
+                              - img [ref=e2072]: edit
+                            - button [ref=e2074] [cursor=pointer]:
+                              - img [ref=e2075]: delete
+                        - row "Juliana Torres juliana.torres@saicloud.com 85.000,00 COP 2026-01-01 — Activa" [ref=e2077]:
+                          - cell "Juliana Torres juliana.torres@saicloud.com" [ref=e2078]:
+                            - generic [ref=e2079]: Juliana Torres
+                            - generic [ref=e2080]: juliana.torres@saicloud.com
+                          - cell "85.000,00 COP" [ref=e2081]
+                          - cell "2026-01-01" [ref=e2082]
+                          - cell "—" [ref=e2083]
+                          - cell "Activa" [ref=e2084]:
+                            - generic [ref=e2088]: Activa
+                          - cell [ref=e2089]:
+                            - button [ref=e2090] [cursor=pointer]:
+                              - img [ref=e2091]: edit
+                            - button [ref=e2093] [cursor=pointer]:
+                              - img [ref=e2094]: delete
+                        - row "Laura Quintero laura.quintero@saicloud.com 80.000,00 COP 2026-01-01 — Activa" [ref=e2096]:
+                          - cell "Laura Quintero laura.quintero@saicloud.com" [ref=e2097]:
+                            - generic [ref=e2098]: Laura Quintero
+                            - generic [ref=e2099]: laura.quintero@saicloud.com
+                          - cell "80.000,00 COP" [ref=e2100]
+                          - cell "2026-01-01" [ref=e2101]
+                          - cell "—" [ref=e2102]
+                          - cell "Activa" [ref=e2103]:
+                            - generic [ref=e2107]: Activa
+                          - cell [ref=e2108]:
+                            - button [ref=e2109] [cursor=pointer]:
+                              - img [ref=e2110]: edit
+                            - button [ref=e2112] [cursor=pointer]:
+                              - img [ref=e2113]: delete
+                        - row "Luisa Fernandez luisa.fernandez@saicloud.com 95.000,00 COP 2026-01-01 — Activa" [ref=e2115]:
+                          - cell "Luisa Fernandez luisa.fernandez@saicloud.com" [ref=e2116]:
+                            - generic [ref=e2117]: Luisa Fernandez
+                            - generic [ref=e2118]: luisa.fernandez@saicloud.com
+                          - cell "95.000,00 COP" [ref=e2119]
+                          - cell "2026-01-01" [ref=e2120]
+                          - cell "—" [ref=e2121]
+                          - cell "Activa" [ref=e2122]:
+                            - generic [ref=e2126]: Activa
+                          - cell [ref=e2127]:
+                            - button [ref=e2128] [cursor=pointer]:
+                              - img [ref=e2129]: edit
+                            - button [ref=e2131] [cursor=pointer]:
+                              - img [ref=e2132]: delete
+                        - row "Maria Gomez maria.gomez@saicloud.com 65.000,00 COP 2026-01-01 — Activa" [ref=e2134]:
+                          - cell "Maria Gomez maria.gomez@saicloud.com" [ref=e2135]:
+                            - generic [ref=e2136]: Maria Gomez
+                            - generic [ref=e2137]: maria.gomez@saicloud.com
+                          - cell "65.000,00 COP" [ref=e2138]
+                          - cell "2026-01-01" [ref=e2139]
+                          - cell "—" [ref=e2140]
+                          - cell "Activa" [ref=e2141]:
+                            - generic [ref=e2145]: Activa
+                          - cell [ref=e2146]:
+                            - button [ref=e2147] [cursor=pointer]:
+                              - img [ref=e2148]: edit
+                            - button [ref=e2150] [cursor=pointer]:
+                              - img [ref=e2151]: delete
+                        - row "Miguel Castro miguel.castro@saicloud.com 105.000,00 COP 2026-01-01 — Activa" [ref=e2153]:
+                          - cell "Miguel Castro miguel.castro@saicloud.com" [ref=e2154]:
+                            - generic [ref=e2155]: Miguel Castro
+                            - generic [ref=e2156]: miguel.castro@saicloud.com
+                          - cell "105.000,00 COP" [ref=e2157]
+                          - cell "2026-01-01" [ref=e2158]
+                          - cell "—" [ref=e2159]
+                          - cell "Activa" [ref=e2160]:
+                            - generic [ref=e2164]: Activa
+                          - cell [ref=e2165]:
+                            - button [ref=e2166] [cursor=pointer]:
+                              - img [ref=e2167]: edit
+                            - button [ref=e2169] [cursor=pointer]:
+                              - img [ref=e2170]: delete
+                        - row "Nicolas Jimenez nicolas.jimenez@saicloud.com 90.000,00 COP 2026-01-01 — Activa" [ref=e2172]:
+                          - cell "Nicolas Jimenez nicolas.jimenez@saicloud.com" [ref=e2173]:
+                            - generic [ref=e2174]: Nicolas Jimenez
+                            - generic [ref=e2175]: nicolas.jimenez@saicloud.com
+                          - cell "90.000,00 COP" [ref=e2176]
+                          - cell "2026-01-01" [ref=e2177]
+                          - cell "—" [ref=e2178]
+                          - cell "Activa" [ref=e2179]:
+                            - generic [ref=e2183]: Activa
+                          - cell [ref=e2184]:
+                            - button [ref=e2185] [cursor=pointer]:
+                              - img [ref=e2186]: edit
+                            - button [ref=e2188] [cursor=pointer]:
+                              - img [ref=e2189]: delete
+                        - row "Pedro Salcedo pedro.salcedo@saicloud.com 60.000,00 COP 2026-01-01 — Activa" [ref=e2191]:
+                          - cell "Pedro Salcedo pedro.salcedo@saicloud.com" [ref=e2192]:
+                            - generic [ref=e2193]: Pedro Salcedo
+                            - generic [ref=e2194]: pedro.salcedo@saicloud.com
+                          - cell "60.000,00 COP" [ref=e2195]
+                          - cell "2026-01-01" [ref=e2196]
+                          - cell "—" [ref=e2197]
+                          - cell "Activa" [ref=e2198]:
+                            - generic [ref=e2202]: Activa
+                          - cell [ref=e2203]:
+                            - button [ref=e2204] [cursor=pointer]:
+                              - img [ref=e2205]: edit
+                            - button [ref=e2207] [cursor=pointer]:
+                              - img [ref=e2208]: delete
+                        - row "Roberto Diaz roberto.diaz@saicloud.com 45.000,00 COP 2026-01-01 — Activa" [ref=e2210]:
+                          - cell "Roberto Diaz roberto.diaz@saicloud.com" [ref=e2211]:
+                            - generic [ref=e2212]: Roberto Diaz
+                            - generic [ref=e2213]: roberto.diaz@saicloud.com
+                          - cell "45.000,00 COP" [ref=e2214]
+                          - cell "2026-01-01" [ref=e2215]
+                          - cell "—" [ref=e2216]
+                          - cell "Activa" [ref=e2217]:
+                            - generic [ref=e2221]: Activa
+                          - cell [ref=e2222]:
+                            - button [ref=e2223] [cursor=pointer]:
+                              - img [ref=e2224]: edit
+                            - button [ref=e2226] [cursor=pointer]:
+                              - img [ref=e2227]: delete
+                        - row "Santiago Munoz santiago.munoz@saicloud.com 92.000,00 COP 2026-01-01 — Activa" [ref=e2229]:
+                          - cell "Santiago Munoz santiago.munoz@saicloud.com" [ref=e2230]:
+                            - generic [ref=e2231]: Santiago Munoz
+                            - generic [ref=e2232]: santiago.munoz@saicloud.com
+                          - cell "92.000,00 COP" [ref=e2233]
+                          - cell "2026-01-01" [ref=e2234]
+                          - cell "—" [ref=e2235]
+                          - cell "Activa" [ref=e2236]:
+                            - generic [ref=e2240]: Activa
+                          - cell [ref=e2241]:
+                            - button [ref=e2242] [cursor=pointer]:
+                              - img [ref=e2243]: edit
+                            - button [ref=e2245] [cursor=pointer]:
+                              - img [ref=e2246]: delete
+                        - row "Sara Londono sara.londono@saicloud.com 88.000,00 COP 2026-01-01 — Activa" [ref=e2248]:
+                          - cell "Sara Londono sara.londono@saicloud.com" [ref=e2249]:
+                            - generic [ref=e2250]: Sara Londono
+                            - generic [ref=e2251]: sara.londono@saicloud.com
+                          - cell "88.000,00 COP" [ref=e2252]
+                          - cell "2026-01-01" [ref=e2253]
+                          - cell "—" [ref=e2254]
+                          - cell "Activa" [ref=e2255]:
+                            - generic [ref=e2259]: Activa
+                          - cell [ref=e2260]:
+                            - button [ref=e2261] [cursor=pointer]:
+                              - img [ref=e2262]: edit
+                            - button [ref=e2264] [cursor=pointer]:
+                              - img [ref=e2265]: delete
+                        - row "Sebastian Mora sebastian.mora@saicloud.com 110.000,00 COP 2026-01-01 — Activa" [ref=e2267]:
+                          - cell "Sebastian Mora sebastian.mora@saicloud.com" [ref=e2268]:
+                            - generic [ref=e2269]: Sebastian Mora
+                            - generic [ref=e2270]: sebastian.mora@saicloud.com
+                          - cell "110.000,00 COP" [ref=e2271]
+                          - cell "2026-01-01" [ref=e2272]
+                          - cell "—" [ref=e2273]
+                          - cell "Activa" [ref=e2274]:
+                            - generic [ref=e2278]: Activa
+                          - cell [ref=e2279]:
+                            - button [ref=e2280] [cursor=pointer]:
+                              - img [ref=e2281]: edit
+                            - button [ref=e2283] [cursor=pointer]:
+                              - img [ref=e2284]: delete
+                        - row "Valentina Ospina valentina.ospina@saicloud.com 130.000,00 COP 2026-01-01 — Activa" [ref=e2286]:
+                          - cell "Valentina Ospina valentina.ospina@saicloud.com" [ref=e2287]:
+                            - generic [ref=e2288]: Valentina Ospina
+                            - generic [ref=e2289]: valentina.ospina@saicloud.com
+                          - cell "130.000,00 COP" [ref=e2290]
+                          - cell "2026-01-01" [ref=e2291]
+                          - cell "—" [ref=e2292]
+                          - cell "Activa" [ref=e2293]:
+                            - generic [ref=e2297]: Activa
+                          - cell [ref=e2298]:
+                            - button [ref=e2299] [cursor=pointer]:
+                              - img [ref=e2300]: edit
+                            - button [ref=e2302] [cursor=pointer]:
+                              - img [ref=e2303]: delete
+                    - button "Agregar tarifa" [ref=e2306]:
+                      - img [ref=e2307]: add
+                      - generic [ref=e2308]: Agregar tarifa
+                  - generic [ref=e2310]:
+                    - generic [ref=e2311]:
+                      - img [ref=e2312]: receipt_long
+                      - generic [ref=e2314]: Gastos del proyecto
+                    - generic [ref=e2316]:
+                      - img [ref=e2317]: receipt_long
+                      - paragraph [ref=e2318]: Sin gastos registrados
+                      - paragraph [ref=e2319]: Registra el primer gasto del proyecto.
+                      - button "Registrar gasto" [ref=e2320]:
+                        - img [ref=e2321]: add
+                        - generic [ref=e2322]: Registrar gasto
+  - button "Abrir chat" [ref=e94] [cursor=pointer]:
+    - img [ref=e95]: chat
+    - generic: "1"
+  - generic [ref=e97]:
+    - generic [ref=e98]:
+      - img [ref=e99]: chat
+      - generic [ref=e100]: Chat
+      - button [ref=e101] [cursor=pointer]:
+        - img [ref=e102]: close
+    - generic [ref=e105]:
+      - generic [ref=e116]:
+        - img [ref=e118]: search
+        - textbox "Buscar usuario..." [ref=e120]
+      - generic [ref=e122]:
+        - button "María Ruiz 10:59 p. m. 😉 1" [ref=e225] [cursor=pointer]:
+          - img [ref=e227]: account_circle
+          - generic [ref=e229]:
+            - generic [ref=e230]:
+              - generic [ref=e231]: María Ruiz
+              - generic [ref=e232]: 10:59 p. m.
+            - generic [ref=e233]:
+              - generic [ref=e234]: 😉
+              - generic [ref=e235]: "1"
+        - button "Ana Herrera 10:20 p. m. hola prueba" [ref=e236] [cursor=pointer]:
+          - img [ref=e238]: account_circle
+          - generic [ref=e240]:
+            - generic [ref=e241]:
+              - generic [ref=e242]: Ana Herrera
+              - generic [ref=e243]: 10:20 p. m.
+            - generic [ref=e245]: hola prueba
+        - button "Carlos Torres 1:16 p. m. Podemos reunirnos a las 3pm?" [ref=e246] [cursor=pointer]:
+          - img [ref=e248]: account_circle
+          - generic [ref=e250]:
+            - generic [ref=e251]:
+              - generic [ref=e252]: Carlos Torres
+              - generic [ref=e253]: 1:16 p. m.
+            - generic [ref=e255]: Podemos reunirnos a las 3pm?

@@ -1,0 +1,267 @@
+- generic [ref=e3]:
+  - generic [ref=e4]:
+    - banner [ref=e6]:
+      - generic [ref=e7]:
+        - button "Toggle menú" [ref=e8] [cursor=pointer]:
+          - img [ref=e9]: menu
+        - link "Saicloud" [ref=e11] [cursor=pointer]:
+          - /url: /dashboard
+          - img [ref=e13]: cloud
+          - generic [ref=e14]: Saicloud
+        - generic [ref=e15]:
+          - img [ref=e16]: chevron_right
+          - generic [ref=e17]: Constructora Andina S.A.S
+      - generic [ref=e18]:
+        - button "Notificaciones" [ref=e20] [cursor=pointer]:
+          - img [ref=e21]:
+            - text: notifications
+            - generic: "1"
+        - button [ref=e23] [cursor=pointer]:
+          - img [ref=e24]: dark_mode
+        - button "Perfil" [ref=e27]:
+          - img [ref=e28]: expand_more
+          - generic [ref=e29]:
+            - generic [ref=e30]: L
+            - generic [ref=e31]:
+              - generic [ref=e32]: Laura Méndez
+              - generic [ref=e33]: Administrador
+    - generic [ref=e35]:
+      - img [ref=e36]: warning
+      - generic [ref=e37]:
+        - text: Tu
+        - strong [ref=e38]: licencia de prueba
+        - text: vence en
+        - strong [ref=e39]: 28 días
+        - text: . Recuerda activar tu plan a tiempo.
+      - button [ref=e40] [cursor=pointer]:
+        - img [ref=e41]: close
+    - generic [ref=e43]:
+      - complementary [ref=e45]:
+        - navigation "Menú principal" [ref=e47]:
+          - link [ref=e49] [cursor=pointer]:
+            - /url: /dashboard
+            - img [ref=e50]: apps
+          - generic [ref=e51]:
+            - link [ref=e52] [cursor=pointer]:
+              - /url: /proyectos/dashboard
+              - img [ref=e53]: dashboard
+            - button [ref=e54] [cursor=pointer]:
+              - img [ref=e55]: work
+            - button [ref=e56] [cursor=pointer]:
+              - img [ref=e57]: task_alt
+            - button [ref=e58] [cursor=pointer]:
+              - img [ref=e59]: person
+            - link [ref=e60] [cursor=pointer]:
+              - /url: /proyectos/timesheets
+              - img [ref=e61]: schedule
+            - link [ref=e62] [cursor=pointer]:
+              - /url: /proyectos/actividades
+              - img [ref=e63]: construction
+            - link [ref=e64] [cursor=pointer]:
+              - /url: /proyectos/configuracion
+              - img [ref=e65]: tune
+          - generic [ref=e66]:
+            - button [ref=e67] [cursor=pointer]:
+              - img [ref=e68]: contacts
+            - button [ref=e69] [cursor=pointer]:
+              - img [ref=e70]: manage_accounts
+            - button [ref=e71] [cursor=pointer]:
+              - img [ref=e72]: tag
+        - img [ref=e75]: business
+      - main [ref=e76]:
+        - generic [ref=e491]:
+          - navigation "Navegación" [ref=e492]:
+            - link [ref=e493] [cursor=pointer]:
+              - /url: /
+              - img [ref=e494]: home
+            - img [ref=e495]: chevron_right
+            - link "Proyectos" [ref=e496] [cursor=pointer]:
+              - /url: /proyectos
+            - img [ref=e497]: chevron_right
+            - generic [ref=e498]: Implementacion ERP - Ferreteria Andina S.A.S
+          - generic [ref=e499]:
+            - generic [ref=e500]:
+              - generic [ref=e501]:
+                - generic [ref=e502]: PCON-0001
+                - generic [ref=e503]: Planificado
+              - heading "Implementacion ERP - Ferreteria Andina S.A.S" [level=1] [ref=e504]
+            - generic [ref=e505]:
+              - button "Iniciar ejecución" [ref=e506]:
+                - generic [ref=e507]: Iniciar ejecución
+              - button "Volver a borrador" [ref=e509]:
+                - generic [ref=e510]: Volver a borrador
+              - button "Scheduling" [ref=e512]:
+                - img [ref=e513]: event_note
+                - img [ref=e514]: arrow_drop_down
+                - generic [ref=e515]: Scheduling
+              - button "Editar" [ref=e517]:
+                - img [ref=e518]: edit
+                - generic [ref=e519]: Editar
+          - generic [ref=e521]:
+            - tablist [ref=e524]:
+              - generic [ref=e525]:
+                - tab "General" [ref=e526] [cursor=pointer]:
+                  - generic [ref=e528]: General
+                - tab "Fases (6)" [ref=e529] [cursor=pointer]:
+                  - generic [ref=e531]: Fases (6)
+                - tab "Terceros" [ref=e532] [cursor=pointer]:
+                  - generic [ref=e534]: Terceros
+                - tab "Documentos" [ref=e535] [cursor=pointer]:
+                  - generic [ref=e537]: Documentos
+                - tab "Hitos" [ref=e538] [cursor=pointer]:
+                  - generic [ref=e540]: Hitos
+                - tab "Tareas" [ref=e541] [cursor=pointer]:
+                  - generic [ref=e543]: Tareas
+                - tab "Actividades" [ref=e544] [cursor=pointer]:
+                  - generic [ref=e546]: Actividades
+                - tab "Gantt" [active] [selected] [ref=e547] [cursor=pointer]:
+                  - generic [ref=e549]: Gantt
+                - tab "Equipo" [ref=e550] [cursor=pointer]:
+                  - generic [ref=e552]: Equipo
+                - tab "Timesheets" [ref=e553] [cursor=pointer]:
+                  - generic [ref=e555]: Timesheets
+                - tab "Analytics" [ref=e556] [cursor=pointer]:
+                  - generic [ref=e558]: Analytics
+                - tab "Baselines" [ref=e559] [cursor=pointer]:
+                  - generic [ref=e561]: Baselines
+                - tab "Escenarios" [ref=e562] [cursor=pointer]:
+                  - generic [ref=e564]: Escenarios
+                - tab "Presupuesto" [ref=e565] [cursor=pointer]:
+                  - generic [ref=e567]: Presupuesto
+            - generic [ref=e570]:
+              - tabpanel [ref=e667]
+              - tabpanel [ref=e833]
+              - tabpanel [ref=e655]
+              - tabpanel [ref=e656]
+              - tabpanel [ref=e657]
+              - tabpanel [ref=e1350]
+              - tabpanel [ref=e659]
+              - tabpanel "Gantt" [ref=e1351]:
+                - generic [ref=e1354]:
+                  - generic [ref=e1355]:
+                    - radiogroup "Modo de vista" [ref=e1356]:
+                      - radio "Día" [ref=e1357] [cursor=pointer]:
+                        - generic [ref=e1359]: Día
+                      - radio "Semana" [checked] [ref=e1360] [cursor=pointer]:
+                        - generic [ref=e1363]: Semana
+                      - radio "Mes" [ref=e1364] [cursor=pointer]:
+                        - generic [ref=e1366]: Mes
+                    - generic [ref=e1367]:
+                      - button "Ruta crítica" [ref=e1368]:
+                        - img [ref=e1369]: route
+                        - generic [ref=e1370]: Ruta crítica
+                      - button "Holgura" [ref=e1372]:
+                        - img [ref=e1373]: space_bar
+                        - generic [ref=e1374]: Holgura
+                      - button "Baseline" [ref=e1376]:
+                        - img [ref=e1377]: compare
+                        - generic [ref=e1378]: Baseline
+                    - button "Exportar SVG" [ref=e1380]:
+                      - img [ref=e1381]: download
+                      - generic [ref=e1382]: Exportar SVG
+                    - button [ref=e1384] [cursor=pointer]:
+                      - img [ref=e1385]: refresh
+                  - generic [ref=e1387]:
+                    - generic [ref=e1388]: Por hacer
+                    - generic [ref=e1390]: En progreso
+                    - generic [ref=e1392]: En revisión
+                    - generic [ref=e1394]: Bloqueada
+                    - generic [ref=e1396]: Completada
+                    - generic [ref=e1398]: Cancelada
+                  - generic [ref=e1401]:
+                    - img [ref=e1402]:
+                      - generic [ref=e1473]:
+                        - generic [ref=e1477] [cursor=pointer]: Adquirir licencias ERP por usuario
+                        - generic [ref=e1486] [cursor=pointer]: Levantar requerimientos de negocio
+                        - generic [ref=e1494] [cursor=pointer]: Contratar consultoria especializada ERP
+                        - generic [ref=e1502] [cursor=pointer]: Desarrollar dashboards y reportes gerenciales
+                        - generic [ref=e1510] [cursor=pointer]: Desarrollar modulo Ventas e Inventario
+                        - generic [ref=e1518] [cursor=pointer]: Ejecutar testing y QA modulo Ventas
+                        - generic [ref=e1526] [cursor=pointer]: Ejecutar pruebas de aceptacion de usuario
+                        - generic [ref=e1534] [cursor=pointer]: Disenar arquitectura del sistema
+                        - generic [ref=e1542] [cursor=pointer]: Capacitar usuarios finales
+                        - generic [ref=e1550] [cursor=pointer]: Integrar sistema con Saiopen
+                        - generic [ref=e1558] [cursor=pointer]: Firmar acta de liquidacion del proyecto
+                        - generic [ref=e1566] [cursor=pointer]: Desarrollar modulo backend de Compras
+                        - generic [ref=e1574] [cursor=pointer]: Desarrollar modulo frontend de Compras
+                        - generic [ref=e1582] [cursor=pointer]: Aprovisionar servidor cloud AWS
+                    - generic [ref=e1589]:
+                      - generic [ref=e1590]:
+                        - button "Today" [ref=e1592]
+                        - generic [ref=e1593]: Marzo
+                        - generic [ref=e1594]: Abril
+                        - generic [ref=e1595]: Mayo
+                        - generic [ref=e1596]: Junio
+                        - generic [ref=e1597]: Julio
+                        - generic [ref=e1598]: Agosto
+                      - generic [ref=e1599]:
+                        - generic [ref=e1600]: 02 mar - 08
+                        - generic [ref=e1601]: 09 - 15
+                        - generic [ref=e1602]: 16 - 22
+                        - generic [ref=e1603]: 23 - 29
+                        - generic [ref=e1604]: 30 - 05 abr
+                        - generic [ref=e1605]: 06 abr - 12
+                        - generic [ref=e1606]: 13 - 19
+                        - generic [ref=e1607]: 20 - 26
+                        - generic [ref=e1608]: 27 - 03 may
+                        - generic [ref=e1609]: 04 may - 10
+                        - generic [ref=e1610]: 11 - 17
+                        - generic [ref=e1611]: 18 - 24
+                        - generic [ref=e1612]: 25 - 31
+                        - generic [ref=e1613]: 01 jun - 07
+                        - generic [ref=e1614]: 08 - 14
+                        - generic [ref=e1615]: 15 - 21
+                        - generic [ref=e1616]: 22 - 28
+                        - generic [ref=e1617]: 29 - 05 jul
+                        - generic [ref=e1618]: 06 jul - 12
+                        - generic [ref=e1619]: 13 - 19
+                        - generic [ref=e1620]: 20 - 26
+                        - generic [ref=e1621]: 27 - 02 ago
+                        - generic [ref=e1622]: 03 ago - 09
+                        - generic [ref=e1623]: 10 - 16
+                        - generic [ref=e1624]: 17 - 23
+                        - generic [ref=e1625]: 24 - 30
+                        - generic [ref=e1626]: 31 - 06 sept
+              - tabpanel [ref=e661]
+              - tabpanel [ref=e662]
+              - tabpanel [ref=e663]
+              - tabpanel [ref=e664]
+              - tabpanel [ref=e665]
+              - tabpanel [ref=e666]
+  - button "Abrir chat" [ref=e94] [cursor=pointer]:
+    - img [ref=e95]: chat
+    - generic: "1"
+  - generic [ref=e97]:
+    - generic [ref=e98]:
+      - img [ref=e99]: chat
+      - generic [ref=e100]: Chat
+      - button [ref=e101] [cursor=pointer]:
+        - img [ref=e102]: close
+    - generic [ref=e105]:
+      - generic [ref=e116]:
+        - img [ref=e118]: search
+        - textbox "Buscar usuario..." [ref=e120]
+      - generic [ref=e122]:
+        - button "María Ruiz 10:59 p. m. 😉 1" [ref=e225] [cursor=pointer]:
+          - img [ref=e227]: account_circle
+          - generic [ref=e229]:
+            - generic [ref=e230]:
+              - generic [ref=e231]: María Ruiz
+              - generic [ref=e232]: 10:59 p. m.
+            - generic [ref=e233]:
+              - generic [ref=e234]: 😉
+              - generic [ref=e235]: "1"
+        - button "Ana Herrera 10:20 p. m. hola prueba" [ref=e236] [cursor=pointer]:
+          - img [ref=e238]: account_circle
+          - generic [ref=e240]:
+            - generic [ref=e241]:
+              - generic [ref=e242]: Ana Herrera
+              - generic [ref=e243]: 10:20 p. m.
+            - generic [ref=e245]: hola prueba
+        - button "Carlos Torres 1:16 p. m. Podemos reunirnos a las 3pm?" [ref=e246] [cursor=pointer]:
+          - img [ref=e248]: account_circle
+          - generic [ref=e250]:
+            - generic [ref=e251]:
+              - generic [ref=e252]: Carlos Torres
+              - generic [ref=e253]: 1:16 p. m.
+            - generic [ref=e255]: Podemos reunirnos a las 3pm?

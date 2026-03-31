@@ -1,0 +1,561 @@
+- generic [ref=e3]:
+  - generic [ref=e4]:
+    - banner [ref=e6]:
+      - generic [ref=e7]:
+        - button "Toggle menú" [ref=e8] [cursor=pointer]:
+          - img [ref=e9]: menu
+        - link "Saicloud" [ref=e11] [cursor=pointer]:
+          - /url: /dashboard
+          - img [ref=e13]: cloud
+          - generic [ref=e14]: Saicloud
+        - generic [ref=e15]:
+          - img [ref=e16]: chevron_right
+          - generic [ref=e17]: Constructora Andina S.A.S
+      - generic [ref=e18]:
+        - button "Notificaciones" [ref=e20] [cursor=pointer]:
+          - img [ref=e21]:
+            - text: notifications
+            - generic: "1"
+        - button [ref=e23] [cursor=pointer]:
+          - img [ref=e24]: dark_mode
+        - button "Perfil" [ref=e27]:
+          - img [ref=e28]: expand_more
+          - generic [ref=e29]:
+            - generic [ref=e30]: L
+            - generic [ref=e31]:
+              - generic [ref=e32]: Laura Méndez
+              - generic [ref=e33]: Administrador
+    - generic [ref=e35]:
+      - img [ref=e36]: warning
+      - generic [ref=e37]:
+        - text: Tu
+        - strong [ref=e38]: licencia de prueba
+        - text: vence en
+        - strong [ref=e39]: 28 días
+        - text: . Recuerda activar tu plan a tiempo.
+      - button [ref=e40] [cursor=pointer]:
+        - img [ref=e41]: close
+    - generic [ref=e43]:
+      - complementary [ref=e45]:
+        - navigation "Menú principal" [ref=e47]:
+          - link [ref=e49] [cursor=pointer]:
+            - /url: /dashboard
+            - img [ref=e50]: apps
+          - generic [ref=e51]:
+            - link [ref=e52] [cursor=pointer]:
+              - /url: /proyectos/dashboard
+              - img [ref=e53]: dashboard
+            - button [ref=e54] [cursor=pointer]:
+              - img [ref=e55]: work
+            - button [ref=e56] [cursor=pointer]:
+              - img [ref=e57]: task_alt
+            - button [ref=e58] [cursor=pointer]:
+              - img [ref=e59]: person
+            - link [ref=e60] [cursor=pointer]:
+              - /url: /proyectos/timesheets
+              - img [ref=e61]: schedule
+            - link [ref=e62] [cursor=pointer]:
+              - /url: /proyectos/actividades
+              - img [ref=e63]: construction
+            - link [ref=e64] [cursor=pointer]:
+              - /url: /proyectos/configuracion
+              - img [ref=e65]: tune
+          - generic [ref=e66]:
+            - button [ref=e67] [cursor=pointer]:
+              - img [ref=e68]: contacts
+            - button [ref=e69] [cursor=pointer]:
+              - img [ref=e70]: manage_accounts
+            - button [ref=e71] [cursor=pointer]:
+              - img [ref=e72]: tag
+        - img [ref=e75]: business
+      - main [ref=e76]:
+        - generic [ref=e491]:
+          - navigation "Navegación" [ref=e492]:
+            - link [ref=e493] [cursor=pointer]:
+              - /url: /
+              - img [ref=e494]: home
+            - img [ref=e495]: chevron_right
+            - link "Proyectos" [ref=e496] [cursor=pointer]:
+              - /url: /proyectos
+            - img [ref=e497]: chevron_right
+            - generic [ref=e498]: Implementacion ERP - Ferreteria Andina S.A.S
+          - generic [ref=e499]:
+            - generic [ref=e500]:
+              - generic [ref=e501]:
+                - generic [ref=e502]: PCON-0001
+                - generic [ref=e503]: Planificado
+              - heading "Implementacion ERP - Ferreteria Andina S.A.S" [level=1] [ref=e504]
+            - generic [ref=e505]:
+              - button "Iniciar ejecución" [ref=e506]:
+                - generic [ref=e507]: Iniciar ejecución
+              - button "Volver a borrador" [ref=e509]:
+                - generic [ref=e510]: Volver a borrador
+              - button "Scheduling" [ref=e512]:
+                - img [ref=e513]: event_note
+                - img [ref=e514]: arrow_drop_down
+                - generic [ref=e515]: Scheduling
+              - button "Editar" [ref=e517]:
+                - img [ref=e518]: edit
+                - generic [ref=e519]: Editar
+          - generic [ref=e521]:
+            - tablist [ref=e524]:
+              - generic [ref=e525]:
+                - tab "General" [ref=e526] [cursor=pointer]:
+                  - generic [ref=e528]: General
+                - tab "Fases (6)" [ref=e529] [cursor=pointer]:
+                  - generic [ref=e531]: Fases (6)
+                - tab "Terceros" [ref=e532] [cursor=pointer]:
+                  - generic [ref=e534]: Terceros
+                - tab "Documentos" [ref=e535] [cursor=pointer]:
+                  - generic [ref=e537]: Documentos
+                - tab "Hitos" [ref=e538] [cursor=pointer]:
+                  - generic [ref=e540]: Hitos
+                - tab "Tareas" [active] [selected] [ref=e541] [cursor=pointer]:
+                  - generic [ref=e543]: Tareas
+                - tab "Actividades" [ref=e544] [cursor=pointer]:
+                  - generic [ref=e546]: Actividades
+                - tab "Gantt" [ref=e547] [cursor=pointer]:
+                  - generic [ref=e549]: Gantt
+                - tab "Equipo" [ref=e550] [cursor=pointer]:
+                  - generic [ref=e552]: Equipo
+                - tab "Timesheets" [ref=e553] [cursor=pointer]:
+                  - generic [ref=e555]: Timesheets
+                - tab "Analytics" [ref=e556] [cursor=pointer]:
+                  - generic [ref=e558]: Analytics
+                - tab "Baselines" [ref=e559] [cursor=pointer]:
+                  - generic [ref=e561]: Baselines
+                - tab "Escenarios" [ref=e562] [cursor=pointer]:
+                  - generic [ref=e564]: Escenarios
+                - tab "Presupuesto" [ref=e565] [cursor=pointer]:
+                  - generic [ref=e567]: Presupuesto
+            - generic [ref=e570]:
+              - tabpanel [ref=e667]
+              - tabpanel [ref=e833]
+              - tabpanel [ref=e655]
+              - tabpanel [ref=e656]
+              - tabpanel [ref=e657]
+              - tabpanel "Tareas" [ref=e834]:
+                - generic [ref=e838]:
+                  - generic [ref=e839]:
+                    - heading "Tareas" [level=1] [ref=e840]
+                    - generic [ref=e841]:
+                      - button "Kanban" [ref=e842]:
+                        - img [ref=e843]: view_kanban
+                        - generic [ref=e844]: Kanban
+                      - button "Nueva tarea" [ref=e846]:
+                        - img [ref=e847]: add
+                        - generic [ref=e848]: Nueva tarea
+                  - generic [ref=e850]:
+                    - generic [ref=e853]:
+                      - generic [ref=e854]: Buscar por código o nombre…
+                      - textbox "Buscar por código o nombre…" [ref=e856]
+                      - button "Buscar" [ref=e858] [cursor=pointer]:
+                        - img [ref=e859]: search
+                    - generic [ref=e863] [cursor=pointer]:
+                      - generic [ref=e864]: Estado
+                      - combobox "Estado" [ref=e866]:
+                        - img [ref=e872]
+                    - generic [ref=e876] [cursor=pointer]:
+                      - generic [ref=e877]: Prioridad
+                      - combobox "Prioridad" [ref=e879]:
+                        - img [ref=e885]
+                    - generic [ref=e889] [cursor=pointer]:
+                      - generic [ref=e890]: Fase
+                      - combobox "Fase" [ref=e892]:
+                        - img [ref=e898]
+                  - table [ref=e900]:
+                    - row "Código Nombre Responsable Estado Prioridad Avance Fecha límite" [ref=e901]:
+                      - columnheader "Código" [ref=e902] [cursor=pointer]:
+                        - button "Código" [ref=e903]:
+                          - generic [ref=e904]: Código
+                          - img [ref=e906]
+                      - columnheader "Nombre" [ref=e908] [cursor=pointer]:
+                        - button "Nombre" [ref=e909]:
+                          - generic [ref=e910]: Nombre
+                          - img [ref=e912]
+                      - columnheader "Responsable" [ref=e914]
+                      - columnheader "Estado" [ref=e915] [cursor=pointer]:
+                        - button "Estado" [ref=e916]:
+                          - generic [ref=e917]: Estado
+                          - img [ref=e919]
+                      - columnheader "Prioridad" [ref=e921] [cursor=pointer]:
+                        - button "Prioridad" [ref=e922]:
+                          - generic [ref=e923]: Prioridad
+                          - img [ref=e925]
+                      - columnheader "Avance" [ref=e927]
+                      - columnheader "Fecha límite" [ref=e928] [cursor=pointer]:
+                        - button "Fecha límite" [ref=e929]:
+                          - generic [ref=e930]: Fecha límite
+                          - img [ref=e932]
+                      - columnheader [ref=e934]
+                    - row "TASK-00010 Integrar sistema con Saiopen Valentina Ospina En Progreso Urgente 0 0% —" [ref=e935] [cursor=pointer]:
+                      - cell "TASK-00010" [ref=e936]:
+                        - generic [ref=e937]: TASK-00010
+                      - cell "Integrar sistema con Saiopen" [ref=e938]
+                      - cell "Valentina Ospina" [ref=e939]
+                      - cell "En Progreso" [ref=e940]:
+                        - generic [ref=e941]: En Progreso
+                      - cell "Urgente" [ref=e942]:
+                        - generic [ref=e943]: Urgente
+                      - cell "0 0%" [ref=e944]:
+                        - generic [ref=e945]:
+                          - progressbar [ref=e946]
+                          - generic [ref=e949]: 0%
+                      - cell "—" [ref=e950]:
+                        - generic [ref=e951]: —
+                      - cell [ref=e952]:
+                        - button [ref=e953]:
+                          - img [ref=e954]: chevron_right
+                        - button [ref=e956]:
+                          - img [ref=e957]: edit
+                        - button [ref=e959]:
+                          - img [ref=e960]: delete_outline
+                    - row "TASK-00002 Disenar arquitectura del sistema Valentina Ospina Por Hacer Alta 0 0% —" [ref=e962] [cursor=pointer]:
+                      - cell "TASK-00002" [ref=e963]:
+                        - generic [ref=e964]: TASK-00002
+                      - cell "Disenar arquitectura del sistema" [ref=e965]
+                      - cell "Valentina Ospina" [ref=e966]
+                      - cell "Por Hacer" [ref=e967]:
+                        - generic [ref=e968]: Por Hacer
+                      - cell "Alta" [ref=e969]:
+                        - generic [ref=e970]: Alta
+                      - cell "0 0%" [ref=e971]:
+                        - generic [ref=e972]:
+                          - progressbar [ref=e973]
+                          - generic [ref=e976]: 0%
+                      - cell "—" [ref=e977]:
+                        - generic [ref=e978]: —
+                      - cell [ref=e979]:
+                        - button [ref=e980]:
+                          - img [ref=e981]: chevron_right
+                        - button [ref=e983]:
+                          - img [ref=e984]: edit
+                        - button [ref=e986]:
+                          - img [ref=e987]: delete_outline
+                    - row "TASK-00008 Desarrollar modulo Ventas e Inventario Valentina Ospina Bloqueada Alta 0 0% —" [ref=e989] [cursor=pointer]:
+                      - cell "TASK-00008" [ref=e990]:
+                        - generic [ref=e991]: TASK-00008
+                      - cell "Desarrollar modulo Ventas e Inventario" [ref=e992]
+                      - cell "Valentina Ospina" [ref=e993]
+                      - cell "Bloqueada" [ref=e994]:
+                        - generic [ref=e995]: Bloqueada
+                      - cell "Alta" [ref=e996]:
+                        - generic [ref=e997]: Alta
+                      - cell "0 0%" [ref=e998]:
+                        - generic [ref=e999]:
+                          - progressbar [ref=e1000]
+                          - generic [ref=e1003]: 0%
+                      - cell "—" [ref=e1004]:
+                        - generic [ref=e1005]: —
+                      - cell [ref=e1006]:
+                        - button [ref=e1007]:
+                          - img [ref=e1008]: chevron_right
+                        - button [ref=e1010]:
+                          - img [ref=e1011]: edit
+                        - button [ref=e1013]:
+                          - img [ref=e1014]: delete_outline
+                    - row "TASK-00006 Desarrollar modulo frontend de Compras Ana Herrera Por Hacer Alta 0 0% —" [ref=e1016] [cursor=pointer]:
+                      - cell "TASK-00006" [ref=e1017]:
+                        - generic [ref=e1018]: TASK-00006
+                      - cell "Desarrollar modulo frontend de Compras" [ref=e1019]
+                      - cell "Ana Herrera" [ref=e1020]
+                      - cell "Por Hacer" [ref=e1021]:
+                        - generic [ref=e1022]: Por Hacer
+                      - cell "Alta" [ref=e1023]:
+                        - generic [ref=e1024]: Alta
+                      - cell "0 0%" [ref=e1025]:
+                        - generic [ref=e1026]:
+                          - progressbar [ref=e1027]
+                          - generic [ref=e1030]: 0%
+                      - cell "—" [ref=e1031]:
+                        - generic [ref=e1032]: —
+                      - cell [ref=e1033]:
+                        - button [ref=e1034]:
+                          - img [ref=e1035]: chevron_right
+                        - button [ref=e1037]:
+                          - img [ref=e1038]: edit
+                        - button [ref=e1040]:
+                          - img [ref=e1041]: delete_outline
+                    - row "TASK-00007 Contratar consultoria especializada ERP Laura Méndez Por Hacer Alta 0 0% —" [ref=e1043] [cursor=pointer]:
+                      - cell "TASK-00007" [ref=e1044]:
+                        - generic [ref=e1045]: TASK-00007
+                      - cell "Contratar consultoria especializada ERP" [ref=e1046]
+                      - cell "Laura Méndez" [ref=e1047]
+                      - cell "Por Hacer" [ref=e1048]:
+                        - generic [ref=e1049]: Por Hacer
+                      - cell "Alta" [ref=e1050]:
+                        - generic [ref=e1051]: Alta
+                      - cell "0 0%" [ref=e1052]:
+                        - generic [ref=e1053]:
+                          - progressbar [ref=e1054]
+                          - generic [ref=e1057]: 0%
+                      - cell "—" [ref=e1058]:
+                        - generic [ref=e1059]: —
+                      - cell [ref=e1060]:
+                        - button [ref=e1061]:
+                          - img [ref=e1062]: chevron_right
+                        - button [ref=e1064]:
+                          - img [ref=e1065]: edit
+                        - button [ref=e1067]:
+                          - img [ref=e1068]: delete_outline
+                    - row "TASK-00012 Ejecutar pruebas de aceptacion de usuario Ana Herrera Por Hacer Alta 0 0% —" [ref=e1070] [cursor=pointer]:
+                      - cell "TASK-00012" [ref=e1071]:
+                        - generic [ref=e1072]: TASK-00012
+                      - cell "Ejecutar pruebas de aceptacion de usuario" [ref=e1073]
+                      - cell "Ana Herrera" [ref=e1074]
+                      - cell "Por Hacer" [ref=e1075]:
+                        - generic [ref=e1076]: Por Hacer
+                      - cell "Alta" [ref=e1077]:
+                        - generic [ref=e1078]: Alta
+                      - cell "0 0%" [ref=e1079]:
+                        - generic [ref=e1080]:
+                          - progressbar [ref=e1081]
+                          - generic [ref=e1084]: 0%
+                      - cell "—" [ref=e1085]:
+                        - generic [ref=e1086]: —
+                      - cell [ref=e1087]:
+                        - button [ref=e1088]:
+                          - img [ref=e1089]: chevron_right
+                        - button [ref=e1091]:
+                          - img [ref=e1092]: edit
+                        - button [ref=e1094]:
+                          - img [ref=e1095]: delete_outline
+                    - row "TASK-00013 Capacitar usuarios finales Laura Méndez Por Hacer Alta 0 0% —" [ref=e1097] [cursor=pointer]:
+                      - cell "TASK-00013" [ref=e1098]:
+                        - generic [ref=e1099]: TASK-00013
+                      - cell "Capacitar usuarios finales" [ref=e1100]
+                      - cell "Laura Méndez" [ref=e1101]
+                      - cell "Por Hacer" [ref=e1102]:
+                        - generic [ref=e1103]: Por Hacer
+                      - cell "Alta" [ref=e1104]:
+                        - generic [ref=e1105]: Alta
+                      - cell "0 0%" [ref=e1106]:
+                        - generic [ref=e1107]:
+                          - progressbar [ref=e1108]
+                          - generic [ref=e1111]: 0%
+                      - cell "—" [ref=e1112]:
+                        - generic [ref=e1113]: —
+                      - cell [ref=e1114]:
+                        - button [ref=e1115]:
+                          - img [ref=e1116]: chevron_right
+                        - button [ref=e1118]:
+                          - img [ref=e1119]: edit
+                        - button [ref=e1121]:
+                          - img [ref=e1122]: delete_outline
+                    - row "TASK-00001 Levantar requerimientos de negocio Laura Méndez Por Hacer Alta 20 20% —" [ref=e1124] [cursor=pointer]:
+                      - cell "TASK-00001" [ref=e1125]:
+                        - generic [ref=e1126]: TASK-00001
+                      - cell "Levantar requerimientos de negocio" [ref=e1127]
+                      - cell "Laura Méndez" [ref=e1128]
+                      - cell "Por Hacer" [ref=e1129]:
+                        - generic [ref=e1130]: Por Hacer
+                      - cell "Alta" [ref=e1131]:
+                        - generic [ref=e1132]: Alta
+                      - cell "20 20%" [ref=e1133]:
+                        - generic [ref=e1134]:
+                          - progressbar [ref=e1135]
+                          - generic [ref=e1140]: 20%
+                      - cell "—" [ref=e1141]:
+                        - generic [ref=e1142]: —
+                      - cell [ref=e1143]:
+                        - button [ref=e1144]:
+                          - img [ref=e1145]: chevron_right
+                        - button [ref=e1147]:
+                          - img [ref=e1148]: edit
+                        - button [ref=e1150]:
+                          - img [ref=e1151]: delete_outline
+                    - row "TASK-00005 Desarrollar modulo backend de Compras Valentina Ospina Por Hacer Alta 0 0% —" [ref=e1153] [cursor=pointer]:
+                      - cell "TASK-00005" [ref=e1154]:
+                        - generic [ref=e1155]: TASK-00005
+                      - cell "Desarrollar modulo backend de Compras" [ref=e1156]
+                      - cell "Valentina Ospina" [ref=e1157]
+                      - cell "Por Hacer" [ref=e1158]:
+                        - generic [ref=e1159]: Por Hacer
+                      - cell "Alta" [ref=e1160]:
+                        - generic [ref=e1161]: Alta
+                      - cell "0 0%" [ref=e1162]:
+                        - generic [ref=e1163]:
+                          - progressbar [ref=e1164]
+                          - generic [ref=e1167]: 0%
+                      - cell "—" [ref=e1168]:
+                        - generic [ref=e1169]: —
+                      - cell [ref=e1170]:
+                        - button [ref=e1171]:
+                          - img [ref=e1172]: chevron_right
+                        - button [ref=e1174]:
+                          - img [ref=e1175]: edit
+                        - button [ref=e1177]:
+                          - img [ref=e1178]: delete_outline
+                    - row "TASK-00004 Aprovisionar servidor cloud AWS Carlos Mendoza Por Hacer Normal 0 0% —" [ref=e1180] [cursor=pointer]:
+                      - cell "TASK-00004" [ref=e1181]:
+                        - generic [ref=e1182]: TASK-00004
+                      - cell "Aprovisionar servidor cloud AWS" [ref=e1183]
+                      - cell "Carlos Mendoza" [ref=e1184]
+                      - cell "Por Hacer" [ref=e1185]:
+                        - generic [ref=e1186]: Por Hacer
+                      - cell "Normal" [ref=e1187]:
+                        - generic [ref=e1188]: Normal
+                      - cell "0 0%" [ref=e1189]:
+                        - generic [ref=e1190]:
+                          - progressbar [ref=e1191]
+                          - generic [ref=e1194]: 0%
+                      - cell "—" [ref=e1195]:
+                        - generic [ref=e1196]: —
+                      - cell [ref=e1197]:
+                        - button [ref=e1198]:
+                          - img [ref=e1199]: chevron_right
+                        - button [ref=e1201]:
+                          - img [ref=e1202]: edit
+                        - button [ref=e1204]:
+                          - img [ref=e1205]: delete_outline
+                    - row "TASK-00003 Adquirir licencias ERP por usuario Carlos Torres Por Hacer Normal 0 0% —" [ref=e1207] [cursor=pointer]:
+                      - cell "TASK-00003" [ref=e1208]:
+                        - generic [ref=e1209]: TASK-00003
+                      - cell "Adquirir licencias ERP por usuario" [ref=e1210]
+                      - cell "Carlos Torres" [ref=e1211]
+                      - cell "Por Hacer" [ref=e1212]:
+                        - generic [ref=e1213]: Por Hacer
+                      - cell "Normal" [ref=e1214]:
+                        - generic [ref=e1215]: Normal
+                      - cell "0 0%" [ref=e1216]:
+                        - generic [ref=e1217]:
+                          - progressbar [ref=e1218]
+                          - generic [ref=e1221]: 0%
+                      - cell "—" [ref=e1222]:
+                        - generic [ref=e1223]: —
+                      - cell [ref=e1224]:
+                        - button [ref=e1225]:
+                          - img [ref=e1226]: chevron_right
+                        - button [ref=e1228]:
+                          - img [ref=e1229]: edit
+                        - button [ref=e1231]:
+                          - img [ref=e1232]: delete_outline
+                    - row "TASK-00011 Desarrollar dashboards y reportes gerenciales Carlos Mendoza Por Hacer Normal 0 0% —" [ref=e1234] [cursor=pointer]:
+                      - cell "TASK-00011" [ref=e1235]:
+                        - generic [ref=e1236]: TASK-00011
+                      - cell "Desarrollar dashboards y reportes gerenciales" [ref=e1237]
+                      - cell "Carlos Mendoza" [ref=e1238]
+                      - cell "Por Hacer" [ref=e1239]:
+                        - generic [ref=e1240]: Por Hacer
+                      - cell "Normal" [ref=e1241]:
+                        - generic [ref=e1242]: Normal
+                      - cell "0 0%" [ref=e1243]:
+                        - generic [ref=e1244]:
+                          - progressbar [ref=e1245]
+                          - generic [ref=e1248]: 0%
+                      - cell "—" [ref=e1249]:
+                        - generic [ref=e1250]: —
+                      - cell [ref=e1251]:
+                        - button [ref=e1252]:
+                          - img [ref=e1253]: chevron_right
+                        - button [ref=e1255]:
+                          - img [ref=e1256]: edit
+                        - button [ref=e1258]:
+                          - img [ref=e1259]: delete_outline
+                    - row "TASK-00014 Firmar acta de liquidacion del proyecto Laura Méndez Por Hacer Normal 0 0% —" [ref=e1261] [cursor=pointer]:
+                      - cell "TASK-00014" [ref=e1262]:
+                        - generic [ref=e1263]: TASK-00014
+                      - cell "Firmar acta de liquidacion del proyecto" [ref=e1264]
+                      - cell "Laura Méndez" [ref=e1265]
+                      - cell "Por Hacer" [ref=e1266]:
+                        - generic [ref=e1267]: Por Hacer
+                      - cell "Normal" [ref=e1268]:
+                        - generic [ref=e1269]: Normal
+                      - cell "0 0%" [ref=e1270]:
+                        - generic [ref=e1271]:
+                          - progressbar [ref=e1272]
+                          - generic [ref=e1275]: 0%
+                      - cell "—" [ref=e1276]:
+                        - generic [ref=e1277]: —
+                      - cell [ref=e1278]:
+                        - button [ref=e1279]:
+                          - img [ref=e1280]: chevron_right
+                        - button [ref=e1282]:
+                          - img [ref=e1283]: edit
+                        - button [ref=e1285]:
+                          - img [ref=e1286]: delete_outline
+                    - row "TASK-00009 Ejecutar testing y QA modulo Ventas Ana Herrera Por Hacer Normal 0 0% —" [ref=e1288] [cursor=pointer]:
+                      - cell "TASK-00009" [ref=e1289]:
+                        - generic [ref=e1290]: TASK-00009
+                      - cell "Ejecutar testing y QA modulo Ventas" [ref=e1291]
+                      - cell "Ana Herrera" [ref=e1292]
+                      - cell "Por Hacer" [ref=e1293]:
+                        - generic [ref=e1294]: Por Hacer
+                      - cell "Normal" [ref=e1295]:
+                        - generic [ref=e1296]: Normal
+                      - cell "0 0%" [ref=e1297]:
+                        - generic [ref=e1298]:
+                          - progressbar [ref=e1299]
+                          - generic [ref=e1302]: 0%
+                      - cell "—" [ref=e1303]:
+                        - generic [ref=e1304]: —
+                      - cell [ref=e1305]:
+                        - button [ref=e1306]:
+                          - img [ref=e1307]: chevron_right
+                        - button [ref=e1309]:
+                          - img [ref=e1310]: edit
+                        - button [ref=e1312]:
+                          - img [ref=e1313]: delete_outline
+                  - group [ref=e1315]:
+                    - generic [ref=e1317]:
+                      - generic [ref=e1318]:
+                        - generic [ref=e1319]: "Ítems por página:"
+                        - combobox "Ítems por página:" [ref=e1324] [cursor=pointer]:
+                          - generic [ref=e1325]:
+                            - generic [ref=e1327]: "25"
+                            - img [ref=e1330]
+                      - generic [ref=e1332]:
+                        - generic [ref=e1333]: 1 – 14 de 14
+                        - button "Primera página" [disabled] [ref=e1334]:
+                          - img [ref=e1335]
+                        - button "Página anterior" [disabled] [ref=e1338]:
+                          - img [ref=e1339]
+                        - button "Siguiente página" [disabled] [ref=e1342]:
+                          - img [ref=e1343]
+                        - button "Última página" [disabled] [ref=e1346]:
+                          - img [ref=e1347]
+              - tabpanel [ref=e659]
+              - tabpanel [ref=e660]
+              - tabpanel [ref=e661]
+              - tabpanel [ref=e662]
+              - tabpanel [ref=e663]
+              - tabpanel [ref=e664]
+              - tabpanel [ref=e665]
+              - tabpanel [ref=e666]
+  - button "Abrir chat" [ref=e94] [cursor=pointer]:
+    - img [ref=e95]: chat
+    - generic: "1"
+  - generic [ref=e97]:
+    - generic [ref=e98]:
+      - img [ref=e99]: chat
+      - generic [ref=e100]: Chat
+      - button [ref=e101] [cursor=pointer]:
+        - img [ref=e102]: close
+    - generic [ref=e105]:
+      - generic [ref=e116]:
+        - img [ref=e118]: search
+        - textbox "Buscar usuario..." [ref=e120]
+      - generic [ref=e122]:
+        - button "María Ruiz 10:59 p. m. 😉 1" [ref=e225] [cursor=pointer]:
+          - img [ref=e227]: account_circle
+          - generic [ref=e229]:
+            - generic [ref=e230]:
+              - generic [ref=e231]: María Ruiz
+              - generic [ref=e232]: 10:59 p. m.
+            - generic [ref=e233]:
+              - generic [ref=e234]: 😉
+              - generic [ref=e235]: "1"
+        - button "Ana Herrera 10:20 p. m. hola prueba" [ref=e236] [cursor=pointer]:
+          - img [ref=e238]: account_circle
+          - generic [ref=e240]:
+            - generic [ref=e241]:
+              - generic [ref=e242]: Ana Herrera
+              - generic [ref=e243]: 10:20 p. m.
+            - generic [ref=e245]: hola prueba
+        - button "Carlos Torres 1:16 p. m. Podemos reunirnos a las 3pm?" [ref=e246] [cursor=pointer]:
+          - img [ref=e248]: account_circle
+          - generic [ref=e250]:
+            - generic [ref=e251]:
+              - generic [ref=e252]: Carlos Torres
+              - generic [ref=e253]: 1:16 p. m.
+            - generic [ref=e255]: Podemos reunirnos a las 3pm?

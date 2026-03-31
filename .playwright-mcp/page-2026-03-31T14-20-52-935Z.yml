@@ -1,0 +1,224 @@
+- generic [ref=e3]:
+  - generic [ref=e4]:
+    - banner [ref=e6]:
+      - generic [ref=e7]:
+        - button "Toggle menú" [ref=e8] [cursor=pointer]:
+          - img [ref=e9]: menu
+        - link "Saicloud" [ref=e11] [cursor=pointer]:
+          - /url: /dashboard
+          - img [ref=e13]: cloud
+          - generic [ref=e14]: Saicloud
+        - generic [ref=e15]:
+          - img [ref=e16]: chevron_right
+          - generic [ref=e17]: Constructora Andina S.A.S
+      - generic [ref=e18]:
+        - button "Notificaciones" [ref=e20] [cursor=pointer]:
+          - img [ref=e21]:
+            - text: notifications
+            - generic: "1"
+        - button [ref=e23] [cursor=pointer]:
+          - img [ref=e24]: dark_mode
+        - button "Perfil" [ref=e27]:
+          - img [ref=e28]: expand_more
+          - generic [ref=e29]:
+            - generic [ref=e30]: L
+            - generic [ref=e31]:
+              - generic [ref=e32]: Laura Méndez
+              - generic [ref=e33]: Administrador
+    - generic [ref=e35]:
+      - img [ref=e36]: warning
+      - generic [ref=e37]:
+        - text: Tu
+        - strong [ref=e38]: licencia de prueba
+        - text: vence en
+        - strong [ref=e39]: 28 días
+        - text: . Recuerda activar tu plan a tiempo.
+      - button [ref=e40] [cursor=pointer]:
+        - img [ref=e41]: close
+    - generic [ref=e43]:
+      - complementary [ref=e45]:
+        - navigation "Menú principal" [ref=e47]:
+          - link [ref=e49] [cursor=pointer]:
+            - /url: /dashboard
+            - img [ref=e50]: apps
+          - generic [ref=e51]:
+            - link [ref=e52] [cursor=pointer]:
+              - /url: /proyectos/dashboard
+              - img [ref=e53]: dashboard
+            - button [ref=e54] [cursor=pointer]:
+              - img [ref=e55]: work
+            - button [ref=e56] [cursor=pointer]:
+              - img [ref=e57]: task_alt
+            - button [ref=e58] [cursor=pointer]:
+              - img [ref=e59]: person
+            - link [ref=e60] [cursor=pointer]:
+              - /url: /proyectos/timesheets
+              - img [ref=e61]: schedule
+            - link [ref=e62] [cursor=pointer]:
+              - /url: /proyectos/actividades
+              - img [ref=e63]: construction
+            - link [ref=e64] [cursor=pointer]:
+              - /url: /proyectos/configuracion
+              - img [ref=e65]: tune
+          - generic [ref=e66]:
+            - button [ref=e67] [cursor=pointer]:
+              - img [ref=e68]: contacts
+            - button [ref=e69] [cursor=pointer]:
+              - img [ref=e70]: manage_accounts
+            - button [ref=e71] [cursor=pointer]:
+              - img [ref=e72]: tag
+        - img [ref=e75]: business
+      - main [ref=e76]:
+        - generic [ref=e491]:
+          - navigation "Navegación" [ref=e492]:
+            - link [ref=e493] [cursor=pointer]:
+              - /url: /
+              - img [ref=e494]: home
+            - img [ref=e495]: chevron_right
+            - link "Proyectos" [ref=e496] [cursor=pointer]:
+              - /url: /proyectos
+            - img [ref=e497]: chevron_right
+            - generic [ref=e498]: Implementacion ERP - Ferreteria Andina S.A.S
+          - generic [ref=e499]:
+            - generic [ref=e500]:
+              - generic [ref=e501]:
+                - generic [ref=e502]: PCON-0001
+                - generic [ref=e503]: Planificado
+              - heading "Implementacion ERP - Ferreteria Andina S.A.S" [level=1] [ref=e504]
+            - generic [ref=e505]:
+              - button "Iniciar ejecución" [ref=e506]:
+                - generic [ref=e507]: Iniciar ejecución
+              - button "Volver a borrador" [ref=e509]:
+                - generic [ref=e510]: Volver a borrador
+              - button "Scheduling" [ref=e512]:
+                - img [ref=e513]: event_note
+                - img [ref=e514]: arrow_drop_down
+                - generic [ref=e515]: Scheduling
+              - button "Editar" [ref=e517]:
+                - img [ref=e518]: edit
+                - generic [ref=e519]: Editar
+          - generic [ref=e521]:
+            - tablist [ref=e524]:
+              - generic [ref=e525]:
+                - tab "General" [ref=e526] [cursor=pointer]:
+                  - generic [ref=e528]: General
+                - tab "Fases (6)" [ref=e529] [cursor=pointer]:
+                  - generic [ref=e531]: Fases (6)
+                - tab "Terceros" [ref=e532] [cursor=pointer]:
+                  - generic [ref=e534]: Terceros
+                - tab "Documentos" [ref=e535] [cursor=pointer]:
+                  - generic [ref=e537]: Documentos
+                - tab "Hitos" [ref=e538] [cursor=pointer]:
+                  - generic [ref=e540]: Hitos
+                - tab "Tareas" [ref=e541] [cursor=pointer]:
+                  - generic [ref=e543]: Tareas
+                - tab "Actividades" [ref=e544] [cursor=pointer]:
+                  - generic [ref=e546]: Actividades
+                - tab "Gantt" [ref=e547] [cursor=pointer]:
+                  - generic [ref=e549]: Gantt
+                - tab "Equipo" [ref=e550] [cursor=pointer]:
+                  - generic [ref=e552]: Equipo
+                - tab "Timesheets" [ref=e553] [cursor=pointer]:
+                  - generic [ref=e555]: Timesheets
+                - tab "Analytics" [active] [selected] [ref=e556] [cursor=pointer]:
+                  - generic [ref=e558]: Analytics
+                - tab "Baselines" [ref=e559] [cursor=pointer]:
+                  - generic [ref=e561]: Baselines
+                - tab "Escenarios" [ref=e562] [cursor=pointer]:
+                  - generic [ref=e564]: Escenarios
+                - tab "Presupuesto" [ref=e565] [cursor=pointer]:
+                  - generic [ref=e567]: Presupuesto
+            - generic [ref=e570]:
+              - tabpanel [ref=e667]
+              - tabpanel [ref=e833]
+              - tabpanel [ref=e655]
+              - tabpanel [ref=e656]
+              - tabpanel [ref=e657]
+              - tabpanel [ref=e1350]
+              - tabpanel [ref=e659]
+              - tabpanel [ref=e1631]
+              - tabpanel [ref=e661]
+              - tabpanel [ref=e662]
+              - tabpanel "Analytics" [ref=e1632]:
+                - generic [ref=e1636]:
+                  - generic [ref=e1637]:
+                    - heading "Analytics" [level=2] [ref=e1638]
+                    - generic [ref=e1639]:
+                      - button [ref=e1640] [cursor=pointer]:
+                        - img [ref=e1641]: refresh
+                      - button [ref=e1643] [cursor=pointer]:
+                        - img [ref=e1644]: download
+                  - generic [ref=e1646]:
+                    - generic [ref=e1648]:
+                      - img [ref=e1649]: task_alt
+                      - paragraph [ref=e1650]: Completud
+                      - generic [ref=e1651]: 0%
+                      - generic [ref=e1652]: 0 / 14 tareas
+                    - generic [ref=e1654]:
+                      - img [ref=e1655]: schedule
+                      - paragraph [ref=e1656]: On-Time
+                      - generic [ref=e1657]: 0%
+                      - generic [ref=e1658]: 0 vencidas
+                    - generic [ref=e1660]:
+                      - img [ref=e1661]: trending_up
+                      - paragraph [ref=e1662]: Velocidad
+                      - generic [ref=e1663]: 0/sem
+                      - generic [ref=e1664]: tareas completadas
+                    - generic [ref=e1666]:
+                      - img [ref=e1667]: attach_money
+                      - paragraph [ref=e1668]: Horas Burn Rate
+                      - generic [ref=e1669]: 8h/sem
+                      - generic [ref=e1670]: "Varianza: -97.5%"
+                  - generic [ref=e1671]:
+                    - generic [ref=e1672]:
+                      - generic [ref=e1675]: Burn Down
+                      - img "Gráfico burn down del proyecto" [ref=e1677]
+                    - generic [ref=e1679]:
+                      - generic [ref=e1682]: Velocidad del equipo
+                      - img "Gráfico de velocidad por semana" [ref=e1684]
+                    - generic [ref=e1686]:
+                      - generic [ref=e1689]: Distribución de tareas
+                      - img "Distribución de tareas por estado" [ref=e1691]
+                    - generic [ref=e1693]:
+                      - generic [ref=e1696]: Utilización de recursos
+                      - img "Utilización de recursos del equipo" [ref=e1698]
+              - tabpanel [ref=e664]
+              - tabpanel [ref=e665]
+              - tabpanel [ref=e666]
+  - button "Abrir chat" [ref=e94] [cursor=pointer]:
+    - img [ref=e95]: chat
+    - generic: "1"
+  - generic [ref=e97]:
+    - generic [ref=e98]:
+      - img [ref=e99]: chat
+      - generic [ref=e100]: Chat
+      - button [ref=e101] [cursor=pointer]:
+        - img [ref=e102]: close
+    - generic [ref=e105]:
+      - generic [ref=e116]:
+        - img [ref=e118]: search
+        - textbox "Buscar usuario..." [ref=e120]
+      - generic [ref=e122]:
+        - button "María Ruiz 10:59 p. m. 😉 1" [ref=e225] [cursor=pointer]:
+          - img [ref=e227]: account_circle
+          - generic [ref=e229]:
+            - generic [ref=e230]:
+              - generic [ref=e231]: María Ruiz
+              - generic [ref=e232]: 10:59 p. m.
+            - generic [ref=e233]:
+              - generic [ref=e234]: 😉
+              - generic [ref=e235]: "1"
+        - button "Ana Herrera 10:20 p. m. hola prueba" [ref=e236] [cursor=pointer]:
+          - img [ref=e238]: account_circle
+          - generic [ref=e240]:
+            - generic [ref=e241]:
+              - generic [ref=e242]: Ana Herrera
+              - generic [ref=e243]: 10:20 p. m.
+            - generic [ref=e245]: hola prueba
+        - button "Carlos Torres 1:16 p. m. Podemos reunirnos a las 3pm?" [ref=e246] [cursor=pointer]:
+          - img [ref=e248]: account_circle
+          - generic [ref=e250]:
+            - generic [ref=e251]:
+              - generic [ref=e252]: Carlos Torres
+              - generic [ref=e253]: 1:16 p. m.
+            - generic [ref=e255]: Podemos reunirnos a las 3pm?

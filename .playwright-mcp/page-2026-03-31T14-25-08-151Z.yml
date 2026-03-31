@@ -1,0 +1,155 @@
+- generic [ref=e3]:
+  - generic [ref=e4]:
+    - banner [ref=e6]:
+      - generic [ref=e7]:
+        - button "Toggle menú" [ref=e8] [cursor=pointer]:
+          - img [ref=e9]: menu
+        - link "Saicloud" [ref=e11] [cursor=pointer]:
+          - /url: /dashboard
+          - img [ref=e13]: cloud
+          - generic [ref=e14]: Saicloud
+        - generic [ref=e15]:
+          - img [ref=e16]: chevron_right
+          - generic [ref=e17]: Constructora Andina S.A.S
+      - generic [ref=e18]:
+        - button "Notificaciones" [ref=e20] [cursor=pointer]:
+          - img [ref=e21]: notifications_none
+        - button [ref=e23] [cursor=pointer]:
+          - img [ref=e24]: dark_mode
+        - button "Perfil" [ref=e27]:
+          - img [ref=e28]: expand_more
+          - generic [ref=e29]:
+            - generic [ref=e30]: L
+            - generic [ref=e31]:
+              - generic [ref=e32]: Laura Méndez
+              - generic [ref=e33]: Administrador
+    - generic [ref=e35]:
+      - img [ref=e36]: warning
+      - generic [ref=e37]:
+        - text: Tu
+        - strong [ref=e38]: licencia de prueba
+        - text: vence en
+        - strong [ref=e39]: 28 días
+        - text: . Recuerda activar tu plan a tiempo.
+      - button [ref=e40] [cursor=pointer]:
+        - img [ref=e41]: close
+    - generic [ref=e43]:
+      - complementary [ref=e45]:
+        - navigation "Menú principal" [ref=e47]:
+          - link [ref=e49] [cursor=pointer]:
+            - /url: /dashboard
+            - img [ref=e50]: apps
+          - generic [ref=e51]:
+            - link [ref=e52] [cursor=pointer]:
+              - /url: /proyectos/dashboard
+              - img [ref=e53]: dashboard
+            - button [ref=e54] [cursor=pointer]:
+              - img [ref=e55]: work
+            - button [ref=e56] [cursor=pointer]:
+              - img [ref=e57]: task_alt
+            - button [ref=e58] [cursor=pointer]:
+              - img [ref=e59]: person
+            - link [ref=e60] [cursor=pointer]:
+              - /url: /proyectos/timesheets
+              - img [ref=e61]: schedule
+            - link [ref=e62] [cursor=pointer]:
+              - /url: /proyectos/actividades
+              - img [ref=e63]: construction
+            - link [ref=e64] [cursor=pointer]:
+              - /url: /proyectos/configuracion
+              - img [ref=e65]: tune
+          - generic [ref=e66]:
+            - button [ref=e67] [cursor=pointer]:
+              - img [ref=e68]: contacts
+            - button [ref=e69] [cursor=pointer]:
+              - img [ref=e70]: manage_accounts
+            - button [ref=e71] [cursor=pointer]:
+              - img [ref=e72]: tag
+        - img [ref=e75]: business
+      - main [ref=e76]:
+        - generic [ref=e78]:
+          - generic [ref=e79]:
+            - heading "Proyectos" [level=1] [ref=e80]
+            - generic [ref=e81]:
+              - button "Cards" [ref=e82]:
+                - img [ref=e83]: view_module
+                - generic [ref=e84]: Cards
+              - button "Nuevo proyecto" [ref=e86]:
+                - img [ref=e87]: add
+                - generic [ref=e88]: Nuevo proyecto
+          - generic [ref=e90]:
+            - generic [ref=e93]:
+              - generic [ref=e94]: Buscar por código, nombre o cliente…
+              - textbox "Buscar por código, nombre o cliente…" [ref=e96]
+              - button "Buscar" [ref=e98] [cursor=pointer]:
+                - img [ref=e99]: search
+            - generic [ref=e103] [cursor=pointer]:
+              - generic [ref=e104]: Estado
+              - combobox "Estado" [ref=e106]:
+                - img [ref=e112]
+            - generic [ref=e116] [cursor=pointer]:
+              - generic [ref=e117]: Tipo
+              - combobox "Tipo" [ref=e119]:
+                - img [ref=e125]
+            - generic [ref=e129] [cursor=pointer]:
+              - generic [ref=e130]: Gerente
+              - combobox "Gerente" [ref=e132]:
+                - img [ref=e138]
+          - progressbar [ref=e140]
+          - table [ref=e147]:
+            - row "Código Nombre Tipo Estado Cliente Gerente Fecha fin Presupuesto" [ref=e148]:
+              - columnheader "Código" [ref=e149] [cursor=pointer]:
+                - button "Código" [ref=e150]:
+                  - generic [ref=e151]: Código
+                  - img [ref=e153]
+              - columnheader "Nombre" [ref=e155] [cursor=pointer]:
+                - button "Nombre" [ref=e156]:
+                  - generic [ref=e157]: Nombre
+                  - img [ref=e159]
+              - columnheader "Tipo" [ref=e161]
+              - columnheader "Estado" [ref=e162] [cursor=pointer]:
+                - button "Estado" [ref=e163]:
+                  - generic [ref=e164]: Estado
+                  - img [ref=e166]
+              - columnheader "Cliente" [ref=e168] [cursor=pointer]:
+                - button "Cliente" [ref=e169]:
+                  - generic [ref=e170]: Cliente
+                  - img [ref=e172]
+              - columnheader "Gerente" [ref=e174]
+              - columnheader "Fecha fin" [ref=e175] [cursor=pointer]:
+                - button "Fecha fin" [ref=e176]:
+                  - generic [ref=e177]: Fecha fin
+                  - img [ref=e179]
+              - columnheader "Presupuesto" [ref=e181]
+              - columnheader [ref=e182]
+          - group [ref=e183]:
+            - generic [ref=e185]:
+              - generic [ref=e186]:
+                - generic [ref=e187]: "Ítems por página:"
+                - combobox "Ítems por página:" [ref=e192] [cursor=pointer]:
+                  - generic [ref=e193]:
+                    - generic [ref=e195]: "25"
+                    - img [ref=e198]
+              - generic [ref=e200]:
+                - generic [ref=e201]: 0 de 0
+                - button "Primera página" [disabled] [ref=e202]:
+                  - img [ref=e203]
+                - button "Página anterior" [disabled] [ref=e206]:
+                  - img [ref=e207]
+                - button "Siguiente página" [disabled] [ref=e210]:
+                  - img [ref=e211]
+                - button "Última página" [disabled] [ref=e214]:
+                  - img [ref=e215]
+  - button "Abrir chat" [ref=e219] [cursor=pointer]:
+    - img [ref=e220]: chat
+  - generic [ref=e222]:
+    - generic [ref=e223]:
+      - img [ref=e224]: chat
+      - generic [ref=e225]: Chat
+      - button [ref=e226] [cursor=pointer]:
+        - img [ref=e227]: close
+    - generic [ref=e230]:
+      - progressbar [ref=e231]
+      - generic [ref=e241]:
+        - img [ref=e243]: search
+        - textbox "Buscar usuario..." [ref=e245]

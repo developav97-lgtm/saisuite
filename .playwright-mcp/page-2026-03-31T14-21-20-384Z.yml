@@ -1,0 +1,210 @@
+- generic [ref=e3]:
+  - generic [ref=e4]:
+    - banner [ref=e6]:
+      - generic [ref=e7]:
+        - button "Toggle menú" [ref=e8] [cursor=pointer]:
+          - img [ref=e9]: menu
+        - link "Saicloud" [ref=e11] [cursor=pointer]:
+          - /url: /dashboard
+          - img [ref=e13]: cloud
+          - generic [ref=e14]: Saicloud
+        - generic [ref=e15]:
+          - img [ref=e16]: chevron_right
+          - generic [ref=e17]: Constructora Andina S.A.S
+      - generic [ref=e18]:
+        - button "Notificaciones" [ref=e20] [cursor=pointer]:
+          - img [ref=e21]:
+            - text: notifications
+            - generic: "1"
+        - button [ref=e23] [cursor=pointer]:
+          - img [ref=e24]: dark_mode
+        - button "Perfil" [ref=e27]:
+          - img [ref=e28]: expand_more
+          - generic [ref=e29]:
+            - generic [ref=e30]: L
+            - generic [ref=e31]:
+              - generic [ref=e32]: Laura Méndez
+              - generic [ref=e33]: Administrador
+    - generic [ref=e35]:
+      - img [ref=e36]: warning
+      - generic [ref=e37]:
+        - text: Tu
+        - strong [ref=e38]: licencia de prueba
+        - text: vence en
+        - strong [ref=e39]: 28 días
+        - text: . Recuerda activar tu plan a tiempo.
+      - button [ref=e40] [cursor=pointer]:
+        - img [ref=e41]: close
+    - generic [ref=e43]:
+      - complementary [ref=e45]:
+        - navigation "Menú principal" [ref=e47]:
+          - link [ref=e49] [cursor=pointer]:
+            - /url: /dashboard
+            - img [ref=e50]: apps
+          - generic [ref=e51]:
+            - link [ref=e52] [cursor=pointer]:
+              - /url: /proyectos/dashboard
+              - img [ref=e53]: dashboard
+            - button [ref=e54] [cursor=pointer]:
+              - img [ref=e55]: work
+            - button [ref=e56] [cursor=pointer]:
+              - img [ref=e57]: task_alt
+            - button [ref=e58] [cursor=pointer]:
+              - img [ref=e59]: person
+            - link [ref=e60] [cursor=pointer]:
+              - /url: /proyectos/timesheets
+              - img [ref=e61]: schedule
+            - link [ref=e62] [cursor=pointer]:
+              - /url: /proyectos/actividades
+              - img [ref=e63]: construction
+            - link [ref=e64] [cursor=pointer]:
+              - /url: /proyectos/configuracion
+              - img [ref=e65]: tune
+          - generic [ref=e66]:
+            - button [ref=e67] [cursor=pointer]:
+              - img [ref=e68]: contacts
+            - button [ref=e69] [cursor=pointer]:
+              - img [ref=e70]: manage_accounts
+            - button [ref=e71] [cursor=pointer]:
+              - img [ref=e72]: tag
+        - img [ref=e75]: business
+      - main [ref=e76]:
+        - generic [ref=e491]:
+          - navigation "Navegación" [ref=e492]:
+            - link [ref=e493] [cursor=pointer]:
+              - /url: /
+              - img [ref=e494]: home
+            - img [ref=e495]: chevron_right
+            - link "Proyectos" [ref=e496] [cursor=pointer]:
+              - /url: /proyectos
+            - img [ref=e497]: chevron_right
+            - generic [ref=e498]: Implementacion ERP - Ferreteria Andina S.A.S
+          - generic [ref=e499]:
+            - generic [ref=e500]:
+              - generic [ref=e501]:
+                - generic [ref=e502]: PCON-0001
+                - generic [ref=e503]: Planificado
+              - heading "Implementacion ERP - Ferreteria Andina S.A.S" [level=1] [ref=e504]
+            - generic [ref=e505]:
+              - button "Iniciar ejecución" [ref=e506]:
+                - generic [ref=e507]: Iniciar ejecución
+              - button "Volver a borrador" [ref=e509]:
+                - generic [ref=e510]: Volver a borrador
+              - button "Scheduling" [ref=e512]:
+                - img [ref=e513]: event_note
+                - img [ref=e514]: arrow_drop_down
+                - generic [ref=e515]: Scheduling
+              - button "Editar" [ref=e517]:
+                - img [ref=e518]: edit
+                - generic [ref=e519]: Editar
+          - generic [ref=e521]:
+            - tablist [ref=e524]:
+              - generic [ref=e525]:
+                - tab "General" [ref=e526] [cursor=pointer]:
+                  - generic [ref=e528]: General
+                - tab "Fases (6)" [ref=e529] [cursor=pointer]:
+                  - generic [ref=e531]: Fases (6)
+                - tab "Terceros" [ref=e532] [cursor=pointer]:
+                  - generic [ref=e534]: Terceros
+                - tab "Documentos" [ref=e535] [cursor=pointer]:
+                  - generic [ref=e537]: Documentos
+                - tab "Hitos" [ref=e538] [cursor=pointer]:
+                  - generic [ref=e540]: Hitos
+                - tab "Tareas" [ref=e541] [cursor=pointer]:
+                  - generic [ref=e543]: Tareas
+                - tab "Actividades" [ref=e544] [cursor=pointer]:
+                  - generic [ref=e546]: Actividades
+                - tab "Gantt" [ref=e547] [cursor=pointer]:
+                  - generic [ref=e549]: Gantt
+                - tab "Equipo" [ref=e550] [cursor=pointer]:
+                  - generic [ref=e552]: Equipo
+                - tab "Timesheets" [ref=e553] [cursor=pointer]:
+                  - generic [ref=e555]: Timesheets
+                - tab "Analytics" [ref=e556] [cursor=pointer]:
+                  - generic [ref=e558]: Analytics
+                - tab "Baselines" [ref=e559] [cursor=pointer]:
+                  - generic [ref=e561]: Baselines
+                - tab "Escenarios" [active] [selected] [ref=e562] [cursor=pointer]:
+                  - generic [ref=e564]: Escenarios
+                - tab "Presupuesto" [ref=e565] [cursor=pointer]:
+                  - generic [ref=e567]: Presupuesto
+            - generic [ref=e570]:
+              - tabpanel [ref=e667]
+              - tabpanel [ref=e833]
+              - tabpanel [ref=e655]
+              - tabpanel [ref=e656]
+              - tabpanel [ref=e657]
+              - tabpanel [ref=e1350]
+              - tabpanel [ref=e659]
+              - tabpanel [ref=e1631]
+              - tabpanel [ref=e661]
+              - tabpanel [ref=e662]
+              - tabpanel [ref=e1700]
+              - tabpanel [ref=e1742]
+              - tabpanel "Escenarios" [ref=e1743]:
+                - generic [ref=e1747]:
+                  - generic [ref=e1748]:
+                    - heading "Escenarios What-If" [level=3] [ref=e1749]:
+                      - img [ref=e1750]: science
+                      - text: Escenarios What-If
+                    - button "Nuevo Escenario" [ref=e1751]:
+                      - img [ref=e1752]: add
+                      - generic [ref=e1753]: Nuevo Escenario
+                  - table [ref=e1755]:
+                    - row "Escenario Estado Impacto Acciones" [ref=e1756]:
+                      - columnheader "Escenario" [ref=e1757]
+                      - columnheader "Estado" [ref=e1758]
+                      - columnheader "Impacto" [ref=e1759]
+                      - columnheader "Acciones" [ref=e1760]
+                    - row "Reduccion equipo a 3 personas - Impacto en cronograma Que pasa si reducimos el equipo de desarrollo de 5 a 3 personas en Sprint 2 y Sprint 3 Simulado Sin cambio" [ref=e1761]:
+                      - cell "Reduccion equipo a 3 personas - Impacto en cronograma Que pasa si reducimos el equipo de desarrollo de 5 a 3 personas en Sprint 2 y Sprint 3" [ref=e1762]:
+                        - generic [ref=e1763]:
+                          - generic [ref=e1764]: Reduccion equipo a 3 personas - Impacto en cronograma
+                          - generic [ref=e1765]: Que pasa si reducimos el equipo de desarrollo de 5 a 3 personas en Sprint 2 y Sprint 3
+                      - cell "Simulado" [ref=e1766]:
+                        - generic [ref=e1770]: Simulado
+                      - cell "Sin cambio" [ref=e1771]:
+                        - generic [ref=e1772]: Sin cambio
+                      - cell [ref=e1773]:
+                        - button [ref=e1774] [cursor=pointer]:
+                          - img [ref=e1775]: chevron_right
+                        - button [ref=e1777] [cursor=pointer]:
+                          - img [ref=e1778]: delete_outline
+              - tabpanel [ref=e666]
+  - button "Abrir chat" [ref=e94] [cursor=pointer]:
+    - img [ref=e95]: chat
+    - generic: "1"
+  - generic [ref=e97]:
+    - generic [ref=e98]:
+      - img [ref=e99]: chat
+      - generic [ref=e100]: Chat
+      - button [ref=e101] [cursor=pointer]:
+        - img [ref=e102]: close
+    - generic [ref=e105]:
+      - generic [ref=e116]:
+        - img [ref=e118]: search
+        - textbox "Buscar usuario..." [ref=e120]
+      - generic [ref=e122]:
+        - button "María Ruiz 10:59 p. m. 😉 1" [ref=e225] [cursor=pointer]:
+          - img [ref=e227]: account_circle
+          - generic [ref=e229]:
+            - generic [ref=e230]:
+              - generic [ref=e231]: María Ruiz
+              - generic [ref=e232]: 10:59 p. m.
+            - generic [ref=e233]:
+              - generic [ref=e234]: 😉
+              - generic [ref=e235]: "1"
+        - button "Ana Herrera 10:20 p. m. hola prueba" [ref=e236] [cursor=pointer]:
+          - img [ref=e238]: account_circle
+          - generic [ref=e240]:
+            - generic [ref=e241]:
+              - generic [ref=e242]: Ana Herrera
+              - generic [ref=e243]: 10:20 p. m.
+            - generic [ref=e245]: hola prueba
+        - button "Carlos Torres 1:16 p. m. Podemos reunirnos a las 3pm?" [ref=e246] [cursor=pointer]:
+          - img [ref=e248]: account_circle
+          - generic [ref=e250]:
+            - generic [ref=e251]:
+              - generic [ref=e252]: Carlos Torres
+              - generic [ref=e253]: 1:16 p. m.
+            - generic [ref=e255]: Podemos reunirnos a las 3pm?

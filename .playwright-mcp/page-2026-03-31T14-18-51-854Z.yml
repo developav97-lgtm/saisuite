@@ -1,0 +1,24 @@
+- generic [ref=e5]:
+  - img [ref=e7]: cloud
+  - heading "Saicloud" [level=1] [ref=e8]
+  - heading "Inicia sesión" [level=2] [ref=e9]
+  - generic [ref=e10]:
+    - generic [ref=e13]:
+      - generic [ref=e14]:
+        - text: Correo electrónico
+        - generic [ref=e15]: "*"
+      - img [ref=e17]: mail
+      - textbox "Correo electrónico" [ref=e19]
+    - generic [ref=e23]:
+      - generic [ref=e24]:
+        - text: Contraseña
+        - generic [ref=e25]: "*"
+      - img [ref=e27]: lock
+      - textbox "Contraseña" [ref=e29]
+      - button "Mostrar contraseña" [ref=e31] [cursor=pointer]:
+        - img [ref=e32]: visibility
+    - button "Ingresar" [ref=e35]:
+      - generic [ref=e36]: Ingresar
+  - paragraph [ref=e38]:
+    - link "¿Olvidaste tu contraseña?" [ref=e39] [cursor=pointer]:
+      - /url: /auth/forgot-password

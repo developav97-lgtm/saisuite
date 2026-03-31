@@ -1,0 +1,199 @@
+- generic [ref=e40]:
+  - generic [ref=e41]:
+    - banner [ref=e43]:
+      - generic [ref=e44]:
+        - button "Toggle menú" [ref=e45] [cursor=pointer]:
+          - img [ref=e46]: menu
+        - link "Saicloud" [ref=e48] [cursor=pointer]:
+          - /url: /dashboard
+          - img [ref=e50]: cloud
+          - generic [ref=e51]: Saicloud
+        - generic [ref=e52]:
+          - img [ref=e53]: chevron_right
+          - generic [ref=e54]: Administración
+      - generic [ref=e55]:
+        - button "Notificaciones" [ref=e57] [cursor=pointer]:
+          - img [ref=e58]: notifications_none
+        - button [ref=e60] [cursor=pointer]:
+          - img [ref=e61]: dark_mode
+        - button "Perfil" [ref=e64]:
+          - img [ref=e65]: expand_more
+          - generic [ref=e66]:
+            - generic [ref=e67]: S
+            - generic [ref=e68]:
+              - generic [ref=e69]: super user
+              - generic [ref=e70]: Super Admin
+    - generic [ref=e72]:
+      - generic [ref=e73]:
+        - generic:
+          - complementary:
+            - generic:
+              - generic: Saicloud
+              - button "Cerrar":
+                - img: close
+            - generic:
+              - navigation "Menú principal":
+                - generic:
+                  - generic: Superadmin ValMen Tech
+                  - link "Tenants":
+                    - /url: /admin/tenants
+                    - img: domain
+                    - generic: Tenants
+                  - link "Usuarios internos":
+                    - /url: /admin/usuarios-internos
+                    - img: supervised_user_circle
+                    - generic: Usuarios internos
+      - main [ref=e74]:
+        - generic [ref=e76]:
+          - generic [ref=e77]:
+            - generic [ref=e78]:
+              - heading "Gestión de Empresas (Tenants)" [level=1] [ref=e79]
+              - paragraph [ref=e80]: Administra las empresas clientes y sus licencias
+            - button "Nueva empresa" [ref=e81]:
+              - img [ref=e82]: add
+              - generic [ref=e83]: Nueva empresa
+          - generic [ref=e88]:
+            - generic [ref=e89]: Buscar empresa o NIT
+            - img [ref=e91]: search
+            - textbox "Buscar empresa o NIT" [ref=e93]
+          - table [ref=e95]:
+            - rowgroup [ref=e96]:
+              - row "Empresa NIT Plan Licencia Vencimiento Usuarios activos Acciones" [ref=e97]:
+                - columnheader "Empresa" [ref=e98]
+                - columnheader "NIT" [ref=e99]
+                - columnheader "Plan" [ref=e100]
+                - columnheader "Licencia" [ref=e101]
+                - columnheader "Vencimiento" [ref=e102]
+                - columnheader "Usuarios activos" [ref=e103]
+                - columnheader "Acciones" [ref=e104]
+            - rowgroup [ref=e105]:
+              - row "BV Co 900000001 900000002 Starter Activa 28/04/2026 (28d) 0/1" [ref=e106]:
+                - cell "BV Co 900000001" [ref=e107]:
+                  - generic [ref=e109]: BV Co 900000001
+                - cell "900000002" [ref=e110]
+                - cell "Starter" [ref=e111]
+                - cell "Activa" [ref=e112]:
+                  - generic [ref=e116]: Activa
+                - cell "28/04/2026 (28d)" [ref=e117]:
+                  - generic [ref=e118]: 28/04/2026 (28d)
+                - cell "0/1" [ref=e119]
+                - cell [ref=e120]:
+                  - button [ref=e121] [cursor=pointer]:
+                    - img [ref=e122]: edit
+                  - button [ref=e124] [cursor=pointer]:
+                    - img [ref=e125]: block
+              - row "Constructora Andina S.A.S 900456789 Starter Prueba 28/04/2026 (28d) 1/2" [ref=e127]:
+                - cell "Constructora Andina S.A.S" [ref=e128]:
+                  - generic [ref=e130]: Constructora Andina S.A.S
+                - cell "900456789" [ref=e131]
+                - cell "Starter" [ref=e132]
+                - cell "Prueba" [ref=e133]:
+                  - generic [ref=e137]: Prueba
+                - cell "28/04/2026 (28d)" [ref=e138]:
+                  - generic [ref=e139]: 28/04/2026 (28d)
+                - cell "1/2" [ref=e140]
+                - cell [ref=e141]:
+                  - button [ref=e142] [cursor=pointer]:
+                    - img [ref=e143]: edit
+                  - button [ref=e145] [cursor=pointer]:
+                    - img [ref=e146]: block
+              - row "DEBUG Test Co 3 55555555 Starter Sin licencia — —" [ref=e148]:
+                - cell "DEBUG Test Co 3" [ref=e149]:
+                  - generic [ref=e151]: DEBUG Test Co 3
+                - cell "55555555" [ref=e152]
+                - cell "Starter" [ref=e153]
+                - cell "Sin licencia" [ref=e154]:
+                  - generic [ref=e158]: Sin licencia
+                - cell "—" [ref=e159]
+                - cell "—" [ref=e160]
+                - cell [ref=e161]:
+                  - button [ref=e162] [cursor=pointer]:
+                    - img [ref=e163]: edit
+                  - button [ref=e165] [cursor=pointer]:
+                    - img [ref=e166]: block
+              - row "Debug Co 111222333 Starter Sin licencia — —" [ref=e168]:
+                - cell "Debug Co" [ref=e169]:
+                  - generic [ref=e171]: Debug Co
+                - cell "111222333" [ref=e172]
+                - cell "Starter" [ref=e173]
+                - cell "Sin licencia" [ref=e174]:
+                  - generic [ref=e178]: Sin licencia
+                - cell "—" [ref=e179]
+                - cell "—" [ref=e180]
+                - cell [ref=e181]:
+                  - button [ref=e182] [cursor=pointer]:
+                    - img [ref=e183]: edit
+                  - button [ref=e185] [cursor=pointer]:
+                    - img [ref=e186]: block
+              - row "Debug Co 99999999 Starter Sin licencia — —" [ref=e188]:
+                - cell "Debug Co" [ref=e189]:
+                  - generic [ref=e191]: Debug Co
+                - cell "99999999" [ref=e192]
+                - cell "Starter" [ref=e193]
+                - cell "Sin licencia" [ref=e194]:
+                  - generic [ref=e198]: Sin licencia
+                - cell "—" [ref=e199]
+                - cell "—" [ref=e200]
+                - cell [ref=e201]:
+                  - button [ref=e202] [cursor=pointer]:
+                    - img [ref=e203]: edit
+                  - button [ref=e205] [cursor=pointer]:
+                    - img [ref=e206]: block
+              - row "Debug Co 2 88888888 Starter Sin licencia — —" [ref=e208]:
+                - cell "Debug Co 2" [ref=e209]:
+                  - generic [ref=e211]: Debug Co 2
+                - cell "88888888" [ref=e212]
+                - cell "Starter" [ref=e213]
+                - cell "Sin licencia" [ref=e214]:
+                  - generic [ref=e218]: Sin licencia
+                - cell "—" [ref=e219]
+                - cell "—" [ref=e220]
+                - cell [ref=e221]:
+                  - button [ref=e222] [cursor=pointer]:
+                    - img [ref=e223]: edit
+                  - button [ref=e225] [cursor=pointer]:
+                    - img [ref=e226]: block
+              - row "HTTP Test Co 77777777 Starter Sin licencia — —" [ref=e228]:
+                - cell "HTTP Test Co" [ref=e229]:
+                  - generic [ref=e231]: HTTP Test Co
+                - cell "77777777" [ref=e232]
+                - cell "Starter" [ref=e233]
+                - cell "Sin licencia" [ref=e234]:
+                  - generic [ref=e238]: Sin licencia
+                - cell "—" [ref=e239]
+                - cell "—" [ref=e240]
+                - cell [ref=e241]:
+                  - button [ref=e242] [cursor=pointer]:
+                    - img [ref=e243]: edit
+                  - button [ref=e245] [cursor=pointer]:
+                    - img [ref=e246]: block
+              - row "HTTP Test Co 2 66666666 Starter Sin licencia — —" [ref=e248]:
+                - cell "HTTP Test Co 2" [ref=e249]:
+                  - generic [ref=e251]: HTTP Test Co 2
+                - cell "66666666" [ref=e252]
+                - cell "Starter" [ref=e253]
+                - cell "Sin licencia" [ref=e254]:
+                  - generic [ref=e258]: Sin licencia
+                - cell "—" [ref=e259]
+                - cell "—" [ref=e260]
+                - cell [ref=e261]:
+                  - button [ref=e262] [cursor=pointer]:
+                    - img [ref=e263]: edit
+                  - button [ref=e265] [cursor=pointer]:
+                    - img [ref=e266]: block
+  - button "Abrir chat" [ref=e269] [cursor=pointer]:
+    - img [ref=e270]: chat
+  - generic [ref=e272]:
+    - generic [ref=e273]:
+      - img [ref=e274]: chat
+      - generic [ref=e275]: Chat
+      - button [ref=e276] [cursor=pointer]:
+        - img [ref=e277]: close
+    - generic [ref=e280]:
+      - generic [ref=e284]:
+        - img [ref=e286]: search
+        - textbox "Buscar usuario..." [ref=e288]
+      - generic [ref=e291]:
+        - img [ref=e292]: chat_bubble_outline
+        - paragraph [ref=e293]: No hay conversaciones
+        - paragraph [ref=e294]: Busca un usuario para iniciar
