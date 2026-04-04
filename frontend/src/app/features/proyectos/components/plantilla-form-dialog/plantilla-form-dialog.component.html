@@ -1,0 +1,211 @@
+<mat-dialog-content class="pfd-content">
+
+  @if (saving()) {
+    <mat-progress-bar mode="indeterminate" class="pfd-progress-bar"></mat-progress-bar>
+  }
+
+  <h2 mat-dialog-title class="pfd-title">{{ title }}</h2>
+
+  <form [formGroup]="form" (ngSubmit)="submit()" class="pfd-form">
+
+    <!-- ── Datos básicos ─────────────────────────────────────── -->
+    <section class="pfd-section">
+      <h3 class="pfd-section-title">Información general</h3>
+
+      <mat-form-field appearance="outline" class="pfd-field-full">
+        <mat-label>Nombre de la plantilla</mat-label>
+        <input matInput formControlName="nombre" maxlength="200" />
+        @if (form.controls.nombre.hasError('required') && form.controls.nombre.touched) {
+          <mat-error>El nombre es obligatorio.</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="pfd-field-full">
+        <mat-label>Descripción</mat-label>
+        <textarea matInput formControlName="descripcion" rows="2"></textarea>
+      </mat-form-field>
+
+      <div class="pfd-row">
+        <mat-form-field appearance="outline" class="pfd-field-half">
+          <mat-label>Tipo de proyecto</mat-label>
+          <mat-select formControlName="tipo">
+            @for (opt of tipoOptions; track opt.value) {
+              <mat-option [value]="opt.value">{{ opt.label }}</mat-option>
+            }
+          </mat-select>
+          @if (form.controls.tipo.hasError('required') && form.controls.tipo.touched) {
+            <mat-error>Selecciona un tipo..</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="pfd-field-quarter">
+          <mat-label>Icono</mat-label>
+          <mat-select formControlName="icono">
+            @for (opt of iconOptions; track opt.value) {
+              <mat-option [value]="opt.value">
+                <mat-icon class="pfd-icon-option">{{ opt.value }}</mat-icon>
+                {{ opt.label }}
+              </mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="pfd-field-quarter">
+          <mat-label>Duración estimada (días)</mat-label>
+          <input matInput type="number" formControlName="duracion_estimada" min="1" />
+          @if (form.controls.duracion_estimada.hasError('required') && form.controls.duracion_estimada.touched) {
+            <mat-error>Campo obligatorio.</mat-error>
+          }
+          @if (form.controls.duracion_estimada.hasError('min') && form.controls.duracion_estimada.touched) {
+            <mat-error>Mínimo 1 día.</mat-error>
+          }
+        </mat-form-field>
+      </div>
+    </section>
+
+    <!-- ── Fases ─────────────────────────────────────────────── -->
+    <section class="pfd-section">
+      <div class="pfd-section-header">
+        <h3 class="pfd-section-title">Fases</h3>
+        <button type="button" mat-stroked-button color="primary" (click)="addFase()">
+          <mat-icon>add</mat-icon>
+          Agregar fase
+        </button>
+      </div>
+
+      @if (fasesArray.length === 0) {
+        <p class="pfd-empty-hint">No hay fases definidas. Las plantillas pueden crearse sin fases.</p>
+      }
+
+      <div formArrayName="fases" class="pfd-fases-list">
+        @for (fase of fasesArray.controls; track fase; let fi = $index) {
+          <div [formGroupName]="fi" class="pfd-fase-card">
+            <div class="pfd-fase-header">
+              <span class="pfd-fase-number">Fase {{ fi + 1 }}</span>
+              <button type="button" mat-icon-button color="warn"
+                      [matTooltip]="'Eliminar fase ' + (fi + 1)"
+                      (click)="removeFase(fi)">
+                <mat-icon>delete</mat-icon>
+              </button>
+            </div>
+
+            <div class="pfd-row">
+              <mat-form-field appearance="outline" class="pfd-field-grow">
+                <mat-label>Nombre de la fase</mat-label>
+                <input matInput formControlName="nombre" maxlength="255" />
+                @if (fase.controls['nombre'].hasError('required') && fase.controls['nombre'].touched) {
+                  <mat-error>Nombre obligatorio.</mat-error>
+                }
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="pfd-field-150">
+                <mat-label>% de duración</mat-label>
+                <input matInput type="number" formControlName="porcentaje_duracion" min="1" max="100" />
+                @if (fase.controls['porcentaje_duracion'].invalid && fase.controls['porcentaje_duracion'].touched) {
+                  <mat-error>1–100</mat-error>
+                }
+              </mat-form-field>
+            </div>
+
+            <mat-form-field appearance="outline" class="pfd-field-full">
+              <mat-label>Descripción de la fase</mat-label>
+              <input matInput formControlName="descripcion" />
+            </mat-form-field>
+
+            <!-- Tareas dentro de la fase -->
+            <div class="pfd-tareas-section">
+              <div class="pfd-tareas-header">
+                <span class="pfd-tareas-label">Tareas</span>
+                <button type="button" mat-button color="primary" (click)="addTarea(fi)">
+                  <mat-icon>add</mat-icon>
+                  Tarea
+                </button>
+              </div>
+
+              <div formArrayName="tareas" class="pfd-tareas-list">
+                @for (tarea of getTareasArray(fi).controls; track tarea; let ti = $index) {
+                  <div [formGroupName]="ti" class="pfd-tarea-row">
+
+                    <!-- Nombre -->
+                    <mat-form-field appearance="outline" class="pfd-field-grow">
+                      <mat-label>Nombre tarea {{ ti + 1 }}</mat-label>
+                      <input matInput formControlName="nombre" maxlength="200" />
+                      @if (tarea.controls['nombre'].hasError('required') && tarea.controls['nombre'].touched) {
+                        <mat-error>Nombre obligatorio.</mat-error>
+                      }
+                    </mat-form-field>
+
+                    <!-- Actividad (autocomplete) -->
+                    <mat-form-field appearance="outline" class="pfd-field-actividad">
+                      <mat-label>Actividad (opcional)</mat-label>
+                      <input matInput
+                             formControlName="actividad_display"
+                             [matAutocomplete]="actAuto"
+                             (focus)="actividadSearch.set('')"
+                             (input)="actividadSearch.set($any($event.target).value)"
+                             placeholder="Buscar por código o nombre…" />
+                      @if (hasActividad(fi, ti)) {
+                        <button matSuffix mat-icon-button type="button"
+                                matTooltip="Quitar actividad"
+                                (click)="clearActividad(fi, ti); $event.stopPropagation()">
+                          <mat-icon>close</mat-icon>
+                        </button>
+                      }
+                      <mat-autocomplete #actAuto
+                                        [displayWith]="displayActividad"
+                                        (optionSelected)="onActividadSelected(fi, ti, $event)">
+                        @if (!actividades().length) {
+                          <mat-option disabled>
+                            No hay actividades disponibles
+                          </mat-option>
+                        }
+                        @for (act of filteredActividades(); track act.id) {
+                          <mat-option [value]="act">
+                            <span class="pfd-act-codigo">{{ act.codigo }}</span>
+                            {{ act.nombre }}
+                            <span class="pfd-act-unidad">· {{ act.unidad_medida }}</span>
+                          </mat-option>
+                        }
+                      </mat-autocomplete>
+                    </mat-form-field>
+
+                    <!-- Cantidad/Duración — solo cuando hay actividad -->
+                    @if (hasActividad(fi, ti)) {
+                      <mat-form-field appearance="outline" class="pfd-field-120">
+                        <mat-label>{{ getUnidadLabel(fi, ti) }}</mat-label>
+                        <input matInput type="number" formControlName="duracion_dias" min="1" />
+                      </mat-form-field>
+                    }
+
+                    <button type="button" mat-icon-button color="warn"
+                            [matTooltip]="'Eliminar tarea ' + (ti + 1)"
+                            (click)="removeTarea(fi, ti)">
+                      <mat-icon>close</mat-icon>
+                    </button>
+                  </div>
+                }
+              </div>
+            </div>
+
+          </div>
+        }
+      </div>
+    </section>
+
+  </form>
+
+</mat-dialog-content>
+
+<mat-dialog-actions align="end" class="pfd-actions">
+  <button mat-stroked-button type="button" (click)="cancel()" [disabled]="saving()">
+    Cancelar
+  </button>
+  <button mat-raised-button color="primary" type="button"
+          (click)="submit()" [disabled]="saving()">
+    @if (saving()) {
+      Guardando…
+    } @else {
+      {{ isEdit ? 'Guardar cambios' : 'Crear plantilla' }}
+    }
+  </button>
+</mat-dialog-actions>

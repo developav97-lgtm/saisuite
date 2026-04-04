@@ -1,7 +1,178 @@
 # CONTEXT.md - Estado del Proyecto Saicloud
 
-**Última actualización:** 30 Marzo 2026
-**Sesión:** Feature #9 — Chat Interno FASE 4 (Frontend) — COMPLETA (10 archivos Angular, FAB + panel + lista + chat window + autocomplete, validado en navegador)
+**Última actualización:** 03 Abril 2026
+**Sesión:** Correcciones UX/Mobile — Proyectos, Terceros, Admin (Consecutivos, Usuarios)
+
+---
+
+## ✅ COMPLETADO (03 Abril 2026) — Correcciones UX/Mobile Multi-módulo
+
+### What-If Scenario Builder
+- **Fix datepicker**: Material datepicker no funcionaba dentro de `@else` en `mat-form-field`. Solución: separar en dos `mat-form-field` completos (uno en `@if`, otro en `@else`).
+- **Fix serialización fecha**: `createScenario()` convierte `Date` → `YYYY-MM-DD` string antes de enviar al backend.
+- **Fix tabla escenarios**: columna Estado centrada + tamaño fijo (`flex: 0 0 140px`); columna Impacto alineada a la izquierda.
+
+### Tarea Detail — Responsive
+- Sidebar: 320px → 280px, breakpoint 900px → 1200px
+- `td-body` y `td-main`: añadido `min-width: 0; overflow: hidden` para respetar grid `1fr`.
+- `float-indicator`: cambiado a `display: block; max-width: 100%` para evitar que "HOLGURA" desborde en mobile.
+
+### Restricciones de Tarea (Task Constraints)
+- **Fix validation error**: backend usa valores en minúscula (`asap`, `alap`, `must_start_on`, etc.) pero frontend enviaba mayúsculas. Corregido `ConstraintType` y todos los `CONSTRAINT_OPTIONS` a lowercase.
+
+### Actividades del Proyecto (tab Actividades)
+- **Fix badge "Mano de obra"**: backend renombró el valor a `'labor'` (migración 0013). Corregida clase CSS `&--mano_obra` → `&--labor`.
+- Columnas Tipo, Unidad, Cant. plan/ejec., Avance: centradas con `apl-col-center`.
+- Texto "Presupuesto total" en dark mode: cambiado de color hardcodeado a `var(--sc-text-muted)`.
+
+### Terceros — Listado Mobile
+- Tabla envuelta en `div.table-responsive` + `min-width: 700px`.
+- Columnas con `flex: 0 0` via `:host ::ng-deep` para que no se compriman.
+- Columna acciones: `flex: 0 0 112px; flex-shrink: 0` — ambos botones (editar + eliminar) siempre visibles.
+- `.tc-nombre__text`: `white-space: nowrap; overflow: hidden; text-overflow: ellipsis`.
+
+### QuickAccess Modal — Editar Tercero / Usuario
+- **Root cause**: `NgComponentOutlet` no inyecta `ActivatedRoute` con params de URL.
+- **Fix**: `QuickAccessNavigatorService` ahora almacena la URL interceptada y expone `getParam(name)` que extrae params por nombre del patrón de ruta.
+- Aplicado en `TerceroFormComponent` y `UserFormComponent`:
+  ```typescript
+  const id = this.navigator.isActive
+    ? this.navigator.getParam('id')
+    : this.route.snapshot.paramMap.get('id');
+  ```
+
+### Consecutivos (Admin) — Listado Mobile
+- Tabla usa `appResponsiveTable` directive (no envolver manualmente — la directiva ya lo hace).
+- `min-width: 950px` en `.cl-table` via `:host ::ng-deep` para superar la especificidad del global `600px`.
+- Columnas con `flex: 0 0` y `min-width` en `:host ::ng-deep` para que se apliquen.
+- Filtros mobile: buscador ocupa fila completa (`flex-basis: 100%`), Tipo y Estado comparten la segunda fila (`flex: 1`).
+
+### Archivos modificados esta sesión
+- `frontend/.../what-if-scenario-builder.component.html` — datepicker separado por ramas
+- `frontend/.../what-if-scenario-builder.component.ts` — serialización Date→string
+- `frontend/.../what-if-scenario-builder.component.scss` — columna Estado centrada
+- `frontend/.../tarea-detail.component.scss` — sidebar responsive
+- `frontend/.../float-indicator.component.ts` — `:host` block
+- `frontend/.../scheduling.model.ts` — ConstraintType lowercase
+- `frontend/.../task-constraints-panel.component.ts` — CONSTRAINT_OPTIONS lowercase
+- `frontend/.../actividad-proyecto-list.component.scss` — badge labor + centrado
+- `frontend/.../actividad-proyecto-list.component.html` — clases centrado
+- `frontend/.../tercero-list-page.component.scss` — min-width + ng-deep + ellipsis
+- `frontend/.../quick-access-navigator.service.ts` — getParam() + extractParams()
+- `frontend/.../tercero-form.component.ts` — navigator.getParam('id')
+- `frontend/.../user-form.component.ts` — navigator.getParam('id')
+- `frontend/.../consecutivo-list.component.scss` — min-width + ng-deep + filtros mobile
+- `frontend/.../consecutivo-list.component.html` — sin wrapper manual (directiva ya lo hace)
+
+---
+
+## ✅ COMPLETADO (01 Abril 2026) — Backlog Módulo Proyectos: Fases 1-4
+
+### Fase 1: Quick Wins Mobile (6 bugs alta prioridad) ✅
+- Todos los 6 bugs ya estaban corregidos en sesiones previas
+- Tabs scroll, header flex, tablas responsive, Gantt toolbar, dark mode arrows
+
+### Fase 2: Funcionalidades Alta Prioridad (2 features) ✅
+- Notificaciones automáticas de tareas: ya implementado (signals.py pre_save/post_save)
+- Nivelación de recursos: ya implementado (ResourceLevelingService + wizard frontend)
+- **Agregado:** Signal `dependencia_post_save` para notificar ambos responsables al crear TaskDependency
+
+### Fase 3: Mobile Media/Baja (7 bugs responsive) ✅
+- 5 de 7 ya estaban corregidos (Float indicator, Baseline table, What-if table, directive, number pipe)
+- **Corregido:** Expansion panels spacing en `team-timeline.component.scss` (gap, touch targets mobile)
+- **Corregido:** `table-responsive` wrapper en `tercero-list-page.component.html` y `actividad-proyecto-list.component.html`
+
+### Fase 4: Funcionalidades Media/Baja (3 features) ✅
+- Exportar Proyecto a PDF: ya implementado (backend WeasyPrint + frontend botón Exportar)
+- Plantillas de Proyecto: ya implementado (modelos + migración + management command + PlantillasPage)
+- Importar desde Excel: ya implementado (openpyxl + ImportFromExcelDialog + template download)
+
+### Archivos modificados esta sesión
+- `backend/apps/proyectos/signals.py` — TaskDependency notification signal
+- `frontend/src/app/features/proyectos/components/team-timeline/team-timeline.component.scss` — panel spacing + mobile
+- `frontend/src/app/features/terceros/pages/tercero-list-page/tercero-list-page.component.html` — table-responsive
+- `frontend/src/app/features/proyectos/components/actividad-proyecto-list/actividad-proyecto-list.component.html` — table-responsive
+
+### Pendiente
+- ⏳ Tests E2E (Agente D) para SaiDashboard — diferido a siguiente sesión
+
+---
+
+## ✅ COMPLETADO (01 Abril 2026) — Feature #10: SaiDashboard (BI Financiero)
+
+### Agente A — Go Agent (agent-go/) ✅ COMPLETADO
+- ✅ 23 archivos creados en agent-go/
+- ✅ cmd/agent/main.go — CLI: config|serve|install|uninstall|status|test
+- ✅ internal/config/config.go — AgentConfig multi-conexión con watermark embebido
+- ✅ internal/firebird/client.go — Driver nakagami, query GL incremental denormalizada
+- ✅ internal/sync/orchestrator.go — goroutine por conexión habilitada
+- ✅ internal/sync/gl_sync.go — sync incremental por CONTEO
+- ✅ internal/sync/reference_sync.go — sync ACCT/CUST/LISTA/PROYECTOS/ACTIVIDADES
+- ✅ internal/api/client.go — HTTP client con retry + JWT Bearer
+- ✅ internal/configurator/ — servidor web embebido :8765 con go:embed
+- ✅ internal/winsvc/ — Windows Service install/uninstall (platform-specific)
+- ✅ 3 test files (config, gl_sync, handlers)
+- ✅ `go mod tidy` + `go build ./...` — compila sin errores
+
+### Agente B — Backend Django ✅ COMPLETADO
+- ✅ apps/contabilidad/ — 12 archivos
+  - MovimientoContable (GL denormalizado, unique_together company+conteo)
+  - ConfiguracionContable (OneToOne, watermark, features)
+  - CuentaContable (espejo PUC)
+  - SyncService: process_gl_batch (bulk_create update_conflicts), process_acct_full, get_sync_status
+  - 3 endpoints sync: gl-batch, acct, status
+- ✅ apps/dashboard/ — 14 archivos
+  - Dashboard (BaseModel), DashboardCard, DashboardShare, ModuleTrial
+  - card_catalog.py — 22 tarjetas en 6 categorías (código, no BD)
+  - report_engine.py — ReportEngine con 22 métodos de cálculo
+  - DashboardService, CardService, TrialService, FilterService, CatalogService, ReportService
+  - 20 URL patterns: CRUD + cards + shares + reports + catalog + filters + trial
+  - Admin: readonly MovimientoContable, editable ConfiguracionContable, Dashboard con inline cards
+  - Tests: test_models.py + test_services.py para ambas apps
+- ✅ INSTALLED_APPS actualizado: apps.contabilidad, apps.dashboard
+- ✅ config/urls.py actualizado: /api/v1/contabilidad/ y /api/v1/dashboard/
+- ✅ makemigrations + migrate aplicados (0001_initial para ambas apps)
+
+### Agente C — Frontend Angular ✅ COMPLETADO
+- ✅ features/saidashboard/ — 20+ archivos
+- ✅ 4 modelos: dashboard, card-catalog, report-filter, trial
+- ✅ 4 servicios: dashboard, report, card-catalog, trial
+- ✅ 1 guard: dashboard-license (checks trial/license)
+- ✅ saidashboard.routes.ts (lazy-loaded: list, builder/:id, nuevo, :id)
+- ✅ 10 componentes:
+  - dashboard-list — home con tabla/cards toggle, favoritos, compartidos
+  - dashboard-viewer — vista readonly con KPIs + charts + filtros + export PDF
+  - dashboard-builder — editor drag & drop + resize + sidebar catálogo
+  - chart-card — wrapper ngx-echarts (bar/line/pie/area/waterfall/gauge)
+  - kpi-card — tarjeta indicador numérico
+  - filter-panel — fecha range + terceros + proyectos + períodos
+  - card-selector — MatDialog catálogo por categoría
+  - share-dialog — compartir con usuarios
+  - trial-banner — banner prueba activa
+  - ai-assistant — panel CFO Virtual
+- ✅ npm: echarts, ngx-echarts, angular-resizable-element, jspdf, html2canvas instalados
+
+### Integración (Orquestador) ✅ COMPLETADO
+- ✅ Card "SaiDashboard" agregada al selector de módulos (dashboard.component.ts)
+- ✅ Ruta /saidashboard en app.routes.ts
+- ✅ DEC-042 a DEC-045 en DECISIONS.md (echarts, GL denormalizado, Go agent, ModuleTrial)
+
+### Verificación Completa
+- ✅ `python manage.py check` — 0 issues
+- ✅ `makemigrations contabilidad dashboard` → 0001_initial para ambas apps
+- ✅ `migrate` — aplicado sin errores
+- ✅ `go mod tidy` + `go build ./...` — compila sin errores
+- ✅ `ng build --configuration=production` — build exitoso (solo warnings pre-existentes)
+- ✅ Validación 4x4: responsive mobile (breakpoints 768/480px), dark mode (var(--sc-*)), touch targets 44px
+- ✅ Budget angular.json actualizado: initial 2MB, componentStyle 16KB
+- ⏳ Tests E2E (Agente D) — pendiente para siguiente sesión
+
+### Decisiones tomadas
+- DEC-042: ngx-echarts para gráficos (no Chart.js/ApexCharts/D3)
+- DEC-043: GL denormalizado en PostgreSQL (no joins en runtime)
+- DEC-044: Agente Go standalone para sync (Criterio 3)
+- DEC-045: ModuleTrial independiente (no extender CompanyLicense)
+- Ruta: /saidashboard (no /dashboard que es el selector de módulos — DEC-024)
 
 ---
 
@@ -258,7 +429,9 @@ POST      /api/v1/admin/tenants/{pk}/license/payments/
 - **Nombre:** Saicloud (SaiSuite)
 - **Stack:** Django 5 + Angular 18 + PostgreSQL 16 + n8n + AWS
 - **Fase:** Desarrollo activo
-- **Último milestone:** Feature #7 — Budget & Cost Tracking completa (15 endpoints, 7 servicios, dashboard Angular, management command semanal, 936 tests)
+- **Último milestone:** Backlog Módulo Proyectos 100% cerrado (Fases 1-4: 13 bugs + 5 features + 2 signals)
+- **Features completadas:** #1-#10 (Core → Scheduling → Budget → Licencias → Chat → SaiDashboard)
+- **Backlog Proyectos:** 100% completado — 0 items pendientes
 
 ---
 

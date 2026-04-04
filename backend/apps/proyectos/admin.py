@@ -10,6 +10,7 @@ from apps.proyectos.models import (
     ResourceAssignment, ResourceCapacity, ResourceAvailability,
     ProjectBaseline, TaskConstraint, WhatIfScenario,
     ResourceCostRate, ProjectBudget, ProjectExpense, BudgetSnapshot,
+    PlantillaProyecto, PlantillaFase, PlantillaTarea, PlantillaDependencia,
 )
 
 
@@ -530,3 +531,76 @@ class BudgetSnapshotAdmin(admin.ModelAdmin):
     readonly_fields = ['id', 'created_at', 'updated_at']
     date_hierarchy  = 'snapshot_date'
     ordering        = ['-snapshot_date']
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# FEATURE #8 — PROJECT TEMPLATES
+# ──────────────────────────────────────────────────────────────────────────────
+
+class PlantillaFaseInline(admin.TabularInline):
+    model            = PlantillaFase
+    extra            = 0
+    fields           = ['nombre', 'orden', 'porcentaje_duracion']
+    show_change_link = True
+    ordering         = ['orden']
+
+
+@admin.register(PlantillaProyecto)
+class PlantillaProyectoAdmin(admin.ModelAdmin):
+    list_display    = ['nombre', 'tipo', 'icono', 'duracion_estimada', 'is_active', 'created_at']
+    list_filter     = ['tipo', 'is_active']
+    search_fields   = ['nombre', 'descripcion']
+    readonly_fields = ['id', 'created_at', 'updated_at']
+    inlines         = [PlantillaFaseInline]
+    ordering        = ['tipo', 'nombre']
+
+    fieldsets = (
+        ('Información', {
+            'fields': ('id', 'nombre', 'descripcion', 'tipo', 'icono', 'is_active'),
+        }),
+        ('Duración', {
+            'fields': ('duracion_estimada',),
+        }),
+        ('Metadatos', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',),
+        }),
+    )
+
+
+class PlantillaTareaInline(admin.TabularInline):
+    model   = PlantillaTarea
+    extra   = 0
+    fields  = ['nombre', 'orden', 'duracion_dias', 'prioridad']
+    ordering = ['orden']
+
+
+@admin.register(PlantillaFase)
+class PlantillaFaseAdmin(admin.ModelAdmin):
+    list_display    = ['nombre', 'plantilla_proyecto', 'orden', 'porcentaje_duracion']
+    list_filter     = ['plantilla_proyecto']
+    search_fields   = ['nombre', 'plantilla_proyecto__nombre']
+    raw_id_fields   = ['plantilla_proyecto']
+    readonly_fields = ['id', 'created_at', 'updated_at']
+    inlines         = [PlantillaTareaInline]
+    ordering        = ['plantilla_proyecto', 'orden']
+
+
+@admin.register(PlantillaTarea)
+class PlantillaTareaAdmin(admin.ModelAdmin):
+    list_display    = ['nombre', 'plantilla_fase', 'orden', 'duracion_dias', 'prioridad']
+    list_filter     = ['prioridad', 'plantilla_fase__plantilla_proyecto']
+    search_fields   = ['nombre', 'plantilla_fase__nombre']
+    raw_id_fields   = ['plantilla_fase', 'actividad_saiopen']
+    readonly_fields = ['id', 'created_at', 'updated_at']
+    ordering        = ['plantilla_fase', 'orden']
+
+
+@admin.register(PlantillaDependencia)
+class PlantillaDependenciaAdmin(admin.ModelAdmin):
+    list_display    = ['tarea_predecesora', 'tarea_sucesora', 'tipo_dependencia', 'lag_time']
+    list_filter     = ['tipo_dependencia']
+    search_fields   = ['tarea_predecesora__nombre', 'tarea_sucesora__nombre']
+    raw_id_fields   = ['tarea_predecesora', 'tarea_sucesora']
+    readonly_fields = ['id', 'created_at', 'updated_at']
+    ordering        = ['tarea_predecesora']

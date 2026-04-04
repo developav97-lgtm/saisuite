@@ -12,6 +12,8 @@ from datetime import date, timedelta
 from django.core.exceptions import ValidationError
 from django.db import transaction
 
+from django.contrib.auth import get_user_model
+
 from apps.proyectos.models import (
     Project,
     Task,
@@ -417,7 +419,7 @@ class SchedulingService:
             Task.objects.filter(
                 proyecto_id=project_id,
                 company_id=company_id,
-            ).exclude(estado='cancelled').select_related('fase')
+            ).exclude(estado__in=['cancelled', 'completed']).select_related('fase')
         )
 
         tasks_with_dates = [
@@ -562,28 +564,40 @@ class SchedulingService:
             warnings.extend(constraint_warnings)
 
         if dry_run:
+            task_map_preview: dict[str, Task] = {str(t.id): t for t in sorted_tasks}
+            # Only include tasks whose dates actually change
+            preview_data = {}
+            for tid, d in new_dates.items():
+                t = task_map_preview.get(tid)
+                if not t:
+                    continue
+                if t.fecha_inicio == d['fecha_inicio'] and t.fecha_fin == d['fecha_fin']:
+                    continue  # Skip unchanged tasks
+                preview_data[tid] = {
+                    'nombre':    t.nombre,
+                    'old_start': str(t.fecha_inicio) if t.fecha_inicio else None,
+                    'old_end':   str(t.fecha_fin) if t.fecha_fin else None,
+                    'new_start': str(d['fecha_inicio']),
+                    'new_end':   str(d['fecha_fin']),
+                }
             return {
-                'tasks_rescheduled':    len(new_dates),
+                'tasks_rescheduled':    len(preview_data),
                 'tasks_excluded':       tasks_excluded,
                 'new_project_end_date': project_end,
                 'critical_path':        critical_path,
                 'warnings':             warnings,
                 'dry_run':              True,
-                'preview':              {
-                    tid: {
-                        'fecha_inicio': str(d['fecha_inicio']),
-                        'fecha_fin':    str(d['fecha_fin']),
-                    }
-                    for tid, d in new_dates.items()
-                },
+                'preview':              preview_data,
             }
 
-        # Aplicar fechas a los objetos Task y guardar en bulk
+        # Aplicar fechas a los objetos Task y guardar en bulk (only changed)
         task_map: dict[str, Task] = {str(t.id): t for t in sorted_tasks}
         tasks_to_update: list[Task] = []
 
         for tid, dates in new_dates.items():
             task = task_map[tid]
+            if task.fecha_inicio == dates['fecha_inicio'] and task.fecha_fin == dates['fecha_fin']:
+                continue  # Skip unchanged
             task.fecha_inicio = dates['fecha_inicio']
             task.fecha_fin    = dates['fecha_fin']
             tasks_to_update.append(task)
@@ -750,6 +764,8 @@ class ResourceLevelingService:
             activo=True,
             fecha_inicio__lte=end_date,
             fecha_fin__gte=start_date,
+        ).exclude(
+            tarea__estado__in=['completed', 'cancelled']
         ).select_related('tarea')
 
         workload: dict[str, dict[str, float]] = defaultdict(lambda: defaultdict(float))
@@ -799,6 +815,8 @@ class ResourceLevelingService:
                 activo=True,
                 fecha_inicio__lte=end_date,
                 fecha_fin__gte=start_date,
+            ).exclude(
+                tarea__estado__in=['completed', 'cancelled']
             ).select_related('tarea')
         )
 
@@ -906,6 +924,18 @@ class ResourceLevelingService:
         warnings:       list[str] = []
         iteration = 0
 
+        # Precargar nombres de usuarios para mensajes legibles
+        User = get_user_model()
+        involved_user_ids = {o['user_id'] for o in overloads_before}
+        user_names: dict[str, str] = {
+            str(u.id): (
+                f'{u.first_name} {u.last_name}'.strip() or u.email
+            )
+            for u in User.objects.filter(id__in=involved_user_ids)
+        }
+        # Usuarios con sobrecargas no resolubles (acumulador estructurado)
+        unresolvable_data: dict[str, dict] = {}  # user_name → {dates, task_ids_by_date}
+
         while iteration < max_iterations:
             overloads = ResourceLevelingService.detect_overload_periods(
                 project_id, company_id, project_start, project_end,
@@ -933,10 +963,17 @@ class ResourceLevelingService:
                         candidates.append((total_float, tid))
 
                 if not candidates:
-                    warnings.append(
-                        f'Sobrecarga en {overload["date"]} para usuario '
-                        f'{overload["user_id"]}: ninguna tarea tiene float > 0 '
-                        f'para mover.'
+                    uid = overload['user_id']
+                    uname = user_names.get(uid, uid)
+                    if uname not in unresolvable_data:
+                        unresolvable_data[uname] = {
+                            'dates': set(), 'task_ids_by_date': {}, 'max_pct': 0.0,
+                        }
+                    unresolvable_data[uname]['dates'].add(overload['date'])
+                    unresolvable_data[uname]['task_ids_by_date'][overload['date']] = overload['task_ids']
+                    unresolvable_data[uname]['max_pct'] = max(
+                        unresolvable_data[uname]['max_pct'],
+                        overload['total_pct'],
                     )
                     continue
 
@@ -982,17 +1019,60 @@ class ResourceLevelingService:
 
         if iteration >= max_iterations:
             warnings.append(
-                f'Nivelación detenida en {max_iterations} iteraciones. '
-                'Pueden quedar sobrecargas residuales.'
+                f'Nivelación detenida: se alcanzó el límite de {max_iterations} '
+                'iteraciones. Pueden quedar sobrecargas sin resolver.'
             )
+
+        # task_map usado tanto para unresolvable_overloads como para task_changes
+        task_map = {str(t.id): t for t in sorted_tasks}
+
+        # Construir datos estructurados de sobrecargas irresolubles
+        unresolvable_overloads: list[dict] = []
+        for uname, data in unresolvable_data.items():
+            sorted_dates = sorted(data['dates'])
+            all_task_ids: set[str] = set()
+            for tids in data['task_ids_by_date'].values():
+                all_task_ids.update(tids)
+            tasks_info: list[dict] = []
+            for tid in all_task_ids:
+                t = task_map.get(tid)
+                if not t:
+                    continue
+                asgn = ResourceAssignment.objects.filter(
+                    tarea_id=tid, activo=True, company_id=company_id,
+                ).first()
+                pct = float(asgn.porcentaje_asignacion) if asgn else 0.0
+                tasks_info.append({'task_name': t.nombre, 'porcentaje': round(pct, 1)})
+            unresolvable_overloads.append({
+                'user_name':     uname,
+                'overload_days': len(sorted_dates),
+                'date_from':     sorted_dates[0],
+                'date_to':       sorted_dates[-1],
+                'tasks':         tasks_info,
+                'max_pct':       round(data['max_pct'], 1),
+            })
 
         overloads_after = ResourceLevelingService.detect_overload_periods(
             project_id, company_id, project_start, project_end,
         )
         max_after = max((o['total_pct'] for o in overloads_after), default=0.0)
 
+        # Build per-task change details
+        task_changes: list[dict] = []
+        for tid in tasks_moved:
+            t = task_map.get(tid)
+            md = mutable_dates.get(tid)
+            if t and md:
+                task_changes.append({
+                    'task_id':       tid,
+                    'task_name':     t.nombre,
+                    'current_start': str(t.fecha_inicio),
+                    'new_start':     str(md['fecha_inicio']),
+                    'current_end':   str(t.fecha_fin),
+                    'new_end':       str(md['fecha_fin']),
+                })
+
         if not dry_run and tasks_moved:
-            task_map = {str(t.id): t for t in sorted_tasks}
             tasks_to_update: list[Task] = []
             for tid in tasks_moved:
                 if tid in task_map and tid in mutable_dates:
@@ -1015,13 +1095,15 @@ class ResourceLevelingService:
             )
 
         return {
-            'tasks_moved':         len(tasks_moved),
-            'iterations_used':     iteration,
-            'max_overload_before': round(max_before, 2),
-            'max_overload_after':  round(max_after, 2),
-            'leveling_effective':  max_after <= 100,
-            'warnings':            warnings,
-            'dry_run':             dry_run,
+            'tasks_moved':            len(tasks_moved),
+            'iterations_used':        iteration,
+            'max_overload_before':    round(max_before, 2),
+            'max_overload_after':     round(max_after, 2),
+            'leveling_effective':     max_after <= 100,
+            'warnings':               warnings,
+            'dry_run':                dry_run,
+            'task_changes':           task_changes,
+            'unresolvable_overloads': unresolvable_overloads,
         }
 
 

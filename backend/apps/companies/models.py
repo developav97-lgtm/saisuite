@@ -30,6 +30,12 @@ class Company(models.Model):
     plan             = models.CharField(max_length=20, choices=Plan.choices, default=Plan.STARTER)
     saiopen_enabled  = models.BooleanField(default=False)
     saiopen_db_path  = models.CharField(max_length=500, blank=True, default='')
+    logo             = models.ImageField(
+                           upload_to='company_logos/',
+                           null=True,
+                           blank=True,
+                           help_text='Logo de la empresa para reportes PDF',
+                       )
     is_active        = models.BooleanField(default=True)
     created_at       = models.DateTimeField(default=timezone.now)
     updated_at       = models.DateTimeField(auto_now=True)

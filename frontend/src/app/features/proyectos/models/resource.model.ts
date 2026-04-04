@@ -162,7 +162,8 @@ export interface TeamAvailabilityUser {
     tarea_id: string;
     tarea_codigo: string;
     tarea_nombre: string;
-    porcentaje_asignacion: string;
+    tarea_estado: string;
+    porcentaje_asignacion: string | null;
     fecha_inicio: string;
     fecha_fin: string;
   }[];

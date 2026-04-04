@@ -1,0 +1,194 @@
+<div class="sc-page">
+
+  <!-- Mobile message -->
+  @if (isMobile()) {
+    <div class="db-mobile-message">
+      <mat-icon>desktop_windows</mat-icon>
+      <h2>Editor de dashboards</h2>
+      <p>Para crear y editar dashboards usa la versi&oacute;n desktop.</p>
+      <button mat-raised-button color="primary" (click)="goBack()">
+        <mat-icon>arrow_back</mat-icon> Volver
+      </button>
+    </div>
+  }
+
+  <!-- Desktop builder -->
+  @if (!isMobile()) {
+    <!-- Header -->
+    <div class="sc-page-header">
+      <div class="db-title-group">
+        <button mat-icon-button matTooltip="Volver" (click)="goBack()">
+          <mat-icon>arrow_back</mat-icon>
+        </button>
+        <h1 class="sc-page-header__title">
+          {{ isNew() ? 'Nuevo Dashboard' : 'Editar Dashboard' }}
+        </h1>
+      </div>
+
+      <div class="db-header-actions">
+        @if (!isNew()) {
+          <button mat-stroked-button (click)="preview()" matTooltip="Vista previa">
+            <mat-icon>visibility</mat-icon> Vista previa
+          </button>
+        }
+        <button mat-raised-button color="primary" (click)="save()"
+                [disabled]="saving() || form.invalid">
+          @if (saving()) {
+            <mat-progress-spinner diameter="18" mode="indeterminate" />
+          }
+          <mat-icon>save</mat-icon> Guardar
+        </button>
+      </div>
+    </div>
+
+    @if (loading()) {
+      <mat-progress-bar mode="indeterminate" class="db-progress" />
+    }
+
+    @if (!loading()) {
+      <div class="db-layout">
+
+        <!-- Left sidebar: Dashboard config + catalog -->
+        <aside class="db-sidebar">
+          <!-- Dashboard form -->
+          <div class="sc-card">
+            <div class="sc-card__header">
+              <mat-icon>settings</mat-icon>
+              <h3 class="sc-card__title">Configuraci&oacute;n</h3>
+            </div>
+            <div class="sc-card__body--gap">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                <mat-label>T&iacute;tulo</mat-label>
+                <input matInput [formControl]="form.controls.titulo" maxlength="255" />
+                @if (form.controls.titulo.hasError('required')) {
+                  <mat-error>El t&iacute;tulo es obligatorio</mat-error>
+                }
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                <mat-label>Descripci&oacute;n</mat-label>
+                <textarea matInput [formControl]="form.controls.descripcion"
+                          rows="2" maxlength="500"></textarea>
+              </mat-form-field>
+
+              <mat-slide-toggle [formControl]="form.controls.es_privado" color="primary">
+                Dashboard privado
+              </mat-slide-toggle>
+            </div>
+          </div>
+
+          <!-- Card catalog accordion -->
+          <div class="sc-card db-catalog">
+            <div class="sc-card__header">
+              <mat-icon>widgets</mat-icon>
+              <h3 class="sc-card__title">Tarjetas disponibles</h3>
+            </div>
+            <div class="db-catalog-body">
+              <mat-accordion multi>
+                @for (cat of categories(); track cat.code) {
+                  <mat-expansion-panel>
+                    <mat-expansion-panel-header>
+                      <mat-panel-title class="db-cat-title">
+                        <mat-icon>{{ cat.icono }}</mat-icon>
+                        {{ cat.nombre }}
+                      </mat-panel-title>
+                    </mat-expansion-panel-header>
+
+                    <div class="db-cat-cards">
+                      @for (card of cat.cards; track card.code) {
+                        <div class="db-cat-card"
+                             [class.db-cat-card--disabled]="card.requiere.length > 0"
+                             [matTooltip]="card.requiere.length > 0 ? 'Requiere: ' + card.requiere.join(', ') : card.descripcion"
+                             (click)="card.requiere.length === 0 ? addCardFromCatalog(card) : null">
+                          <mat-icon [style.color]="card.color">{{ card.icono }}</mat-icon>
+                          <span>{{ card.nombre }}</span>
+                          <mat-icon class="db-cat-add">add_circle_outline</mat-icon>
+                        </div>
+                      }
+                    </div>
+                  </mat-expansion-panel>
+                }
+              </mat-accordion>
+
+              <button mat-stroked-button class="db-add-btn" (click)="openCardSelector()">
+                <mat-icon>add</mat-icon> Buscar tarjeta...
+              </button>
+            </div>
+          </div>
+        </aside>
+
+        <!-- Canvas: card grid with drag & drop -->
+        <main class="db-canvas">
+          <div class="db-canvas-header">
+            <span class="db-canvas-label">
+              <mat-icon>grid_view</mat-icon>
+              {{ builderCards().length }} tarjetas
+            </span>
+            @if (hasUnsavedChanges()) {
+              <span class="db-unsaved-badge">Cambios sin guardar</span>
+            }
+          </div>
+
+          @if (builderCards().length === 0) {
+            <div class="sc-empty-state db-empty">
+              <mat-icon>dashboard_customize</mat-icon>
+              <p>Arrastra tarjetas desde el panel lateral o usa el bot&oacute;n para agregar.</p>
+              <button mat-raised-button color="primary" (click)="openCardSelector()">
+                <mat-icon>add</mat-icon> Agregar tarjeta
+              </button>
+            </div>
+          } @else {
+            <div cdkDropList
+                 [cdkDropListData]="builderCards()"
+                 (cdkDropListDropped)="onCardDrop($event)"
+                 class="db-grid">
+              @for (card of builderCards(); track card.orden; let i = $index) {
+                <div cdkDrag class="db-builder-card"
+                     [style.grid-column]="'span ' + card.width">
+                  <!-- Drag handle -->
+                  <div class="db-builder-card-header" cdkDragHandle>
+                    <mat-icon class="db-drag-handle">drag_indicator</mat-icon>
+                    <mat-icon [style.color]="card.color">{{ card.icono }}</mat-icon>
+                    <input class="db-inline-title"
+                           [value]="card.titulo_personalizado"
+                           (change)="onTitleChange(i, $event)"
+                           maxlength="255" />
+                    <div class="db-builder-card-actions">
+                      <!-- Size controls -->
+                      <button mat-icon-button matTooltip="1 columna"
+                              (click)="updateCardSize(i, 1, 1)">
+                        <mat-icon>crop_square</mat-icon>
+                      </button>
+                      <button mat-icon-button matTooltip="2 columnas"
+                              (click)="updateCardSize(i, 2, 1)">
+                        <mat-icon>crop_landscape</mat-icon>
+                      </button>
+                      <button mat-icon-button matTooltip="4 columnas"
+                              (click)="updateCardSize(i, 4, 1)">
+                        <mat-icon>crop_16_9</mat-icon>
+                      </button>
+                      <button mat-icon-button matTooltip="Eliminar" color="warn"
+                              (click)="removeCard(i)">
+                        <mat-icon>delete_outline</mat-icon>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="db-builder-card-body">
+                    <div class="db-card-preview">
+                      <mat-icon>{{ card.icono }}</mat-icon>
+                      <span>{{ card.chart_type }}</span>
+                    </div>
+                  </div>
+
+                  <!-- CDK drag placeholder -->
+                  <div *cdkDragPlaceholder class="db-drag-placeholder"></div>
+                </div>
+              }
+            </div>
+          }
+        </main>
+      </div>
+    }
+  }
+
+</div>

@@ -81,10 +81,19 @@
             <div class="tt-asignaciones">
               @for (a of usuario.asignaciones; track a.tarea_id) {
                 <div class="tt-asignacion-item"
+                  [class.tt-asignacion-item--completada]="a.tarea_estado === 'completed' || a.tarea_estado === 'cancelled'"
                   [matTooltip]="a.fecha_inicio + ' → ' + a.fecha_fin">
-                  <mat-icon class="tt-icon-task">task_alt</mat-icon>
+                  <mat-icon class="tt-icon-task">
+                    {{ a.tarea_estado === 'completed' ? 'check_circle' : a.tarea_estado === 'cancelled' ? 'cancel' : 'task_alt' }}
+                  </mat-icon>
                   <span class="tt-tarea-nombre">{{ a.tarea_nombre }}</span>
-                  <span class="tt-tarea-pct">{{ a.porcentaje_asignacion }}%</span>
+                  @if (a.tarea_estado === 'completed') {
+                    <span class="tt-estado-badge tt-estado-badge--completed">Completada</span>
+                  } @else if (a.tarea_estado === 'cancelled') {
+                    <span class="tt-estado-badge tt-estado-badge--cancelled">Cancelada</span>
+                  } @else if (a.porcentaje_asignacion) {
+                    <span class="tt-tarea-pct">{{ a.porcentaje_asignacion }}%</span>
+                  }
                 </div>
               }
             </div>

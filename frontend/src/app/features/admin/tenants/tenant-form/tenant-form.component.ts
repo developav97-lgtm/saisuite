@@ -21,6 +21,7 @@ import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import { TenantService } from '../../services/tenant.service';
 import { ToastService } from '../../../../core/services/toast.service';
+import { NavigationHistoryService } from '../../../../core/services/navigation-history.service';
 import { ConfirmDialogComponent } from '../../../../shared/components/confirm-dialog/confirm-dialog.component';
 import {
   Tenant, TenantLicense, LicenseHistory, LicenseRenewal,
@@ -66,6 +67,7 @@ export class TenantFormComponent implements OnInit {
   private readonly fb            = inject(FormBuilder);
   private readonly tenantService = inject(TenantService);
   private readonly toast         = inject(ToastService);
+  private readonly navHistory    = inject(NavigationHistoryService);
   private readonly dialog        = inject(MatDialog);
 
   readonly loading  = signal(false);
@@ -318,7 +320,7 @@ export class TenantFormComponent implements OnInit {
   }
 
   volver(): void {
-    this.router.navigate(['/admin/tenants']);
+    this.navHistory.goBack('/admin/tenants');
   }
 
   formatMiles(value: number | null | undefined): string {

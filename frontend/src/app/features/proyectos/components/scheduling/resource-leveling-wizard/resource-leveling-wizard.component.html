@@ -1,0 +1,303 @@
+<!-- SaiSuite — ResourceLevelingWizardComponent -->
+<h2 mat-dialog-title class="rlw-title">
+  <mat-icon class="rlw-title__icon">balance</mat-icon>
+  Nivelación de Recursos
+</h2>
+
+<!-- Indicador de pasos -->
+<div class="rlw-stepper" role="list" aria-label="Pasos del asistente">
+  <div
+    class="rlw-step"
+    [class.rlw-step--active]="currentStep() === 1"
+    [class.rlw-step--done]="currentStep() > 1"
+    role="listitem"
+    aria-label="Paso 1: Configuración"
+  >
+    <span class="rlw-step__num">
+      @if (currentStep() > 1) {
+        <mat-icon class="rlw-step__check">check</mat-icon>
+      } @else {
+        1
+      }
+    </span>
+    <span class="rlw-step__label">Configuración</span>
+  </div>
+  <div class="rlw-step__line" [class.rlw-step__line--done]="currentStep() > 1"></div>
+  <div
+    class="rlw-step"
+    [class.rlw-step--active]="currentStep() === 2"
+    [class.rlw-step--done]="currentStep() > 2"
+    role="listitem"
+    aria-label="Paso 2: Vista previa"
+  >
+    <span class="rlw-step__num">
+      @if (currentStep() > 2) {
+        <mat-icon class="rlw-step__check">check</mat-icon>
+      } @else {
+        2
+      }
+    </span>
+    <span class="rlw-step__label">Vista previa</span>
+  </div>
+  <div class="rlw-step__line" [class.rlw-step__line--done]="currentStep() > 2"></div>
+  <div
+    class="rlw-step"
+    [class.rlw-step--active]="currentStep() === 3"
+    role="listitem"
+    aria-label="Paso 3: Confirmación"
+  >
+    <span class="rlw-step__num">3</span>
+    <span class="rlw-step__label">Confirmación</span>
+  </div>
+</div>
+
+<mat-dialog-content class="rlw-content">
+
+  <!-- ── Error global ──────────────────────────────────────────────────────── -->
+  @if (error()) {
+    <div class="rlw-error" role="alert">
+      <mat-icon class="rlw-error__icon">error_outline</mat-icon>
+      <span>{{ error() }}</span>
+    </div>
+  }
+
+  <!-- ── PASO 1: Configuración ─────────────────────────────────────────────── -->
+  @if (currentStep() === 1) {
+    <section class="rlw-step-panel" aria-labelledby="step1-heading">
+      <h3 id="step1-heading" class="rlw-step-panel__title">Parámetros de nivelación</h3>
+      <p class="rlw-step-panel__desc">
+        Define cómo se priorizarán las tareas al redistribuir la carga de recursos.
+      </p>
+
+      <!-- Modo de prioridad -->
+      <mat-form-field appearance="outline" class="rlw-field">
+        <mat-label>Modo de prioridad</mat-label>
+        <mat-select
+          [ngModel]="config().priorityMode"
+          (ngModelChange)="setPriorityMode($event)"
+          aria-label="Modo de prioridad de nivelación"
+        >
+          <mat-option value="critical_path">Ruta crítica</mat-option>
+          <mat-option value="priority">Prioridad de tarea</mat-option>
+          <mat-option value="deadline">Fecha límite</mat-option>
+        </mat-select>
+        <mat-hint>Las tareas con mayor prioridad según el modo seleccionado no serán desplazadas.</mat-hint>
+      </mat-form-field>
+
+      <!-- Permitir retraso -->
+      <div class="rlw-checkbox-row">
+        <mat-checkbox
+          [ngModel]="config().allowDelay"
+          (ngModelChange)="setAllowDelay($event)"
+        >
+          Permitir retrasar tareas no críticas
+        </mat-checkbox>
+        <span class="rlw-checkbox-hint">
+          Al activar esta opción, las tareas con holgura positiva podrán desplazarse para reducir sobrecargas.
+        </span>
+      </div>
+
+      <!-- Máximo días de retraso (condicional) -->
+      @if (config().allowDelay) {
+        <mat-form-field appearance="outline" class="rlw-field rlw-field--compact">
+          <mat-label>Máximo días de retraso permitido</mat-label>
+          <input
+            matInput
+            type="number"
+            min="0"
+            [ngModel]="config().maxDelayDays"
+            (ngModelChange)="setMaxDelayDays($event)"
+            aria-label="Máximo días de retraso"
+          />
+          <mat-hint>Establece un límite de días que una tarea puede desplazarse.</mat-hint>
+          @if (config().maxDelayDays < 0) {
+            <mat-error>El valor debe ser mayor o igual a 0.</mat-error>
+          }
+        </mat-form-field>
+      }
+    </section>
+  }
+
+  <!-- ── PASO 2: Vista previa ──────────────────────────────────────────────── -->
+  @if (currentStep() === 2) {
+    <section class="rlw-step-panel" aria-labelledby="step2-heading">
+      <h3 id="step2-heading" class="rlw-step-panel__title">Vista previa de cambios</h3>
+
+      @if (loading()) {
+        <mat-progress-bar mode="indeterminate" class="rlw-progress" />
+      }
+
+      @if (preview(); as p) {
+        <!-- Tarjeta resumen -->
+        <div class="rlw-summary">
+          <div class="rlw-summary__stat">
+            <span class="rlw-summary__value">{{ p.summary.totalTasksModified }}</span>
+            <span class="rlw-summary__label">tareas a modificar</span>
+          </div>
+          <div class="rlw-summary__stat">
+            <span class="rlw-summary__value">{{ p.summary.averageDelayDays | number:'1.1-1' }}</span>
+            <span class="rlw-summary__label">días promedio de retraso</span>
+          </div>
+          <div class="rlw-summary__stat rlw-summary__stat--success">
+            <span class="rlw-summary__value">{{ p.summary.conflictsResolved }}</span>
+            <span class="rlw-summary__label">conflictos resueltos</span>
+          </div>
+        </div>
+
+        @if (p.changes.length > 0) {
+          <div class="table-responsive rlw-table-wrap">
+            <table
+              mat-table
+              [dataSource]="p.changes"
+              class="rlw-table"
+              aria-label="Cambios propuestos por la nivelación"
+            >
+              <!-- Columna Tarea -->
+              <ng-container matColumnDef="tarea">
+                <th mat-header-cell *matHeaderCellDef>Tarea</th>
+                <td mat-cell *matCellDef="let row" class="rlw-cell--tarea">
+                  {{ row.tareaNombre }}
+                </td>
+              </ng-container>
+
+              <!-- Columna Fechas actuales -->
+              <ng-container matColumnDef="fechasActuales">
+                <th mat-header-cell *matHeaderCellDef>Fechas actuales</th>
+                <td mat-cell *matCellDef="let row" class="rlw-cell--dates">
+                  {{ row.currentStart | date:'dd/MM/yy' }} — {{ row.currentEnd | date:'dd/MM/yy' }}
+                </td>
+              </ng-container>
+
+              <!-- Columna Fechas nuevas -->
+              <ng-container matColumnDef="fechasNuevas">
+                <th mat-header-cell *matHeaderCellDef>Fechas nuevas</th>
+                <td mat-cell *matCellDef="let row" class="rlw-cell--dates rlw-cell--new">
+                  {{ row.newStart | date:'dd/MM/yy' }} — {{ row.newEnd | date:'dd/MM/yy' }}
+                </td>
+              </ng-container>
+
+              <!-- Columna Razón -->
+              <ng-container matColumnDef="razon">
+                <th mat-header-cell *matHeaderCellDef>Razón</th>
+                <td mat-cell *matCellDef="let row" class="rlw-cell--reason">
+                  {{ row.reason }}
+                </td>
+              </ng-container>
+
+              <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>
+              <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+            </table>
+          </div>
+        } @else {
+          <div class="rlw-empty">
+            <mat-icon class="rlw-empty__icon">check_circle_outline</mat-icon>
+            <p class="rlw-empty__text">No se requieren cambios. Los recursos ya están nivelados.</p>
+          </div>
+        }
+      }
+    </section>
+  }
+
+  <!-- ── PASO 3: Confirmación ──────────────────────────────────────────────── -->
+  @if (currentStep() === 3) {
+    <section class="rlw-step-panel" aria-labelledby="step3-heading">
+      <h3 id="step3-heading" class="rlw-step-panel__title">Confirmar nivelación</h3>
+
+      <div class="rlw-warning-card" role="alert">
+        <mat-icon class="rlw-warning-card__icon">warning_amber</mat-icon>
+        <div class="rlw-warning-card__body">
+          <p class="rlw-warning-card__title">Esta acción modificará el cronograma del proyecto</p>
+          <p class="rlw-warning-card__text">
+            Se ajustarán las fechas de
+            <strong>{{ preview()?.summary?.totalTasksModified ?? 0 }} tarea(s)</strong>
+            para eliminar sobrecargas de asignación. Esta operación no se puede deshacer automáticamente.
+          </p>
+          <ul class="rlw-warning-card__list">
+            <li>Las tareas críticas no serán desplazadas.</li>
+            <li>Los cambios son inmediatos y quedan registrados en el historial.</li>
+            @if (config().allowDelay) {
+              <li>Se permite un retraso máximo de <strong>{{ config().maxDelayDays }} día(s)</strong>.</li>
+            }
+          </ul>
+        </div>
+      </div>
+
+      @if (loading()) {
+        <mat-progress-bar mode="indeterminate" class="rlw-progress" />
+      }
+    </section>
+  }
+
+</mat-dialog-content>
+
+<!-- ── Acciones ───────────────────────────────────────────────────────────── -->
+<mat-dialog-actions class="rlw-actions" align="end">
+  <button
+    mat-stroked-button
+    type="button"
+    (click)="cancel()"
+    [disabled]="loading()"
+  >
+    Cancelar
+  </button>
+
+  @if (currentStep() > 1) {
+    <button
+      mat-stroked-button
+      type="button"
+      (click)="goBack()"
+      [disabled]="loading()"
+    >
+      <mat-icon>arrow_back</mat-icon>
+      Anterior
+    </button>
+  }
+
+  @if (currentStep() === 1) {
+    <button
+      mat-raised-button
+      color="primary"
+      type="button"
+      (click)="goToPreview()"
+      [disabled]="loading()"
+      matTooltip="Calcular la nivelación sin guardar cambios"
+    >
+      @if (loading()) {
+        <mat-icon class="rlw-spin">autorenew</mat-icon>
+      } @else {
+        <mat-icon>arrow_forward</mat-icon>
+      }
+      Siguiente
+    </button>
+  }
+
+  @if (currentStep() === 2) {
+    <button
+      mat-raised-button
+      color="primary"
+      type="button"
+      (click)="goToConfirm()"
+      [disabled]="loading()"
+    >
+      <mat-icon>arrow_forward</mat-icon>
+      Continuar
+    </button>
+  }
+
+  @if (currentStep() === 3) {
+    <button
+      mat-raised-button
+      color="primary"
+      type="button"
+      (click)="applyLeveling()"
+      [disabled]="loading()"
+    >
+      @if (loading()) {
+        <mat-icon class="rlw-spin">autorenew</mat-icon>
+      } @else {
+        <mat-icon>balance</mat-icon>
+      }
+      Aplicar Nivelación
+    </button>
+  }
+</mat-dialog-actions>

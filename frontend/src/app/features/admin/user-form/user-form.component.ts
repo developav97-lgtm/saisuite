@@ -17,6 +17,7 @@ import { ToastService } from '../../../core/services/toast.service';
 import { AuthService } from '../../../core/auth/auth.service';
 import { RoleSummary, RolesService } from '../services/roles.service';
 import { QuickAccessNavigatorService } from '../../../shared/services/quick-access-navigator.service';
+import { NavigationHistoryService } from '../../../core/services/navigation-history.service';
 
 @Component({
   selector: 'app-user-form',
@@ -39,6 +40,7 @@ export class UserFormComponent implements OnInit {
   private readonly toast        = inject(ToastService);
   private readonly authService  = inject(AuthService);
   private readonly navigator    = inject(QuickAccessNavigatorService);
+  private readonly navHistory   = inject(NavigationHistoryService);
 
   readonly editingId   = signal<string | null>(null);
   readonly loading     = signal(false);
@@ -111,7 +113,9 @@ export class UserFormComponent implements OnInit {
       this.actualizarValidacionRolGranular(role);
     });
 
-    const id = this.route.snapshot.paramMap.get('id');
+    const id = this.navigator.isActive
+      ? this.navigator.getParam('id')
+      : this.route.snapshot.paramMap.get('id');
     if (id) {
       this.editingId.set(id);
       this.form.controls.password.clearValidators();
@@ -205,7 +209,7 @@ export class UserFormComponent implements OnInit {
     if (this.navigator.isActive) {
       this.navigator.requestGoBack();
     } else {
-      this.router.navigate(['/admin/usuarios']);
+      this.navHistory.goBack('/admin/usuarios');
     }
   }
 

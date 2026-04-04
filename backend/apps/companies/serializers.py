@@ -26,7 +26,8 @@ class CompanyListSerializer(serializers.ModelSerializer):
 class CompanyDetailSerializer(serializers.ModelSerializer):
     """Todos los campos más lista de módulos activos."""
 
-    modules = serializers.SerializerMethodField()
+    modules  = serializers.SerializerMethodField()
+    logo     = serializers.SerializerMethodField()
 
     class Meta:
         model = Company
@@ -37,12 +38,21 @@ class CompanyDetailSerializer(serializers.ModelSerializer):
             'plan',
             'saiopen_enabled',
             'saiopen_db_path',
+            'logo',
             'is_active',
             'created_at',
             'updated_at',
             'modules',
         ]
         read_only_fields = fields
+
+    def get_logo(self, obj: Company) -> str | None:
+        if not obj.logo:
+            return None
+        request = self.context.get('request')
+        if request:
+            return request.build_absolute_uri(obj.logo.url)
+        return obj.logo.url
 
     def get_modules(self, obj: Company) -> list[dict]:
         qs = CompanyModule.objects.filter(company=obj)

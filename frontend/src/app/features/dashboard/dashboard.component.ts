@@ -76,6 +76,16 @@ export class DashboardComponent {
       badge: 'Próximamente',
     },
     {
+      key: 'saidashboard',
+      label: 'SaiDashboard',
+      description: 'Dashboards financieros, indicadores y BI contable',
+      icon: 'analytics',
+      route: '/saidashboard',
+      color: '#1565c0',
+      available: true,
+      badge: 'Nuevo',
+    },
+    {
       key: 'admin',
       label: 'Administración',
       description: 'Usuarios, empresa, consecutivos y configuración',

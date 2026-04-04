@@ -1,0 +1,106 @@
+<h2 mat-dialog-title>
+  @if (step() === 1) {
+    Seleccionar plantilla
+  } @else {
+    Configurar proyecto
+  }
+</h2>
+
+@if (loading()) {
+  <mat-progress-bar mode="indeterminate" class="cft-progress" />
+}
+
+<mat-dialog-content class="cft-content">
+
+  <!-- Paso 1: Seleccionar plantilla -->
+  @if (step() === 1) {
+    @if (!loading() && !hasTemplates()) {
+      <div class="sc-empty-state">
+        <mat-icon>layers</mat-icon>
+        <p>No hay plantillas disponibles.</p>
+      </div>
+    } @else {
+      <div class="cft-grid">
+        @for (t of templates(); track t.id) {
+          <div class="cft-card" (click)="selectTemplate(t)" role="button" tabindex="0"
+               (keyup.enter)="selectTemplate(t)" (keyup.space)="selectTemplate(t)">
+            <div class="cft-card__icon">
+              <mat-icon>{{ t.icono || 'work' }}</mat-icon>
+            </div>
+            <div class="cft-card__body">
+              <span class="cft-card__categoria">{{ t.tipo_display }}</span>
+              <span class="cft-card__nombre">{{ t.nombre }}</span>
+              <span class="cft-card__desc">{{ t.descripcion }}</span>
+              <div class="cft-card__meta">
+                <span class="cft-card__meta-item">
+                  <mat-icon>schedule</mat-icon>
+                  {{ t.duracion_estimada }} días
+                </span>
+                <span class="cft-card__meta-item">
+                  <mat-icon>account_tree</mat-icon>
+                  {{ t.fases_count }} fases
+                </span>
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+    }
+  }
+
+  <!-- Paso 2: Configurar proyecto -->
+  @if (step() === 2) {
+    @if (selectedTemplate(); as tmpl) {
+      <div class="cft-selected-info">
+        <mat-icon>{{ tmpl.icono || 'work' }}</mat-icon>
+        <div>
+          <span class="cft-selected-info__label">Plantilla seleccionada:</span>
+          <span class="cft-selected-info__nombre">{{ tmpl.nombre }}</span>
+        </div>
+      </div>
+    }
+
+    <form [formGroup]="form" class="cft-form">
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Nombre del proyecto</mat-label>
+        <input matInput formControlName="nombre" maxlength="200" />
+        @if (form.get('nombre')?.hasError('required') && form.get('nombre')?.touched) {
+          <mat-error>El nombre es obligatorio.</mat-error>
+        }
+        @if (form.get('nombre')?.hasError('maxlength') && form.get('nombre')?.touched) {
+          <mat-error>Máximo 200 caracteres.</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Descripción (opcional)</mat-label>
+        <textarea matInput formControlName="descripcion" rows="3"></textarea>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Fecha de inicio planificada</mat-label>
+        <input matInput [matDatepicker]="pickerStart" formControlName="planned_start" />
+        <mat-datepicker-toggle matIconSuffix [for]="pickerStart"></mat-datepicker-toggle>
+        <mat-datepicker #pickerStart></mat-datepicker>
+        @if (form.get('planned_start')?.hasError('required') && form.get('planned_start')?.touched) {
+          <mat-error>La fecha de inicio es obligatoria.</mat-error>
+        }
+      </mat-form-field>
+    </form>
+  }
+
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  @if (step() === 1) {
+    <button mat-button (click)="cancel()">Cancelar</button>
+  } @else {
+    <button mat-button (click)="goBack()" [disabled]="loading()">
+      <mat-icon>arrow_back</mat-icon> Volver
+    </button>
+    <button mat-raised-button color="primary" (click)="createProject()"
+            [disabled]="form.invalid || loading()">
+      <mat-icon>add</mat-icon> Crear proyecto
+    </button>
+  }
+</mat-dialog-actions>

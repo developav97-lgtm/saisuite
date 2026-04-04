@@ -44,8 +44,16 @@
   border-radius: var(--sc-radius) var(--sc-radius) 0 0;
 }
 
+.rc-table-responsive {
+  display: block;
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 .rc-table {
   width: 100%;
+  min-width: 540px;
   border-radius: var(--sc-radius);
 }
 

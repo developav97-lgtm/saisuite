@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { ActividadList, ActividadDetail, ActividadCreate, TipoActividad } from '../models/actividad.model';
+import { ActividadList, ActividadDetail, ActividadCreate, TipoActividad, SaiopenActividadList } from '../models/actividad.model';
 
 interface Paginated<T> { count: number; next: string | null; previous: string | null; results: T[]; }
 
@@ -37,5 +37,13 @@ export class ActividadService {
 
   toggleActivo(id: string, activo: boolean): Observable<ActividadDetail> {
     return this.http.patch<ActividadDetail>(`${this.baseUrl}/${id}/`, { activo });
+  }
+
+  listSaiopen(search?: string, page = 1, pageSize = 100): Observable<Paginated<SaiopenActividadList>> {
+    let params = new HttpParams()
+      .set('page', page.toString())
+      .set('page_size', pageSize.toString());
+    if (search) params = params.set('search', search);
+    return this.http.get<Paginated<SaiopenActividadList>>('/api/v1/projects/activities-saiopen/', { params });
   }
 }

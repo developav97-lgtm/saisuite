@@ -225,4 +225,5 @@ export interface GanttTask {
   end: string;          // ISO date string "YYYY-MM-DD"
   progress: number;     // 0-100
   custom_class: string; // ej. "estado-in_progress"
+  dependencies: string; // comma-separated predecessor IDs
 }

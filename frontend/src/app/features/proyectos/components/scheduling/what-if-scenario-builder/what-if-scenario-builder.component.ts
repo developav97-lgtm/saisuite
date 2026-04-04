@@ -29,6 +29,8 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDividerModule } from '@angular/material/divider';
+import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatNativeDateModule } from '@angular/material/core';
 import { MatDialog } from '@angular/material/dialog';
 import { WhatIfService } from '../../../services/what-if.service';
 import {
@@ -45,7 +47,7 @@ type TaskChangeCampo = 'fecha_inicio' | 'fecha_fin' | 'horas_estimadas';
 interface TaskChangeRow {
   task_id: FormControl<string>;
   campo: FormControl<TaskChangeCampo>;
-  valor: FormControl<string>;
+  valor: FormControl<string | Date>;
 }
 
 @Component({
@@ -66,6 +68,8 @@ interface TaskChangeRow {
     MatSelectModule,
     MatTooltipModule,
     MatDividerModule,
+    MatDatepickerModule,
+    MatNativeDateModule,
   ],
 })
 export class WhatIfScenarioBuilderComponent implements OnInit {
@@ -152,7 +156,7 @@ export class WhatIfScenarioBuilderComponent implements OnInit {
     const row = new FormGroup<TaskChangeRow>({
       task_id: new FormControl<string>('', { nonNullable: true, validators: [Validators.required] }),
       campo:   new FormControl<TaskChangeCampo>('fecha_inicio', { nonNullable: true, validators: [Validators.required] }),
-      valor:   new FormControl<string>('', { nonNullable: true, validators: [Validators.required] }),
+      valor:   new FormControl<string | Date>('', { nonNullable: true, validators: [Validators.required] }),
     });
     this.taskChangesList.push(row);
   }
@@ -178,7 +182,11 @@ export class WhatIfScenarioBuilderComponent implements OnInit {
       if (!task_id || !campo || valor === '') continue;
 
       const parsed: string | number =
-        campo === 'horas_estimadas' ? Number(valor) : valor;
+        campo === 'horas_estimadas'
+          ? Number(valor)
+          : valor instanceof Date
+            ? valor.toISOString().split('T')[0]
+            : String(valor);
 
       if (!taskChanges[task_id]) {
         taskChanges[task_id] = {};

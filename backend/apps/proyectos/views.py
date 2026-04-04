@@ -7,8 +7,10 @@ from datetime import timedelta
 from decimal import Decimal, InvalidOperation
 
 from django.core.exceptions import ValidationError
+from django.http import HttpResponse
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
+from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.response import Response
 from rest_framework.filters import SearchFilter, OrderingFilter
 from rest_framework.views import APIView
@@ -56,7 +58,10 @@ from apps.proyectos.serializers import (
     ResourceCapacitySerializer,
     ResourceAvailabilitySerializer,
     ResourceAvailabilityCreateSerializer,
+    PlantillaProyectoWriteSerializer,
     WorkloadSummarySerializer,
+    PlantillaProyectoSerializer,
+    CreateFromTemplateSerializer,
 )
 from apps.proyectos.services import (
     ProyectoService,
@@ -69,6 +74,9 @@ from apps.proyectos.services import (
     ConfiguracionModuloService,
     ProyectoException,
     calcular_avance_fase_desde_tareas,
+    ProyectoExportService,
+    PlantillaProyectoService,
+    ProyectoImportService,
 )
 from apps.proyectos.tarea_services import TimesheetService, DependencyService, TimesheetEntryService
 from apps.notifications.services import NotificacionService
@@ -175,17 +183,28 @@ class ProjectViewSet(viewsets.ModelViewSet):
                 Q(fecha_fin__isnull=False) | Q(fecha_limite__isnull=False)
             )
             .select_related('fase', 'responsable')
+            .prefetch_related('predecessors__tarea_predecesora')
             .order_by('fecha_limite', 'fecha_fin', 'nombre')
         )
 
+        # Collect IDs of tareas with dates (only these appear in the Gantt)
+        tarea_ids_with_dates = set()
         tasks = []
         for tarea in tareas:
+            tarea_ids_with_dates.add(str(tarea.id))
             end_date   = tarea.fecha_fin or tarea.fecha_limite
             dias_est   = max(int(float(tarea.horas_estimadas) / 8), 1) if tarea.horas_estimadas else 1
             start_date = tarea.fecha_inicio or (end_date - timedelta(days=dias_est))
             # Garantizar que start < end
             if start_date >= end_date:
                 start_date = end_date - timedelta(days=1)
+
+            # Dependencies: list of predecessor task IDs that are also in the Gantt
+            deps = [
+                str(dep.tarea_predecesora_id)
+                for dep in tarea.predecessors.all()
+            ]
+
             tasks.append({
                 'id':           str(tarea.id),
                 'name':         tarea.nombre,
@@ -193,6 +212,9 @@ class ProjectViewSet(viewsets.ModelViewSet):
                 'end':          end_date.isoformat(),
                 'progress':     tarea.porcentaje_completado,
                 'custom_class': f'estado-{tarea.estado}',
+                'dependencies': ', '.join(
+                    d for d in deps if d in tarea_ids_with_dates
+                ),
             })
 
         logger.info('gantt_data_consultado', extra={
@@ -213,6 +235,409 @@ class ProjectViewSet(viewsets.ModelViewSet):
             str(proyecto.id), company
         )
         return Response({'tareas_criticas': criticas}, status=status.HTTP_200_OK)
+
+    # ── Feature #8 — PDF Export ───────────────────────────────────────────
+
+    @action(detail=True, methods=['get'], url_path='export/pdf')
+    def export_pdf(self, request, pk=None):
+        """
+        GET /api/v1/projects/{id}/export/pdf/
+        Genera y descarga el reporte PDF del proyecto.
+
+        Query params:
+            include_gantt  (bool, default=true)  — incluir sección Gantt
+            include_budget (bool, default=true)  — incluir sección de presupuesto
+        """
+        proyecto = self.get_object()
+
+        include_gantt  = request.query_params.get('include_gantt',  'true').lower() != 'false'
+        include_budget = request.query_params.get('include_budget', 'true').lower() != 'false'
+
+        try:
+            pdf_bytes = ProyectoExportService.generate_pdf(
+                proyecto,
+                include_gantt=include_gantt,
+                include_budget=include_budget,
+            )
+        except ImportError as exc:
+            logger.error('WeasyPrint no disponible', extra={'error': str(exc)})
+            return Response(
+                {'error': 'El módulo de exportación PDF no está disponible.'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        except Exception as exc:
+            logger.error(
+                'Error generando PDF',
+                extra={'proyecto_id': str(proyecto.id), 'error': str(exc)},
+            )
+            return Response(
+                {'error': 'Error al generar el PDF.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        filename = f'proyecto_{proyecto.codigo}.pdf'
+        response = HttpResponse(pdf_bytes, content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+
+    # ── Feature #8 — Project Templates ───────────────────────────────────
+
+    @action(detail=False, methods=['get'], url_path='templates')
+    def list_templates(self, request):
+        """
+        GET /api/v1/projects/templates/
+        Retorna la lista de plantillas de proyecto activas de la empresa.
+        """
+        company = getattr(request.user, 'effective_company', None) or request.user.company
+        plantillas = PlantillaProyectoService.list_plantillas(company=company, is_active=True)
+        serializer = PlantillaProyectoSerializer(plantillas, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=['post'], url_path='templates/create')
+    def create_template(self, request):
+        """
+        POST /api/v1/projects/templates/create/
+        Crea una nueva plantilla de proyecto para la empresa.
+        Solo company_admin o usuarios con permiso proyectos.create.
+        """
+        if request.user.role not in ('company_admin',) and not request.user.is_staff:
+            if not request.user.tiene_permiso('proyectos.create'):
+                return Response(
+                    {'error': 'No tiene permisos para crear plantillas.'},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
+        serializer = PlantillaProyectoWriteSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        company = getattr(request.user, 'effective_company', None) or request.user.company
+
+        try:
+            plantilla = PlantillaProyectoService.create_plantilla(
+                data=serializer.validated_data,
+                company=company,
+            )
+        except ProyectoException as exc:
+            return Response({'errors': exc.detail}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as exc:
+            logger.error(
+                'Error creando plantilla',
+                extra={'error': str(exc), 'user': request.user.email},
+            )
+            return Response({'error': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(
+            PlantillaProyectoSerializer(plantilla).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+    @action(detail=False, methods=['get'], url_path=r'templates/(?P<template_id>[^/.]+)')
+    def get_template(self, request, template_id=None):
+        """
+        GET /api/v1/projects/templates/{template_id}/
+        Retorna el detalle de una plantilla de la empresa.
+        """
+        company = getattr(request.user, 'effective_company', None) or request.user.company
+
+        try:
+            plantilla = PlantillaProyectoService.get_plantilla(
+                plantilla_id=template_id,
+                company=company,
+            )
+        except Exception:
+            return Response(
+                {'error': 'Plantilla no encontrada.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        return Response(PlantillaProyectoSerializer(plantilla).data, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=['patch'], url_path=r'templates/(?P<template_id>[^/.]+)/update')
+    def update_template(self, request, template_id=None):
+        """
+        PATCH /api/v1/projects/templates/{template_id}/update/
+        Actualiza una plantilla de la empresa.
+        Solo company_admin o usuarios con permiso proyectos.edit.
+        """
+        if request.user.role not in ('company_admin',) and not request.user.is_staff:
+            if not request.user.tiene_permiso('proyectos.edit'):
+                return Response(
+                    {'error': 'No tiene permisos para editar plantillas.'},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
+        serializer = PlantillaProyectoWriteSerializer(data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+
+        company = getattr(request.user, 'effective_company', None) or request.user.company
+
+        try:
+            plantilla = PlantillaProyectoService.update_plantilla(
+                plantilla_id=template_id,
+                data=serializer.validated_data,
+                company=company,
+            )
+        except ProyectoException as exc:
+            return Response({'errors': exc.detail}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as exc:
+            logger.error(
+                'Error actualizando plantilla',
+                extra={'error': str(exc), 'user': request.user.email},
+            )
+            return Response({'error': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(PlantillaProyectoSerializer(plantilla).data, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=['delete'], url_path=r'templates/(?P<template_id>[^/.]+)/delete')
+    def delete_template(self, request, template_id=None):
+        """
+        DELETE /api/v1/projects/templates/{template_id}/delete/
+        Elimina una plantilla de la empresa.
+        Solo company_admin o usuarios con permiso proyectos.delete.
+        """
+        if request.user.role not in ('company_admin',) and not request.user.is_staff:
+            if not request.user.tiene_permiso('proyectos.delete'):
+                return Response(
+                    {'error': 'No tiene permisos para eliminar plantillas.'},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
+        company = getattr(request.user, 'effective_company', None) or request.user.company
+
+        try:
+            PlantillaProyectoService.delete_plantilla(
+                plantilla_id=template_id,
+                company=company,
+            )
+        except ProyectoException as exc:
+            return Response({'errors': exc.detail}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as exc:
+            logger.error(
+                'Error eliminando plantilla',
+                extra={'error': str(exc), 'user': request.user.email},
+            )
+            return Response({'error': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=False, methods=['post'], url_path='create-from-template')
+    def create_from_template(self, request):
+        """
+        POST /api/v1/projects/create-from-template/
+        Crea un nuevo proyecto a partir de una plantilla existente.
+
+        Body: { template_id, nombre, descripcion, planned_start, cliente_id }
+        """
+        serializer = CreateFromTemplateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        vd = serializer.validated_data
+
+        try:
+            proyecto = PlantillaProyectoService.create_from_template(
+                plantilla_id=str(vd['template_id']),
+                nombre=vd['nombre'],
+                descripcion=vd.get('descripcion', ''),
+                planned_start=vd['planned_start'],
+                user=request.user,
+                cliente_id=str(vd['cliente_id']) if vd.get('cliente_id') else None,
+            )
+        except ProyectoException as exc:
+            return Response({'errors': exc.detail}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as exc:
+            logger.error(
+                'Error creando proyecto desde plantilla',
+                extra={'error': str(exc), 'user': request.user.email},
+            )
+            return Response(
+                {'error': str(exc)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        from apps.proyectos.serializers import ProjectDetailSerializer
+        return Response(
+            ProjectDetailSerializer(proyecto).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+    # ── Feature #8 — Excel Import ─────────────────────────────────────────
+
+    @action(
+        detail=False,
+        methods=['post'],
+        url_path='import-from-excel',
+        parser_classes=[MultiPartParser, FormParser],
+    )
+    def import_from_excel(self, request):
+        """
+        POST /api/v1/projects/import-from-excel/
+        Importa un proyecto desde un archivo Excel.
+
+        Form-data: { file: <archivo .xlsx o .xls> }
+        """
+        file = request.FILES.get('file')
+        if not file:
+            return Response(
+                {'error': 'Se requiere un archivo en el campo "file".'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        extension = file.name.rsplit('.', 1)[-1].lower() if '.' in file.name else ''
+        if extension not in ('xlsx', 'xls'):
+            return Response(
+                {'error': 'Solo se aceptan archivos .xlsx o .xls'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        company = getattr(request.user, 'effective_company', None)
+        result  = ProyectoImportService.import_from_excel(file, company, request.user)
+
+        if not result['success']:
+            return Response(
+                {
+                    'errors': result['errors'],
+                    'stats':  result['stats'],
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        from apps.proyectos.serializers import ProjectDetailSerializer
+        return Response(
+            {
+                'proyecto': ProjectDetailSerializer(result['proyecto']).data,
+                'stats':    result['stats'],
+                'warnings': result['errors'],  # errores no fatales como advertencias
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+
+    # ── Feature #8b — Descargar plantilla Excel ────────────────────────────
+
+    @action(detail=False, methods=['get'], url_path='download-excel-template')
+    def download_excel_template(self, request):
+        """
+        GET /api/v1/projects/download-excel-template/
+        Genera y descarga un archivo Excel válido como plantilla de importación.
+        """
+        from openpyxl import Workbook
+        from openpyxl.styles import Font, PatternFill, Alignment
+
+        wb = Workbook()
+
+        header_fill = PatternFill(start_color='1A237E', end_color='1A237E', fill_type='solid')
+        header_font = Font(color='FFFFFF', bold=True)
+
+        # ── Hoja 1: Datos Proyecto (horizontal: fila 1 = headers, fila 2 = valores) ──
+        ws1 = wb.active
+        ws1.title = 'Datos Proyecto'
+        headers_proyecto = [
+            'nombre', 'tipo', 'cliente_nit', 'cliente_nombre',
+            'fecha_inicio_planificada', 'fecha_fin_planificada',
+            'presupuesto_total', 'descripcion',
+        ]
+        ws1.append(headers_proyecto)
+        for cell in ws1[1]:
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = Alignment(horizontal='center')
+        ws1.append([
+            'Proyecto Ejemplo', 'software', '900123456', 'Cliente Ejemplo',
+            '2026-04-01', '2026-12-31',
+            1000000, 'Descripción del proyecto de ejemplo',
+        ])
+        for col in ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']:
+            ws1.column_dimensions[col].width = 26
+
+        # ── Hoja 2: Fases ───────────────────────────────────────────────────
+        ws2 = wb.create_sheet('Fases')
+        # Nombres de columna exactos que espera el importer
+        headers_fases = ['nombre', 'orden', 'descripcion', 'fecha_inicio', 'fecha_fin']
+        ws2.append(headers_fases)
+        for cell in ws2[1]:
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = Alignment(horizontal='center')
+        ws2.append(['Fase 1: Planificacion', 1, 'Fase inicial de planificacion', '2026-04-01', '2026-06-01'])
+        ws2.append(['Fase 2: Ejecucion',     2, 'Fase de ejecucion del proyecto', '2026-06-02', '2026-10-01'])
+        ws2.append(['Fase 3: Cierre',        3, 'Fase de cierre y entrega',       '2026-10-02', '2026-12-31'])
+        for col in ['A', 'B', 'C', 'D', 'E']:
+            ws2.column_dimensions[col].width = 28
+
+        # ── Hoja 3: Tareas ──────────────────────────────────────────────────
+        ws3 = wb.create_sheet('Tareas')
+        # fase_orden = número de orden de la fase (1, 2, 3...)
+        # prioridad  = entero: 1=Baja, 2=Normal, 3=Alta, 4=Urgente
+        headers_tareas = ['nombre', 'fase_orden', 'descripcion', 'prioridad', 'fecha_inicio', 'fecha_fin', 'horas_estimadas']
+        ws3.append(headers_tareas)
+        for cell in ws3[1]:
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = Alignment(horizontal='center')
+        ws3.append(['Tarea 1.1', 1, 'Primera tarea planificacion',  3, '2026-04-01', '2026-04-15', 8])
+        ws3.append(['Tarea 1.2', 1, 'Segunda tarea planificacion',  2, '2026-04-16', '2026-05-01', 16])
+        ws3.append(['Tarea 2.1', 2, 'Primera tarea ejecucion',      3, '2026-06-02', '2026-07-01', 40])
+        for col in ['A', 'B', 'C', 'D', 'E', 'F', 'G']:
+            ws3.column_dimensions[col].width = 22
+
+        # ── Hoja 4: Dependencias (opcional) ────────────────────────────────
+        ws4 = wb.create_sheet('Dependencias')
+        # pred_nombre / succ_nombre deben coincidir EXACTAMENTE con 'nombre' en Tareas
+        headers_deps = ['pred_nombre', 'succ_nombre', 'tipo', 'lag']
+        ws4.append(headers_deps)
+        for cell in ws4[1]:
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = Alignment(horizontal='center')
+        ws4.append(['Tarea 1.1', 'Tarea 1.2', 'FS', 0])
+        ws4.append(['Tarea 1.2', 'Tarea 2.1', 'FS', 0])
+        for col in ['A', 'B', 'C', 'D']:
+            ws4.column_dimensions[col].width = 25
+
+        # ── Hoja 5: Instrucciones ───────────────────────────────────────────
+        ws5 = wb.create_sheet('Instrucciones')
+        ws5['A1'] = 'INSTRUCCIONES DE USO'
+        ws5['A1'].font = Font(size=14, bold=True)
+        instrucciones = [
+            '',
+            "1. Hoja 'Datos Proyecto': complete la fila 2 con los datos del proyecto.",
+            '   - tipo: software | construccion | consultoria | mantenimiento | other',
+            '   - cliente_nit: NIT o cédula del cliente (opcional)',
+            '   - cliente_nombre: nombre del cliente (opcional)',
+            '   - fecha_inicio_planificada / fecha_fin_planificada: formato YYYY-MM-DD',
+            '   - presupuesto_total: número sin puntos ni comas (ej: 1000000)',
+            '',
+            "2. Hoja 'Fases': una fila por fase.",
+            '   - nombre: nombre de la fase (se usará en Tareas para referenciarla)',
+            '   - orden: número secuencial 1, 2, 3...',
+            '   - fecha_inicio / fecha_fin: formato YYYY-MM-DD',
+            '',
+            "3. Hoja 'Tareas': una fila por tarea.",
+            '   - fase_orden: número de orden de la fase (1, 2, 3...) — NO el nombre',
+            '   - prioridad: 1=Baja, 2=Normal, 3=Alta, 4=Urgente',
+            '   - horas_estimadas: número entero (opcional)',
+            '',
+            "4. Hoja 'Dependencias' (opcional): relaciones entre tareas.",
+            '   - pred_nombre / succ_nombre: nombre EXACTO de la tarea (columna nombre en Tareas)',
+            '   - tipo: FS (Finish-Start) | SS (Start-Start) | FF (Finish-Finish)',
+            '   - lag: días de demora (0 si no hay)',
+            '',
+            "5. Suba el archivo en 'Importar desde Excel'.",
+            '',
+            'IMPORTANTE:',
+            '- No modifique los nombres de las hojas ni los encabezados de columna',
+            '- Use fechas en formato YYYY-MM-DD',
+        ]
+        for i, texto in enumerate(instrucciones, start=2):
+            ws5[f'A{i}'] = texto
+        ws5.column_dimensions['A'].width = 80
+
+        response = HttpResponse(
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        response['Content-Disposition'] = 'attachment; filename="plantilla-proyecto.xlsx"'
+        wb.save(response)
+        logger.info('Plantilla Excel de importación generada', extra={'user': str(request.user.id)})
+        return response
 
 
 class PhaseViewSet(viewsets.ModelViewSet):

@@ -79,3 +79,5 @@ n8n/.n8n/
 
 # Scripts backup
 scripts/*.bak
+.playwright-mcp/
+.claude/

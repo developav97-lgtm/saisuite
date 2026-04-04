@@ -15,6 +15,53 @@
       <!-- ── Columna principal ──────────────────────────────── -->
       <div class="cs-main">
 
+        <!-- Logo de empresa -->
+        <div class="sc-card">
+          <div class="sc-card__header">
+            <mat-icon>image</mat-icon>
+            <span class="sc-card__title">Logo de empresa</span>
+          </div>
+          <div class="sc-card__body">
+            <div class="cs-logo-section">
+              <div class="cs-logo-preview">
+                @if (currentLogoUrl) {
+                  <img [src]="currentLogoUrl" alt="Logo de empresa" class="cs-logo-preview__img" />
+                } @else {
+                  <div class="cs-logo-preview__placeholder">
+                    <mat-icon>business</mat-icon>
+                    <span>Sin logo</span>
+                  </div>
+                }
+              </div>
+              <div class="cs-logo-actions">
+                <p class="cs-logo-actions__hint">PNG, JPG, WebP o GIF — máx. 2 MB. Aparecerá en los reportes PDF del proyecto.</p>
+                <div class="cs-logo-actions__buttons">
+                  <button mat-stroked-button color="primary"
+                          [disabled]="uploading()"
+                          (click)="triggerFilePicker()">
+                    <mat-icon>upload</mat-icon>
+                    {{ currentLogoUrl ? 'Cambiar logo' : 'Subir logo' }}
+                  </button>
+                  @if (currentLogoUrl) {
+                    <button mat-icon-button color="warn"
+                            [disabled]="uploading()"
+                            matTooltip="Eliminar logo"
+                            (click)="deleteLogo()">
+                      <mat-icon>delete</mat-icon>
+                    </button>
+                  }
+                </div>
+                @if (uploading()) {
+                  <mat-progress-bar mode="indeterminate" class="cs-logo-actions__progress" />
+                }
+              </div>
+            </div>
+            <!-- Input oculto -->
+            <input #fileInput type="file" accept="image/png,image/jpeg,image/webp,image/gif"
+                   style="display:none" (change)="onFileSelected($event)" />
+          </div>
+        </div>
+
         <!-- Información general -->
         <div class="sc-card">
           <div class="sc-card__header">

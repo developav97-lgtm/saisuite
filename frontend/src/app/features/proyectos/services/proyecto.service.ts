@@ -8,6 +8,10 @@ import {
   ProyectoCreate,
   EstadoFinanciero,
   EstadoProyecto,
+  PlantillaProyecto,
+  PlantillaProyectoCreate,
+  CreateFromTemplateRequest,
+  ImportExcelResult,
 } from '../models/proyecto.model';
 
 export interface ProyectoListParams {
@@ -83,5 +87,56 @@ export class ProyectoService {
     return this.http.get<{ tasks: import('../models/tarea.model').GanttTask[] }>(
       `${this.baseUrl}/${id}/gantt-data/`,
     );
+  }
+
+  // ── Exportación PDF ───────────────────────────────────────────────────────
+
+  exportPDF(
+    proyectoId: string,
+    options?: { includeGantt?: boolean; includeBudget?: boolean },
+  ): Observable<Blob> {
+    let params = new HttpParams();
+    if (options?.includeGantt  !== undefined) params = params.set('include_gantt',   String(options.includeGantt));
+    if (options?.includeBudget !== undefined) params = params.set('include_budget',  String(options.includeBudget));
+    return this.http.get(
+      `${this.baseUrl}/${proyectoId}/export/pdf/`,
+      { responseType: 'blob', params },
+    );
+  }
+
+  // ── Plantillas de Proyecto ────────────────────────────────────────────────
+
+  getTemplates(): Observable<PlantillaProyecto[]> {
+    return this.http.get<PlantillaProyecto[]>(`${this.baseUrl}/templates/`);
+  }
+
+  createFromTemplate(data: CreateFromTemplateRequest): Observable<ProyectoDetail> {
+    return this.http.post<ProyectoDetail>(`${this.baseUrl}/create-from-template/`, data);
+  }
+
+  createTemplate(data: PlantillaProyectoCreate): Observable<PlantillaProyecto> {
+    return this.http.post<PlantillaProyecto>(`${this.baseUrl}/templates/create/`, data);
+  }
+
+  getTemplateDetail(id: string): Observable<PlantillaProyecto> {
+    return this.http.get<PlantillaProyecto>(`${this.baseUrl}/templates/${id}/`);
+  }
+
+  updateTemplate(id: string, data: PlantillaProyectoCreate): Observable<PlantillaProyecto> {
+    return this.http.patch<PlantillaProyecto>(`${this.baseUrl}/templates/${id}/update/`, data);
+  }
+
+  deleteTemplate(id: string): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/templates/${id}/delete/`);
+  }
+
+  // ── Importación Excel ─────────────────────────────────────────────────────
+
+  importFromExcel(formData: FormData): Observable<ImportExcelResult> {
+    return this.http.post<ImportExcelResult>(`${this.baseUrl}/import-from-excel/`, formData);
+  }
+
+  downloadExcelTemplate(): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}/download-excel-template/`, { responseType: 'blob' });
   }
 }

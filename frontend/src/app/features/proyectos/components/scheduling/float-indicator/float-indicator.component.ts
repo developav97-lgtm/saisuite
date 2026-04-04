@@ -5,26 +5,37 @@
  */
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { MatChipsModule } from '@angular/material/chips';
+import { MatTooltipModule } from '@angular/material/tooltip';
 
 @Component({
   selector: 'sc-float-indicator',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [MatChipsModule],
+  imports: [MatChipsModule, MatTooltipModule],
   template: `
     @if (isCritical()) {
       <mat-chip-set>
-        <mat-chip class="fi-chip fi-chip--critical" [disableRipple]="true">CRÍTICA</mat-chip>
+        <mat-chip
+          class="fi-chip fi-chip--critical"
+          [disableRipple]="true"
+          matTooltip="Tarea en el camino crítico — sin holgura disponible"
+          matTooltipPosition="above"
+        >CRÍTICA</mat-chip>
       </mat-chip-set>
     } @else if (floatDays() !== null && floatDays()! > 0) {
       <mat-chip-set>
-        <mat-chip class="fi-chip fi-chip--float" [disableRipple]="true">
-          Float: {{ floatDays() }}d
+        <mat-chip
+          class="fi-chip fi-chip--float"
+          [disableRipple]="true"
+          matTooltip="Holgura disponible (días)"
+          matTooltipPosition="above"
+        >
+          Holgura: {{ floatDays() }} {{ floatDays() === 1 ? 'día' : 'días' }}
         </mat-chip>
       </mat-chip-set>
     }
   `,
   styles: [`
-    :host { display: inline-block; }
+    :host { display: block; max-width: 100%; overflow: hidden; }
 
     .fi-chip {
       font-size: 0.6875rem;

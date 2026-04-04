@@ -98,9 +98,9 @@ export class TeamTimelineComponent implements OnInit {
   }
 
   totalPorcentaje(usuario: TeamAvailabilityUser): number {
-    return usuario.asignaciones.reduce(
-      (sum, a) => sum + Number(a.porcentaje_asignacion), 0,
-    );
+    return usuario.asignaciones
+      .filter(a => a.tarea_estado !== 'completed' && a.tarea_estado !== 'cancelled')
+      .reduce((sum, a) => sum + Number(a.porcentaje_asignacion || 0), 0);
   }
 
   irANuevaTarea(): void {

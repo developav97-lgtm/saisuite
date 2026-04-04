@@ -128,11 +128,34 @@
 // ── Tab spacing ────────────────────────────────────────────────
 .pd-tabs {
   margin-top: 0.5rem;
+
+  // Bug #1 fix: let Angular Material's built-in pagination handle scrolling.
+  // Do NOT override overflow on mat-mdc-tab-header or mat-mdc-tab-list —
+  // it breaks the translateX-based pagination that powers the < > arrows.
+  @media (max-width: 768px) {
+    :host ::ng-deep .mat-mdc-tab-labels {
+      flex-wrap: nowrap !important;
+    }
+
+    :host ::ng-deep .mat-mdc-tab {
+      min-width: 72px !important;
+      flex-shrink: 0 !important;
+      padding: 0 10px !important;
+      font-size: 0.75rem !important;
+    }
+
+    // Pagination arrows (< >) must be visible and tappable
+    :host ::ng-deep .mat-mdc-tab-header-pagination {
+      min-width: 32px;
+      padding: 0;
+    }
+  }
 }
 
 .pd-tab-content {
   padding: 1.25rem 0;
 }
+
 
 // ── General: dos columnas ──────────────────────────────────────
 .pd-general-layout {
@@ -309,6 +332,26 @@
   height: 2rem;
   background: var(--sc-border-color);
   flex-shrink: 0;
+}
+
+// ── Mobile responsive ─────────────────────────────────────────
+@media (max-width: 768px) {
+  .pd-hero__nombre {
+    font-size: 1.25rem;
+  }
+
+  .pd-hero__actions {
+    width: 100%;
+    justify-content: flex-start;
+
+    button {
+      font-size: 0.75rem !important;
+    }
+  }
+
+  .pd-breadcrumb__current {
+    max-width: 160px;
+  }
 }
 
 // ── Sync row ───────────────────────────────────────────────────

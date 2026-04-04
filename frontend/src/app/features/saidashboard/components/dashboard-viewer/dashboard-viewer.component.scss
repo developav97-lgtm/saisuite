@@ -1,0 +1,82 @@
+// ── Header ────────────────────────────────────────────────
+.dv-title-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.dv-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+// ── Progress ──────────────────────────────────────────────
+.dv-progress {
+  margin-bottom: -4px;
+  border-radius: var(--sc-radius) var(--sc-radius) 0 0;
+}
+
+// ── Content ───────────────────────────────────────────────
+.dv-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+// ── KPI row ───────────────────────────────────────────────
+.dv-kpi-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+
+  @media (max-width: 768px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  @media (max-width: 480px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+// ── Charts grid ───────────────────────────────────────────
+.dv-charts-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  grid-auto-rows: minmax(280px, auto);
+
+  @media (max-width: 1024px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.dv-chart-cell {
+  min-height: 280px;
+
+  @media (max-width: 768px) {
+    // On mobile, override grid-column span to full width
+    grid-column: span 1 !important;
+    grid-row: span 1 !important;
+  }
+}
+
+// ── Empty state ───────────────────────────────────────────
+.dv-empty {
+  border: 1px solid var(--sc-surface-border);
+  border-radius: var(--sc-radius);
+}
+
+// ── Mobile ────────────────────────────────────────────────
+@media (max-width: 768px) {
+  .dv-header-actions {
+    button {
+      min-width: 44px;
+      min-height: 44px;
+    }
+  }
+}

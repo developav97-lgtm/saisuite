@@ -20,85 +20,87 @@
       <p>No hay fases definidas. Agrega la primera desde el botón de arriba.</p>
     </div>
   } @else if (fases().length > 0) {
-    <mat-table
-      [dataSource]="fases()"
-      cdkDropList
-      [cdkDropListData]="fases()"
-      (cdkDropListDropped)="onDrop($event)"
-      class="fl-table"
-    >
-      <!-- Columna drag handle -->
-      <ng-container matColumnDef="drag_handle">
-        <mat-header-cell *matHeaderCellDef class="fl-col-drag"></mat-header-cell>
-        <mat-cell *matCellDef="let f" class="fl-col-drag">
-          <mat-icon
-            cdkDragHandle
-            class="fl-drag-handle"
-            matTooltip="Arrastra para reordenar"
-          >drag_indicator</mat-icon>
-        </mat-cell>
-      </ng-container>
+    <div class="fl-table-wrapper">
+      <mat-table
+        [dataSource]="fases()"
+        cdkDropList
+        [cdkDropListData]="fases()"
+        (cdkDropListDropped)="onDrop($event)"
+        class="fl-table"
+      >
+        <!-- Columna drag handle -->
+        <ng-container matColumnDef="drag_handle">
+          <mat-header-cell *matHeaderCellDef class="fl-col-drag"></mat-header-cell>
+          <mat-cell *matCellDef="let f" class="fl-col-drag">
+            <mat-icon
+              cdkDragHandle
+              class="fl-drag-handle"
+              matTooltip="Arrastra para reordenar"
+            >drag_indicator</mat-icon>
+          </mat-cell>
+        </ng-container>
 
-      <ng-container matColumnDef="orden">
-        <mat-header-cell *matHeaderCellDef>#</mat-header-cell>
-        <mat-cell *matCellDef="let f">{{ f.orden }}</mat-cell>
-      </ng-container>
+        <ng-container matColumnDef="orden">
+          <mat-header-cell *matHeaderCellDef>#</mat-header-cell>
+          <mat-cell *matCellDef="let f">{{ f.orden }}</mat-cell>
+        </ng-container>
 
-      <ng-container matColumnDef="nombre">
-        <mat-header-cell *matHeaderCellDef>Nombre</mat-header-cell>
-        <mat-cell *matCellDef="let f">{{ f.nombre }}</mat-cell>
-      </ng-container>
+        <ng-container matColumnDef="nombre">
+          <mat-header-cell *matHeaderCellDef>Nombre</mat-header-cell>
+          <mat-cell *matCellDef="let f">{{ f.nombre }}</mat-cell>
+        </ng-container>
 
-      <ng-container matColumnDef="estado">
-        <mat-header-cell *matHeaderCellDef>Estado</mat-header-cell>
-        <mat-cell *matCellDef="let f">
-          <span [class]="'fl-estado fl-estado--' + f.estado">{{ ESTADO_LABELS[f.estado] }}</span>
-        </mat-cell>
-      </ng-container>
+        <ng-container matColumnDef="estado">
+          <mat-header-cell *matHeaderCellDef>Estado</mat-header-cell>
+          <mat-cell *matCellDef="let f">
+            <span [class]="'fl-estado fl-estado--' + f.estado">{{ ESTADO_LABELS[f.estado] }}</span>
+          </mat-cell>
+        </ng-container>
 
-      <ng-container matColumnDef="presupuesto">
-        <mat-header-cell *matHeaderCellDef>Presupuesto</mat-header-cell>
-        <mat-cell *matCellDef="let f">{{ formatCurrency(presupuestoTotal(f)) }}</mat-cell>
-      </ng-container>
+        <ng-container matColumnDef="presupuesto">
+          <mat-header-cell *matHeaderCellDef>Presupuesto</mat-header-cell>
+          <mat-cell *matCellDef="let f">{{ formatCurrency(presupuestoTotal(f)) }}</mat-cell>
+        </ng-container>
 
-      <ng-container matColumnDef="avance">
-        <mat-header-cell *matHeaderCellDef>Avance</mat-header-cell>
-        <mat-cell *matCellDef="let f" class="fl-avance">
-          <mat-progress-bar mode="determinate" [value]="+f.porcentaje_avance" />
-          <span class="fl-avance__pct">{{ (+f.porcentaje_avance).toFixed(0) }}%</span>
-        </mat-cell>
-      </ng-container>
+        <ng-container matColumnDef="avance">
+          <mat-header-cell *matHeaderCellDef>Avance</mat-header-cell>
+          <mat-cell *matCellDef="let f" class="fl-avance">
+            <mat-progress-bar mode="determinate" [value]="+f.porcentaje_avance" />
+            <span class="fl-avance__pct">{{ (+f.porcentaje_avance).toFixed(0) }}%</span>
+          </mat-cell>
+        </ng-container>
 
-      <ng-container matColumnDef="acciones">
-        <mat-header-cell *matHeaderCellDef class="fl-col-acciones">Acciones</mat-header-cell>
-        <mat-cell *matCellDef="let f" class="fl-col-acciones">
-          @if (f.estado === 'planned') {
-            <button mat-icon-button matTooltip="Activar fase" color="primary" (click)="activarFase(f)">
-              <mat-icon>play_circle</mat-icon>
+        <ng-container matColumnDef="acciones">
+          <mat-header-cell *matHeaderCellDef class="fl-col-acciones">Acciones</mat-header-cell>
+          <mat-cell *matCellDef="let f" class="fl-col-acciones">
+            @if (f.estado === 'planned') {
+              <button mat-icon-button matTooltip="Activar fase" color="primary" (click)="activarFase(f)">
+                <mat-icon>play_circle</mat-icon>
+              </button>
+            }
+            @if (f.estado === 'active') {
+              <button mat-icon-button matTooltip="Completar fase" color="accent" (click)="completarFase(f)">
+                <mat-icon>check_circle</mat-icon>
+              </button>
+            }
+            <button mat-icon-button matTooltip="Editar" (click)="abrirDialogEditar(f)">
+              <mat-icon>edit</mat-icon>
             </button>
-          }
-          @if (f.estado === 'active') {
-            <button mat-icon-button matTooltip="Completar fase" color="accent" (click)="completarFase(f)">
-              <mat-icon>check_circle</mat-icon>
+            <button mat-icon-button matTooltip="Eliminar" color="warn" (click)="confirmarEliminar(f)">
+              <mat-icon>delete</mat-icon>
             </button>
-          }
-          <button mat-icon-button matTooltip="Editar" (click)="abrirDialogEditar(f)">
-            <mat-icon>edit</mat-icon>
-          </button>
-          <button mat-icon-button matTooltip="Eliminar" color="warn" (click)="confirmarEliminar(f)">
-            <mat-icon>delete</mat-icon>
-          </button>
-        </mat-cell>
-      </ng-container>
+          </mat-cell>
+        </ng-container>
 
-      <mat-header-row *matHeaderRowDef="displayedColumns"></mat-header-row>
-      <mat-row
-        *matRowDef="let row; columns: displayedColumns;"
-        cdkDrag
-        [cdkDragData]="row"
-        class="fl-row-draggable"
-      ></mat-row>
-    </mat-table>
+        <mat-header-row *matHeaderRowDef="displayedColumns"></mat-header-row>
+        <mat-row
+          *matRowDef="let row; columns: displayedColumns;"
+          cdkDrag
+          [cdkDragData]="row"
+          class="fl-row-draggable"
+        ></mat-row>
+      </mat-table>
+    </div>
   }
 </div>
 

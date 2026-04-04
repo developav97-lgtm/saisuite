@@ -253,7 +253,15 @@
 // ── Tabla ─────────────────────────────────────────────────────────────────────
 .bc-table {
   width: 100%;
+  min-width: 710px;
   border-radius: var(--sc-radius);
+
+  // Ancho de columnas por nombre de columna (mat-table)
+  .mat-column-tarea        { min-width: 250px; flex: 2.5; }
+  .mat-column-baseline_ini { min-width: 105px; flex: 0 0 105px; white-space: nowrap; justify-content: center; text-align: center; }
+  .mat-column-actual_ini   { min-width: 105px; flex: 0 0 105px; white-space: nowrap; justify-content: center; text-align: center; }
+  .mat-column-variacion    { min-width: 80px;  flex: 0 0 80px;  justify-content: center; text-align: center; }
+  .mat-column-estado       { min-width: 150px; flex: 0 0 150px; justify-content: center; text-align: center; }
 }
 
 .bc-col-right {
@@ -264,22 +272,25 @@
 .bc-cell-tarea {
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
-}
-
-.bc-tarea-codigo {
-  font-family: 'SF Mono', 'Fira Code', monospace;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--sc-primary);
-  background: var(--sc-primary-light);
-  padding: 0.1rem 0.35rem;
-  border-radius: 3px;
-  width: fit-content;
 }
 
 .bc-tarea-nombre {
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.bc-tarea-codigo {
+  display: inline;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--sc-primary);
+  background: var(--sc-primary-light);
+  padding: 0.1rem 0.3rem;
+  border-radius: 3px;
+  margin-right: 0.35rem;
 }
 
 // ── Variance badge ────────────────────────────────────────────────────────────
@@ -313,8 +324,9 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
   min-height: 22px;
-  height: 22px;
-  padding: 0 8px;
+  height: auto !important;
+  padding: 3px 8px !important;
+  white-space: nowrap;
   cursor: default;
 
   &--ahead {

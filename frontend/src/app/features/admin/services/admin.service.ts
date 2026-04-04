@@ -71,4 +71,14 @@ export class AdminService {
   getMyLicense(): Observable<CompanyLicense> {
     return this.http.get<CompanyLicense>('/api/v1/companies/licenses/me/');
   }
+
+  uploadLogo(file: File): Observable<CompanySettings> {
+    const formData = new FormData();
+    formData.append('logo', file);
+    return this.http.patch<CompanySettings>('/api/v1/companies/me/logo/', formData);
+  }
+
+  deleteLogo(): Observable<void> {
+    return this.http.delete<void>('/api/v1/companies/me/logo/');
+  }
 }

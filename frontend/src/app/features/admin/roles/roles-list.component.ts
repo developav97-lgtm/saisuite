@@ -15,6 +15,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { ResponsiveTableDirective } from '../../../shared/directives';
 import { Role, RolesService, TIPO_LABELS } from '../services/roles.service';
 import { RoleFormComponent } from './role-form.component';
 import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
@@ -25,6 +26,7 @@ import { AuthService } from '../../../core/auth/auth.service';
   selector: 'app-roles-list',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
+    ResponsiveTableDirective,
     MatTableModule,
     MatButtonModule,
     MatIconModule,

@@ -11,7 +11,7 @@
     <mat-progress-bar mode="indeterminate" />
   }
 
-  <mat-table [dataSource]="users()" class="iu-table mat-elevation-z1">
+  <mat-table [dataSource]="users()" class="iu-table mat-elevation-z1" appResponsiveTable>
 
     <ng-container matColumnDef="nombre">
       <mat-header-cell *matHeaderCellDef>Nombre</mat-header-cell>

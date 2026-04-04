@@ -7,6 +7,7 @@ from rest_framework import viewsets, status
 from rest_framework.views import APIView
 from rest_framework.generics import RetrieveAPIView
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
 
 from .models import Company, CompanyLicense
@@ -94,6 +95,34 @@ class CompanyMeView(RetrieveAPIView):
             from rest_framework.exceptions import NotFound
             raise NotFound('El usuario no tiene una empresa asignada.')
         return company
+
+
+class CompanyMeLogoView(APIView):
+    """PATCH /api/v1/companies/me/logo/ — sube o reemplaza el logo de la empresa del usuario."""
+
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser]
+
+    def patch(self, request):
+        company = getattr(request.user, 'effective_company', None)
+        if company is None:
+            from rest_framework.exceptions import NotFound
+            raise NotFound('El usuario no tiene una empresa asignada.')
+        if 'logo' not in request.FILES:
+            return Response({'error': 'Se requiere el campo logo.'}, status=status.HTTP_400_BAD_REQUEST)
+        company.logo = request.FILES['logo']
+        company.save(update_fields=['logo', 'updated_at'])
+        logger.info('logo_updated', extra={'company_id': str(company.id)})
+        return Response(CompanyDetailSerializer(company, context={'request': request}).data)
+
+    def delete(self, request):
+        company = getattr(request.user, 'effective_company', None)
+        if company is None:
+            from rest_framework.exceptions import NotFound
+            raise NotFound('El usuario no tiene una empresa asignada.')
+        company.logo.delete(save=True)
+        logger.info('logo_deleted', extra={'company_id': str(company.id)})
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class ModuleActivateView(APIView):

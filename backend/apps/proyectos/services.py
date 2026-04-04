@@ -5,15 +5,20 @@ TODA la lógica de negocio va aquí. Las views solo orquestan.
 import logging
 from decimal import Decimal
 from django.db import transaction
+try:
+    from weasyprint import HTML as WeasyHTML, CSS as WeasyCSS
+    _WEASYPRINT_AVAILABLE = True
+except ImportError:  # pragma: no cover
+    _WEASYPRINT_AVAILABLE = False
 from django.db.models import Avg, ExpressionWrapper, F, Sum, Count, Q, QuerySet
 from django.db.models import DecimalField as DbDecimalField
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError, PermissionDenied
 
 from apps.proyectos.models import (
-    Project, Phase, ProjectStakeholder, AccountingDocument, Milestone,
+    Project, Phase, Task, ProjectStakeholder, AccountingDocument, Milestone,
     ProjectStatus, PhaseStatus, Activity, ProjectActivity, ModuleSettings,
-    ActivityType, MeasurementMode,
+    ActivityType, MeasurementMode, ProjectType,
 )
 
 logger = logging.getLogger(__name__)
@@ -239,21 +244,20 @@ class ProyectoService:
     @staticmethod
     def _generar_codigo(company) -> str:
         """Genera código autoincremental por empresa: PRY-001, PRY-002, ..."""
-        ultimo = (
+        codigos = (
             Project.all_objects
-            .filter(company=company)
-            .order_by('-created_at')
+            .filter(company=company, codigo__startswith='PRY-')
             .values_list('codigo', flat=True)
-            .first()
         )
-        if not ultimo or not ultimo.startswith('PRY-'):
-            numero = 1
-        else:
+        max_num = 0
+        for c in codigos:
             try:
-                numero = int(ultimo.split('-')[1]) + 1
+                num = int(c.split('-')[1])
+                if num > max_num:
+                    max_num = num
             except (IndexError, ValueError):
-                numero = 1
-        return f'PRY-{numero:03d}'
+                pass
+        return f'PRY-{max_num + 1:03d}'
 
     @staticmethod
     def _validar_gerente(gerente_id: str, company) -> object:
@@ -1036,3 +1040,1067 @@ class ActividadProyectoService:
             extra={'id': str(ap.id), 'proyecto_id': str(ap.proyecto_id)},
         )
         ap.delete()
+
+
+# ──────────────────────────────────────────────
+# Feature #8 — PDF Export
+# ──────────────────────────────────────────────
+
+class ProyectoExportService:
+    """
+    Genera reportes PDF de proyectos usando WeasyPrint.
+    """
+
+    @staticmethod
+    def generate_pdf(proyecto: Project, include_gantt: bool = True, include_budget: bool = True) -> bytes:
+        """
+        Genera el PDF del proyecto y retorna los bytes del PDF.
+        """
+        from django.template.loader import render_to_string
+
+        if not _WEASYPRINT_AVAILABLE:
+            raise ImportError(
+                'WeasyPrint no está instalado. Ejecutar: pip install weasyprint==60.1'
+            )
+
+        context = ProyectoExportService._prepare_context(
+            proyecto, include_gantt=include_gantt, include_budget=include_budget
+        )
+        html_string = render_to_string('proyectos/export/pdf_report.html', context)
+        css_string  = ProyectoExportService._get_pdf_css()
+
+        pdf_bytes = WeasyHTML(string=html_string).write_pdf(
+            stylesheets=[WeasyCSS(string=css_string)]
+        )
+        logger.info(
+            'PDF de proyecto generado',
+            extra={
+                'proyecto_id': str(proyecto.id),
+                'codigo': proyecto.codigo,
+                'include_gantt': include_gantt,
+                'include_budget': include_budget,
+            },
+        )
+        return pdf_bytes
+
+    @staticmethod
+    def _prepare_context(proyecto: Project, include_gantt: bool = True, include_budget: bool = True) -> dict:
+        """Recopila todos los datos necesarios para el template del PDF."""
+        import pytz
+        from django.utils import timezone
+        from django.db.models import Sum, Count
+
+        fases = list(
+            proyecto.phases
+            .filter(activo=True)
+            .order_by('orden')
+            .prefetch_related('tasks')
+        )
+
+        # KPIs básicos
+        total_tareas = proyecto.tasks.count()
+        tareas_completadas = proyecto.tasks.filter(estado='completed').count()
+        tareas_en_progreso = proyecto.tasks.filter(estado='in_progress').count()
+        tareas_pendientes  = proyecto.tasks.filter(estado='todo').count()
+
+        pct_tareas_completadas = (
+            round(tareas_completadas / total_tareas * 100, 1) if total_tareas > 0 else 0
+        )
+
+        # Resumen presupuestario (desde fases activas)
+        fases_agg = proyecto.phases.filter(activo=True).aggregate(
+            total_mano_obra=Sum('presupuesto_mano_obra'),
+            total_materiales=Sum('presupuesto_materiales'),
+            total_subcontratos=Sum('presupuesto_subcontratos'),
+            total_equipos=Sum('presupuesto_equipos'),
+            total_otros=Sum('presupuesto_otros'),
+        )
+
+        def _d(val):
+            return val or Decimal('0')
+
+        presupuesto_costos = (
+            _d(fases_agg['total_mano_obra'])
+            + _d(fases_agg['total_materiales'])
+            + _d(fases_agg['total_subcontratos'])
+            + _d(fases_agg['total_equipos'])
+            + _d(fases_agg['total_otros'])
+        )
+
+        aiu_factor = (
+            proyecto.porcentaje_administracion
+            + proyecto.porcentaje_imprevistos
+            + proyecto.porcentaje_utilidad
+        ) / Decimal('100')
+        precio_venta_aiu = presupuesto_costos * (1 + aiu_factor)
+
+        docs_agg = proyecto.documents.aggregate(ejecutado=Sum('valor_neto'))
+        costo_ejecutado = _d(docs_agg['ejecutado'])
+
+        budget_summary = {
+            'presupuesto_total':    str(proyecto.presupuesto_total),
+            'presupuesto_costos':   str(presupuesto_costos),
+            'precio_venta_aiu':     str(precio_venta_aiu.quantize(Decimal('0.01'))),
+            'costo_ejecutado':      str(costo_ejecutado),
+            'desglose': {
+                'mano_obra':    str(_d(fases_agg['total_mano_obra'])),
+                'materiales':   str(_d(fases_agg['total_materiales'])),
+                'subcontratos': str(_d(fases_agg['total_subcontratos'])),
+                'equipos':      str(_d(fases_agg['total_equipos'])),
+                'otros':        str(_d(fases_agg['total_otros'])),
+            },
+            'aiu': {
+                'administracion': str(proyecto.porcentaje_administracion),
+                'imprevistos':    str(proyecto.porcentaje_imprevistos),
+                'utilidad':       str(proyecto.porcentaje_utilidad),
+                'valor_aiu':      str((precio_venta_aiu - presupuesto_costos).quantize(Decimal('0.01'))),
+            },
+        }
+
+        logo_base64 = ProyectoExportService._get_tenant_logo_base64(proyecto)
+
+        return {
+            'proyecto':               proyecto,
+            'fases':                  fases,
+            'include_gantt':          include_gantt,
+            'include_budget':         include_budget,
+            'budget_summary':         budget_summary,
+            'logo_base64':            logo_base64,
+            'fecha_generacion':       timezone.now().astimezone(pytz.timezone('America/Bogota')).strftime('%d/%m/%Y %I:%M %p'),
+            'kpis': {
+                'total_tareas':             total_tareas,
+                'tareas_completadas':       tareas_completadas,
+                'tareas_en_progreso':       tareas_en_progreso,
+                'tareas_pendientes':        tareas_pendientes,
+                'pct_tareas_completadas':   pct_tareas_completadas,
+                'porcentaje_avance_fisico': str(proyecto.porcentaje_avance),
+            },
+        }
+
+    @staticmethod
+    def _get_pdf_css() -> str:
+        """Retorna el string CSS para el PDF (A4, colores corporativos)."""
+        return """
+        @page {
+            size: A4;
+            margin: 2cm 2cm 2.5cm 2cm;
+            @bottom-right {
+                content: "Página " counter(page) " de " counter(pages);
+                font-size: 9pt;
+                color: #666;
+            }
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'Liberation Sans', Arial, sans-serif;
+            font-size: 10pt;
+            color: #212121;
+            line-height: 1.5;
+        }
+
+        h1 { font-size: 22pt; font-weight: 800; color: #1a237e; margin: 0 0 8px 0; }
+        h2 { font-size: 14pt; font-weight: 700; color: #1a237e; border-bottom: 2px solid #1a237e; padding-bottom: 4px; margin-top: 20px; }
+        h3 { font-size: 11pt; font-weight: 700; color: #283593; margin-top: 16px; }
+
+        .portada {
+            page-break-after: always;
+            padding: 60px 0 40px 0;
+        }
+
+        .portada .logo { max-height: 80px; margin-bottom: 40px; }
+        .portada .titulo { font-family: 'Liberation Sans', Arial, sans-serif; font-size: 28pt; font-weight: 800; color: #1a237e; margin-bottom: 8px; letter-spacing: -0.5pt; }
+        .portada .subtitulo { font-size: 14pt; color: #3949ab; margin-bottom: 4px; }
+        .portada .meta { color: #666; font-size: 9pt; margin-top: 40px; }
+
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 8pt;
+            font-weight: bold;
+        }
+        .badge-draft       { background: #e3f2fd; color: #0d47a1; }
+        .badge-planned     { background: #e8f5e9; color: #1b5e20; }
+        .badge-in_progress { background: #fff3e0; color: #e65100; }
+        .badge-suspended   { background: #fce4ec; color: #880e4f; }
+        .badge-closed      { background: #ede7f6; color: #4a148c; }
+        .badge-cancelled   { background: #f5f5f5; color: #616161; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+            font-size: 9pt;
+        }
+        th {
+            background: #1a237e;
+            color: white;
+            padding: 6px 8px;
+            text-align: left;
+        }
+        td { padding: 5px 8px; border-bottom: 1px solid #e0e0e0; }
+        tr:nth-child(even) td { background: #f5f7ff; }
+
+        .kpi-grid {
+            display: table;
+            width: 100%;
+            margin: 12px 0;
+        }
+        .kpi-card {
+            display: table-cell;
+            width: 25%;
+            background: #f5f7ff;
+            border: 1px solid #c5cae9;
+            border-radius: 6px;
+            padding: 12px;
+            text-align: center;
+            vertical-align: middle;
+        }
+        .kpi-value { font-size: 20pt; font-weight: bold; color: #1a237e; }
+        .kpi-label { font-size: 8pt; color: #666; }
+
+        .progress-bar-container {
+            width: 100%;
+            background: #e0e0e0;
+            border-radius: 4px;
+            height: 10px;
+            margin: 4px 0;
+        }
+        .progress-bar {
+            height: 10px;
+            background: #3f51b5;
+            border-radius: 4px;
+        }
+
+        .fase-block {
+            border: 1px solid #c5cae9;
+            border-radius: 6px;
+            padding: 12px;
+            margin: 12px 0;
+            page-break-inside: avoid;
+        }
+
+        .gantt-placeholder {
+            background: #f5f7ff;
+            border: 2px dashed #c5cae9;
+            border-radius: 6px;
+            padding: 20px;
+            text-align: center;
+            color: #9e9e9e;
+            font-style: italic;
+        }
+
+        .footer-note {
+            font-size: 8pt;
+            color: #999;
+            text-align: center;
+            margin-top: 20px;
+        }
+        """
+
+    @staticmethod
+    def _get_tenant_logo_base64(proyecto: Project):
+        """
+        Intenta obtener el logo de la empresa como base64.
+        Retorna None si no existe o hay algún error.
+        """
+        try:
+            company = proyecto.company
+            logo_field = getattr(company, 'logo', None)
+            if not logo_field:
+                return None
+            logo_url = str(logo_field)
+            if not logo_url:
+                return None
+
+            import base64
+            import urllib.request
+
+            # Si es URL HTTP
+            if logo_url.startswith('http'):
+                with urllib.request.urlopen(logo_url, timeout=5) as response:
+                    data = response.read()
+                    return base64.b64encode(data).decode('utf-8')
+
+            # Si es path local
+            import os
+            from django.conf import settings as django_settings
+            full_path = os.path.join(django_settings.MEDIA_ROOT, logo_url.lstrip('/'))
+            if os.path.exists(full_path):
+                with open(full_path, 'rb') as f:
+                    data = f.read()
+                    return base64.b64encode(data).decode('utf-8')
+
+        except Exception as exc:
+            logger.warning(
+                'No se pudo cargar el logo de la empresa',
+                extra={'proyecto_id': str(proyecto.id), 'error': str(exc)},
+            )
+        return None
+
+
+# ──────────────────────────────────────────────
+# Feature #8 — Project Templates
+# ──────────────────────────────────────────────
+
+class PlantillaProyectoService:
+    """
+    Gestiona las plantillas de proyecto y la creación de proyectos desde ellas.
+    """
+
+    @staticmethod
+    def list_plantillas(company, is_active: bool = True):
+        """Retorna plantillas activas de la empresa con conteos de fases y tareas."""
+        from apps.proyectos.models import PlantillaProyecto
+
+        return (
+            PlantillaProyecto.objects
+            .filter(company=company, is_active=is_active)
+            .prefetch_related('fases_plantilla__tareas_plantilla')
+            .order_by('tipo', 'nombre')
+        )
+
+    @staticmethod
+    def get_plantilla(plantilla_id: str, company):
+        """Retorna una plantilla de la empresa con todas sus relaciones cargadas."""
+        from apps.proyectos.models import PlantillaProyecto
+        return (
+            PlantillaProyecto.objects
+            .prefetch_related(
+                'fases_plantilla',
+                'fases_plantilla__tareas_plantilla',
+                'fases_plantilla__tareas_plantilla__actividad_saiopen',
+                'fases_plantilla__tareas_plantilla__sucesoras_plantilla',
+            )
+            .get(id=plantilla_id, company=company, is_active=True)
+        )
+
+    @staticmethod
+    @transaction.atomic
+    def create_plantilla(data: dict, company) -> 'PlantillaProyecto':
+        """Crea una plantilla con fases y tareas anidadas."""
+        from apps.proyectos.models import PlantillaProyecto, PlantillaFase, PlantillaTarea
+
+        plantilla = PlantillaProyecto(
+            company=company,
+            nombre=data['nombre'],
+            descripcion=data.get('descripcion', ''),
+            tipo=data['tipo'],
+            icono=data.get('icono', 'folder'),
+            duracion_estimada=data.get('duracion_estimada', 30),
+            is_active=True,
+        )
+        plantilla.save()
+
+        for fase_data in data.get('fases', []):
+            fase = PlantillaFase(
+                company=company,
+                plantilla_proyecto=plantilla,
+                nombre=fase_data['nombre'],
+                descripcion=fase_data.get('descripcion', ''),
+                orden=fase_data.get('orden', 0),
+                porcentaje_duracion=fase_data.get('porcentaje_duracion', Decimal('100.00')),
+            )
+            fase.save()
+
+            for tarea_data in fase_data.get('tareas', []):
+                tarea = PlantillaTarea(
+                    company=company,
+                    plantilla_fase=fase,
+                    nombre=tarea_data['nombre'],
+                    descripcion=tarea_data.get('descripcion', ''),
+                    orden=tarea_data.get('orden', 0),
+                    duracion_dias=tarea_data.get('duracion_dias', 1),
+                    actividad_saiopen_id=tarea_data.get('actividad_saiopen_id'),
+                )
+                tarea.save()
+
+        logger.info(
+            'Plantilla de proyecto creada',
+            extra={
+                'plantilla_id': str(plantilla.id),
+                'nombre': plantilla.nombre,
+                'company': str(company.id),
+            },
+        )
+        return plantilla
+
+    @staticmethod
+    @transaction.atomic
+    def update_plantilla(plantilla_id: str, data: dict, company) -> 'PlantillaProyecto':
+        """Actualiza una plantilla, reemplazando fases y tareas."""
+        from apps.proyectos.models import PlantillaProyecto, PlantillaFase, PlantillaTarea
+
+        try:
+            plantilla = PlantillaProyecto.objects.get(id=plantilla_id, company=company)
+        except PlantillaProyecto.DoesNotExist:
+            raise ProyectoException({'plantilla_id': 'Plantilla no encontrada o no pertenece a su empresa.'})
+
+        plantilla.nombre           = data.get('nombre', plantilla.nombre)
+        plantilla.descripcion      = data.get('descripcion', plantilla.descripcion)
+        plantilla.tipo             = data.get('tipo', plantilla.tipo)
+        plantilla.icono            = data.get('icono', plantilla.icono)
+        plantilla.duracion_estimada = data.get('duracion_estimada', plantilla.duracion_estimada)
+        plantilla.save()
+
+        # Reemplazar fases y tareas si se envían
+        if 'fases' in data:
+            plantilla.fases_plantilla.all().delete()
+            for fase_data in data['fases']:
+                fase = PlantillaFase(
+                    company=company,
+                    plantilla_proyecto=plantilla,
+                    nombre=fase_data['nombre'],
+                    descripcion=fase_data.get('descripcion', ''),
+                    orden=fase_data.get('orden', 0),
+                    porcentaje_duracion=fase_data.get('porcentaje_duracion', Decimal('100.00')),
+                )
+                fase.save()
+
+                for tarea_data in fase_data.get('tareas', []):
+                    tarea = PlantillaTarea(
+                        company=company,
+                        plantilla_fase=fase,
+                        nombre=tarea_data['nombre'],
+                        descripcion=tarea_data.get('descripcion', ''),
+                        orden=tarea_data.get('orden', 0),
+                        duracion_dias=tarea_data.get('duracion_dias', 1),
+                        actividad_saiopen_id=tarea_data.get('actividad_saiopen_id'),
+                    )
+                    tarea.save()
+
+        logger.info(
+            'Plantilla de proyecto actualizada',
+            extra={
+                'plantilla_id': str(plantilla.id),
+                'nombre': plantilla.nombre,
+                'company': str(company.id),
+            },
+        )
+        return plantilla
+
+    @staticmethod
+    def delete_plantilla(plantilla_id: str, company) -> None:
+        """Elimina una plantilla (solo si pertenece a la empresa)."""
+        from apps.proyectos.models import PlantillaProyecto
+
+        try:
+            plantilla = PlantillaProyecto.objects.get(id=plantilla_id, company=company)
+        except PlantillaProyecto.DoesNotExist:
+            raise ProyectoException({'plantilla_id': 'Plantilla no encontrada o no pertenece a su empresa.'})
+
+        nombre = plantilla.nombre
+        plantilla.delete()
+
+        logger.info(
+            'Plantilla de proyecto eliminada',
+            extra={
+                'plantilla_id': plantilla_id,
+                'nombre': nombre,
+                'company': str(company.id),
+            },
+        )
+
+    @staticmethod
+    @transaction.atomic
+    def create_from_template(
+        plantilla_id: str,
+        nombre: str,
+        descripcion: str,
+        planned_start,
+        user,
+        cliente_id: str | None = None,
+    ) -> Project:
+        """
+        Clona una plantilla a un proyecto real con fases, tareas y dependencias.
+
+        Algoritmo de fechas:
+        - Cada fase ocupa (porcentaje_duracion / 100) * duracion_estimada días.
+        - Las fases son secuenciales: cada una empieza el día después de que termina la anterior.
+        - Las tareas se distribuyen dentro de la fase: fecha_inicio = fase.start + (orden-1)*duracion_dias.
+        """
+        from datetime import timedelta
+        from apps.proyectos.models import PlantillaProyecto, PlantillaDependencia, TaskDependency
+
+        company = getattr(user, 'effective_company', None) or user.company
+
+        try:
+            plantilla = PlantillaProyecto.all_objects.prefetch_related(
+                'fases_plantilla__tareas_plantilla__actividad_saiopen'
+            ).get(id=plantilla_id, company=company, is_active=True)
+        except PlantillaProyecto.DoesNotExist:
+            raise ProyectoException({'template_id': 'Plantilla no encontrada o inactiva.'})
+
+        # Crear el proyecto base
+        codigo = ProyectoService._generar_codigo(company)
+        proyecto = Project(
+            company=company,
+            codigo=codigo,
+            nombre=nombre,
+            tipo=plantilla.tipo,
+            estado=ProjectStatus.DRAFT,
+            cliente_id=cliente_id or '',
+            cliente_nombre='',
+            gerente=user,
+            fecha_inicio_planificada=planned_start,
+            fecha_fin_planificada=planned_start + timedelta(days=max(plantilla.duracion_estimada, 1)),
+            presupuesto_total=Decimal('0'),
+        )
+        proyecto.save()
+        logger.info(
+            'Proyecto creado desde plantilla',
+            extra={
+                'proyecto_id': str(proyecto.id),
+                'plantilla_id': str(plantilla.id),
+                'plantilla_nombre': plantilla.nombre,
+            },
+        )
+
+        # Crear fases con fechas calculadas
+        from apps.proyectos.models import ProjectActivity
+
+        fase_map = {}        # plantilla_fase.id → Phase
+        tarea_map = {}       # plantilla_tarea.id → Task
+        # (actividad_id, fase_id) → acumula cantidad para evitar duplicados en unique_together
+        activities_to_create: dict[tuple, dict] = {}
+
+        current_date = planned_start
+        fases_plantilla = list(plantilla.fases_plantilla.order_by('orden'))
+
+        for idx, fase_tmpl in enumerate(fases_plantilla):
+            duracion_fase = max(
+                round(float(fase_tmpl.porcentaje_duracion) / 100 * plantilla.duracion_estimada),
+                1,
+            )
+            fecha_inicio_fase = current_date
+            fecha_fin_fase    = current_date + timedelta(days=duracion_fase - 1)
+
+            fase = Phase(
+                company=company,
+                proyecto=proyecto,
+                nombre=fase_tmpl.nombre,
+                descripcion=fase_tmpl.descripcion,
+                orden=fase_tmpl.orden,
+                fecha_inicio_planificada=fecha_inicio_fase,
+                fecha_fin_planificada=fecha_fin_fase,
+            )
+            fase.save()
+            fase_map[str(fase_tmpl.id)] = fase
+
+            logger.info(
+                'Fase creada desde plantilla',
+                extra={
+                    'fase_id': str(fase.id),
+                    'fase_plantilla_id': str(fase_tmpl.id),
+                    'proyecto_id': str(proyecto.id),
+                },
+            )
+
+            # Crear tareas de la fase
+            tareas_plantilla = list(fase_tmpl.tareas_plantilla.order_by('orden'))
+            for tarea_tmpl in tareas_plantilla:
+                fecha_inicio_tarea = fecha_inicio_fase + timedelta(
+                    days=(tarea_tmpl.orden - 1) * tarea_tmpl.duracion_dias
+                )
+                fecha_fin_tarea = fecha_inicio_tarea + timedelta(days=tarea_tmpl.duracion_dias - 1)
+
+                tarea = Task(
+                    company=company,
+                    fase=fase,
+                    proyecto=proyecto,
+                    nombre=tarea_tmpl.nombre,
+                    descripcion=tarea_tmpl.descripcion,
+                    prioridad=tarea_tmpl.prioridad,
+                    fecha_inicio=fecha_inicio_tarea,
+                    fecha_fin=fecha_fin_tarea,
+                    horas_estimadas=Decimal(str(tarea_tmpl.duracion_dias * 8)),
+                )
+                tarea.save()
+                tarea_map[str(tarea_tmpl.id)] = tarea
+
+                # Recolectar actividades para crear ProjectActivity
+                if tarea_tmpl.actividad_saiopen_id and tarea_tmpl.actividad_saiopen:
+                    act = tarea_tmpl.actividad_saiopen
+                    key = (str(act.id), str(fase.id))
+                    cantidad = Decimal(str(tarea_tmpl.duracion_dias))
+                    if key in activities_to_create:
+                        activities_to_create[key]['cantidad_planificada'] += cantidad
+                    else:
+                        activities_to_create[key] = {
+                            'company': company,
+                            'proyecto': proyecto,
+                            'actividad': act,
+                            'fase': fase,
+                            'cantidad_planificada': cantidad,
+                            'costo_unitario': act.costo_unitario_base,
+                        }
+
+            # Avanzar al siguiente día después de esta fase
+            current_date = fecha_fin_fase + timedelta(days=1)
+
+        # Crear ProjectActivity para todas las actividades recolectadas
+        for data in activities_to_create.values():
+            ProjectActivity.objects.create(**data)
+            logger.info(
+                'ProjectActivity creada desde plantilla',
+                extra={
+                    'proyecto_id': str(proyecto.id),
+                    'actividad_id': str(data['actividad'].id),
+                    'actividad_codigo': data['actividad'].codigo,
+                    'cantidad': str(data['cantidad_planificada']),
+                },
+            )
+
+        # Actualizar fecha fin real del proyecto
+        if fecha_fin_fase:
+            Project.objects.filter(id=proyecto.id).update(fecha_fin_planificada=fecha_fin_fase)
+
+        # Clonar dependencias entre tareas
+        dependencias = PlantillaDependencia.objects.filter(
+            tarea_predecesora__plantilla_fase__plantilla_proyecto=plantilla
+        ).select_related('tarea_predecesora', 'tarea_sucesora')
+
+        for dep_tmpl in dependencias:
+            pred_key = str(dep_tmpl.tarea_predecesora_id)
+            succ_key = str(dep_tmpl.tarea_sucesora_id)
+
+            if pred_key not in tarea_map or succ_key not in tarea_map:
+                logger.warning(
+                    'Dependencia de plantilla sin tareas correspondientes',
+                    extra={
+                        'dep_id': str(dep_tmpl.id),
+                        'pred': pred_key,
+                        'succ': succ_key,
+                    },
+                )
+                continue
+
+            TaskDependency.objects.create(
+                company=company,
+                tarea_predecesora=tarea_map[pred_key],
+                tarea_sucesora=tarea_map[succ_key],
+                tipo_dependencia=dep_tmpl.tipo_dependencia,
+                retraso_dias=dep_tmpl.lag_time,
+            )
+
+        logger.info(
+            'Proyecto creado exitosamente desde plantilla',
+            extra={
+                'proyecto_id': str(proyecto.id),
+                'codigo': proyecto.codigo,
+                'fases_creadas': len(fase_map),
+                'tareas_creadas': len(tarea_map),
+            },
+        )
+        return proyecto
+
+
+# ──────────────────────────────────────────────
+# Feature #8 — Excel Import
+# ──────────────────────────────────────────────
+
+class ProyectoImportService:
+    """
+    Importa proyectos desde archivos Excel (.xlsx/.xls).
+
+    Estructura esperada del archivo:
+    - Hoja 'Datos Proyecto': columnas nombre, tipo, cliente_id, cliente_nombre,
+                              gerente_email, fecha_inicio_planificada, fecha_fin_planificada,
+                              presupuesto_total (opcional), descripcion (opcional)
+    - Hoja 'Fases': columnas nombre, orden, fecha_inicio, fecha_fin,
+                    descripcion (opcional), presupuesto_mano_obra (opcional),
+                    presupuesto_materiales (opcional), presupuesto_subcontratos (opcional),
+                    presupuesto_equipos (opcional), presupuesto_otros (opcional)
+    - Hoja 'Tareas': columnas nombre, fase_orden, descripcion (opcional),
+                     fecha_inicio (opcional), fecha_fin (opcional),
+                     prioridad (1-4, opcional), horas_estimadas (opcional)
+    - Hoja 'Dependencias' (opcional): pred_nombre, succ_nombre, tipo (FS/SS/FF), lag (opcional)
+    """
+
+    @staticmethod
+    @transaction.atomic
+    def import_from_excel(file, company, user) -> dict:
+        """
+        Lee el archivo Excel e importa el proyecto.
+        Retorna {'success': bool, 'proyecto': Proyecto|None, 'errors': [], 'stats': {}}.
+        """
+        try:
+            import openpyxl
+        except ImportError:
+            return {
+                'success': False,
+                'proyecto': None,
+                'errors': ['openpyxl no está instalado.'],
+                'stats': {},
+            }
+
+        errors = []
+        stats  = {'fases': 0, 'tareas': 0, 'dependencias': 0}
+
+        try:
+            wb = openpyxl.load_workbook(file, read_only=True, data_only=True)
+        except Exception as exc:
+            return {
+                'success': False,
+                'proyecto': None,
+                'errors': [f'No se pudo leer el archivo Excel: {exc}'],
+                'stats': stats,
+            }
+
+        try:
+            with transaction.atomic():
+                # Leer datos del proyecto
+                proyecto_data = ProyectoImportService._read_proyecto_data(wb, company, user)
+
+                # Crear proyecto
+                proyecto = ProyectoService.create_proyecto(proyecto_data, user)
+
+                # Leer y crear fases
+                fases_data = ProyectoImportService._read_fases_data(wb)
+                fase_map   = {}  # orden → Phase
+
+                for fase_d in fases_data:
+                    fase = Phase(
+                        company=company,
+                        proyecto=proyecto,
+                        nombre=fase_d['nombre'],
+                        descripcion=fase_d.get('descripcion', ''),
+                        orden=fase_d['orden'],
+                        fecha_inicio_planificada=fase_d['fecha_inicio'],
+                        fecha_fin_planificada=fase_d['fecha_fin'],
+                        presupuesto_mano_obra=Decimal(str(fase_d.get('presupuesto_mano_obra', 0) or 0)),
+                        presupuesto_materiales=Decimal(str(fase_d.get('presupuesto_materiales', 0) or 0)),
+                        presupuesto_subcontratos=Decimal(str(fase_d.get('presupuesto_subcontratos', 0) or 0)),
+                        presupuesto_equipos=Decimal(str(fase_d.get('presupuesto_equipos', 0) or 0)),
+                        presupuesto_otros=Decimal(str(fase_d.get('presupuesto_otros', 0) or 0)),
+                    )
+                    fase.save()
+                    fase_map[fase_d['orden']] = fase
+                    stats['fases'] += 1
+
+                # Leer y crear tareas
+                tareas_data = ProyectoImportService._read_tareas_data(wb)
+                tarea_map   = {}  # nombre → Task
+
+                for tarea_d in tareas_data:
+                    fase_orden = tarea_d.get('fase_orden')
+                    fase       = fase_map.get(fase_orden)
+
+                    if not fase:
+                        errors.append(
+                            f"Tarea '{tarea_d.get('nombre')}': fase con orden {fase_orden} no encontrada."
+                        )
+                        continue
+
+                    tarea = Task(
+                        company=company,
+                        fase=fase,
+                        proyecto=proyecto,
+                        nombre=tarea_d['nombre'],
+                        descripcion=tarea_d.get('descripcion', ''),
+                        prioridad=int(tarea_d.get('prioridad', 2) or 2),
+                        horas_estimadas=Decimal(str(tarea_d.get('horas_estimadas', 0) or 0)),
+                        fecha_inicio=tarea_d.get('fecha_inicio'),
+                        fecha_fin=tarea_d.get('fecha_fin'),
+                    )
+                    tarea.save()
+                    tarea_map[tarea_d['nombre']] = tarea
+                    stats['tareas'] += 1
+
+                # Leer y crear dependencias (opcional)
+                deps_data = ProyectoImportService._read_dependencias_data(wb)
+                for dep_d in deps_data:
+                    pred = tarea_map.get(dep_d.get('pred_nombre'))
+                    succ = tarea_map.get(dep_d.get('succ_nombre'))
+
+                    if not pred or not succ:
+                        errors.append(
+                            f"Dependencia '{dep_d.get('pred_nombre')}' → '{dep_d.get('succ_nombre')}': "
+                            f"tarea no encontrada (se omite)."
+                        )
+                        continue
+
+                    try:
+                        from apps.proyectos.models import TaskDependency
+                        tipo_str = str(dep_d.get('tipo', 'FS')).upper()
+                        tipo = tipo_str if tipo_str in ('FS', 'SS', 'FF') else 'FS'
+
+                        TaskDependency.objects.create(
+                            company=company,
+                            tarea_predecesora=pred,
+                            tarea_sucesora=succ,
+                            tipo_dependencia=tipo,
+                            retraso_dias=int(dep_d.get('lag', 0) or 0),
+                        )
+                        stats['dependencias'] += 1
+                    except Exception as dep_exc:
+                        errors.append(
+                            f"Dependencia '{dep_d.get('pred_nombre')}' → '{dep_d.get('succ_nombre')}': "
+                            f"{dep_exc} (se omite)."
+                        )
+
+                logger.info(
+                    'Proyecto importado desde Excel',
+                    extra={
+                        'proyecto_id': str(proyecto.id),
+                        'codigo': proyecto.codigo,
+                        'fases': stats['fases'],
+                        'tareas': stats['tareas'],
+                        'dependencias': stats['dependencias'],
+                        'errores': len(errors),
+                    },
+                )
+
+            return {
+                'success': True,
+                'proyecto': proyecto,
+                'errors': errors,
+                'stats': stats,
+            }
+
+        except Exception as exc:
+            logger.error(
+                'Error importando proyecto desde Excel',
+                extra={'error': str(exc), 'user': user.email},
+            )
+            return {
+                'success': False,
+                'proyecto': None,
+                'errors': [str(exc)],
+                'stats': stats,
+            }
+
+    @staticmethod
+    def _read_proyecto_data(wb, company, user) -> dict:
+        """Lee datos básicos del proyecto desde la hoja 'Datos Proyecto'."""
+        sheet_name = 'Datos Proyecto'
+        if sheet_name not in wb.sheetnames:
+            raise ValueError(f"La hoja '{sheet_name}' no existe en el archivo.")
+
+        ws = wb[sheet_name]
+        rows = list(ws.iter_rows(values_only=True))
+
+        if len(rows) < 2:
+            raise ValueError("La hoja 'Datos Proyecto' no tiene datos.")
+
+        headers = [str(h).strip().lower() if h else '' for h in rows[0]]
+        values  = rows[1]
+        data    = {headers[i]: values[i] for i in range(min(len(headers), len(values)))}
+
+        nombre = data.get('nombre')
+        if not nombre:
+            raise ValueError("Campo obligatorio 'nombre' no encontrado en 'Datos Proyecto'.")
+
+        tipo_val = str(data.get('tipo', 'other')).lower()
+        valid_tipos = [t[0] for t in ProjectType.choices]
+        tipo = tipo_val if tipo_val in valid_tipos else 'other'
+
+        fecha_inicio = ProyectoImportService._parse_date(data.get('fecha_inicio_planificada'))
+        fecha_fin    = ProyectoImportService._parse_date(data.get('fecha_fin_planificada'))
+
+        if not fecha_inicio:
+            raise ValueError("Campo obligatorio 'fecha_inicio_planificada' no encontrado o inválido.")
+        if not fecha_fin:
+            raise ValueError("Campo obligatorio 'fecha_fin_planificada' no encontrado o inválido.")
+
+        # Resolver gerente — intentar por email primero, luego usar el user que importa
+        gerente = user
+        gerente_email = data.get('gerente_email')
+        if gerente_email:
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
+            try:
+                gerente = User.objects.get(email=str(gerente_email).strip(), company=company)
+            except User.DoesNotExist:
+                pass  # Usar el user que importa como fallback
+
+        presupuesto = data.get('presupuesto_total', 0)
+        try:
+            presupuesto = Decimal(str(presupuesto)) if presupuesto else Decimal('0')
+        except Exception:
+            presupuesto = Decimal('0')
+
+        # cliente_nit → se guarda en cliente_id (referencia Saiopen).
+        # Si el usuario escribe el NIT/cédula lo usamos directamente.
+        # Si no viene, queda vacío (blank=True en el modelo).
+        cliente_nit = str(data.get('cliente_nit', '') or '').strip()
+        cliente_nombre = str(data.get('cliente_nombre', '') or '').strip()
+
+        return {
+            'nombre': str(nombre).strip(),
+            'tipo': tipo,
+            'cliente_id': cliente_nit,
+            'cliente_nombre': cliente_nombre,
+            'gerente': gerente.id,
+            'fecha_inicio_planificada': fecha_inicio,
+            'fecha_fin_planificada': fecha_fin,
+            'presupuesto_total': presupuesto,
+        }
+
+    @staticmethod
+    def _read_fases_data(wb) -> list:
+        """Lee fases desde la hoja 'Fases'."""
+        sheet_name = 'Fases'
+        if sheet_name not in wb.sheetnames:
+            raise ValueError(f"La hoja '{sheet_name}' no existe en el archivo.")
+
+        ws = wb[sheet_name]
+        rows = list(ws.iter_rows(values_only=True))
+
+        if len(rows) < 2:
+            raise ValueError("La hoja 'Fases' no tiene datos.")
+
+        headers = [str(h).strip().lower() if h else '' for h in rows[0]]
+        fases   = []
+
+        for i, row in enumerate(rows[1:], start=2):
+            if not any(row):
+                continue
+            data = {headers[j]: row[j] for j in range(min(len(headers), len(row)))}
+
+            nombre = data.get('nombre')
+            if not nombre:
+                raise ValueError(f"Fila {i} en 'Fases': campo 'nombre' obligatorio.")
+
+            orden = data.get('orden')
+            try:
+                orden = int(orden) if orden is not None else i - 1
+            except (ValueError, TypeError):
+                orden = i - 1
+
+            fecha_inicio = ProyectoImportService._parse_date(data.get('fecha_inicio'))
+            fecha_fin    = ProyectoImportService._parse_date(data.get('fecha_fin'))
+
+            if not fecha_inicio:
+                raise ValueError(f"Fila {i} en 'Fases': campo 'fecha_inicio' obligatorio.")
+            if not fecha_fin:
+                raise ValueError(f"Fila {i} en 'Fases': campo 'fecha_fin' obligatorio.")
+
+            fases.append({
+                'nombre': str(nombre).strip(),
+                'orden': orden,
+                'descripcion': str(data.get('descripcion', '') or '').strip(),
+                'fecha_inicio': fecha_inicio,
+                'fecha_fin': fecha_fin,
+                'presupuesto_mano_obra': data.get('presupuesto_mano_obra', 0),
+                'presupuesto_materiales': data.get('presupuesto_materiales', 0),
+                'presupuesto_subcontratos': data.get('presupuesto_subcontratos', 0),
+                'presupuesto_equipos': data.get('presupuesto_equipos', 0),
+                'presupuesto_otros': data.get('presupuesto_otros', 0),
+            })
+
+        return fases
+
+    @staticmethod
+    def _read_tareas_data(wb) -> list:
+        """Lee tareas desde la hoja 'Tareas'."""
+        sheet_name = 'Tareas'
+        if sheet_name not in wb.sheetnames:
+            return []
+
+        ws = wb[sheet_name]
+        rows = list(ws.iter_rows(values_only=True))
+
+        if len(rows) < 2:
+            return []
+
+        headers = [str(h).strip().lower() if h else '' for h in rows[0]]
+        tareas  = []
+
+        for i, row in enumerate(rows[1:], start=2):
+            if not any(row):
+                continue
+            data = {headers[j]: row[j] for j in range(min(len(headers), len(row)))}
+
+            nombre = data.get('nombre')
+            if not nombre:
+                continue
+
+            fase_orden = data.get('fase_orden')
+            try:
+                fase_orden = int(fase_orden) if fase_orden is not None else 1
+            except (ValueError, TypeError):
+                fase_orden = 1
+
+            prioridad = data.get('prioridad', 2)
+            try:
+                prioridad = int(prioridad) if prioridad is not None else 2
+                if prioridad not in (1, 2, 3, 4):
+                    prioridad = 2
+            except (ValueError, TypeError):
+                prioridad = 2
+
+            tareas.append({
+                'nombre': str(nombre).strip(),
+                'fase_orden': fase_orden,
+                'descripcion': str(data.get('descripcion', '') or '').strip(),
+                'fecha_inicio': ProyectoImportService._parse_date(data.get('fecha_inicio')),
+                'fecha_fin': ProyectoImportService._parse_date(data.get('fecha_fin')),
+                'prioridad': prioridad,
+                'horas_estimadas': data.get('horas_estimadas', 0),
+            })
+
+        return tareas
+
+    @staticmethod
+    def _read_dependencias_data(wb) -> list:
+        """Lee dependencias desde la hoja 'Dependencias' (opcional)."""
+        sheet_name = 'Dependencias'
+        if sheet_name not in wb.sheetnames:
+            return []
+
+        ws = wb[sheet_name]
+        rows = list(ws.iter_rows(values_only=True))
+
+        if len(rows) < 2:
+            return []
+
+        headers = [str(h).strip().lower() if h else '' for h in rows[0]]
+        deps    = []
+
+        for row in rows[1:]:
+            if not any(row):
+                continue
+            data = {headers[j]: row[j] for j in range(min(len(headers), len(row)))}
+
+            pred_nombre = data.get('pred_nombre')
+            succ_nombre = data.get('succ_nombre')
+            if not pred_nombre or not succ_nombre:
+                continue
+
+            deps.append({
+                'pred_nombre': str(pred_nombre).strip(),
+                'succ_nombre': str(succ_nombre).strip(),
+                'tipo': str(data.get('tipo', 'FS') or 'FS').strip().upper(),
+                'lag': data.get('lag', 0),
+            })
+
+        return deps
+
+    @staticmethod
+    def _parse_date(value):
+        """
+        Intenta parsear un valor como fecha.
+        Soporta: datetime objects, date objects, y strings %Y-%m-%d / %d/%m/%Y / %m/%d/%Y.
+        Retorna un objeto date o None si no se puede parsear.
+        """
+        if value is None:
+            return None
+
+        import datetime as dt
+
+        if isinstance(value, dt.datetime):
+            return value.date()
+        if isinstance(value, dt.date):
+            return value
+
+        value_str = str(value).strip()
+        for fmt in ('%Y-%m-%d', '%d/%m/%Y', '%m/%d/%Y', '%d-%m-%Y'):
+            try:
+                return dt.datetime.strptime(value_str, fmt).date()
+            except ValueError:
+                continue
+
+        return None

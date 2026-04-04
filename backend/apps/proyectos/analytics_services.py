@@ -304,7 +304,7 @@ def get_velocity_data(
     result = []
     for i in range(periods):
         week_start = start_date + timedelta(weeks=i)
-        week_label = f'Week {i + 1}'
+        week_label = f'Sem. {i + 1}'
         result.append({
             'week_label': week_label,
             'week_start': week_start,
@@ -370,7 +370,7 @@ def get_burn_rate_data(
     for i in range(periods):
         week_start = start_date + timedelta(weeks=i)
         result.append({
-            'week_label': f'Week {i + 1}',
+            'week_label': f'Sem. {i + 1}',
             'week_start': week_start,
             'hours_registered': week_map.get(week_start, 0.0),
         })
@@ -494,7 +494,7 @@ def get_burn_down_data(
     for i in range(num_weeks):
         week_start = project_start_week + timedelta(weeks=i)
         data_points.append({
-            'week_label': f'Week {i + 1}',
+            'week_label': f'Sem. {i + 1}',
             'week_start': week_start,
             'hours_registered': weekly_hours[i],
             'hours_actual_cumulative': cumulative_hours[i],

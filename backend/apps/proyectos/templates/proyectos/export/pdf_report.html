@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reporte de Proyecto — {{ proyecto.codigo }}</title>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════
+     PORTADA
+═══════════════════════════════════════════════════ -->
+<div class="portada">
+    {% if logo_base64 %}
+    <img class="logo" src="data:image/png;base64,{{ logo_base64 }}" alt="Logo empresa">
+    {% endif %}
+
+    <div class="titulo">{{ proyecto.nombre }}</div>
+    <div class="subtitulo">Código: {{ proyecto.codigo }}</div>
+    <div class="subtitulo">
+        Estado:
+        <span class="badge badge-{{ proyecto.estado }}">{{ proyecto.get_estado_display }}</span>
+    </div>
+
+    <hr style="border: 1px solid #c5cae9; margin: 30px 0;">
+
+    <table style="width: 60%; margin: 0;">
+        <tr>
+            <td style="background: transparent; padding: 4px 0; font-weight: bold; width: 40%;">Tipo:</td>
+            <td style="background: transparent; padding: 4px 0;">{{ proyecto.get_tipo_display }}</td>
+        </tr>
+        <tr>
+            <td style="background: transparent; padding: 4px 0; font-weight: bold;">Cliente:</td>
+            <td style="background: transparent; padding: 4px 0;">{{ proyecto.cliente_nombre|default:"—" }}</td>
+        </tr>
+        <tr>
+            <td style="background: transparent; padding: 4px 0; font-weight: bold;">Gerente:</td>
+            <td style="background: transparent; padding: 4px 0;">{{ proyecto.gerente.full_name|default:proyecto.gerente.email }}</td>
+        </tr>
+        {% if proyecto.coordinador %}
+        <tr>
+            <td style="background: transparent; padding: 4px 0; font-weight: bold;">Coordinador:</td>
+            <td style="background: transparent; padding: 4px 0;">{{ proyecto.coordinador.full_name|default:proyecto.coordinador.email }}</td>
+        </tr>
+        {% endif %}
+        <tr>
+            <td style="background: transparent; padding: 4px 0; font-weight: bold;">Inicio planificado:</td>
+            <td style="background: transparent; padding: 4px 0;">{{ proyecto.fecha_inicio_planificada }}</td>
+        </tr>
+        <tr>
+            <td style="background: transparent; padding: 4px 0; font-weight: bold;">Fin planificado:</td>
+            <td style="background: transparent; padding: 4px 0;">{{ proyecto.fecha_fin_planificada }}</td>
+        </tr>
+        {% if proyecto.fecha_inicio_real %}
+        <tr>
+            <td style="background: transparent; padding: 4px 0; font-weight: bold;">Inicio real:</td>
+            <td style="background: transparent; padding: 4px 0;">{{ proyecto.fecha_inicio_real }}</td>
+        </tr>
+        {% endif %}
+        {% if proyecto.fecha_fin_real %}
+        <tr>
+            <td style="background: transparent; padding: 4px 0; font-weight: bold;">Fin real:</td>
+            <td style="background: transparent; padding: 4px 0;">{{ proyecto.fecha_fin_real }}</td>
+        </tr>
+        {% endif %}
+    </table>
+
+    <div class="meta">
+        Generado el {{ fecha_generacion }} COT — SaiSuite by ValMen Tech
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     RESUMEN EJECUTIVO / KPIs
+═══════════════════════════════════════════════════ -->
+<h2>Resumen Ejecutivo</h2>
+
+<div class="kpi-grid">
+    <div class="kpi-card">
+        <div class="kpi-value">{{ kpis.porcentaje_avance_fisico }}%</div>
+        <div class="kpi-label">Avance Físico</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-value">{{ kpis.total_tareas }}</div>
+        <div class="kpi-label">Total Tareas</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-value">{{ kpis.tareas_completadas }}</div>
+        <div class="kpi-label">Completadas</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-value">{{ kpis.pct_tareas_completadas }}%</div>
+        <div class="kpi-label">% Completado</div>
+    </div>
+</div>
+
+<table style="margin-top: 16px;">
+    <thead>
+        <tr>
+            <th>Indicador</th>
+            <th>Valor</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Tareas En Progreso</td>
+            <td>{{ kpis.tareas_en_progreso }}</td>
+        </tr>
+        <tr>
+            <td>Tareas Pendientes</td>
+            <td>{{ kpis.tareas_pendientes }}</td>
+        </tr>
+        <tr>
+            <td>Fases Activas</td>
+            <td>{{ fases|length }}</td>
+        </tr>
+    </tbody>
+</table>
+
+<p>
+    <strong>Avance físico:</strong> {{ kpis.porcentaje_avance_fisico }}%
+    <span class="progress-bar-container">
+        <span class="progress-bar" style="width: {{ kpis.porcentaje_avance_fisico }}%;"></span>
+    </span>
+</p>
+
+<!-- ═══════════════════════════════════════════════════
+     FASES Y TAREAS
+═══════════════════════════════════════════════════ -->
+<h2>Fases del Proyecto</h2>
+
+{% for fase in fases %}
+<div class="fase-block">
+    <h3>Fase {{ fase.orden }}: {{ fase.nombre }}</h3>
+    <p style="color: #555; font-size: 9pt; margin: 4px 0 8px 0;">
+        <strong>Estado:</strong> {{ fase.get_estado_display }}
+        &nbsp;|&nbsp;
+        <strong>Avance:</strong> {{ fase.porcentaje_avance }}%
+        &nbsp;|&nbsp;
+        <strong>Fechas:</strong> {{ fase.fecha_inicio_planificada }} → {{ fase.fecha_fin_planificada }}
+    </p>
+
+    {% if fase.descripcion %}
+    <p style="color: #666; font-size: 9pt;">{{ fase.descripcion }}</p>
+    {% endif %}
+
+    <div class="progress-bar-container">
+        <div class="progress-bar" style="width: {{ fase.porcentaje_avance }}%;"></div>
+    </div>
+
+    {% with tareas=fase.tasks.all %}
+    {% if tareas %}
+    <table style="margin-top: 8px;">
+        <thead>
+            <tr>
+                <th>Código</th>
+                <th>Nombre</th>
+                <th>Estado</th>
+                <th>Prioridad</th>
+                <th>Responsable</th>
+                <th>Fecha Límite</th>
+                <th>% Completado</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for tarea in tareas %}
+            <tr>
+                <td>{{ tarea.codigo }}</td>
+                <td>{{ tarea.nombre }}</td>
+                <td>{{ tarea.get_estado_display }}</td>
+                <td>{{ tarea.get_prioridad_display }}</td>
+                <td>
+                    {% if tarea.responsable %}
+                        {{ tarea.responsable.full_name|default:tarea.responsable.email }}
+                    {% else %}
+                        —
+                    {% endif %}
+                </td>
+                <td>{{ tarea.fecha_limite|default:"—" }}</td>
+                <td>{{ tarea.porcentaje_completado }}%</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p style="color: #9e9e9e; font-style: italic; font-size: 9pt;">Esta fase no tiene tareas registradas.</p>
+    {% endif %}
+    {% endwith %}
+</div>
+{% empty %}
+<p style="color: #9e9e9e; font-style: italic;">El proyecto no tiene fases activas.</p>
+{% endfor %}
+
+<!-- ═══════════════════════════════════════════════════
+     PRESUPUESTO
+═══════════════════════════════════════════════════ -->
+{% if include_budget %}
+<h2>Resumen Presupuestario</h2>
+
+<table>
+    <thead>
+        <tr>
+            <th>Concepto</th>
+            <th style="text-align: right;">Valor (COP)</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><strong>Presupuesto Total del Contrato</strong></td>
+            <td style="text-align: right;"><strong>$ {{ budget_summary.presupuesto_total }}</strong></td>
+        </tr>
+        <tr>
+            <td>Presupuesto de Costos Directos</td>
+            <td style="text-align: right;">$ {{ budget_summary.presupuesto_costos }}</td>
+        </tr>
+        <tr>
+            <td>Precio de Venta con AIU</td>
+            <td style="text-align: right;">$ {{ budget_summary.precio_venta_aiu }}</td>
+        </tr>
+        <tr>
+            <td>Costo Ejecutado (Documentos Saiopen)</td>
+            <td style="text-align: right;">$ {{ budget_summary.costo_ejecutado }}</td>
+        </tr>
+    </tbody>
+</table>
+
+<h3>Desglose por Categoría</h3>
+<table>
+    <thead>
+        <tr>
+            <th>Categoría</th>
+            <th style="text-align: right;">Presupuesto (COP)</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Mano de Obra</td>
+            <td style="text-align: right;">$ {{ budget_summary.desglose.mano_obra }}</td>
+        </tr>
+        <tr>
+            <td>Materiales</td>
+            <td style="text-align: right;">$ {{ budget_summary.desglose.materiales }}</td>
+        </tr>
+        <tr>
+            <td>Subcontratos</td>
+            <td style="text-align: right;">$ {{ budget_summary.desglose.subcontratos }}</td>
+        </tr>
+        <tr>
+            <td>Equipos</td>
+            <td style="text-align: right;">$ {{ budget_summary.desglose.equipos }}</td>
+        </tr>
+        <tr>
+            <td>Otros</td>
+            <td style="text-align: right;">$ {{ budget_summary.desglose.otros }}</td>
+        </tr>
+    </tbody>
+</table>
+
+<h3>AIU (Administración, Imprevistos, Utilidad)</h3>
+<table>
+    <thead>
+        <tr>
+            <th>Componente</th>
+            <th style="text-align: right;">Porcentaje</th>
+            <th style="text-align: right;">Valor (COP)</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Administración</td>
+            <td style="text-align: right;">{{ budget_summary.aiu.administracion }}%</td>
+            <td style="text-align: right;">—</td>
+        </tr>
+        <tr>
+            <td>Imprevistos</td>
+            <td style="text-align: right;">{{ budget_summary.aiu.imprevistos }}%</td>
+            <td style="text-align: right;">—</td>
+        </tr>
+        <tr>
+            <td>Utilidad</td>
+            <td style="text-align: right;">{{ budget_summary.aiu.utilidad }}%</td>
+            <td style="text-align: right;">—</td>
+        </tr>
+        <tr>
+            <td><strong>Total AIU</strong></td>
+            <td style="text-align: right;"></td>
+            <td style="text-align: right;"><strong>$ {{ budget_summary.aiu.valor_aiu }}</strong></td>
+        </tr>
+    </tbody>
+</table>
+{% endif %}
+
+<!-- ═══════════════════════════════════════════════════
+     PIE DE PÁGINA
+═══════════════════════════════════════════════════ -->
+<div class="footer-note">
+    Documento generado automáticamente por SaiSuite — ValMen Tech.
+    Confidencial — Solo para uso interno.
+    Generado el {{ fecha_generacion }} COT.
+</div>
+
+</body>
+</html>

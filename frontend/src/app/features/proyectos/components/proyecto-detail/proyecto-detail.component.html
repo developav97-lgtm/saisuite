@@ -39,16 +39,35 @@
             {{ accion.label }}
           </button>
         }
+        <!-- Exportar -->
+        <button mat-stroked-button [matMenuTriggerFor]="exportMenu"
+                [disabled]="exportingPDF()"
+                matTooltip="Opciones de exportación">
+          <mat-icon>{{ exportingPDF() ? 'hourglass_empty' : 'download' }}</mat-icon>
+          {{ exportingPDF() ? 'Generando…' : 'Exportar' }}
+          <mat-icon>arrow_drop_down</mat-icon>
+        </button>
+        <mat-menu #exportMenu="matMenu">
+          <button mat-menu-item (click)="exportToPDF()" [disabled]="exportingPDF()">
+            <mat-icon>picture_as_pdf</mat-icon>
+            <span>Exportar a PDF</span>
+          </button>
+        </mat-menu>
+
         <!-- SK-42: Botón Scheduling con mat-menu -->
         <button mat-stroked-button color="accent" [matMenuTriggerFor]="schedulingMenu"
                 matTooltip="Herramientas de programación">
-          <mat-icon>event_note</mat-icon> Scheduling
+          <mat-icon>event_note</mat-icon> Programación
           <mat-icon>arrow_drop_down</mat-icon>
         </button>
         <mat-menu #schedulingMenu="matMenu">
           <button mat-menu-item (click)="openAutoSchedule()">
             <mat-icon>auto_fix_high</mat-icon>
-            <span>Auto-Schedule</span>
+            <span>Reprogramación Automática</span>
+          </button>
+          <button mat-menu-item (click)="openResourceLevelingWizard()">
+            <mat-icon>balance</mat-icon>
+            <span>Nivelar Recursos</span>
           </button>
         </mat-menu>
 
@@ -275,7 +294,7 @@
       <!-- Tab 8: Gantt -->
       <mat-tab label="Gantt">
         <div class="pd-tab-content">
-          <app-gantt-view [proyectoId]="p.id" />
+          <app-gantt-view [proyectoId]="p.id" [proyectoCodigo]="p.codigo" />
         </div>
       </mat-tab>
 

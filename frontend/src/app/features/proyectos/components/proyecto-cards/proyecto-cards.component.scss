@@ -140,18 +140,43 @@
   &--cancelled   { background: #efebe9; color: #4e342e; }
 }
 
-// ── Filtros (igual a proyecto-list, línea única) ─────────────
+// ── Filtros (mismo layout que proyecto-list) ─────────────────
 .pl-filters-card {
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   gap: 0.75rem;
   align-items: center;
   padding: 0.875rem 1rem;
   margin-bottom: 1rem;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+    padding: 0.75rem;
+  }
 }
 
-.pl-search  { flex: 1; min-width: 0; }
-.pl-filter  { width: 170px; flex-shrink: 0; }
+.pl-search {
+  flex: 1;
+  min-width: 200px;
+
+  @media (max-width: 768px) {
+    min-width: 0;
+    width: 100%;
+  }
+}
+
+.pl-filter {
+  width: 170px;
+  flex-shrink: 0;
+
+  @media (max-width: 768px) {
+    width: 100%;
+    flex-shrink: 1;
+  }
+}
+
 .pl-progress { margin-bottom: -4px; }
 
 // ── Header actions ───────────────────────────────────────────
@@ -159,6 +184,12 @@
   display: flex;
   gap: 0.5rem;
   align-items: center;
+  flex-wrap: wrap;
+
+  @media (max-width: 480px) {
+    width: 100%;
+    justify-content: flex-end;
+  }
 }
 
 // ── Responsive ──────────────────────────────────────────────

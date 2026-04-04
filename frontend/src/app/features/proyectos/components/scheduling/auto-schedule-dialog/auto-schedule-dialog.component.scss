@@ -11,8 +11,6 @@
 }
 
 .asd-content {
-  min-width: 480px;
-  max-width: 600px;
   padding-top: 0.5rem !important;
 }
 
@@ -286,10 +284,207 @@
 }
 
 .asd-task-nombre { font-weight: 500; }
-.asd-task-dates { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 0.75rem; white-space: nowrap; }
+.asd-task-dates {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 0.75rem;
+  white-space: nowrap;
+
+  &--new {
+    color: var(--sc-primary);
+    font-weight: 600;
+  }
+}
+
+.asd-no-changes {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  color: var(--sc-success, #2e7d32);
+  font-size: 0.875rem;
+
+  mat-icon {
+    color: var(--sc-success, #2e7d32);
+  }
+
+  p { margin: 0; }
+}
+
+// ── Sobrecargas irresolubles ──────────────────────────────────────────────────
+.asd-overload-section {
+  margin-top: 0.875rem;
+}
+
+.asd-overload-header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--sc-warn, #ef6c00);
+  margin: 0 0 0.5rem;
+
+  mat-icon {
+    font-size: 1rem;
+    width: 1rem;
+    height: 1rem;
+    color: var(--sc-warn, #ef6c00);
+  }
+}
+
+.asd-overload-card {
+  border: 1px solid var(--sc-warn, #ef6c00) !important;
+  margin-bottom: 0.5rem;
+  border-radius: 6px !important;
+
+  &__title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 600;
+    font-size: 0.875rem;
+  }
+
+  &__desc {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+}
+
+.asd-overload-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--sc-warn, #ef6c00);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.asd-overload-badge {
+  background: rgba(239, 108, 0, 0.15) !important;
+  color: var(--sc-warn, #ef6c00) !important;
+  font-size: 0.75rem !important;
+  height: 22px !important;
+  min-height: 22px !important;
+}
+
+.asd-overload-pct-badge {
+  background: rgba(239, 108, 0, 0.25) !important;
+  color: var(--sc-warn, #ef6c00) !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+  height: 22px !important;
+  min-height: 22px !important;
+}
+
+.asd-overload-dates {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 0.75rem;
+  color: var(--sc-text-muted);
+}
+
+.asd-overload-tasks-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--sc-text-muted);
+  margin: 0 0 0.5rem;
+}
+
+.asd-overload-tasks {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  margin-bottom: 0.875rem;
+}
+
+.asd-overload-task-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.25rem 0;
+  border-bottom: 1px solid var(--sc-surface-border);
+
+  &:last-child { border-bottom: none; }
+}
+
+.asd-overload-task-name {
+  font-size: 0.8125rem;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.asd-overload-pct {
+  font-size: 0.75rem !important;
+  height: 20px !important;
+  min-height: 20px !important;
+  background: var(--sc-surface-ground, rgba(0,0,0,.04)) !important;
+  flex-shrink: 0;
+}
+
+.asd-recommendations {
+  padding: 0.625rem 0.75rem;
+  background: var(--sc-surface-ground, rgba(0,0,0,.03));
+  border-radius: 6px;
+  border-left: 3px solid var(--sc-primary);
+
+  &__title {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--sc-primary);
+    margin: 0 0 0.375rem;
+  }
+
+  &__list {
+    margin: 0;
+    padding-left: 1.25rem;
+    font-size: 0.8rem;
+    color: var(--sc-text-muted);
+    line-height: 1.6;
+
+    li { margin-bottom: 0.2rem; }
+  }
+}
+
+.asd-warnings--minor {
+  margin-top: 0.5rem;
+}
+
+.asd-warning-minor {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  color: var(--sc-text-muted);
+  margin: 0.25rem 0;
+
+  mat-icon {
+    font-size: 0.95rem;
+    width: 0.95rem;
+    height: 0.95rem;
+    flex-shrink: 0;
+    margin-top: 0.1rem;
+  }
+}
 
 // ── Acciones ──────────────────────────────────────────────────────────────────
 .asd-actions {
   gap: 0.5rem;
   padding: 0.75rem 1.5rem 1rem !important;
+  flex-wrap: wrap;
+}
+
+// ── Responsive ───────────────────────────────────────────────────────────────
+.asd-tasks-table {
+  min-width: 520px;
 }

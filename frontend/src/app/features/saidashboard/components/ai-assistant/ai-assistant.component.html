@@ -1,0 +1,90 @@
+<!-- Floating FAB button -->
+<button mat-fab class="ai-fab"
+        [class.ai-fab--open]="isOpen()"
+        matTooltip="CFO Virtual"
+        (click)="toggle()">
+  <mat-icon>{{ isOpen() ? 'close' : 'smart_toy' }}</mat-icon>
+</button>
+
+<!-- Slide-in panel -->
+@if (isOpen()) {
+  <div class="ai-panel">
+    <!-- Header -->
+    <div class="ai-header">
+      <div class="ai-header-title">
+        <mat-icon>smart_toy</mat-icon>
+        <span>CFO Virtual</span>
+      </div>
+      <button mat-icon-button (click)="toggle()" matTooltip="Cerrar">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+
+    <!-- Messages -->
+    <div #messagesContainer class="ai-messages">
+      @if (messages().length === 0) {
+        <!-- Welcome state -->
+        <div class="ai-welcome">
+          <mat-icon class="ai-welcome-icon">analytics</mat-icon>
+          <p class="ai-welcome-title">CFO Virtual</p>
+          <p class="ai-welcome-desc">
+            Tu asistente financiero inteligente. Preg&uacute;ntame sobre la salud
+            financiera de tu empresa.
+          </p>
+
+          <div class="ai-quick-actions">
+            @for (action of quickActions; track action.label) {
+              <button mat-stroked-button class="ai-quick-btn"
+                      (click)="sendMessage(action.label)">
+                <mat-icon>{{ action.icon }}</mat-icon>
+                {{ action.label }}
+              </button>
+            }
+          </div>
+        </div>
+      }
+
+      @for (msg of messages(); track $index) {
+        <div class="ai-message" [class.ai-message--user]="msg.role === 'user'"
+             [class.ai-message--assistant]="msg.role === 'assistant'">
+          @if (msg.role === 'assistant') {
+            <mat-icon class="ai-msg-avatar">smart_toy</mat-icon>
+          }
+          <div class="ai-msg-content">
+            <p class="ai-msg-text">{{ msg.content }}</p>
+            <span class="ai-msg-time">
+              {{ msg.timestamp | date:'HH:mm' }}
+            </span>
+          </div>
+        </div>
+      }
+
+      @if (loading()) {
+        <div class="ai-message ai-message--assistant">
+          <mat-icon class="ai-msg-avatar">smart_toy</mat-icon>
+          <div class="ai-msg-content">
+            <div class="ai-typing">
+              <span></span><span></span><span></span>
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+
+    <!-- Input -->
+    <div class="ai-input-area">
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ai-input-field">
+        <input matInput placeholder="Pregunta al CFO Virtual..."
+               [ngModel]="inputText()"
+               (ngModelChange)="inputText.set($event)"
+               (keydown)="onKeydown($event)"
+               [disabled]="loading()" />
+      </mat-form-field>
+      <button mat-icon-button color="primary"
+              [disabled]="!inputText().trim() || loading()"
+              (click)="sendMessage()">
+        <mat-icon>send</mat-icon>
+      </button>
+    </div>
+  </div>
+}

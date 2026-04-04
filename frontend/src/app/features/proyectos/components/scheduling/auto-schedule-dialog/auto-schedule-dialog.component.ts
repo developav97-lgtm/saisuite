@@ -20,8 +20,12 @@ import { MatRadioModule } from '@angular/material/radio';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatListModule } from '@angular/material/list';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatExpansionModule } from '@angular/material/expansion';
+import { MatChipsModule } from '@angular/material/chips';
 import { SchedulingService } from '../../../services/scheduling.service';
 import { AutoScheduleResult, LevelResourcesResult } from '../../../models/scheduling.model';
+import { ToastService } from '../../../../../core/services/toast.service';
 
 export interface AutoScheduleDialogData {
   projectId: string;
@@ -43,10 +47,14 @@ export interface AutoScheduleDialogData {
     MatCheckboxModule,
     MatProgressBarModule,
     MatListModule,
+    MatTooltipModule,
+    MatExpansionModule,
+    MatChipsModule,
   ],
 })
 export class AutoScheduleDialogComponent {
   private readonly schedulingService = inject(SchedulingService);
+  private readonly toast = inject(ToastService);
   readonly dialogRef = inject(MatDialogRef<AutoScheduleDialogComponent>);
   readonly data = inject<AutoScheduleDialogData>(MAT_DIALOG_DATA);
 
@@ -88,6 +96,7 @@ export class AutoScheduleDialogComponent {
         this.loading.set(false);
       },
       error: () => {
+        this.toast.error('Error al calcular la reprogramación.');
         this.loading.set(false);
       },
     });
@@ -105,9 +114,13 @@ export class AutoScheduleDialogComponent {
     }).subscribe({
       next: (result) => {
         this.loading.set(false);
+        this.toast.success(
+          `Reprogramación aplicada: ${result.tasks_rescheduled} tarea(s) actualizada(s).`
+        );
         this.dialogRef.close(result);
       },
       error: () => {
+        this.toast.error('Error al aplicar la reprogramación.');
         this.loading.set(false);
       },
     });
@@ -129,8 +142,12 @@ export class AutoScheduleDialogComponent {
       next: (result) => {
         this.levelingPreview.set(result);
         this.levelingLoading.set(false);
+        if (!this.levelingDryRun()) {
+          this.toast.success(`Nivelación aplicada: ${result.tasks_moved} tarea(s) movida(s).`);
+        }
       },
       error: () => {
+        this.toast.error('Error al nivelar recursos.');
         this.levelingLoading.set(false);
       },
     });

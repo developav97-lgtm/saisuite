@@ -1,0 +1,74 @@
+<h2 mat-dialog-title class="dialog-title">
+  <mat-icon>dashboard_customize</mat-icon>
+  Agregar tarjeta
+</h2>
+
+<mat-dialog-content class="cs-content">
+  <!-- Search -->
+  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="cs-search">
+    <mat-label>Buscar tarjeta...</mat-label>
+    <input matInput [ngModel]="searchText()" (ngModelChange)="searchText.set($event)" />
+    <mat-icon matSuffix>search</mat-icon>
+  </mat-form-field>
+
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate" />
+  }
+
+  <!-- Category tabs -->
+  @if (!loading()) {
+    <mat-tab-group animationDuration="200ms" class="cs-tabs">
+      @for (cat of filteredCategories(); track cat.code) {
+        <mat-tab>
+          <ng-template mat-tab-label>
+            <mat-icon>{{ cat.icono }}</mat-icon>
+            <span class="cs-tab-label">{{ cat.nombre }}</span>
+          </ng-template>
+
+          <div class="cs-cards-grid">
+            @for (card of cat.cards; track card.code) {
+              <div class="cs-card"
+                   [class.cs-card--selected]="isCardSelected(card)"
+                   [class.cs-card--disabled]="card.requiere.length > 0"
+                   [matTooltip]="card.requiere.length > 0 ? 'Requiere: ' + card.requiere.join(', ') : ''"
+                   (click)="card.requiere.length === 0 ? selectCard(card) : null">
+                <div class="cs-card-icon" [style.background]="card.color + '20'" [style.color]="card.color">
+                  <mat-icon>{{ card.icono }}</mat-icon>
+                </div>
+                <div class="cs-card-info">
+                  <p class="cs-card-name">{{ card.nombre }}</p>
+                  <p class="cs-card-desc">{{ card.descripcion }}</p>
+                </div>
+                @if (isCardSelected(card)) {
+                  <div class="cs-chart-types">
+                    @for (ct of card.chart_types; track ct) {
+                      <mat-chip-option
+                        [selected]="selectedChartType() === ct"
+                        (click)="selectChartType(ct); $event.stopPropagation()">
+                        {{ ct }}
+                      </mat-chip-option>
+                    }
+                  </div>
+                }
+              </div>
+            }
+          </div>
+
+          @if (cat.cards.length === 0) {
+            <div class="cs-empty">
+              <mat-icon>search_off</mat-icon>
+              <p>No hay tarjetas en esta categor&iacute;a.</p>
+            </div>
+          }
+        </mat-tab>
+      }
+    </mat-tab-group>
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-stroked-button (click)="cancel()">Cancelar</button>
+  <button mat-raised-button color="primary" [disabled]="!canConfirm()" (click)="confirm()">
+    <mat-icon>add</mat-icon> Agregar
+  </button>
+</mat-dialog-actions>

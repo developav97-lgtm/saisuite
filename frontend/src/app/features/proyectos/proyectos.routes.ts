@@ -99,6 +99,15 @@ export const PROYECTOS_ROUTES: Routes = [
     data: { misTareas: true },
   },
   {
+    // Gestión de plantillas — debe ir ANTES de :id
+    path: 'plantillas',
+    canActivate: [permissionGuard('proyectos.create')],
+    loadComponent: () =>
+      import('./components/plantillas-page/plantillas-page.component').then(
+        (m) => m.PlantillasPageComponent
+      ),
+  },
+  {
     path: 'nuevo',
     canActivate: [permissionGuard('proyectos.create')],
     loadComponent: () =>

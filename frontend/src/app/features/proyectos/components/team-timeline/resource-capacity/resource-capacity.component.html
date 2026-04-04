@@ -22,6 +22,7 @@
 
 <!-- Tabla -->
 @if (!loading() && capacities().length > 0) {
+  <div class="rc-table-responsive">
   <mat-table [dataSource]="capacities()" class="rc-table">
 
     <!-- Columna: Usuario -->
@@ -72,6 +73,7 @@
     <mat-header-row *matHeaderRowDef="displayedColumns" />
     <mat-row *matRowDef="let row; columns: displayedColumns;" />
   </mat-table>
+  </div>
 }
 
 <!-- Empty state -->

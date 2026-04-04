@@ -199,7 +199,6 @@ export class TareaDialogComponent implements OnInit {
     this.dialogRef.close({
       updated: false,
       navigateTo: ['/proyectos/tareas', t.id],
-      navigateParams: { returnTo: 'kanban' },
     });
   }
 
@@ -220,7 +219,6 @@ export class TareaDialogComponent implements OnInit {
     this.dialogRef.close({
       updated: false,
       navigateTo: ['/proyectos/tareas', subtarea.id],
-      navigateParams: { returnTo: 'kanban' },
     });
   }
 

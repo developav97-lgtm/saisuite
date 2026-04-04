@@ -75,6 +75,13 @@ export const routes: Routes = [
                         m => m.NotificacionesConfiguracionComponent
                     ),
             },
+            // SaiDashboard — BI financiero
+            {
+                path: 'saidashboard',
+                canActivate: [noSuperAdminGuard],
+                loadChildren: () =>
+                    import('./features/saidashboard/saidashboard.routes').then(m => m.SAIDASHBOARD_ROUTES),
+            },
             // Admin — gestión de empresa, usuarios y módulos
             {
                 path: 'admin',

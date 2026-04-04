@@ -10,6 +10,7 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatDialog } from '@angular/material/dialog';
+import { ResponsiveTableDirective } from '../../../shared/directives';
 import { InternalUsersService, InternalUser } from '../services/internal-users.service';
 import { ToastService } from '../../../core/services/toast.service';
 import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
@@ -21,6 +22,7 @@ import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialo
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CommonModule,
+    ResponsiveTableDirective,
     MatTableModule, MatButtonModule, MatIconModule,
     MatChipsModule, MatTooltipModule, MatProgressBarModule,
   ],

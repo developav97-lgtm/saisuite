@@ -1,0 +1,83 @@
+<div class="sc-page">
+
+  <!-- Header -->
+  <div class="sc-page-header">
+    <div class="pp-header-left">
+      <button mat-icon-button matTooltip="Volver a proyectos" (click)="volverAProyectos()">
+        <mat-icon>arrow_back</mat-icon>
+      </button>
+      <h1 class="sc-page-header__title">Plantillas de Proyecto</h1>
+    </div>
+    <button mat-raised-button color="primary" (click)="abrirNueva()">
+      <mat-icon>add</mat-icon>
+      Nueva plantilla
+    </button>
+  </div>
+
+  <!-- Progress bar -->
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate" class="pp-progress-bar"></mat-progress-bar>
+  }
+
+  <!-- Grid de plantillas -->
+  @if (!loading() && plantillas().length === 0) {
+    <!-- Estado vacío -->
+    <div class="sc-empty-state">
+      <mat-icon class="sc-empty-state__icon">style</mat-icon>
+      <p class="sc-empty-state__title">Sin plantillas</p>
+      <p class="sc-empty-state__subtitle">Crea tu primera plantilla para agilizar la creación de proyectos.</p>
+      <button mat-raised-button color="primary" (click)="abrirNueva()">
+        <mat-icon>add</mat-icon>
+        Nueva plantilla
+      </button>
+    </div>
+  }
+
+  @if (plantillas().length > 0) {
+    <div class="pp-grid">
+      @for (p of plantillas(); track p.id) {
+        <mat-card class="sc-card pp-card">
+          <mat-card-header class="pp-card-header">
+            <div class="pp-card-icon-wrap">
+              <mat-icon class="pp-card-icon">{{ p.icono }}</mat-icon>
+            </div>
+            <mat-card-title class="pp-card-title">{{ p.nombre }}</mat-card-title>
+            <mat-card-subtitle class="pp-card-subtitle">{{ p.tipo_display }}</mat-card-subtitle>
+          </mat-card-header>
+
+          <mat-card-content class="pp-card-content">
+            @if (p.descripcion) {
+              <p class="pp-card-desc">{{ p.descripcion }}</p>
+            }
+            <div class="pp-card-meta">
+              <span class="pp-meta-item">
+                <mat-icon class="pp-meta-icon">layers</mat-icon>
+                {{ fasesCount(p) }} fase{{ fasesCount(p) !== 1 ? 's' : '' }}
+              </span>
+              <span class="pp-meta-item">
+                <mat-icon class="pp-meta-icon">task</mat-icon>
+                {{ tareasCount(p) }} tarea{{ tareasCount(p) !== 1 ? 's' : '' }}
+              </span>
+              <span class="pp-meta-item">
+                <mat-icon class="pp-meta-icon">schedule</mat-icon>
+                {{ p.duracion_estimada }} días
+              </span>
+            </div>
+          </mat-card-content>
+
+          <mat-card-actions class="pp-card-actions">
+            <button mat-icon-button matTooltip="Editar plantilla"
+                    (click)="abrirEditar(p)">
+              <mat-icon>edit</mat-icon>
+            </button>
+            <button mat-icon-button matTooltip="Eliminar plantilla" color="warn"
+                    (click)="confirmarEliminar(p)">
+              <mat-icon>delete</mat-icon>
+            </button>
+          </mat-card-actions>
+        </mat-card>
+      }
+    </div>
+  }
+
+</div>

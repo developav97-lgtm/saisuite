@@ -1,0 +1,12 @@
+"""
+SaiSuite -- Dashboard App Config
+Modulo de dashboards financieros configurables.
+"""
+from django.apps import AppConfig
+
+
+class DashboardConfig(AppConfig):
+    default_auto_field = 'django.db.models.BigAutoField'
+    name = 'apps.dashboard'
+    app_label = 'dashboard'
+    verbose_name = 'Dashboard'

@@ -20,6 +20,8 @@ from apps.proyectos.models import (
     ProjectStatus, PhaseStatus, StakeholderRole, DocumentType,
     MeasurementMode, ActivityType, DependencyType,
     ResourceAssignment, ResourceCapacity, ResourceAvailability, AvailabilityType,
+    PlantillaProyecto, PlantillaFase, PlantillaTarea,
+    ProjectType,
 )
 
 logger = logging.getLogger(__name__)
@@ -1277,3 +1279,121 @@ class TeamAvailabilitySerializer(serializers.Serializer):
     periodo_inicio = serializers.DateField()
     periodo_fin    = serializers.DateField()
     usuarios       = TeamAvailabilityUserSerializer(many=True)
+
+
+# ──────────────────────────────────────────────
+# Feature #8 — Project Templates
+# ──────────────────────────────────────────────
+
+class PlantillaTareaSerializer(serializers.ModelSerializer):
+    """Serializer de tarea de plantilla — solo lectura."""
+    unidad_medida = serializers.SerializerMethodField()
+
+    class Meta:
+        model  = PlantillaTarea
+        fields = [
+            'id', 'nombre', 'descripcion', 'orden',
+            'duracion_dias', 'prioridad',
+            'actividad_saiopen_id', 'unidad_medida',
+        ]
+        read_only_fields = fields
+
+    def get_unidad_medida(self, obj: PlantillaTarea) -> str | None:
+        if obj.actividad_saiopen_id and obj.actividad_saiopen:
+            return obj.actividad_saiopen.unidad_medida
+        return None
+
+
+class PlantillaFaseSerializer(serializers.ModelSerializer):
+    """Serializer de fase de plantilla — incluye tareas anidadas."""
+    tareas_count = serializers.SerializerMethodField()
+    tareas       = PlantillaTareaSerializer(source='tareas_plantilla', many=True, read_only=True)
+
+    class Meta:
+        model  = PlantillaFase
+        fields = [
+            'id', 'nombre', 'descripcion', 'orden',
+            'porcentaje_duracion', 'tareas_count', 'tareas',
+        ]
+        read_only_fields = fields
+
+    def get_tareas_count(self, obj: PlantillaFase) -> int:
+        # Evitar N+1: usar prefetch_related en la vista
+        return obj.tareas_plantilla.count()
+
+
+class PlantillaProyectoSerializer(serializers.ModelSerializer):
+    """Serializer de listado de plantillas — incluye conteos."""
+    tipo_display = serializers.CharField(source='get_tipo_display', read_only=True)
+    fases_count  = serializers.SerializerMethodField()
+    fases        = PlantillaFaseSerializer(source='fases_plantilla', many=True, read_only=True)
+
+    class Meta:
+        model  = PlantillaProyecto
+        fields = [
+            'id', 'nombre', 'descripcion', 'tipo', 'tipo_display',
+            'icono', 'duracion_estimada', 'is_active', 'fases_count', 'fases',
+        ]
+        read_only_fields = fields
+
+    def get_fases_count(self, obj: PlantillaProyecto) -> int:
+        return obj.fases_plantilla.count()
+
+
+class PlantillaTareaWriteSerializer(serializers.Serializer):
+    """Datos para crear/actualizar una tarea dentro de una fase de plantilla."""
+    nombre               = serializers.CharField(max_length=200)
+    descripcion          = serializers.CharField(required=False, allow_blank=True, default='')
+    orden                = serializers.IntegerField(default=0)
+    duracion_dias        = serializers.IntegerField(default=1, min_value=1)
+    actividad_saiopen_id = serializers.UUIDField(required=False, allow_null=True, default=None)
+
+
+class PlantillaFaseWriteSerializer(serializers.Serializer):
+    """Datos para crear/actualizar una fase dentro de una plantilla."""
+    nombre               = serializers.CharField(max_length=255)
+    descripcion          = serializers.CharField(required=False, allow_blank=True, default='')
+    orden                = serializers.IntegerField(default=0)
+    porcentaje_duracion  = serializers.DecimalField(
+        max_digits=5, decimal_places=2, default=Decimal('100.00'),
+    )
+    tareas               = PlantillaTareaWriteSerializer(many=True, required=False, default=list)
+
+
+class PlantillaProyectoWriteSerializer(serializers.Serializer):
+    """Datos para crear/actualizar una plantilla de proyecto."""
+    nombre              = serializers.CharField(max_length=200)
+    descripcion         = serializers.CharField(required=False, allow_blank=True, default='')
+    tipo                = serializers.ChoiceField(choices=ProjectType.choices)
+    icono               = serializers.CharField(max_length=50, default='folder')
+    duracion_estimada   = serializers.IntegerField(default=30, min_value=1)
+    fases               = PlantillaFaseWriteSerializer(many=True, required=False, default=list)
+
+
+class CreateFromTemplateSerializer(serializers.Serializer):
+    """Datos necesarios para crear un proyecto a partir de una plantilla."""
+    template_id   = serializers.UUIDField(
+        required=True,
+        help_text='UUID de la PlantillaProyecto a usar.',
+    )
+    nombre        = serializers.CharField(
+        required=True,
+        max_length=200,
+        help_text='Nombre del nuevo proyecto.',
+    )
+    descripcion   = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        default='',
+        help_text='Descripción del nuevo proyecto.',
+    )
+    planned_start = serializers.DateField(
+        required=True,
+        help_text='Fecha de inicio planificada del proyecto (YYYY-MM-DD).',
+    )
+    cliente_id    = serializers.UUIDField(
+        required=False,
+        allow_null=True,
+        default=None,
+        help_text='UUID del cliente (opcional).',
+    )

@@ -2,6 +2,8 @@
 from django.contrib import admin
 from django.urls import path, include
 from django.http import JsonResponse
+from django.conf import settings
+from django.conf.urls.static import static
 
 
 def health_check(request):
@@ -27,4 +29,6 @@ urlpatterns = [
     path('api/v1/terceros/', include('apps.terceros.urls')),
     path('api/v1/notificaciones/', include('apps.notifications.urls')),
     path('api/v1/chat/', include('apps.chat.urls')),
-]
+    path('api/v1/contabilidad/', include('apps.contabilidad.urls')),
+    path('api/v1/dashboard/', include('apps.dashboard.urls')),
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

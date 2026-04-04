@@ -90,6 +90,7 @@ export interface CompanySettings {
   nit: string;
   plan: string;
   saiopen_enabled: boolean;
+  logo: string | null;
   is_active: boolean;
   modules: CompanyModule[];
   created_at: string;

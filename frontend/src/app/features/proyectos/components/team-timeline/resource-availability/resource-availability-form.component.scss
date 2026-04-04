@@ -11,7 +11,7 @@
 }
 
 .raf-content {
-  min-width: 440px;
+  min-width: min(440px, 80vw);
   padding-top: 0.5rem !important;
 }
 
@@ -23,9 +23,11 @@
 .raf-dates-row {
   display: flex;
   gap: 1rem;
+  flex-wrap: wrap;
 
   .raf-field {
     flex: 1;
+    min-width: 140px;
   }
 }
 

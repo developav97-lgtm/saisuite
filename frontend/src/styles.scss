@@ -549,3 +549,40 @@ h2[mat-dialog-title].dialog-title {
   overflow: hidden;
   border-radius: 8px;
 }
+
+// ── Table responsive wrapper ──────────────────────────────────
+// Wrap a mat-table inside this div to enable horizontal scroll on mobile
+// without breaking desktop layouts.
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+
+  // Keep the table's border-radius visible through the wrapper
+  .mat-mdc-table {
+    min-width: 600px; // guarantee table keeps its min readable width
+  }
+}
+
+// ── Tab group — mobile-friendly tabs ──────────────────────────
+// Let Angular Material's built-in pagination (< > arrows + translateX)
+// handle scrolling. Do NOT override overflow on mat-mdc-tab-header or
+// mat-mdc-tab-list — it breaks the translateX-based pagination.
+@media (max-width: 768px) {
+  .mat-mdc-tab-labels {
+    flex-wrap: nowrap !important;
+  }
+
+  .mat-mdc-tab {
+    min-width: 72px !important;
+    flex-shrink: 0 !important;
+    padding: 0 10px !important;
+    font-size: 0.75rem !important;
+  }
+
+  // Pagination arrows (< >) must be visible and tappable
+  .mat-mdc-tab-header-pagination {
+    min-width: 32px;
+    padding: 0;
+  }
+}

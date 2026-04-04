@@ -1,0 +1,208 @@
+.pfd-content {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0 24px 16px;
+
+  @media (max-width: 768px) {
+    padding: 0 12px 12px;
+  }
+}
+
+.pfd-progress-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+}
+
+.pfd-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--sc-text-primary);
+  margin: 16px 0;
+}
+
+.pfd-form {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.pfd-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.pfd-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pfd-section-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--sc-text-secondary);
+  margin: 0;
+}
+
+.pfd-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    gap: 8px;
+  }
+}
+
+.pfd-field-full {
+  width: 100%;
+}
+
+.pfd-field-half {
+  flex: 1 1 200px;
+}
+
+.pfd-field-quarter {
+  flex: 1 1 140px;
+}
+
+.pfd-field-grow {
+  flex: 1 1 200px;
+  min-width: 120px;
+}
+
+.pfd-field-150 {
+  width: 150px;
+  flex-shrink: 0;
+
+  @media (max-width: 768px) {
+    width: 100%;
+  }
+}
+
+.pfd-field-120 {
+  width: 120px;
+  flex-shrink: 0;
+
+  @media (max-width: 768px) {
+    width: 100%;
+  }
+}
+
+.pfd-icon-option {
+  vertical-align: middle;
+  margin-right: 4px;
+  font-size: 18px;
+}
+
+.pfd-empty-hint {
+  color: var(--sc-text-secondary);
+  font-style: italic;
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+// Fases
+.pfd-fases-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.pfd-fase-card {
+  border: 1px solid var(--sc-border-color, rgba(0, 0, 0, 0.12));
+  border-radius: 8px;
+  padding: 16px;
+  background: var(--sc-surface-elevated, transparent);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.pfd-fase-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.pfd-fase-number {
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: var(--sc-primary, #1976d2);
+}
+
+// Tareas
+.pfd-tareas-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pfd-tareas-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.pfd-tareas-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--sc-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.pfd-tareas-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pfd-tarea-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+  }
+}
+
+.pfd-field-actividad {
+  flex: 1 1 260px;
+  min-width: 200px;
+
+  @media (max-width: 768px) {
+    width: 100%;
+  }
+}
+
+.pfd-act-codigo {
+  font-weight: 600;
+  margin-right: 4px;
+  color: var(--sc-primary, #1976d2);
+}
+
+.pfd-act-unidad {
+  margin-left: 4px;
+  font-size: 0.8rem;
+  color: var(--sc-text-secondary);
+}
+
+.pfd-actions {
+  padding: 8px 24px 16px;
+  gap: 8px;
+
+  @media (max-width: 768px) {
+    padding: 8px 12px 12px;
+  }
+}

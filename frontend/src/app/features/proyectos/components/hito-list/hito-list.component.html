@@ -29,6 +29,7 @@
       <p>No hay hitos definidos. Crea el primer hito facturable desde el botón de arriba.</p>
     </div>
   } @else if (hitos().length > 0) {
+    <div class="hl-table-responsive">
     <mat-table [dataSource]="hitos()">
       <ng-container matColumnDef="nombre">
         <mat-header-cell *matHeaderCellDef>Hito</mat-header-cell>
@@ -102,6 +103,7 @@
       <mat-header-row *matHeaderRowDef="displayedColumns"></mat-header-row>
       <mat-row *matRowDef="let row; columns: displayedColumns;"></mat-row>
     </mat-table>
+    </div>
   }
 </div>
 

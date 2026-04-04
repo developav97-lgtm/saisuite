@@ -55,10 +55,10 @@ Saicloud está dirigido a:
 |---|---|
 | Visibilidad en tiempo real | El avance de tareas, horas registradas y costos se actualizan al instante |
 | Jerarquía estructurada | Proyectos → Fases → Tareas permite organizar cualquier tipo de proyecto |
-| Cronograma inteligente | Auto-Schedule calcula fechas óptimas respetando dependencias y restricciones |
+| Cronograma inteligente | Auto-Programación calcula fechas óptimas respetando dependencias y restricciones |
 | Control de costos | EVM (Earned Value Management) detecta desviaciones antes de que se vuelvan críticas |
 | Registro de tiempo | Timer integrado y timesheets semanales para captura precisa de horas |
-| Análisis visual | Gantt, Burn Down, Velocity, Resource Utilization y más gráficos en tiempo real |
+| Análisis visual | Gantt, Gráfico de avance (Burn Down), Velocity, Resource Utilization y más gráficos en tiempo real |
 | Multi-tenant seguro | Los datos de su empresa nunca se mezclan con los de otras organizaciones |
 | Integración con Saiopen | Sincronización bidireccional con el ERP Saiopen para eliminar doble digitación |
 
@@ -239,7 +239,7 @@ Cuando una tarea se asocia a una actividad del catálogo, el sistema determina a
 
 ### 3.3 Qué es una Dependencia
 
-Una **Dependencia** define la relación de orden entre dos tareas: la **predecesora** y la **sucesora**. Hay cuatro tipos, cada uno con una lógica diferente de encadenamiento. Las dependencias son la base para el cálculo de la ruta crítica y el Auto-Schedule.
+Una **Dependencia** define la relación de orden entre dos tareas: la **predecesora** y la **sucesora**. Hay cuatro tipos, cada uno con una lógica diferente de encadenamiento. Las dependencias son la base para el cálculo de la ruta crítica y el Auto-Programación.
 
 ### 3.4 Roles y permisos en proyectos
 
@@ -265,7 +265,7 @@ El flujo típico para un proyecto nuevo en Saicloud es:
 5. Asignar actividades del catálogo a las tareas.
 6. Establecer dependencias entre tareas relacionadas.
 7. Asignar recursos (usuarios) a las tareas.
-8. Ejecutar Auto-Schedule para calcular fechas óptimas.
+8. Ejecutar Auto-Programación para calcular fechas óptimas.
 9. Crear una baseline del plan inicial.
 10. Iniciar ejecución: registrar tiempo, actualizar avance.
 11. Monitorear con Analytics, Gantt y dashboard de presupuesto.
@@ -369,7 +369,7 @@ Al hacer clic en un proyecto (botón de flecha en vista lista, o botón "Ver det
 Dependiendo del estado del proyecto, verá diferentes botones de acción:
 - **Iniciar ejecución:** cambia el proyecto de Planificado a En ejecución.
 - **Volver a borrador:** regresa el proyecto al estado Borrador.
-- **Scheduling:** abre un menú con la opción Auto-Schedule para calcular fechas automáticamente.
+- **Scheduling:** abre un menú con la opción Auto-Programación para calcular fechas automáticamente.
 - **Editar:** abre el formulario de edición del proyecto.
 
 ### 4.4 Editar y eliminar proyectos
@@ -401,7 +401,7 @@ Una **Fase** es una división lógica del proyecto que agrupa tareas relacionada
 - Organizar el trabajo en bloques manejables.
 - Controlar qué etapa está activa en un momento dado.
 - Calcular el progreso parcial del proyecto por etapa.
-- Aplicar el Auto-Schedule a nivel de fase.
+- Aplicar el Auto-Programación a nivel de fase.
 
 **Ejemplos de estructuras de fases:**
 
@@ -423,7 +423,7 @@ Una **Fase** es una división lógica del proyecto que agrupa tareas relacionada
    - **Nombre:** nombre de la fase (obligatorio).
    - **Descripción:** descripción opcional.
    - **Orden:** número de posición de la fase en la secuencia.
-   - **Fecha de inicio planificada** y **Fecha de fin planificada** (opcionales, pueden derivarse del Auto-Schedule).
+   - **Fecha de inicio planificada** y **Fecha de fin planificada** (opcionales, pueden derivarse del Auto-Programación).
 5. Haga clic en **Guardar**.
 
 **Editar una fase:**
@@ -436,7 +436,7 @@ Una **Fase** es una división lógica del proyecto que agrupa tareas relacionada
 1. En la lista de fases, use los íconos de flecha arriba/abajo para cambiar el orden.
 2. El orden determina la secuencia lógica del proyecto en el Gantt.
 
-> **Tip:** Defina todas las fases al inicio del proyecto, aunque las tareas se agreguen gradualmente. Esto facilita la planificación y el Auto-Schedule.
+> **Tip:** Defina todas las fases al inicio del proyecto, aunque las tareas se agreguen gradualmente. Esto facilita la planificación y el Auto-Programación.
 
 ### 5.3 Activar una fase
 
@@ -844,7 +844,7 @@ Cuando está activo:
 
 - El Gantt no es interactivo (no se puede arrastrar barras directamente). Para cambiar fechas, edite la tarea.
 - Si el proyecto tiene más de 500 tareas, el Gantt puede tardar más en cargar.
-- Las tareas sin fechas no aparecen. Asegúrese de ejecutar el Auto-Schedule para poblar fechas.
+- Las tareas sin fechas no aparecen. Asegúrese de ejecutar el Auto-Programación para poblar fechas.
 - En pantallas menores a 1280px de ancho, el Gantt muestra una versión simplificada.
 
 ---
@@ -1063,7 +1063,7 @@ El dashboard también incluye dos botones de acción:
 
 ### 12.3 Gráficos disponibles
 
-#### Burn Down Chart
+#### Gráfico de avance (Gráfico de avance (Burn Down))
 
 **Qué muestra:** La reducción del trabajo pendiente a lo largo del tiempo.
 
@@ -1120,7 +1120,7 @@ El dashboard también incluye dos botones de acción:
 **Proceso de análisis recomendado para una revisión semanal:**
 
 1. Revisar los **KPI cards** primero (2 minutos): ¿hay alertas rojas?
-2. Ver el **Burn Down** (3 minutos): ¿estamos en ritmo o hay retraso acumulado?
+2. Ver el **Gráfico de avance (Burn Down)** (3 minutos): ¿estamos en ritmo o hay retraso acumulado?
 3. Ver la **distribución de tareas (dona)** (1 minuto): ¿hay muchas tareas bloqueadas?
 4. Ver **Resource Utilization** (2 minutos): ¿alguien está sobreasignado o subutilizado?
 5. Si hay problemas, profundizar en los datos de tareas específicas.
@@ -1132,7 +1132,7 @@ Para exportar datos del analytics:
 1. En el dashboard de analytics, haga clic en el botón de descarga (ícono en la barra de herramientas del Analytics).
 2. Los datos se descargarán en el formato disponible.
 
-> **Nota:** La exportación a Excel con múltiples hojas (KPIs, tareas, horas, burn down) es una funcionalidad en desarrollo. La exportación actual puede generar un archivo con los datos básicos disponibles.
+> **Nota:** La exportación a Excel con múltiples hojas (KPIs, tareas, horas, gráfico de avance (Burn Down)) es una funcionalidad en desarrollo. La exportación actual puede generar un archivo con los datos básicos disponibles.
 
 ### 12.6 Comparación entre proyectos
 
@@ -1149,16 +1149,16 @@ Desde el **Dashboard principal** (no desde el detalle de un proyecto):
 
 Las herramientas de programación avanzada del proyecto están distribuidas en múltiples ubicaciones de la interfaz:
 
-- **Auto-Schedule:** accesible desde el botón **Scheduling** (con ícono de calendario y flecha desplegable) en el encabezado del proyecto.
+- **Auto-Programación:** accesible desde el botón **Scheduling** (con ícono de calendario y flecha desplegable) en el encabezado del proyecto.
 - **Baselines:** tab **Baselines** del proyecto.
 - **Escenarios What-If:** tab **Escenarios** del proyecto.
 - **Restricciones de tarea:** sección **Restricciones** dentro del detalle de cada tarea.
 
-### 13.1 Auto-Schedule
+### 13.1 Auto-Programación
 
 #### Cuándo usarlo
 
-Use Auto-Schedule cuando:
+Use Auto-Programación cuando:
 - Haya definido todas las tareas con sus duraciones estimadas.
 - Haya establecido las dependencias entre tareas.
 - Necesite calcular automáticamente las fechas óptimas sin hacerlo manualmente.
@@ -1178,10 +1178,10 @@ Use Auto-Schedule cuando:
 
 #### Previsualización antes de aplicar
 
-Antes de aplicar el Auto-Schedule, puede previsualizarlo:
+Antes de aplicar el Auto-Programación, puede previsualizarlo:
 
 1. En el encabezado del proyecto, haga clic en el botón **Scheduling**.
-2. Seleccione **Auto-Schedule** en el menú desplegable.
+2. Seleccione **Auto-Programación** en el menú desplegable.
 3. En el diálogo, seleccione el modo (ASAP o ALAP).
 4. Active la opción **Previsualizar cambios (dry run)**.
 5. Haga clic en **Calcular**.
@@ -1194,11 +1194,11 @@ Antes de aplicar el Auto-Schedule, puede previsualizarlo:
 7. Si está conforme, haga clic en **Aplicar cambios**.
 8. Si no, haga clic en **Cancelar** (no se modificó nada en los datos reales).
 
-> **Advertencia:** Una vez aplicado el Auto-Schedule (sin dry run), las fechas de todas las tareas calculadas serán sobrescritas. Las tareas con restricciones de fechas (`MUST_START_ON`, `MUST_FINISH_ON`) no serán modificadas.
+> **Advertencia:** Una vez aplicado el Auto-Programación (sin dry run), las fechas de todas las tareas calculadas serán sobrescritas. Las tareas con restricciones de fechas (`MUST_START_ON`, `MUST_FINISH_ON`) no serán modificadas.
 
 #### Restricciones respetadas
 
-El Auto-Schedule respeta automáticamente:
+El Auto-Programación respeta automáticamente:
 - Todas las dependencias (FS, SS, FF, SF) con sus lag times.
 - Las restricciones de fechas configuradas en cada tarea (ver sección 13.3).
 - La fecha de inicio del proyecto como punto de partida.
@@ -1497,9 +1497,9 @@ Para que el EVM calcule valores (en lugar de mostrar "—"), el proyecto debe te
 | **EV** | Earned Value | Valor del trabajo realmente completado hasta hoy (% avance × BAC) |
 | **AC** | Actual Cost | Costo real incurrido hasta hoy (labor + gastos) |
 | **CV** | Cost Variance | EV − AC. Variación de costo: positivo = bajo presupuesto, negativo = sobre presupuesto |
-| **SV** | Schedule Variance | EV − PV. Variación de cronograma: positivo = adelantado, negativo = retrasado |
+| **SV** | Programación Variance | EV − PV. Variación de cronograma: positivo = adelantado, negativo = retrasado |
 | **CPI** | Cost Performance Index | EV / AC. Eficiencia de costo: > 1 = bajo presupuesto, < 1 = sobre presupuesto |
-| **SPI** | Schedule Performance Index | EV / PV. Eficiencia de cronograma: > 1 = adelantado, < 1 = retrasado |
+| **SPI** | Programación Performance Index | EV / PV. Eficiencia de cronograma: > 1 = adelantado, < 1 = retrasado |
 | **EAC** | Estimate at Completion | Costo proyectado al final del proyecto al ritmo actual: BAC / CPI |
 | **ETC** | Estimate to Complete | Cuánto se espera gastar de aquí en adelante: EAC − AC |
 | **TCPI** | To-Complete Performance Index | Eficiencia necesaria para terminar dentro del BAC: (BAC − EV) / (BAC − AC) |
@@ -1617,7 +1617,7 @@ Este flujo aplica para proyectos de construcción, obra civil, instalaciones, mo
 **Paso 3: Cronograma**
 7. Crear dependencias FS entre tareas secuenciales (ej: cimentación FS estructura).
 8. Agregar restricciones SNET en el detalle de cada tarea que tenga fecha mínima de inicio contractual.
-9. Ejecutar **Auto-Schedule ASAP** desde el botón **Scheduling** del encabezado del proyecto.
+9. Ejecutar **Auto-Programación ASAP** desde el botón **Scheduling** del encabezado del proyecto.
 10. Revisar el Gantt (tab Gantt): activar overlay Ruta Crítica para identificar las tareas críticas.
 11. Crear la **baseline inicial** (tab Baselines → + Crear Baseline) antes de iniciar obras.
 
@@ -1635,7 +1635,7 @@ Este flujo aplica para proyectos de construcción, obra civil, instalaciones, mo
 
 **Paso 6: Seguimiento semanal**
 20. Revisar el tab **Gantt** con overlay Ruta Crítica activo: ¿alguna tarea crítica está retrasada?
-21. Revisar el tab **Analytics**: KPIs de Completud y On-Time, gráfico Burn Down y distribución de tareas.
+21. Revisar el tab **Analytics**: KPIs de Completud y On-Time, gráfico Gráfico de avance (Burn Down) y distribución de tareas.
 22. Revisar el tab **Presupuesto**: CPI y SPI en la sección EVM ≥ 0.95.
 23. Tomar acciones correctivas si hay desviaciones.
 24. Actualizar al cliente con los datos del dashboard y exportación.
@@ -1665,7 +1665,7 @@ Este flujo aplica para proyectos de desarrollo de software, implementación de s
 
 **Paso 4: Métricas**
 8. Tab Analytics: ver el **Velocity Chart** por sprint para detectar si el ritmo es sostenible.
-9. Tab Analytics: el **Burn Down** muestra si el equipo terminará a tiempo.
+9. Tab Analytics: el **Gráfico de avance (Burn Down)** muestra si el equipo terminará a tiempo.
 10. Tab Baselines: crear baseline al inicio de cada sprint para comparar con el avance real.
 
 **Paso 5: Seguimiento de costos**
@@ -1690,7 +1690,7 @@ Este flujo aplica para proyectos de desarrollo de software, implementación de s
 - **Máximo 2-3 niveles de subtareas**. Más de eso indica que la estructura está demasiado fragmentada.
 - **Asigne un responsable a cada tarea**. Las tareas sin responsable no tienen dueño y tienden a quedarse pendientes.
 - **Fije fechas realistas**. Una tarea con fecha límite imposible desmotiva al equipo.
-- **Actualice el estado de las tareas al menos una vez por semana**. El Kanban y el Burn Down dependen de actualizaciones frecuentes.
+- **Actualice el estado de las tareas al menos una vez por semana**. El Kanban y el Gráfico de avance (Burn Down) dependen de actualizaciones frecuentes.
 
 ### 17.3 Nombrar actividades del catálogo
 
@@ -1718,7 +1718,7 @@ Adopte una convención consistente para los nombres del catálogo:
 | Registrar timesheets | Diario (al final del día) |
 | Actualizar estado de tareas | Diario o cada 2 días |
 | Registrar cantidades ejecutadas | Al terminar cada avance parcial |
-| Revisar Burn Down y Analytics | Semanal |
+| Revisar Gráfico de avance (Burn Down) y Analytics | Semanal |
 | Revisar EVM y presupuesto | Quincenal |
 | Actualizar el Gantt / fechas | Al detectar cambios en el cronograma |
 | Crear nueva baseline | Tras cambios significativos de alcance |
@@ -1727,10 +1727,10 @@ Adopte una convención consistente para los nombres del catálogo:
 
 El Gantt refleja las fechas de las tareas. Para mantenerlo preciso:
 
-1. **Ejecute Auto-Schedule periódicamente** cuando cambie duraciones o dependencias.
+1. **Ejecute Auto-Programación periódicamente** cuando cambie duraciones o dependencias.
 2. **Actualice fechas reales de inicio** cuando comience a trabajar en una tarea (campo "Fecha de inicio").
 3. **Actualice el estado de las tareas** a "Completada" cuando terminen, para que el cálculo de la ruta crítica sea correcto.
-4. **No cambie fechas manualmente sin ejecutar Auto-Schedule después**, ya que puede dejar el cronograma inconsistente con las dependencias.
+4. **No cambie fechas manualmente sin ejecutar Auto-Programación después**, ya que puede dejar el cronograma inconsistente con las dependencias.
 
 ### 17.6 Cuándo crear una baseline
 
@@ -1748,7 +1748,7 @@ Los cambios de alcance (agregar o quitar trabajo del proyecto) son comunes en pr
 1. **Documente el cambio** antes de modificar nada en Saicloud: qué cambia, por qué, quién lo autorizó, con qué fecha.
 2. **Cree una baseline** del plan actual (antes del cambio) para tener registro del plan original.
 3. **Actualice el proyecto** en Saicloud: agregar/eliminar tareas, ajustar fechas, modificar presupuesto.
-4. **Ejecute Auto-Schedule** para recalcular el cronograma con los cambios.
+4. **Ejecute Auto-Programación** para recalcular el cronograma con los cambios.
 5. **Cree una nueva baseline** del plan revisado (después del cambio) con un nombre que indique el cambio (ej: "Baseline v2 - Cambio de alcance Abril 2026").
 6. **Actualice el presupuesto** si aplica: cree un nuevo presupuesto ajustado y apruébelo.
 
@@ -1803,7 +1803,7 @@ Para garantizar que los reportes y dashboards sean confiables, establezca estas 
 
 **Solución:**
 1. Verifique que las tareas del proyecto tengan **fecha de inicio** y **fecha de fin** configuradas.
-2. Si las tareas no tienen fechas, ejecute el **Auto-Schedule** para calcularlas automáticamente.
+2. Si las tareas no tienen fechas, ejecute el **Auto-Programación** para calcularlas automáticamente.
 3. Si las tareas tienen fechas pero el Gantt sigue vacío, verifique que el rango de fechas del Gantt incluya las fechas de las tareas (use el botón "Hoy" o ajuste el zoom).
 
 ---
@@ -1838,9 +1838,9 @@ Para garantizar que los reportes y dashboards sean confiables, establezca estas 
 
 ---
 
-### Auto-Schedule devuelve error de dependencia circular
+### Auto-Programación devuelve error de dependencia circular
 
-**Síntoma:** Al ejecutar Auto-Schedule, aparece el mensaje "Dependencia circular detectada" y el proceso no se completa.
+**Síntoma:** Al ejecutar Auto-Programación, aparece el mensaje "Dependencia circular detectada" y el proceso no se completa.
 
 **Causa:** Existe un ciclo en las dependencias de las tareas. Por ejemplo: Tarea A depende de B, B depende de C, y C depende de A. Esto es imposible de resolver cronológicamente.
 
@@ -1848,7 +1848,7 @@ Para garantizar que los reportes y dashboards sean confiables, establezca estas 
 1. En el tab Tareas, use la columna de dependencias para identificar las tareas involucradas en el ciclo.
 2. Identifique cuál dependencia es incorrecta (la que crea el ciclo).
 3. Elimine esa dependencia desde el detalle de la tarea.
-4. Ejecute Auto-Schedule de nuevo.
+4. Ejecute Auto-Programación de nuevo.
 
 > **Tip:** Para evitar ciclos, siga la regla: "las dependencias siempre deben ir hacia adelante en el tiempo". Si dos tareas son verdaderamente paralelas e independientes, no las vincule con dependencias.
 
@@ -1860,7 +1860,7 @@ Para garantizar que los reportes y dashboards sean confiables, establezca estas 
 
 **Causas posibles:**
 1. **Filtro de fecha:** el dashboard tiene un selector de período. Si el período seleccionado no incluye las fechas de los datos, se mostrará vacío.
-2. **Tareas sin estados actualizados:** si todas las tareas están en "Por hacer", el Burn Down no tiene nada que quemar.
+2. **Tareas sin estados actualizados:** si todas las tareas están en "Por hacer", el Gráfico de avance (Burn Down) no tiene nada que quemar.
 3. **Timesheets de otro proyecto:** verifique que los timesheets están asociados al proyecto correcto.
 
 **Solución:**
@@ -1937,7 +1937,7 @@ Si su proyecto ejecuta varias líneas de trabajo en paralelo, la recomendación 
 
 **Solución:**
 1. Verifique que las tareas involucradas en las dependencias tengan fechas configuradas.
-2. Ejecute Auto-Schedule para que el sistema calcule las fechas considerando las dependencias.
+2. Ejecute Auto-Programación para que el sistema calcule las fechas considerando las dependencias.
 3. Ajuste el zoom del Gantt al nivel "Semanas" para una mejor visualización de las flechas.
 
 ---
@@ -1969,7 +1969,7 @@ A continuación se definen los términos técnicos y conceptos clave usados en S
 | **Asignación** | Vínculo entre un recurso (usuario) y una tarea, con porcentaje de dedicación y rango de fechas. |
 | **BAC** | *Budget at Completion* (Presupuesto hasta la Conclusión). El presupuesto total aprobado del proyecto. Es el valor de referencia para todas las métricas EVM. |
 | **Baseline** | Fotografía del plan del proyecto en un momento específico. Guarda las fechas y estimaciones de todas las tareas para comparar con el avance real. |
-| **Burn Down Chart** | Gráfico que muestra la reducción del trabajo pendiente a lo largo del tiempo. La línea ideal muestra el ritmo esperado; la línea real muestra el avance actual. |
+| **Gráfico de avance (Gráfico de avance (Burn Down))** | Gráfico que muestra la reducción del trabajo pendiente a lo largo del tiempo. La línea ideal muestra el ritmo esperado; la línea real muestra el avance actual. |
 | **Burn Rate** | Velocidad a la que se consume el presupuesto o las horas. Se mide como costo por unidad de tiempo (ej: $5 millones/semana). |
 | **Capacidad** | Número de horas semanales disponibles de un recurso para trabajar en proyectos. Define el techo de asignación sin generar sobreasignación. |
 | **Catálogo** | Biblioteca centralizada de actividades estándar de la empresa, compartida entre todos los proyectos. |
@@ -1996,7 +1996,7 @@ A continuación se definen los términos técnicos y conceptos clave usados en S
 | **Recurso** | Persona (usuario de la plataforma) que puede ser asignada a tareas para ejecutar el trabajo. |
 | **Ruta crítica** | Secuencia de tareas cuya suma de duraciones define la duración mínima del proyecto. Cualquier retraso en la ruta crítica retrasa el proyecto completo. |
 | **SF** | *Start to Finish* (Inicio a Fin). Tipo de dependencia donde la tarea sucesora no puede terminar hasta que empiece la predecesora. Raro en práctica. |
-| **SPI** | *Schedule Performance Index* (Índice de Desempeño de Cronograma). SPI = EV / PV. Indica eficiencia de tiempo. SPI > 1 = adelantado; SPI < 1 = retrasado. |
+| **SPI** | *Programación Performance Index* (Índice de Desempeño de Cronograma). SPI = EV / PV. Indica eficiencia de tiempo. SPI > 1 = adelantado; SPI < 1 = retrasado. |
 | **SS** | *Start to Start* (Inicio a Inicio). Tipo de dependencia donde la tarea sucesora no puede empezar hasta que empiece la predecesora. |
 | **Sobreasignación** | Situación en que el porcentaje total de asignaciones de un recurso en un período supera el 100% de su capacidad disponible. |
 | **Tarea** | Unidad mínima de trabajo asignable a una persona dentro de una fase. Puede tener subtareas, dependencias, timesheets y actividades del catálogo. |
@@ -2153,7 +2153,7 @@ Proyecto: "Desarrollo Sistema de Inventarios"
 
 **Métricas de TI más relevantes:**
 - **Velocity Chart:** cuántas tareas se completan por sprint. Permite predecir cuántos sprints quedan.
-- **Burn Down:** ¿terminaremos a tiempo? La pendiente de la línea real vs la ideal lo indica.
+- **Gráfico de avance (Burn Down):** ¿terminaremos a tiempo? La pendiente de la línea real vs la ideal lo indica.
 - **Distribución de estados (dona):** ¿hay tareas atascadas en "En revisión" hace muchos días?
 
 ---
@@ -2286,13 +2286,13 @@ No directamente. Para subcontratistas o consultores externos, cree el tercero co
 
 ### Scheduling y Gantt
 
-**¿El Auto-Schedule borra las fechas que puse manualmente?**
+**¿El Auto-Programación borra las fechas que puse manualmente?**
 
-Sí, para las tareas que no tienen restricciones de fecha. Si tiene tareas con fechas fijas (compromisos contractuales, hitos inmovibles), cree una restricción `MUST_START_ON` o `MUST_FINISH_ON` antes de ejecutar el Auto-Schedule. Esas tareas no serán modificadas.
+Sí, para las tareas que no tienen restricciones de fecha. Si tiene tareas con fechas fijas (compromisos contractuales, hitos inmovibles), cree una restricción `MUST_START_ON` o `MUST_FINISH_ON` antes de ejecutar el Auto-Programación. Esas tareas no serán modificadas.
 
-**¿Qué ocurre si el Auto-Schedule genera una fecha de fin posterior al contrato?**
+**¿Qué ocurre si el Auto-Programación genera una fecha de fin posterior al contrato?**
 
-El Auto-Schedule respeta las dependencias y restricciones, pero no puede "comprimir" el cronograma si matemáticamente es imposible terminarlo antes. En ese caso revise:
+El Auto-Programación respeta las dependencias y restricciones, pero no puede "comprimir" el cronograma si matemáticamente es imposible terminarlo antes. En ese caso revise:
 1. Las dependencias: ¿hay alguna que no sea estrictamente necesaria?
 2. Las duraciones: ¿son realistas o están sobreestimadas?
 3. Los recursos: ¿agregar más recursos a tareas críticas podría reducir duración?
@@ -2349,7 +2349,7 @@ Si usa Saicloud como parte de su rutina diaria de trabajo, este flujo de 10 minu
 ### 22.2 Tips para gerentes de proyecto
 
 **Revisión semanal de 30 minutos:**
-1. Abrir el proyecto → tab Analytics → revisar Burn Down y KPIs (5 min).
+1. Abrir el proyecto → tab Analytics → revisar Gráfico de avance (Burn Down) y KPIs (5 min).
 2. Tab Gantt → activar overlay de Ruta Crítica → revisar tareas rojas (10 min).
 3. Tab Presupuesto → revisar alerta de presupuesto y EVM (5 min).
 4. Tab Recursos → revisar sobreasignaciones (5 min).
@@ -2493,9 +2493,9 @@ El administrador de la empresa puede solicitar reportes de auditoría a través 
 | SF | Start to Finish (Inicio a Fin) | Dependencias |
 | SNET | Start No Earlier Than (No empezar antes de) | Restricciones de scheduling |
 | SNLT | Start No Later Than (No empezar después de) | Restricciones de scheduling |
-| SPI | Schedule Performance Index (Índice de desempeño de cronograma) | EVM |
+| SPI | Programación Performance Index (Índice de desempeño de cronograma) | EVM |
 | SS | Start to Start (Inicio a Inicio) | Dependencias |
-| SV | Schedule Variance (Variación de cronograma) | EVM |
+| SV | Programación Variance (Variación de cronograma) | EVM |
 | TCPI | To-Complete Performance Index | EVM |
 | VAC | Variance at Completion (Variación al cierre) | EVM |
 

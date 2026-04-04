@@ -41,6 +41,7 @@
     <mat-progress-bar mode="indeterminate" class="tl-progress" />
   }
 
+  <div class="table-responsive">
   <mat-table [dataSource]="dataSource" matSort class="tl-table">
 
     <ng-container matColumnDef="nombre_completo">
@@ -99,6 +100,7 @@
     <mat-header-row *matHeaderRowDef="displayedColumns" />
     <mat-row *matRowDef="let row; columns: displayedColumns;" />
   </mat-table>
+  </div><!-- /table-responsive -->
 
   @if (!loading() && terceros().length === 0) {
     <div class="sc-empty-state tl-empty">

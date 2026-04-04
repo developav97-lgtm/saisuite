@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Saicloud Agent - Configurator</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <h1>Saicloud Agent</h1>
+            <span id="agent-version" class="version-badge">v1.0.0</span>
+        </div>
+        <p class="subtitle">Configuration Manager - Firebird to Saicloud Sync</p>
+    </header>
+
+    <main>
+        <!-- Status Bar -->
+        <section id="status-bar" class="status-bar">
+            <div class="status-item">
+                <span class="status-label">Connections:</span>
+                <span id="total-connections">0</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Enabled:</span>
+                <span id="enabled-connections">0</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Log Level:</span>
+                <span id="log-level">info</span>
+            </div>
+        </section>
+
+        <!-- Connection List -->
+        <section class="section">
+            <div class="section-header">
+                <h2>Connections</h2>
+                <button class="btn btn-primary" onclick="showCreateForm()">+ New Connection</button>
+            </div>
+            <div id="connections-list" class="connections-grid">
+                <!-- Populated by JavaScript -->
+            </div>
+        </section>
+
+        <!-- Connection Form Modal -->
+        <div id="modal-overlay" class="modal-overlay" style="display:none">
+            <div class="modal">
+                <div class="modal-header">
+                    <h3 id="modal-title">New Connection</h3>
+                    <button class="btn-close" onclick="closeModal()">&times;</button>
+                </div>
+                <form id="connection-form" onsubmit="saveConnection(event)">
+                    <div class="form-section">
+                        <h4>General</h4>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="conn-id">Connection ID</label>
+                                <input type="text" id="conn-id" required placeholder="conn_001">
+                            </div>
+                            <div class="form-group">
+                                <label for="conn-name">Company Name</label>
+                                <input type="text" id="conn-name" required placeholder="Empresa Principal S.A.S">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="conn-enabled"> Enabled
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h4>Firebird Database</h4>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="fb-host">Host</label>
+                                <input type="text" id="fb-host" value="localhost" placeholder="localhost">
+                            </div>
+                            <div class="form-group form-group-sm">
+                                <label for="fb-port">Port</label>
+                                <input type="number" id="fb-port" value="3050">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="fb-database">Database Path (.fdb)</label>
+                            <div class="input-with-btn">
+                                <input type="text" id="fb-database" required placeholder="C:/SAIOPEN/DATOS/EMPRESA1.FDB">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="fb-user">User</label>
+                                <input type="text" id="fb-user" value="SYSDBA">
+                            </div>
+                            <div class="form-group">
+                                <label for="fb-password">Password</label>
+                                <input type="password" id="fb-password" value="masterkey">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h4>Saicloud API</h4>
+                        <div class="form-group">
+                            <label for="sc-url">API URL</label>
+                            <input type="url" id="sc-url" required placeholder="https://api.saicloud.co">
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="sc-company">Company ID</label>
+                                <input type="text" id="sc-company" required placeholder="uuid-empresa-1">
+                            </div>
+                            <div class="form-group">
+                                <label for="sc-token">Agent Token</label>
+                                <input type="password" id="sc-token" required placeholder="JWT token">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h4>Sync Settings</h4>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="sync-gl-interval">GL Interval (minutes)</label>
+                                <input type="number" id="sync-gl-interval" value="15" min="1">
+                            </div>
+                            <div class="form-group">
+                                <label for="sync-ref-interval">Reference Interval (hours)</label>
+                                <input type="number" id="sync-ref-interval" value="24" min="1">
+                            </div>
+                            <div class="form-group">
+                                <label for="sync-batch-size">Batch Size</label>
+                                <input type="number" id="sync-batch-size" value="500" min="100" max="5000">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Test Results Modal -->
+        <div id="test-modal" class="modal-overlay" style="display:none">
+            <div class="modal modal-sm">
+                <div class="modal-header">
+                    <h3>Connection Test Results</h3>
+                    <button class="btn-close" onclick="closeTestModal()">&times;</button>
+                </div>
+                <div id="test-results" class="test-results">
+                    <p class="loading">Testing connection...</p>
+                </div>
+                <div class="form-actions">
+                    <button class="btn btn-secondary" onclick="closeTestModal()">Close</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <p>Saicloud Agent &copy; ValMen Tech - Grupo SAI S.A.S</p>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+</html>

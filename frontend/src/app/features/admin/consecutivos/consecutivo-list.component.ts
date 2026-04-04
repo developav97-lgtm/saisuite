@@ -16,6 +16,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
+import { ResponsiveTableDirective } from '../../../shared/directives';
 import { ConsecutivoService, ConsecutivoParams } from '../services/consecutivo.service';
 import {
   ConsecutivoConfig, ConsecutivoCreate, EntidadConsecutivo,
@@ -31,6 +32,7 @@ import { ToastService } from '../../../core/services/toast.service';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CommonModule, ReactiveFormsModule, FormsModule,
+    ResponsiveTableDirective,
     MatTableModule, MatButtonModule, MatIconModule,
     MatFormFieldModule, MatInputModule, MatSelectModule,
     MatSlideToggleModule,
@@ -185,7 +187,7 @@ export class ConsecutivoListComponent implements OnInit {
       activo:        cfg.activo,
     });
     this.updatePreview();
-    this.dialogRef = this.dialog.open(this.formTemplate, { width: 'min(520px, 95vw)', maxHeight: '90vh' });
+    this.dialogRef = this.dialog.open(this.formTemplate, { width: 'min(520px, 95vw)', maxHeight: '92vh' });
   }
 
   guardar(): void {

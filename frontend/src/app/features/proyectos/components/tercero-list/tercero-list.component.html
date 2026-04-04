@@ -16,41 +16,43 @@
       <p>No hay terceros vinculados. Usa el botón de arriba para agregar el primero.</p>
     </div>
   } @else if (terceros().length > 0) {
-    <mat-table [dataSource]="terceros()">
-      <ng-container matColumnDef="tercero_nombre">
-        <mat-header-cell *matHeaderCellDef>Nombre / Razón social</mat-header-cell>
-        <mat-cell *matCellDef="let t">
-          <div class="tl-nombre">
-            <span>{{ t.tercero_fk_nombre ?? t.tercero_nombre }}</span>
-            <small class="tl-nit">{{ t.tercero_id }}</small>
-          </div>
-        </mat-cell>
-      </ng-container>
+    <div class="tl-table-wrapper">
+      <mat-table [dataSource]="terceros()">
+        <ng-container matColumnDef="tercero_nombre">
+          <mat-header-cell *matHeaderCellDef>Nombre / Razón social</mat-header-cell>
+          <mat-cell *matCellDef="let t">
+            <div class="tl-nombre">
+              <span>{{ t.tercero_fk_nombre ?? t.tercero_nombre }}</span>
+              <small class="tl-nit">{{ t.tercero_id }}</small>
+            </div>
+          </mat-cell>
+        </ng-container>
 
-      <ng-container matColumnDef="rol">
-        <mat-header-cell *matHeaderCellDef>Rol</mat-header-cell>
-        <mat-cell *matCellDef="let t">
-          <span class="tl-rol-chip tl-rol-chip--{{ t.rol }}">{{ t.rol_display }}</span>
-        </mat-cell>
-      </ng-container>
+        <ng-container matColumnDef="rol">
+          <mat-header-cell *matHeaderCellDef>Rol</mat-header-cell>
+          <mat-cell *matCellDef="let t">
+            <span class="tl-rol-chip tl-rol-chip--{{ t.rol }}">{{ t.rol_display }}</span>
+          </mat-cell>
+        </ng-container>
 
-      <ng-container matColumnDef="fase">
-        <mat-header-cell *matHeaderCellDef>Fase</mat-header-cell>
-        <mat-cell *matCellDef="let t">{{ t.fase_nombre ?? '—' }}</mat-cell>
-      </ng-container>
+        <ng-container matColumnDef="fase">
+          <mat-header-cell *matHeaderCellDef>Fase</mat-header-cell>
+          <mat-cell *matCellDef="let t">{{ t.fase_nombre ?? '—' }}</mat-cell>
+        </ng-container>
 
-      <ng-container matColumnDef="acciones">
-        <mat-header-cell *matHeaderCellDef class="tl-col-acciones">Acciones</mat-header-cell>
-        <mat-cell *matCellDef="let t" class="tl-col-acciones">
-          <button mat-icon-button matTooltip="Desvincular" color="warn" (click)="confirmarDesvincular(t)">
-            <mat-icon>person_remove</mat-icon>
-          </button>
-        </mat-cell>
-      </ng-container>
+        <ng-container matColumnDef="acciones">
+          <mat-header-cell *matHeaderCellDef class="tl-col-acciones">Acciones</mat-header-cell>
+          <mat-cell *matCellDef="let t" class="tl-col-acciones">
+            <button mat-icon-button matTooltip="Desvincular" color="warn" (click)="confirmarDesvincular(t)">
+              <mat-icon>person_remove</mat-icon>
+            </button>
+          </mat-cell>
+        </ng-container>
 
-      <mat-header-row *matHeaderRowDef="displayedColumns"></mat-header-row>
-      <mat-row *matRowDef="let row; columns: displayedColumns;"></mat-row>
-    </mat-table>
+        <mat-header-row *matHeaderRowDef="displayedColumns"></mat-header-row>
+        <mat-row *matRowDef="let row; columns: displayedColumns;"></mat-row>
+      </mat-table>
+    </div>
   }
 </div>
 

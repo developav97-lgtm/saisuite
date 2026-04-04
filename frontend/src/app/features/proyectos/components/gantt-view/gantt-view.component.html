@@ -56,6 +56,25 @@
       </button>
 
       <button
+        mat-stroked-button
+        [class.gv-overlay-active]="hideCompleted()"
+        (click)="toggleHideCompleted()"
+        matTooltip="Ocultar tareas completadas y canceladas"
+      >
+        <mat-icon>visibility_off</mat-icon> Ocultar completadas
+      </button>
+
+      <button
+        mat-stroked-button
+        [class.gv-overlay-active]="compactMode()"
+        (click)="toggleCompactMode()"
+        matTooltip="Vista compacta — filas más pequeñas"
+      >
+        <mat-icon>density_small</mat-icon> Compacto
+      </button>
+
+
+      <button
         mat-icon-button
         (click)="refreshGantt()"
         matTooltip="Actualizar Gantt"

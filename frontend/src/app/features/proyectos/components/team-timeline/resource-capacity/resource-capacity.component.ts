@@ -84,7 +84,7 @@ export class ResourceCapacityComponent implements OnInit {
   openForm(capacity?: ResourceCapacity): void {
     const ref = this.dialog.open(ResourceCapacityFormComponent, {
       data: { capacity, users: this.users() },
-      width: '480px',
+      width: 'min(480px, 95vw)',
       disableClose: false,
     });
     ref.afterClosed().subscribe((saved: boolean) => {

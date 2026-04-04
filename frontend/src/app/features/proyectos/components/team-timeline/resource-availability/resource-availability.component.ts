@@ -90,7 +90,7 @@ export class ResourceAvailabilityComponent implements OnInit {
   openForm(): void {
     const ref = this.dialog.open(ResourceAvailabilityFormComponent, {
       data: { users: this.users() },
-      width: '520px',
+      width: 'min(520px, 95vw)',
       disableClose: false,
     });
     ref.afterClosed().subscribe((saved: boolean) => {

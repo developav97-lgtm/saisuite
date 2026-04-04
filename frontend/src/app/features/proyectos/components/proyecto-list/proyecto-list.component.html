@@ -12,6 +12,24 @@
         <mat-icon>add</mat-icon>
         Nuevo proyecto
       </button>
+      <button *hasPermission="'proyectos.create'" mat-icon-button
+              [matMenuTriggerFor]="crearMenu" matTooltip="Más opciones: plantilla o Excel">
+        <mat-icon>more_vert</mat-icon>
+      </button>
+      <mat-menu #crearMenu="matMenu">
+        <button mat-menu-item (click)="openFromTemplate()">
+          <mat-icon>layers</mat-icon>
+          <span>Desde plantilla</span>
+        </button>
+        <button mat-menu-item (click)="openImportFromExcel()">
+          <mat-icon>table_view</mat-icon>
+          <span>Importar desde Excel</span>
+        </button>
+        <button mat-menu-item (click)="irAPlantillas()">
+          <mat-icon>style</mat-icon>
+          <span>Gestionar plantillas</span>
+        </button>
+      </mat-menu>
     </div>
   </div>
 

@@ -42,6 +42,7 @@ import { ProyectoList } from '../../models/proyecto.model';
 import { FaseList } from '../../models/fase.model';
 import { ActividadProyecto } from '../../models/actividad.model';
 import { ToastService } from '../../../../core/services/toast.service';
+import { NavigationHistoryService } from '../../../../core/services/navigation-history.service';
 import {
   Tarea, TareaEstado, TareaFrecuencia, TareaPrioridad,
   TareaCreateDTO, TareaUpdateDTO,
@@ -75,6 +76,7 @@ export class TareaFormComponent implements OnInit {
   private readonly terceroService         = inject(TerceroService);
   private readonly fb                     = inject(FormBuilder);
   private readonly toast       = inject(ToastService);
+  private readonly navHistory              = inject(NavigationHistoryService);
   private readonly cdr                    = inject(ChangeDetectorRef);
   private readonly destroyRef             = inject(DestroyRef);
 
@@ -642,9 +644,12 @@ export class TareaFormComponent implements OnInit {
   }
 
   private volverATareas(): void {
+    if (this.navHistory.canGoBack) {
+      this.navHistory.goBack('/proyectos/tareas');
+      return;
+    }
     const returnTo = this.route.snapshot.queryParamMap.get('returnTo');
     if (returnTo?.startsWith('proyecto:')) {
-      // Formato: proyecto:<id>:tab:<n>
       const parts = returnTo.split(':');
       const proyectoId = parts[1];
       const tabIndex   = parts[3] ? parseInt(parts[3], 10) : null;

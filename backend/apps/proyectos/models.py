@@ -80,8 +80,8 @@ class Project(BaseModel):
     )
 
     # Cliente principal (referencia a Saiopen — no FK para evitar acoplamiento)
-    cliente_id     = models.CharField(max_length=50)
-    cliente_nombre = models.CharField(max_length=255)
+    cliente_id     = models.CharField(max_length=50, blank=True)
+    cliente_nombre = models.CharField(max_length=255, blank=True)
 
     # Responsables internos
     gerente = models.ForeignKey(
@@ -1784,3 +1784,178 @@ class BudgetSnapshot(BaseModel):
 
     def __str__(self):
         return f'Snapshot {self.project.codigo} @ {self.snapshot_date} — {self.total_cost}'
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Feature #8 — Project Templates
+# ─────────────────────────────────────────────────────────────────────────────
+
+class PlantillaCategoria(models.TextChoices):
+    CONSTRUCCION    = 'construccion',    'Construcción'
+    SOFTWARE        = 'software',        'Desarrollo de Software'
+    EVENTO          = 'evento',          'Evento'
+    MARKETING       = 'marketing',       'Marketing'
+    PRODUCT_LAUNCH  = 'product_launch',  'Lanzamiento de Producto'
+
+
+class PlantillaProyecto(BaseModel):
+    """
+    Plantilla reutilizable para crear proyectos con estructura predefinida.
+    Contiene fases, tareas y dependencias que se clonan al instanciar un proyecto.
+    """
+    nombre              = models.CharField(max_length=200, verbose_name='Nombre')
+    descripcion         = models.TextField(blank=True, verbose_name='Descripción')
+    tipo                = models.CharField(
+        max_length=30,
+        choices=ProjectType.choices,
+        default=ProjectType.OTHER,
+        verbose_name='Tipo de proyecto',
+        help_text='Tipo de proyecto que genera esta plantilla. Determina el consecutivo de código.',
+    )
+    icono               = models.CharField(
+        max_length=50,
+        default='folder',
+        verbose_name='Icono',
+        help_text='Nombre del Material Icon para representar la plantilla.',
+    )
+    duracion_estimada   = models.IntegerField(
+        default=30,
+        verbose_name='Duración estimada (días)',
+        help_text='Duración total estimada del proyecto en días calendario.',
+    )
+    is_active           = models.BooleanField(
+        default=True,
+        db_index=True,
+        verbose_name='Activa',
+    )
+
+    class Meta:
+        verbose_name        = 'Plantilla de Proyecto'
+        verbose_name_plural = 'Plantillas de Proyecto'
+        ordering            = ['tipo', 'nombre']
+
+    def __str__(self):
+        return f'[{self.get_tipo_display()}] {self.nombre}'
+
+
+class PlantillaFase(BaseModel):
+    """
+    Fase dentro de una plantilla de proyecto.
+    El orden determina la secuencia de creación y el cálculo de fechas.
+    """
+    plantilla_proyecto  = models.ForeignKey(
+        PlantillaProyecto,
+        on_delete=models.CASCADE,
+        related_name='fases_plantilla',
+        verbose_name='Plantilla',
+    )
+    nombre              = models.CharField(max_length=255, verbose_name='Nombre')
+    descripcion         = models.TextField(blank=True, verbose_name='Descripción')
+    orden               = models.PositiveIntegerField(default=0, verbose_name='Orden')
+    porcentaje_duracion = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=Decimal('100.00'),
+        verbose_name='Porcentaje de duración',
+        help_text='Qué porcentaje de la duración total ocupa esta fase (0-100).',
+        validators=[MinValueValidator(Decimal('0.01')), MaxValueValidator(Decimal('100.00'))],
+    )
+
+    class Meta:
+        verbose_name        = 'Fase de Plantilla'
+        verbose_name_plural = 'Fases de Plantilla'
+        ordering            = ['orden']
+        unique_together     = [('plantilla_proyecto', 'orden')]
+
+    def __str__(self):
+        return f'{self.plantilla_proyecto.nombre} / Fase {self.orden}: {self.nombre}'
+
+
+class PlantillaTarea(BaseModel):
+    """
+    Tarea dentro de una fase de plantilla.
+    Se clona a Task al instanciar el proyecto desde la plantilla.
+    """
+    plantilla_fase      = models.ForeignKey(
+        PlantillaFase,
+        on_delete=models.CASCADE,
+        related_name='tareas_plantilla',
+        verbose_name='Fase de plantilla',
+    )
+    nombre              = models.CharField(max_length=200, verbose_name='Nombre')
+    descripcion         = models.TextField(blank=True, verbose_name='Descripción')
+    orden               = models.PositiveIntegerField(default=0, verbose_name='Orden')
+    duracion_dias       = models.IntegerField(
+        default=1,
+        verbose_name='Duración (días)',
+        help_text='Duración estimada de la tarea en días calendario.',
+        validators=[MinValueValidator(1)],
+    )
+    prioridad           = models.IntegerField(
+        default=2,
+        choices=[
+            (1, 'Baja'),
+            (2, 'Normal'),
+            (3, 'Alta'),
+            (4, 'Urgente'),
+        ],
+        verbose_name='Prioridad',
+    )
+    actividad_saiopen   = models.ForeignKey(
+        'Activity',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='plantilla_tareas',
+        verbose_name='Actividad',
+    )
+
+    class Meta:
+        verbose_name        = 'Tarea de Plantilla'
+        verbose_name_plural = 'Tareas de Plantilla'
+        ordering            = ['orden']
+        unique_together     = [('plantilla_fase', 'orden')]
+
+    def __str__(self):
+        return f'{self.plantilla_fase.nombre} / Tarea {self.orden}: {self.nombre}'
+
+
+class PlantillaDependencia(BaseModel):
+    """
+    Dependencia entre tareas de una plantilla.
+    Se clona a TaskDependency al instanciar el proyecto desde la plantilla.
+    """
+    tarea_predecesora   = models.ForeignKey(
+        PlantillaTarea,
+        on_delete=models.CASCADE,
+        related_name='sucesoras_plantilla',
+        verbose_name='Tarea predecesora',
+    )
+    tarea_sucesora      = models.ForeignKey(
+        PlantillaTarea,
+        on_delete=models.CASCADE,
+        related_name='predecesoras_plantilla',
+        verbose_name='Tarea sucesora',
+    )
+    tipo_dependencia    = models.CharField(
+        max_length=2,
+        choices=DependencyType.choices,
+        default=DependencyType.FINISH_TO_START,
+        verbose_name='Tipo de dependencia',
+    )
+    lag_time            = models.IntegerField(
+        default=0,
+        verbose_name='Lag time (días)',
+        help_text='Días de desfase. Puede ser negativo para adelantar.',
+    )
+
+    class Meta:
+        verbose_name        = 'Dependencia de Plantilla'
+        verbose_name_plural = 'Dependencias de Plantilla'
+        unique_together     = [('tarea_predecesora', 'tarea_sucesora')]
+
+    def __str__(self):
+        return (
+            f'{self.tarea_predecesora.nombre} → {self.tarea_sucesora.nombre} '
+            f'({self.tipo_dependencia})'
+        )

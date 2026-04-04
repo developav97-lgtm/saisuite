@@ -133,7 +133,20 @@
 // ── Tabla ─────────────────────────────────────────────────────────────────────
 .wi-table {
   width: 100%;
+  min-width: 520px;
   border-radius: var(--sc-radius);
+
+  .mat-column-estado {
+    min-width: 140px;
+    flex: 0 0 140px;
+    justify-content: center;
+    text-align: center;
+  }
+}
+
+.wi-col-center {
+  text-align: center !important;
+  justify-content: center !important;
 }
 
 .wi-col-right {

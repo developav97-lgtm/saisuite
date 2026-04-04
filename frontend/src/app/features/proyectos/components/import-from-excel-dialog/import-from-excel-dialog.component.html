@@ -1,0 +1,69 @@
+<h2 mat-dialog-title>Importar proyecto desde Excel</h2>
+
+@if (loading()) {
+  <mat-progress-bar mode="indeterminate" class="ife-progress" />
+}
+
+<mat-dialog-content class="ife-content">
+
+  <!-- Instrucciones + descarga plantilla -->
+  <div class="ife-instructions">
+    <mat-icon class="ife-instructions__icon">info_outline</mat-icon>
+    <p class="ife-instructions__text">
+      Sube un archivo <strong>.xlsx</strong> con el formato de plantilla de SaiSuite.
+      El archivo debe contener las hojas: <em>Proyecto</em>, <em>Fases</em> y <em>Tareas</em>.
+    </p>
+  </div>
+
+  <button mat-stroked-button class="ife-download-btn" (click)="downloadTemplate()">
+    <mat-icon>table_view</mat-icon>
+    Descargar plantilla Excel
+  </button>
+
+  <!-- Área de subida -->
+  @if (!hasFile()) {
+    <div class="ife-upload-area" (click)="fileInput.click()" role="button" tabindex="0"
+         (keyup.enter)="fileInput.click()" (keyup.space)="fileInput.click()">
+      <mat-icon class="ife-upload-area__icon">upload_file</mat-icon>
+      <p class="ife-upload-area__text">Haz clic para seleccionar archivo</p>
+      <p class="ife-upload-area__hint">.xlsx, máximo 10 MB</p>
+    </div>
+  } @else {
+    <div class="ife-file-chip">
+      <mat-icon class="ife-file-chip__icon">description</mat-icon>
+      <span class="ife-file-chip__name">{{ selectedFile()!.name }}</span>
+      <button mat-icon-button class="ife-file-chip__remove" (click)="removeFile()"
+              matTooltip="Quitar archivo" [disabled]="loading()">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+  }
+
+  <!-- Input oculto -->
+  <input #fileInput type="file" accept=".xlsx" class="ife-hidden-input"
+         (change)="onFileSelected($event)" />
+
+  <!-- Errores / advertencias -->
+  @if (showErrors()) {
+    <div class="ife-errors">
+      <div class="ife-errors__header">
+        <mat-icon>warning</mat-icon>
+        <span>Advertencias del proceso</span>
+      </div>
+      <ul class="ife-errors__list">
+        @for (msg of importErrors(); track msg) {
+          <li>{{ msg }}</li>
+        }
+      </ul>
+    </div>
+  }
+
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="cancel()" [disabled]="loading()">Cancelar</button>
+  <button mat-raised-button color="primary" (click)="importProject()"
+          [disabled]="!hasFile() || loading()">
+    <mat-icon>upload</mat-icon> Importar
+  </button>
+</mat-dialog-actions>

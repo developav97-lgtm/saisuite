@@ -5,6 +5,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 import {
   AutoScheduleRequest,
   AutoScheduleResult,
@@ -15,6 +16,11 @@ import {
   TaskConstraint,
   CreateTaskConstraintRequest,
 } from '../models/scheduling.model';
+import {
+  LevelingConfig,
+  LevelingPreview,
+  ResourceLevelingResult,
+} from '../components/scheduling/resource-leveling-wizard/resource-leveling-wizard.component';
 
 @Injectable({ providedIn: 'root' })
 export class SchedulingService {
@@ -111,6 +117,58 @@ export class SchedulingService {
   deleteConstraint(constraintId: string): Observable<void> {
     return this.http.delete<void>(
       `${this.baseUrl}/constraints/${constraintId}/`
+    );
+  }
+
+  // ── Resource Leveling Wizard ──────────────────────────────────────────────
+
+  /**
+   * Calcular la nivelación de recursos en modo dry_run (sin guardar).
+   * POST /api/v1/projects/{projectId}/scheduling/level-resources/
+   */
+  resourceLevelingPreview(
+    proyectoId: string,
+    _config: LevelingConfig
+  ): Observable<LevelingPreview> {
+    return this.http.post<LevelResourcesResult>(
+      `${this.baseUrl}/${proyectoId}/scheduling/level-resources/`,
+      { dry_run: true }
+    ).pipe(
+      map(res => ({
+        changes: (res.task_changes ?? []).map(tc => ({
+          tareaId:      tc.task_id,
+          tareaNombre:  tc.task_name,
+          currentStart: tc.current_start,
+          newStart:     tc.new_start,
+          currentEnd:   tc.current_end,
+          newEnd:       tc.new_end,
+          reason:       'Sobrecarga de recurso',
+        })),
+        summary: {
+          totalTasksModified: res.tasks_moved,
+          averageDelayDays:   0,
+          conflictsResolved:  res.tasks_moved,
+        },
+      }))
+    );
+  }
+
+  /**
+   * Aplicar la nivelación de recursos (persiste los cambios).
+   * POST /api/v1/projects/{projectId}/scheduling/level-resources/
+   */
+  resourceLevelingApply(
+    proyectoId: string,
+    _config: LevelingConfig
+  ): Observable<ResourceLevelingResult> {
+    return this.http.post<LevelResourcesResult>(
+      `${this.baseUrl}/${proyectoId}/scheduling/level-resources/`,
+      { dry_run: false }
+    ).pipe(
+      map(res => ({
+        success: res.leveling_effective,
+        modifiedTasksCount: res.tasks_moved,
+      }))
     );
   }
 }

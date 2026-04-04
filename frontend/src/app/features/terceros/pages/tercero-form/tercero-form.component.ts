@@ -177,7 +177,9 @@ export class TerceroFormComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    const id = this.route.snapshot.paramMap.get('id');
+    const id = this.navigator.isActive
+      ? this.navigator.getParam('id')
+      : this.route.snapshot.paramMap.get('id');
     if (id) {
       this.editId.set(id);
       this.loading.set(true);

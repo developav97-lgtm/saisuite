@@ -15,6 +15,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatSortModule, MatSort } from '@angular/material/sort';
+import { ResponsiveTableDirective } from '../../../shared/directives';
 import { AdminService } from '../services/admin.service';
 import { AdminUser, UserRole, ROLE_LABELS, ROLE_OPTIONS } from '../models/admin.models';
 import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
@@ -27,6 +28,7 @@ import { ToastService } from '../../../core/services/toast.service';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     RouterModule,
+    ResponsiveTableDirective,
     MatTableModule, MatButtonModule, MatIconModule,
     MatChipsModule, MatTooltipModule, MatDialogModule,
     MatFormFieldModule, MatInputModule, MatSelectModule,

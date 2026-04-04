@@ -40,6 +40,7 @@ import type { ModoMedicion } from '../../models/actividad-saiopen.model';
 import { ConfiguracionProyecto } from '../../models/configuracion-proyecto.model';
 import { SesionTrabajo } from '../../models/sesion-trabajo.model';
 import { ToastService } from '../../../../core/services/toast.service';
+import { NavigationHistoryService } from '../../../../core/services/navigation-history.service';
 
 export const ESTADO_LABELS: Record<string, string | undefined> = {
   todo:        'Por Hacer',
@@ -110,6 +111,7 @@ export class TareaDetailComponent implements OnInit {
   private readonly route          = inject(ActivatedRoute);
   private readonly dialog         = inject(MatDialog);
   private readonly toast       = inject(ToastService);
+  private readonly navHistory     = inject(NavigationHistoryService);
   private readonly cdr            = inject(ChangeDetectorRef);
 
   readonly loading   = signal(true);
@@ -327,9 +329,10 @@ export class TareaDetailComponent implements OnInit {
   }
 
   volver(): void {
-    this.router.navigate([
-      this.returnTo() === 'kanban' ? '/proyectos/tareas/kanban' : '/proyectos/tareas',
-    ]);
+    const fallback = this.returnTo() === 'kanban'
+      ? '/proyectos/tareas/kanban'
+      : '/proyectos/tareas';
+    this.navHistory.goBack(fallback);
   }
 
   verTareaPadre(): void {

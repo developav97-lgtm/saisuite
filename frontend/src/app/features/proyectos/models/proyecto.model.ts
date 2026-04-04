@@ -136,3 +136,94 @@ export const TIPO_LABELS: Record<TipoProyecto, string> = {
   public_tender:  'Licitación pública',
   other:          'Otro',
 };
+
+// ── Plantillas de Proyecto ────────────────────────────────────────────────────
+
+export interface PlantillaTarea {
+  id: string;
+  nombre: string;
+  descripcion: string;
+  orden: number;
+  duracion_dias: number;
+  prioridad: number;
+  actividad_saiopen_id: string | null;
+  /** unidad_medida de la actividad vinculada, null si no hay actividad */
+  unidad_medida: string | null;
+}
+
+export interface PlantillaFase {
+  id: string;
+  nombre: string;
+  descripcion: string;
+  orden: number;
+  porcentaje_duracion: string;
+  tareas_count: number;
+  tareas: PlantillaTarea[];
+}
+
+export interface PlantillaProyecto {
+  id: string;
+  nombre: string;
+  descripcion: string;
+  tipo: TipoProyecto;
+  tipo_display: string;
+  icono: string;
+  duracion_estimada: number;
+  is_active: boolean;
+  fases_count: number;
+  fases: PlantillaFase[];
+}
+
+export interface PlantillaTareaCreate {
+  nombre: string;
+  descripcion?: string;
+  orden: number;
+  duracion_dias: number;
+  actividad_saiopen_id?: string | null;
+}
+
+export interface PlantillaFaseCreate {
+  nombre: string;
+  descripcion?: string;
+  orden: number;
+  porcentaje_duracion: number;
+  tareas: PlantillaTareaCreate[];
+}
+
+export interface PlantillaProyectoCreate {
+  nombre: string;
+  descripcion?: string;
+  tipo: TipoProyecto;
+  icono?: string;
+  duracion_estimada: number;
+  fases: PlantillaFaseCreate[];
+}
+
+// Kept for backwards compatibility — no longer used in templates
+export const PLANTILLA_CATEGORIA_LABELS: Record<string, string> = {
+  construccion:   'Construcción',
+  software:       'Desarrollo de Software',
+  evento:         'Evento',
+  marketing:      'Marketing',
+  product_launch: 'Lanzamiento de Producto',
+};
+
+export interface CreateFromTemplateRequest {
+  template_id: string;
+  nombre: string;
+  descripcion?: string;
+  /** Fecha ISO YYYY-MM-DD */
+  planned_start: string;
+}
+
+// ── Importación Excel ─────────────────────────────────────────────────────────
+
+export interface ImportExcelResult {
+  proyecto: ProyectoDetail;
+  stats: {
+    fases: number;
+    tareas: number;
+    dependencias: number;
+  };
+  warnings: string[];
+}

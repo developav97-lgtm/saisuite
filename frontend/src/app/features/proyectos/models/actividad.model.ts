@@ -68,6 +68,17 @@ export interface ActividadProyectoCreate {
   porcentaje_avance?: string;
 }
 
+/** Actividad del catálogo Saiopen — para selección en plantillas */
+export interface SaiopenActividadList {
+  id: string;
+  codigo: string;
+  nombre: string;
+  unidad_medida: string;
+  unidad_medida_display: string;
+  costo_unitario_base: string;
+  activo: boolean;
+}
+
 export const TIPO_ACTIVIDAD_LABELS: Record<TipoActividad, string> = {
   labor:       'Mano de obra',
   material:    'Material',

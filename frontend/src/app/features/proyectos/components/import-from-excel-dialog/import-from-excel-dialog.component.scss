@@ -1,0 +1,169 @@
+/* ── ImportFromExcelDialog ──────────────────────────────────────────────────── */
+
+.ife-progress {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+}
+
+.ife-content {
+  min-width: 480px;
+  max-width: 600px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-top: 8px;
+
+  @media (max-width: 600px) {
+    min-width: unset;
+    width: 100%;
+  }
+}
+
+/* Instrucciones */
+.ife-instructions {
+  display: flex;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: var(--sc-info-container, rgba(33, 150, 243, 0.08));
+
+  &__icon {
+    color: var(--sc-info, #2196f3);
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  &__text {
+    margin: 0;
+    font-size: 13px;
+    color: var(--sc-text-secondary);
+    line-height: 1.5;
+  }
+}
+
+/* Botón descarga plantilla */
+.ife-download-btn {
+  align-self: flex-start;
+}
+
+/* Área de upload */
+.ife-upload-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 32px 16px;
+  border: 2px dashed var(--sc-border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease;
+  background: var(--sc-surface);
+  outline: none;
+
+  &:hover,
+  &:focus {
+    border-color: var(--sc-primary);
+    background: var(--sc-primary-container, rgba(33, 150, 243, 0.04));
+  }
+
+  &__icon {
+    font-size: 40px;
+    width: 40px;
+    height: 40px;
+    color: var(--sc-text-secondary);
+  }
+
+  &__text {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--sc-text-primary);
+  }
+
+  &__hint {
+    margin: 0;
+    font-size: 12px;
+    color: var(--sc-text-secondary);
+  }
+}
+
+/* Chip de archivo seleccionado */
+.ife-file-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border: 1px solid var(--sc-primary);
+  border-radius: 8px;
+  background: var(--sc-primary-container, rgba(33, 150, 243, 0.06));
+
+  &__icon {
+    color: var(--sc-primary);
+    font-size: 22px;
+    width: 22px;
+    height: 22px;
+    flex-shrink: 0;
+  }
+
+  &__name {
+    flex: 1;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--sc-text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__remove {
+    color: var(--sc-text-secondary);
+    flex-shrink: 0;
+  }
+}
+
+/* Input de archivo oculto */
+.ife-hidden-input {
+  display: none;
+}
+
+/* Lista de errores/advertencias */
+.ife-errors {
+  border: 1px solid var(--sc-warning, #ff9800);
+  border-radius: 8px;
+  overflow: hidden;
+
+  &__header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: rgba(255, 152, 0, 0.1);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--sc-warning, #e65100);
+
+    mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+    }
+  }
+
+  &__list {
+    margin: 0;
+    padding: 8px 14px 8px 32px;
+    list-style-type: disc;
+
+    li {
+      font-size: 12px;
+      color: var(--sc-text-secondary);
+      line-height: 1.6;
+    }
+  }
+}

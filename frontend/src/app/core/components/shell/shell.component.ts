@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, OnDestroy, inject, computed, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { filter } from 'rxjs';
-import { Router, RouterOutlet } from '@angular/router';
+import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -11,6 +11,7 @@ import { ThemeService } from '../../services/theme.service';
 import { AuthService } from '../../auth/auth.service';
 import { NotificationSocketService, WsNotification } from '../../services/notification-socket.service';
 import { ChatStateService } from '../../services/chat-state.service';
+import { NavigationHistoryService } from '../../services/navigation-history.service';
 import { NgxSonnerToaster, toast } from 'ngx-sonner';
 import { ChatFabComponent } from '../../../features/chat/components/chat-fab/chat-fab.component';
 import { ChatPanelComponent } from '../../../features/chat/components/chat-panel/chat-panel.component';
@@ -28,10 +29,34 @@ export class ShellComponent implements OnInit, OnDestroy {
   private readonly authService    = inject(AuthService);
   private readonly socketService  = inject(NotificationSocketService);
   readonly chatState              = inject(ChatStateService);
+  private readonly _navHistory     = inject(NavigationHistoryService);
   private readonly router         = inject(Router);
   private readonly destroyRef     = inject(DestroyRef);
 
   constructor() {
+    // Clean orphaned CDK overlays after route path changes.
+    // The CDK overlay container lives in <body> outside the component tree.
+    // When a dialog-opening component is destroyed by navigation, the overlay
+    // can persist as an orphan. This handler sweeps those after each navigation
+    // to a different path (ignoring query-param-only changes).
+    let previousPath = '';
+    this.router.events.pipe(
+      filter((e): e is NavigationEnd => e instanceof NavigationEnd),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe((e) => {
+      const currentPath = e.urlAfterRedirects.split('?')[0];
+      if (currentPath === previousPath) { previousPath = currentPath; return; }
+      previousPath = currentPath;
+      // Path changed — sweep orphaned overlay DOM after a frame to let CDK
+      // finish its own cleanup first.
+      requestAnimationFrame(() => {
+        const container = document.querySelector('.cdk-overlay-container');
+        if (container && container.children.length > 0) {
+          container.innerHTML = '';
+        }
+      });
+    });
+
     // Use toObservable instead of effect() so the toast call runs in a plain
     // RxJS subscription — outside any reactive context — avoiding interactions
     // between ngx-sonner's internal signal store and Angular's effect scheduler.

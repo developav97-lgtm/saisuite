@@ -11,6 +11,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { FormsModule } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
+import { ResponsiveTableDirective } from '../../../../shared/directives';
 import { TenantService } from '../../services/tenant.service';
 import { ToastService } from '../../../../core/services/toast.service';
 import { ConfirmDialogComponent } from '../../../../shared/components/confirm-dialog/confirm-dialog.component';
@@ -23,6 +24,7 @@ import { Tenant, LICENSE_STATUS_LABELS, PLAN_LABELS } from '../../models/tenant.
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CommonModule, FormsModule, DatePipe,
+    ResponsiveTableDirective,
     MatTableModule, MatButtonModule, MatIconModule,
     MatProgressBarModule, MatChipsModule, MatTooltipModule,
     MatInputModule, MatFormFieldModule,

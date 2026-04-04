@@ -1,3 +1,99 @@
+## DEC-042: ngx-echarts como librería de gráficos para SaiDashboard
+**Fecha:** 2026-04-01
+**Estado:** ✅ Decidido
+
+**Contexto:** El módulo SaiDashboard necesita gráficos financieros avanzados (barras, líneas, torta, waterfall, gauge, área) para dashboards de BI.
+
+**Opciones consideradas:**
+1. **Chart.js** — Popular, liviano, pero limitado para waterfall y gauge
+2. **ApexCharts** — Bueno, pero sin wrapper oficial para Angular 18
+3. **D3.js** — Muy bajo nivel para MVP, alto esfuerzo de desarrollo
+4. **ngx-echarts (Apache ECharts)** — Wrapper Angular oficial, soporte completo de series financieras
+
+**Decisión:** ngx-echarts (Apache ECharts wrapper para Angular 18).
+
+**Razón:** Soporte nativo para waterfall, gauge, heatmap y series financieras. Wrapper Angular mantenido. Mejor rendimiento con grandes datasets. Licencia Apache 2.0.
+
+**Consecuencias:** Instalar `echarts` + `ngx-echarts` como dependencias npm. Todos los gráficos del módulo Dashboard usan ECharts exclusivamente.
+
+---
+
+## DEC-043: Estrategia de almacenamiento GL — Denormalizado en PostgreSQL
+**Fecha:** 2026-04-01
+**Estado:** ✅ Decidido
+
+**Contexto:** El movimiento contable (GL) de Saiopen tiene mucha data y Firebird 2.5 se lentifica cuando hay usuarios activos. Los reportes del dashboard no deben afectar el ERP local.
+
+**Opciones consideradas:**
+1. **Consultar Firebird en tiempo real** — Afecta rendimiento del ERP, latencia alta
+2. **Joins en PostgreSQL en tiempo de consulta** — Normalizado, requiere joins en cada reporte
+3. **TimescaleDB** — Añade complejidad operacional sin beneficio claro para este volumen
+4. **Denormalizado en PostgreSQL** — Todos los joins pre-calculados, índices compuestos
+
+**Decisión:** Almacenar movimientos GL completamente denormalizados en PostgreSQL (modelo `MovimientoContable` con todos los joins pre-calculados del sql_gl.txt).
+
+**Razón:** Elimina joins en tiempo de consulta de reportes. La data GL es append-only (nunca se modifica retroactivamente en contabilidad colombiana). Los índices compuestos permiten queries rápidas para los KPIs del dashboard.
+
+**Consecuencias:** Mayor consumo de almacenamiento (~2x vs normalizado), pero consultas de reporte en <100ms para empresas PyME (~500K registros). La sincronización usa `bulk_create(update_conflicts=True)`.
+
+---
+
+## DEC-044: Agente Go para sync Saiopen — Criterio 3 cumplido
+**Fecha:** 2026-04-01
+**Estado:** ✅ Decidido
+
+**Contexto:** Se necesita extraer datos contables de Firebird 2.5 (instalado en el PC Windows del cliente) y enviarlos a Saicloud (PostgreSQL en AWS).
+
+**Opciones consideradas:**
+1. **Django management command** — Requiere instalar Python en la PC del cliente, más pesado
+2. **Agente Python standalone** — Posible con PyInstaller, pero binario de ~100MB
+3. **Agente Go compilado** — Binario standalone de ~15MB, sin dependencias
+
+**Decisión:** Agente Go compilado como ejecutable standalone para Windows.
+
+**Razón:** Cumple Criterio 3 de CLAUDE.md sección 10: "Ejecutables standalone — agentes que corren en PC del cliente, CLI tools sin dependencias pesadas, servicios que deben ser binarios compilados." El binario Go es ~15MB, no requiere runtime ni instalación de dependencias.
+
+**Consecuencias:** El agente se compila con `GOOS=windows GOARCH=amd64`. Soporta múltiples bases de datos Firebird en el mismo servidor. Incluye configurador web embebido (go:embed) para que el implementador configure sin editar JSON a mano.
+
+---
+
+## DEC-045: ModuleTrial como modelo independiente
+**Fecha:** 2026-04-01
+**Estado:** ✅ Decidido
+
+**Contexto:** Las empresas pueden probar el módulo SaiDashboard por 14 días UNA sola vez antes de contratar. Se necesita un mecanismo de trial por módulo.
+
+**Opciones consideradas:**
+1. **Extender CompanyLicense con JSON de trials** — Complicaría migraciones existentes (DEC-030)
+2. **Nuevo modelo ModuleTrial independiente** — Simple, aislado, unique_together(company, module_code)
+
+**Decisión:** Modelo `ModuleTrial` independiente con `unique_together = (company, module_code)`.
+
+**Razón:** CompanyLicense ya está estabilizado (DEC-030). Un trial usado nunca se elimina (registro permanente). El `unique_together` garantiza que cada empresa solo pueda activar UNA prueba por módulo.
+
+**Consecuencias:** Flujo de acceso: 1) ¿'dashboard' in license.modules_included? → PERMITIR. 2) ¿Trial activo? → PERMITIR con banner. 3) ¿Trial vencido? → DENEGAR. 4) Sin trial → opción de activar.
+
+---
+
+## DEC-041: Estándar de Estructura de Documentación
+**Fecha:** 2026-04-01
+**Estado:** ✅ Aprobado
+
+**Contexto:** La documentación del proyecto había crecido sin estructura: informes de ejecución en la raíz del proyecto, planes completados mezclados con activos, docs técnicas sin carpeta de módulo.
+
+**Decisión:** Implementar el estándar definido en `docs/base-reference/ESTANDAR-DOCS.md`. Puntos clave:
+1. Solo 5 archivos `.md` en la raíz: `CLAUDE.md`, `CONTEXT.md`, `DECISIONS.md`, `ERRORS.md`, `README.md`
+2. Informes de ejecución → `docs/reports/`
+3. Planes activos → `docs/plans/` | Planes completados → `docs/plans/historic/`
+4. Docs técnicas por módulo → `docs/technical/[modulo]/`
+5. `docs/plans/INDICE-PLANES.md` siempre actualizado
+
+**Consecuencia:** Todo agente (Claude Code, Cowork) debe respetar esta estructura. Al generar informes, moverlos a `docs/reports/`. Al completar planes, moverlos a `docs/plans/historic/` y actualizar el índice.
+
+**Nota para CLAUDE.md:** Se recomienda agregar una Sección 17 referenciando `docs/base-reference/ESTANDAR-DOCS.md` para que Claude Code conozca la estructura al generar archivos.
+
+---
+
 ## DEC-030: Sistema de Licencias — Extender CompanyLicense vs nuevo modelo Licencia
 **Fecha:** 2026-03-29
 **Estado:** ✅ Decidido e implementado

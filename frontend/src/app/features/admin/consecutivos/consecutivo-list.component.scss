@@ -11,6 +11,11 @@
 .cl-search-field { flex: 1; min-width: 200px; }
 .cl-filter       { width: 180px; flex-shrink: 0; }
 
+@media (max-width: 768px) {
+  .cl-search-field { width: 100%; flex-basis: 100%; }
+  .cl-filter { width: auto; flex: 1; min-width: 120px; }
+}
+
 // ── Progress bar ──────────────────────────────────────────────
 .cl-progress {
   margin-bottom: -4px;
@@ -77,17 +82,24 @@
 }
 
 // ── Anchos de columnas de la tabla ─────────────────────────────
-.mat-column-tipo          { width: 210px; flex: 0 0 210px; }
-.mat-column-nombre        { flex: 1; min-width: 140px; }
-.mat-column-prefijo       { width: 80px;  flex: 0 0 80px;  }
-.mat-column-proximo_codigo{ width: 130px; flex: 0 0 130px; }
-.mat-column-formato       { width: 160px; flex: 0 0 160px; }
-.mat-column-activo        { width: 90px;  flex: 0 0 90px;  }
+:host ::ng-deep {
+  .cl-table { min-width: 950px; }
+  .mat-column-tipo          { flex: 0 0 210px; min-width: 210px; }
+  .mat-column-nombre        { flex: 1; min-width: 140px; }
+  .mat-column-prefijo       { flex: 0 0 80px;  min-width: 80px;  }
+  .mat-column-proximo_codigo{ flex: 0 0 130px; min-width: 130px; }
+  .mat-column-formato       { flex: 0 0 160px; min-width: 160px; }
+  .mat-column-activo        { flex: 0 0 90px;  min-width: 90px;  }
+  .mat-column-acciones      { flex: 0 0 96px;  min-width: 96px; justify-content: flex-end; }
+}
 
 // ── Acciones ───────────────────────────────────────────────────
 .cl-col-acciones {
   width: 96px;
+  min-width: 96px;
+  flex: 0 0 96px;
   justify-content: flex-end !important;
+  flex-shrink: 0;
 }
 
 // ── Empty state ────────────────────────────────────────────────

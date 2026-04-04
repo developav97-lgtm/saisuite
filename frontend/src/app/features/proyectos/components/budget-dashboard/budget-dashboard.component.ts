@@ -25,6 +25,7 @@ import { CostRateService } from '../../services/cost-rate.service';
 import {
   ProjectBudget,
   BudgetAlert,
+  BudgetSnapshot,
   EvmMetrics,
   CostBreakdownByResource,
   CostBreakdownByTask,
@@ -73,6 +74,7 @@ export class BudgetDashboardComponent implements OnInit {
   readonly expenses        = signal<ProjectExpense[]>([]);
   readonly costRates       = signal<ResourceCostRate[]>([]);
   readonly loadingRates    = signal(false);
+  readonly snapshots       = signal<BudgetSnapshot[]>([]);
 
   // ── Computed ───────────────────────────────────────────────────────────────
   readonly hasBudget = computed(() => this.budget() !== null);
@@ -97,12 +99,14 @@ export class BudgetDashboardComponent implements OnInit {
   readonly TASK_COLUMNS       = ['task', 'hours', 'labor_cost', 'total_cost'];
   readonly EXPENSE_COLUMNS    = ['date', 'category', 'description', 'amount', 'billable', 'approved', 'actions'];
   readonly COST_RATE_COLUMNS  = ['user', 'hourly_rate', 'start_date', 'end_date', 'status', 'actions'];
+  readonly SNAPSHOT_COLUMNS   = ['snapshot_date', 'total_cost', 'planned_budget', 'variance', 'variance_percentage'];
 
   // ── Lifecycle ──────────────────────────────────────────────────────────────
 
   ngOnInit(): void {
     this.loadAll();
     this.loadCostRates();
+    this.loadSnapshots();
   }
 
   private loadAll(): void {
@@ -163,8 +167,18 @@ export class BudgetDashboardComponent implements OnInit {
 
   createSnapshot(): void {
     this.budgetService.createSnapshot(this.projectId()).subscribe({
-      next: () => this.toast.success('Snapshot creado.'),
+      next: () => {
+        this.toast.success('Snapshot creado.');
+        this.loadSnapshots();
+      },
       error: () => this.toast.error('Error al crear snapshot.'),
+    });
+  }
+
+  loadSnapshots(): void {
+    this.budgetService.getSnapshots(this.projectId()).subscribe({
+      next: data => this.snapshots.set(data),
+      error: () => {},
     });
   }
 
@@ -283,6 +297,11 @@ export class BudgetDashboardComponent implements OnInit {
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     });
+  }
+
+  isNegativeVariance(variance: string | null): boolean {
+    if (!variance) return false;
+    return parseFloat(variance) < 0;
   }
 
   cpiColor(cpi: string | null): string {

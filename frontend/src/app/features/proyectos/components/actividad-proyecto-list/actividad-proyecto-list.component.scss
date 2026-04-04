@@ -6,7 +6,7 @@
   margin-bottom: 16px;
 
   &__count  { font-weight: 500; }
-  &__total  { color: rgba(0,0,0,.6); font-size: 14px; }
+  &__total  { color: var(--sc-text-muted); font-size: 14px; }
 }
 
 .apl-progress {
@@ -28,7 +28,8 @@
   margin-top: 2px;
 }
 
-.apl-col-right { text-align: right !important; }
+.apl-col-right   { text-align: right !important;  justify-content: flex-end !important; }
+.apl-col-center  { text-align: center !important; justify-content: center !important; }
 
 .apl-presupuesto { font-weight: 500; }
 
@@ -41,11 +42,12 @@
   border-radius: 12px;
   font-size: 12px;
   font-weight: 500;
+  border: 1px solid transparent;
 
-  &--mano_obra   { background: #e3f2fd; color: #1565c0; }
-  &--material    { background: #e8f5e9; color: #2e7d32; }
-  &--equipo      { background: #fff3e0; color: #e65100; }
-  &--subcontrato { background: #f3e5f5; color: #6a1b9a; }
+  &--labor       { background: #e3f2fd; color: #1565c0; border-color: #1565c0; }
+  &--material    { background: #e8f5e9; color: #2e7d32; border-color: #2e7d32; }
+  &--equipo      { background: #fff3e0; color: #e65100; border-color: #e65100; }
+  &--subcontrato { background: #f3e5f5; color: #6a1b9a; border-color: #6a1b9a; }
 }
 
 .apl-avance {

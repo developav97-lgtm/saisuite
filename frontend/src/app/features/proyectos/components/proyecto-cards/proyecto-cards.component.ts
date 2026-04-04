@@ -20,7 +20,11 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatMenuModule } from '@angular/material/menu';
+import { MatDialog } from '@angular/material/dialog';
 import { ProyectoService, ProyectoListParams } from '../../services/proyecto.service';
+import { CreateFromTemplateDialogComponent } from '../create-from-template-dialog/create-from-template-dialog.component';
+import { ImportFromExcelDialogComponent } from '../import-from-excel-dialog/import-from-excel-dialog.component';
 import {
   ProyectoList,
   EstadoProyecto,
@@ -41,6 +45,7 @@ import { HasPermissionDirective } from '../../../../core/directives/has-permissi
     MatButtonModule, MatIconModule,
     MatInputModule, MatFormFieldModule, MatSelectModule,
     MatPaginatorModule, MatProgressBarModule, MatTooltipModule,
+    MatMenuModule,
     HasPermissionDirective,
   ],
   templateUrl: './proyecto-cards.component.html',
@@ -51,7 +56,8 @@ export class ProyectoCardsComponent implements OnInit {
   private readonly proyectoService = inject(ProyectoService);
   private readonly adminService    = inject(AdminService);
   private readonly router          = inject(Router);
-  private readonly toast       = inject(ToastService);
+  private readonly toast           = inject(ToastService);
+  private readonly dialog          = inject(MatDialog);
 
   readonly proyectos     = signal<ProyectoList[]>([]);
   readonly totalCount    = signal(0);
@@ -114,8 +120,27 @@ export class ProyectoCardsComponent implements OnInit {
     localStorage.setItem('saisuite.proyectosView', 'list');
     this.router.navigate(['/proyectos', 'lista']);
   }
-  verDetalle(id: string): void { this.router.navigate(['/proyectos', id]); }
-  nuevoProyecto():       void { this.router.navigate(['/proyectos', 'nuevo']); }
+  verDetalle(id: string):  void { this.router.navigate(['/proyectos', id]); }
+  nuevoProyecto():         void { this.router.navigate(['/proyectos', 'nuevo']); }
+  irAPlantillas():         void { this.router.navigate(['/proyectos', 'plantillas']); }
+
+  openFromTemplate(): void {
+    this.dialog.open(CreateFromTemplateDialogComponent, { width: '800px', maxHeight: '90vh' })
+      .afterClosed().subscribe(result => {
+        if (result) {
+          this.router.navigate(['/proyectos', result.id]);
+        }
+      });
+  }
+
+  openImportFromExcel(): void {
+    this.dialog.open(ImportFromExcelDialogComponent, { width: '600px' })
+      .afterClosed().subscribe(result => {
+        if (result) {
+          this.router.navigate(['/proyectos', result.id]);
+        }
+      });
+  }
 
   estadoLabel(estado: string): string {
     return ESTADO_LABELS[estado as EstadoProyecto] ?? estado;

@@ -16,12 +16,16 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSortModule, MatSort } from '@angular/material/sort';
 import { MatDialog } from '@angular/material/dialog';
 import { ProyectoService, ProyectoListParams } from '../../services/proyecto.service';
-import { ProyectoList, EstadoProyecto, TipoProyecto, ESTADO_LABELS, TIPO_LABELS } from '../../models/proyecto.model';
+import { ProyectoList, ProyectoDetail, EstadoProyecto, TipoProyecto, ESTADO_LABELS, TIPO_LABELS } from '../../models/proyecto.model';
 import { AdminService } from '../../../admin/services/admin.service';
 import { AdminUser } from '../../../admin/models/admin.models';
 import { ConfirmDialogComponent } from '../../../../shared/components/confirm-dialog/confirm-dialog.component';
 import { ToastService } from '../../../../core/services/toast.service';
 import { HasPermissionDirective } from '../../../../core/directives/has-permission.directive';
+// Dialog components are opened imperatively via MatDialog.open() — not declared in component imports
+import { CreateFromTemplateDialogComponent } from '../create-from-template-dialog/create-from-template-dialog.component';
+import { ImportFromExcelDialogComponent } from '../import-from-excel-dialog/import-from-excel-dialog.component';
+import { MatMenuModule } from '@angular/material/menu';
 
 interface SelectOption { label: string; value: string | null; }
 
@@ -35,7 +39,7 @@ interface SelectOption { label: string; value: string | null; }
     MatTableModule, MatButtonModule, MatIconModule,
     MatInputModule, MatFormFieldModule, MatSelectModule,
     MatPaginatorModule, MatProgressBarModule, MatTooltipModule,
-    MatSortModule, HasPermissionDirective,
+    MatSortModule, HasPermissionDirective, MatMenuModule,
   ],
 })
 export class ProyectoListComponent implements OnInit, AfterViewInit {
@@ -122,6 +126,34 @@ export class ProyectoListComponent implements OnInit, AfterViewInit {
   irACards(): void {
     localStorage.setItem(PROYECTOS_VIEW_KEY, 'cards');
     this.router.navigate(['/proyectos', 'cards']);
+  }
+
+  irAPlantillas(): void { this.router.navigate(['/proyectos', 'plantillas']); }
+
+  openFromTemplate(): void {
+    const ref = this.dialog.open(CreateFromTemplateDialogComponent, {
+      width: '760px',
+      maxWidth: '95vw',
+      disableClose: false,
+    });
+    ref.afterClosed().subscribe((proyecto: ProyectoDetail | null) => {
+      if (proyecto) {
+        this.router.navigate(['/proyectos', proyecto.id]);
+      }
+    });
+  }
+
+  openImportFromExcel(): void {
+    const ref = this.dialog.open(ImportFromExcelDialogComponent, {
+      width: '620px',
+      maxWidth: '95vw',
+      disableClose: false,
+    });
+    ref.afterClosed().subscribe((proyecto: ProyectoDetail | null) => {
+      if (proyecto) {
+        this.router.navigate(['/proyectos', proyecto.id]);
+      }
+    });
   }
 
   confirmarEliminar(proyecto: ProyectoList): void {

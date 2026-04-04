@@ -21,6 +21,8 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { ConfirmDialogComponent } from '../../../../shared/components/confirm-dialog/confirm-dialog.component';
 import { AutoScheduleDialogComponent } from '../scheduling/auto-schedule-dialog/auto-schedule-dialog.component';
+import { ResourceLevelingWizardComponent } from '../scheduling/resource-leveling-wizard/resource-leveling-wizard.component';
+import type { ResourceLevelingResult } from '../scheduling/resource-leveling-wizard/resource-leveling-wizard.component';
 import { BaselineComparisonComponent } from '../scheduling/baseline-comparison/baseline-comparison.component';
 import { WhatIfScenarioBuilderComponent } from '../scheduling/what-if-scenario-builder/what-if-scenario-builder.component';
 import { BudgetDashboardComponent } from '../budget-dashboard/budget-dashboard.component';
@@ -74,6 +76,8 @@ export class ProyectoDetailComponent implements OnInit {
   // General(0) Fases(1) Terceros(2) Docs(3) Hitos(4) Tareas(5)
   // Actividades(6) Gantt(7) Equipo(8) Timesheets(9)
   // Analytics(10) Baselines(11) Escenarios(12) Presupuesto(13)
+  readonly proyectoId            = computed(() => this.proyecto()?.id ?? '');
+  readonly exportingPDF          = signal(false);
   readonly tareasTabLoaded       = computed(() => this.selectedTab() >= 5);
   readonly kanbanTabLoaded       = computed(() => false); // ya no existe como tab separado
   readonly timesheetsTabLoaded   = computed(() => this.selectedTab() >= 9);
@@ -141,10 +145,55 @@ export class ProyectoDetailComponent implements OnInit {
   openAutoSchedule(): void {
     const p = this.proyecto();
     if (!p) return;
-    this.dialog.open(AutoScheduleDialogComponent, {
+    const ref = this.dialog.open(AutoScheduleDialogComponent, {
       data: { projectId: p.id, projectName: p.nombre },
-      width: '560px',
+      width: 'min(1200px, 95vw)',
+      maxWidth: 'none',
       disableClose: false,
+    });
+    ref.afterClosed().subscribe((result: unknown) => {
+      if (result) {
+        this.toast.success('Reprogramación aplicada correctamente.');
+        this.loadProyecto(p.id);
+      }
+    });
+  }
+
+  openResourceLevelingWizard(): void {
+    const p = this.proyecto();
+    if (!p) return;
+    const ref = this.dialog.open(ResourceLevelingWizardComponent, {
+      data: { proyectoId: p.id },
+      width: '800px',
+      disableClose: false,
+    });
+    ref.afterClosed().subscribe((result: ResourceLevelingResult | null) => {
+      if (result?.success) {
+        this.loadProyecto(p.id);
+      }
+    });
+  }
+
+  exportToPDF(): void {
+    const id = this.proyectoId();
+    if (!id) return;
+    this.exportingPDF.set(true);
+    const codigo = this.proyecto()?.codigo ?? id;
+    this.proyectoService.exportPDF(id).subscribe({
+      next: (blob) => {
+        const url = URL.createObjectURL(blob);
+        const a   = document.createElement('a');
+        a.href    = url;
+        a.download = `proyecto-${codigo}.pdf`;
+        a.click();
+        URL.revokeObjectURL(url);
+        this.exportingPDF.set(false);
+        this.toast.success('PDF generado correctamente.');
+      },
+      error: () => {
+        this.toast.error('No se pudo exportar el proyecto a PDF.');
+        this.exportingPDF.set(false);
+      },
     });
   }
 

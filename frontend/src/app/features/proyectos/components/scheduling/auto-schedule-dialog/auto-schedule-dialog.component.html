@@ -35,7 +35,7 @@
         [ngModel]="respectConstraints()"
         (ngModelChange)="respectConstraints.set($event)"
       >
-        Respetar restricciones de scheduling (MUST_START_ON, etc.)
+        Respetar restricciones de programación (MUST_START_ON, etc.)
       </mat-checkbox>
       <mat-checkbox
         [ngModel]="dryRunOnly()"
@@ -103,31 +103,75 @@
           </div>
           <div class="asd-stat"
                [class.asd-stat--ok]="lr.max_overload_after === 0"
-               [class.asd-stat--warn]="lr.max_overload_after > 0">
+               [class.asd-stat--warn]="lr.max_overload_after > 0"
+               matTooltip="Carga máxima registrada en un solo día para cualquier usuario. 100% = un recurso a tiempo completo. Si supera 100%, ese usuario tiene sobreasignación. Ver tarjetas abajo para el detalle por persona.">
             <span class="asd-stat__value">{{ lr.max_overload_before }}% → {{ lr.max_overload_after }}%</span>
-            <span class="asd-stat__label">sobrecarga máx.</span>
+            <span class="asd-stat__label">carga máx. por día</span>
           </div>
         </div>
         @if (!lr.leveling_effective) {
           <p class="asd-leveling-no-effect">
             <mat-icon>info</mat-icon>
-            La nivelación no pudo reducir todas las sobrecargas. Revisa las restricciones.
+            Quedan sobrecargas sin resolver. Los recursos afectados tienen tareas críticas que no se pueden mover.
           </p>
         }
-        @if (lr.warnings.length > 0) {
-          <div class="asd-warnings">
-            <p class="asd-warnings__header">
-              <mat-icon class="asd-warnings__icon">warning_amber</mat-icon>
-              Advertencias
+        @if (lr.unresolvable_overloads?.length) {
+          <div class="asd-overload-section">
+            <p class="asd-overload-header">
+              <mat-icon>person_alert</mat-icon>
+              Sobrecargas que requieren atención manual
             </p>
-            <mat-list class="asd-warnings__list">
-              @for (warn of lr.warnings; track warn) {
-                <mat-list-item class="asd-warning-item">
-                  <mat-icon matListItemIcon class="asd-warning-item__icon">warning_amber</mat-icon>
-                  <span matListItemTitle>{{ warn }}</span>
-                </mat-list-item>
+            <mat-accordion>
+              @for (ov of lr.unresolvable_overloads; track ov.user_name) {
+                <mat-expansion-panel class="asd-overload-card">
+                  <mat-expansion-panel-header>
+                    <mat-panel-title class="asd-overload-card__title">
+                      <span class="asd-overload-avatar">{{ ov.user_name[0].toUpperCase() }}</span>
+                      {{ ov.user_name }}
+                    </mat-panel-title>
+                    <mat-panel-description class="asd-overload-card__desc">
+                      <mat-chip class="asd-overload-badge" [disableRipple]="true">
+                        {{ ov.overload_days }} día(s)
+                      </mat-chip>
+                      <mat-chip class="asd-overload-pct-badge" [disableRipple]="true">
+                        {{ ov.max_pct }}% máx
+                      </mat-chip>
+                      <span class="asd-overload-dates">{{ ov.date_from }} → {{ ov.date_to }}</span>
+                    </mat-panel-description>
+                  </mat-expansion-panel-header>
+
+                  <p class="asd-overload-tasks-title">Tareas que causan la sobrecarga:</p>
+                  <div class="asd-overload-tasks">
+                    @for (t of ov.tasks; track t.task_name) {
+                      <div class="asd-overload-task-row">
+                        <span class="asd-overload-task-name">{{ t.task_name }}</span>
+                        <mat-chip class="asd-overload-pct" [disableRipple]="true">{{ t.porcentaje }}%</mat-chip>
+                      </div>
+                    }
+                  </div>
+
+                  <div class="asd-recommendations">
+                    <p class="asd-recommendations__title">¿Qué puedes hacer?</p>
+                    <ul class="asd-recommendations__list">
+                      <li>Reduce el % de asignación de alguna de estas tareas en la pestaña <strong>Equipo</strong>.</li>
+                      <li>Mueve manualmente la fecha de inicio de una tarea no crítica en el <strong>Gantt</strong>.</li>
+                      <li>Divide la tarea más larga en subtareas y asígnalas a otro miembro del equipo.</li>
+                    </ul>
+                  </div>
+                </mat-expansion-panel>
               }
-            </mat-list>
+            </mat-accordion>
+          </div>
+        }
+
+        @if (lr.warnings.length > 0) {
+          <div class="asd-warnings asd-warnings--minor">
+            @for (warn of lr.warnings; track warn) {
+              <p class="asd-warning-minor">
+                <mat-icon>info</mat-icon>
+                {{ warn }}
+              </p>
+            }
           </div>
         }
       </div>
@@ -188,26 +232,31 @@
               <thead>
                 <tr>
                   <th>Tarea</th>
-                  <th>Inicio (antes → después)</th>
-                  <th>Fin (antes → después)</th>
+                  <th>Inicio actual</th>
+                  <th>Nuevo inicio</th>
+                  <th>Fin actual</th>
+                  <th>Nuevo fin</th>
                 </tr>
               </thead>
               <tbody>
                 @for (t of previewTasks(); track t.id) {
                   <tr>
                     <td class="asd-task-nombre">{{ t.nombre }}</td>
-                    <td class="asd-task-dates">
-                      {{ t.old_start ?? '—' }} → {{ t.new_start ?? '—' }}
-                    </td>
-                    <td class="asd-task-dates">
-                      {{ t.old_end ?? '—' }} → {{ t.new_end ?? '—' }}
-                    </td>
+                    <td class="asd-task-dates">{{ t.old_start ?? '—' }}</td>
+                    <td class="asd-task-dates asd-task-dates--new">{{ t.new_start ?? '—' }}</td>
+                    <td class="asd-task-dates">{{ t.old_end ?? '—' }}</td>
+                    <td class="asd-task-dates asd-task-dates--new">{{ t.new_end ?? '—' }}</td>
                   </tr>
                 }
               </tbody>
             </table>
           </div>
         </section>
+      } @else if (result.tasks_rescheduled === 0) {
+        <div class="asd-no-changes">
+          <mat-icon>check_circle</mat-icon>
+          <p>Las tareas ya están programadas de forma óptima. No se requieren cambios.</p>
+        </div>
       }
     </section>
   }

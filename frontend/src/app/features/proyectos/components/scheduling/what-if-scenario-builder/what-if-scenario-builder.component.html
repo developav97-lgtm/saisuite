@@ -88,24 +88,19 @@
                 </mat-form-field>
 
                 <!-- Input de valor — tipo condicionado al campo seleccionado -->
-                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="wi-change-valor">
-                  <mat-label>Valor nuevo</mat-label>
-                  @if (getCampoControl($index).value === 'horas_estimadas') {
-                    <input
-                      matInput
-                      formControlName="valor"
-                      type="number"
-                      min="0"
-                      placeholder="0"
-                    />
-                  } @else {
-                    <input
-                      matInput
-                      formControlName="valor"
-                      type="date"
-                    />
-                  }
-                </mat-form-field>
+                @if (getCampoControl($index).value === 'horas_estimadas') {
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="wi-change-valor">
+                    <mat-label>Valor nuevo</mat-label>
+                    <input matInput formControlName="valor" type="number" min="0" placeholder="0" />
+                  </mat-form-field>
+                } @else {
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="wi-change-valor">
+                    <mat-label>Valor nuevo</mat-label>
+                    <input matInput formControlName="valor" [matDatepicker]="datePicker" placeholder="dd/mm/aaaa" readonly />
+                    <mat-datepicker-toggle matIconSuffix [for]="datePicker" />
+                    <mat-datepicker #datePicker />
+                  </mat-form-field>
+                }
 
                 <!-- Botón eliminar -->
                 <button
@@ -144,6 +139,7 @@
 
   <!-- Tabla de escenarios -->
   @if (!loading() && scenarios().length > 0) {
+    <div class="table-responsive">
     <mat-table [dataSource]="scenarios()" class="wi-table">
 
       <!-- Columna: nombre -->
@@ -161,8 +157,8 @@
 
       <!-- Columna: estado -->
       <ng-container matColumnDef="estado">
-        <mat-header-cell *matHeaderCellDef>Estado</mat-header-cell>
-        <mat-cell *matCellDef="let row">
+        <mat-header-cell *matHeaderCellDef class="wi-col-center">Estado</mat-header-cell>
+        <mat-cell *matCellDef="let row" class="wi-col-center">
           <mat-chip
             class="wi-status-chip"
             [class.wi-status-chip--done]="row.simulation_done"
@@ -176,8 +172,8 @@
 
       <!-- Columna: resultado -->
       <ng-container matColumnDef="resultado">
-        <mat-header-cell *matHeaderCellDef class="wi-col-right">Impacto</mat-header-cell>
-        <mat-cell *matCellDef="let row" class="wi-col-right">
+        <mat-header-cell *matHeaderCellDef>Impacto</mat-header-cell>
+        <mat-cell *matCellDef="let row">
           @if (row.simulation_done) {
             <span
               class="wi-delta"
@@ -219,6 +215,7 @@
       <mat-header-row *matHeaderRowDef="displayedColumns" />
       <mat-row *matRowDef="let row; columns: displayedColumns;" />
     </mat-table>
+    </div><!-- /table-responsive -->
   }
 
   <!-- Empty state -->

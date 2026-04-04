@@ -34,23 +34,23 @@ import { ConfirmDialogComponent } from '../../../../../shared/components/confirm
 import { ToastService } from '../../../../../core/services/toast.service';
 
 const CONSTRAINT_OPTIONS: { value: ConstraintType; label: string }[] = [
-  { value: 'ASAP',                    label: 'Lo antes posible (ASAP)' },
-  { value: 'ALAP',                    label: 'Lo más tarde posible (ALAP)' },
-  { value: 'MUST_START_ON',           label: 'Debe empezar en' },
-  { value: 'MUST_FINISH_ON',          label: 'Debe terminar en' },
-  { value: 'START_NO_EARLIER_THAN',   label: 'Empezar no antes de' },
-  { value: 'START_NO_LATER_THAN',     label: 'Empezar no después de' },
-  { value: 'FINISH_NO_EARLIER_THAN',  label: 'Terminar no antes de' },
-  { value: 'FINISH_NO_LATER_THAN',    label: 'Terminar no después de' },
+  { value: 'asap',                    label: 'Lo antes posible (ASAP)' },
+  { value: 'alap',                    label: 'Lo más tarde posible (ALAP)' },
+  { value: 'must_start_on',           label: 'Debe empezar en' },
+  { value: 'must_finish_on',          label: 'Debe terminar en' },
+  { value: 'start_no_earlier_than',   label: 'Empezar no antes de' },
+  { value: 'start_no_later_than',     label: 'Empezar no después de' },
+  { value: 'finish_no_earlier_than',  label: 'Terminar no antes de' },
+  { value: 'finish_no_later_than',    label: 'Terminar no después de' },
 ];
 
 const DATE_TYPES: ConstraintType[] = [
-  'MUST_START_ON',
-  'MUST_FINISH_ON',
-  'START_NO_EARLIER_THAN',
-  'START_NO_LATER_THAN',
-  'FINISH_NO_EARLIER_THAN',
-  'FINISH_NO_LATER_THAN',
+  'must_start_on',
+  'must_finish_on',
+  'start_no_earlier_than',
+  'start_no_later_than',
+  'finish_no_earlier_than',
+  'finish_no_later_than',
 ];
 
 @Component({
@@ -83,7 +83,7 @@ export class TaskConstraintsPanelComponent implements OnInit {
   readonly constraints   = signal<TaskConstraint[]>([]);
   readonly loading       = signal(false);
   readonly saving        = signal(false);
-  readonly selectedType  = signal<ConstraintType>('ASAP');
+  readonly selectedType  = signal<ConstraintType>('asap');
   readonly constraintDate = signal<string | null>(null);
 
   readonly constraintOptions = CONSTRAINT_OPTIONS;
@@ -123,7 +123,7 @@ export class TaskConstraintsPanelComponent implements OnInit {
       next: () => {
         this.saving.set(false);
         this.constraintDate.set(null);
-        this.selectedType.set('ASAP');
+        this.selectedType.set('asap');
         this.toast.success('Restricción guardada correctamente.');
         this.loadConstraints();
       },

@@ -1,0 +1,115 @@
+<mat-expansion-panel [expanded]="expanded()" (expandedChange)="expanded.set($event)" class="fp-panel">
+  <mat-expansion-panel-header>
+    <mat-panel-title>
+      <mat-icon>filter_list</mat-icon>
+      Filtros
+      @if (!expanded() && activeFilterCount() > 0) {
+        <span class="fp-badge">{{ activeFilterCount() }}</span>
+      }
+    </mat-panel-title>
+  </mat-expansion-panel-header>
+
+  <!-- Quick period buttons -->
+  <div class="fp-quick-periods">
+    <button mat-stroked-button (click)="setQuickPeriod('month')">Este mes</button>
+    <button mat-stroked-button (click)="setQuickPeriod('quarter')">Este trimestre</button>
+    <button mat-stroked-button (click)="setQuickPeriod('year')">Este a&ntilde;o</button>
+    <button mat-stroked-button (click)="setQuickPeriod('last_year')">A&ntilde;o anterior</button>
+  </div>
+
+  <!-- Filter fields -->
+  <div class="fp-fields">
+    <!-- Date range -->
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="fp-field">
+      <mat-label>Fecha desde</mat-label>
+      <input matInput [matDatepicker]="pickerDesde"
+             [value]="fechaDesde()"
+             (dateChange)="fechaDesde.set($event.value)" />
+      <mat-datepicker-toggle matSuffix [for]="pickerDesde" />
+      <mat-datepicker #pickerDesde />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="fp-field">
+      <mat-label>Fecha hasta</mat-label>
+      <input matInput [matDatepicker]="pickerHasta"
+             [value]="fechaHasta()"
+             (dateChange)="fechaHasta.set($event.value)" />
+      <mat-datepicker-toggle matSuffix [for]="pickerHasta" />
+      <mat-datepicker #pickerHasta />
+    </mat-form-field>
+
+    <!-- Tercero autocomplete -->
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="fp-field fp-field--wide">
+      <mat-label>Tercero</mat-label>
+      <input matInput [formControl]="terceroSearch"
+             [matAutocomplete]="autoTercero"
+             placeholder="Buscar tercero..." />
+      @if (selectedTercero()) {
+        <button matSuffix mat-icon-button (click)="clearTercero()" matTooltip="Limpiar">
+          <mat-icon>close</mat-icon>
+        </button>
+      }
+      <mat-autocomplete #autoTercero="matAutocomplete"
+                        [displayWith]="displayTercero"
+                        (optionSelected)="onTerceroSelected($event.option.value)">
+        @for (t of terceroOptions(); track t.id) {
+          <mat-option [value]="t">{{ t.nombre }}</mat-option>
+        }
+      </mat-autocomplete>
+    </mat-form-field>
+
+    <!-- Proyecto -->
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="fp-field">
+      <mat-label>Proyecto</mat-label>
+      <mat-select [value]="selectedProyecto()"
+                  (selectionChange)="selectedProyecto.set($event.value)">
+        <mat-option [value]="null">Todos</mat-option>
+        @for (p of proyectos(); track p.codigo) {
+          <mat-option [value]="p.codigo">{{ p.codigo }} - {{ p.nombre }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <!-- Departamento -->
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="fp-field">
+      <mat-label>Departamento</mat-label>
+      <mat-select [value]="selectedDepartamento()"
+                  (selectionChange)="selectedDepartamento.set($event.value)">
+        <mat-option [value]="null">Todos</mat-option>
+        @for (d of departamentos(); track d.codigo) {
+          <mat-option [value]="d.codigo">{{ d.nombre }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <!-- Periodo -->
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="fp-field">
+      <mat-label>Periodo</mat-label>
+      <mat-select [value]="selectedPeriodo()"
+                  (selectionChange)="selectedPeriodo.set($event.value)">
+        <mat-option [value]="null">Todos</mat-option>
+        @for (p of periodos(); track p.periodo) {
+          <mat-option [value]="p.periodo">{{ p.label }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+  </div>
+
+  <!-- Compare toggle + actions -->
+  <div class="fp-actions">
+    <mat-slide-toggle [checked]="compararPeriodo()"
+                      (change)="compararPeriodo.set($event.checked)"
+                      color="primary">
+      Comparar con periodo anterior
+    </mat-slide-toggle>
+
+    <div class="fp-actions-buttons">
+      <button mat-stroked-button (click)="clearAll()">
+        <mat-icon>clear_all</mat-icon> Limpiar
+      </button>
+      <button mat-raised-button color="primary" (click)="applyFilters()">
+        <mat-icon>check</mat-icon> Aplicar
+      </button>
+    </div>
+  </div>
+</mat-expansion-panel>

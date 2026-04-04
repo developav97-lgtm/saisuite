@@ -1,0 +1,72 @@
+<h2 mat-dialog-title class="dialog-title">
+  <mat-icon>share</mat-icon>
+  Compartir: {{ dashboardTitle }}
+</h2>
+
+<mat-dialog-content class="sd-content">
+  <!-- Add share -->
+  <div class="sd-add-section">
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="sd-user-select">
+      <mat-label>Seleccionar usuario</mat-label>
+      <mat-select [ngModel]="selectedUserId()" (ngModelChange)="selectedUserId.set($event)">
+        @for (u of users(); track u.id) {
+          @if (!isAlreadyShared(u.id)) {
+            <mat-option [value]="u.id">{{ u.full_name || u.email }}</mat-option>
+          }
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-slide-toggle [checked]="canEdit()" (change)="canEdit.set($event.checked)" color="primary">
+      Puede editar
+    </mat-slide-toggle>
+
+    <button mat-raised-button color="primary"
+            [disabled]="!selectedUserId() || saving()"
+            (click)="shareWith()">
+      @if (saving()) {
+        <mat-progress-spinner diameter="18" mode="indeterminate" />
+      }
+      <mat-icon>person_add</mat-icon> Compartir
+    </button>
+  </div>
+
+  <mat-divider />
+
+  <!-- Current shares -->
+  <div class="sd-shares-list">
+    <p class="sd-section-title">Usuarios con acceso</p>
+
+    @if (shares().length === 0) {
+      <div class="sd-empty">
+        <mat-icon>group</mat-icon>
+        <p>Este dashboard no est&aacute; compartido con nadie.</p>
+      </div>
+    }
+
+    @for (share of shares(); track share.user_id) {
+      <div class="sd-share-item">
+        <div class="sd-share-info">
+          <mat-icon class="sd-avatar-icon">account_circle</mat-icon>
+          <div>
+            <p class="sd-share-name">{{ share.user_name || share.user_email }}</p>
+            <p class="sd-share-email">{{ share.user_email }}</p>
+          </div>
+        </div>
+        <div class="sd-share-actions">
+          <span class="sd-permission-chip">
+            {{ share.puede_editar ? 'Editor' : 'Visor' }}
+          </span>
+          <button mat-icon-button color="warn" matTooltip="Revocar acceso"
+                  (click)="revokeShare(share.user_id)">
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+      </div>
+    }
+  </div>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-raised-button color="primary" (click)="close()">Cerrar</button>
+</mat-dialog-actions>

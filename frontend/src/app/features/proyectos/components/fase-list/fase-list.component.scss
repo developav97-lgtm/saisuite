@@ -40,16 +40,25 @@
   }
 }
 
+.fl-table-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  width: 100%;
+}
+
 .fl-table {
   width: 100%;
+  min-width: 800px;
 
-  // Las celdas deben crecer con su contenido, sin cortar texto
-  .mat-mdc-cell,
   .mat-mdc-header-cell {
+    white-space: nowrap;
+    font-size: 0.75rem;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+  }
+
+  .mat-mdc-cell {
     align-self: center;
-    word-break: break-word;
-    overflow-wrap: break-word;
-    white-space: normal;
     line-height: 1.4;
     padding-top: 0.5rem;
     padding-bottom: 0.5rem;
@@ -73,10 +82,16 @@
   gap: 0.5rem;
   font-size: 0.875rem;
   color: var(--sc-text-muted);
+  flex-wrap: wrap;
 
   strong { color: var(--sc-text-color); }
 
   &__sep { color: var(--sc-text-muted); }
+
+  @media (max-width: 768px) {
+    font-size: 0.8rem;
+    gap: 0.25rem;
+  }
 }
 
 .fl-avance {
@@ -97,7 +112,35 @@
   }
 }
 
-.fl-col-acciones { width: 130px; }
+.fl-col-acciones {
+  width: 180px;
+  white-space: nowrap;
+  justify-content: center !important;
+  text-align: center;
+}
+
+// ── Columnas: anchos controlados ─────────────────────────────
+.mat-column-nombre {
+  min-width: 150px;
+}
+
+.mat-column-estado {
+  min-width: 120px;
+  overflow: visible;
+  text-align: center !important;
+  justify-content: center !important;
+}
+
+.mat-column-avance {
+  text-align: center !important;
+  justify-content: center !important;
+}
+
+.mat-column-presupuesto {
+  min-width: 110px;
+  text-align: right !important;
+  justify-content: flex-end !important;
+}
 
 .fl-estado {
   display: inline-block;

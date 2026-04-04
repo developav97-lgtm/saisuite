@@ -370,9 +370,8 @@ export class TareaKanbanComponent implements OnInit {
     );
 
     ref.afterClosed().subscribe((result) => {
-      // Si el dialog solicita navegar a otra ruta, hacerlo y salir
       if (result?.navigateTo) {
-        this.router.navigate(result.navigateTo, {
+        this.router.navigate(result.navigateTo!, {
           queryParams: result.navigateParams,
         });
         return;

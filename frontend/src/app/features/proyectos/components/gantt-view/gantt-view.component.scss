@@ -4,6 +4,7 @@
   align-items: center;
   gap: 8px;
   padding: 12px 0 8px;
+  flex-wrap: wrap; // Bug #5 fix: allow toolbar to wrap on narrow screens
 }
 
 .gv-view-toggle {
@@ -62,40 +63,94 @@
 // ── Chart wrapper ──────────────────────────────────────────────────────────────
 .gv-chart-wrapper {
   overflow-x: auto;
-  overflow-y: visible;
+  overflow-y: auto;
+  max-height: 60vh;
+  -webkit-overflow-scrolling: touch;
   border: 1px solid var(--sc-border-color, #e0e0e0);
   border-radius: 8px;
-  background: var(--sc-surface, #fff);
+  // Fondo igual al del SVG — el espacio vacío a la derecha queda consistente
+  background: var(--sc-surface-card, #fff);
+
+  ::ng-deep .gantt-container {
+    background: transparent;
+  }
 }
 
 .gv-chart {
-  min-width: 100%;
   display: block;
-  // Frappe Gantt controla el height del SVG — no forzar aquí
+}
+
+// ── Mobile responsive ──────────────────────────────────────────────────────────
+@media (max-width: 768px) {
+  // Collapse overlay toggle buttons to icon-only on mobile to save space
+  .gv-overlay-toggles {
+    gap: 4px;
+
+    button span:not(.mat-icon) {
+      display: none; // hide button text labels, keep icons
+    }
+  }
+
+  // Export button: icon-only on mobile
+  .gv-export-btn span:not(.mat-icon) {
+    display: none;
+  }
+
+  // Tighten toolbar padding
+  .gv-toolbar {
+    padding: 8px 0 4px;
+  }
+
+  // Make legend items wrap more tightly
+  .gv-legend {
+    gap: 8px 12px;
+    font-size: 11px;
+  }
 }
 
 // ── Frappe Gantt bar colors per estado ────────────────────────────────────────
-// These override frappe-gantt's default blue bar using custom_class on the task.
+// frappe-gantt applies custom_class on the .bar-wrapper group element.
 :host ::ng-deep {
-  .bar.estado-todo   .bar-progress,
-  .bar.estado-todo   .bar-wrapper .bar { fill: #90caf9; }
+  // Estado colors — solid, readable colors
+  .bar-wrapper.estado-todo .bar           { fill: #64b5f6; }
+  .bar-wrapper.estado-todo .bar-progress  { fill: #2196f3; }
 
-  .bar.estado-in_progress .bar-progress,
-  .bar.estado-in_progress .bar-wrapper .bar { fill: #42a5f5; }
+  .bar-wrapper.estado-in_progress .bar          { fill: #42a5f5; }
+  .bar-wrapper.estado-in_progress .bar-progress { fill: #1976d2; }
 
-  .bar.estado-in_review .bar-progress,
-  .bar.estado-in_review .bar-wrapper .bar { fill: #ce93d8; }
+  .bar-wrapper.estado-in_review .bar          { fill: #ab47bc; }
+  .bar-wrapper.estado-in_review .bar-progress { fill: #8e24aa; }
 
-  .bar.estado-blocked   .bar-progress,
-  .bar.estado-blocked   .bar-wrapper .bar { fill: #ef9a9a; }
+  .bar-wrapper.estado-blocked .bar          { fill: #ef5350; }
+  .bar-wrapper.estado-blocked .bar-progress { fill: #c62828; }
 
-  .bar.estado-completed  .bar-progress,
-  .bar.estado-completed  .bar-wrapper .bar { fill: #a5d6a7; }
+  .bar-wrapper.estado-completed .bar          { fill: #66bb6a; }
+  .bar-wrapper.estado-completed .bar-progress { fill: #388e3c; }
 
-  .bar.estado-cancelled   .bar-progress,
-  .bar.estado-cancelled   .bar-wrapper .bar { fill: #e0e0e0; }
+  .bar-wrapper.estado-cancelled .bar          { fill: #bdbdbd; }
+  .bar-wrapper.estado-cancelled .bar-progress { fill: #9e9e9e; }
 
   // SK-41: Critical path overlay
-  .bar.critical-task .bar-wrapper .bar { fill: var(--sc-danger, #e53935) !important; }
-  .bar.critical-task .bar-progress     { fill: #b71c1c !important; }
+  .bar-wrapper.critical-task .bar          { fill: var(--sc-danger, #e53935) !important; }
+  .bar-wrapper.critical-task .bar-progress { fill: #b71c1c !important; }
+
+  // Dependency arrows — visible in both light and dark mode
+  .arrow path {
+    stroke: var(--sc-text-muted, #718096) !important;
+    stroke-width: 1.5;
+  }
+
+  // Ensure grid lines and row labels are readable
+  .grid-header,
+  .grid-row,
+  .tick {
+    opacity: 1;
+  }
+
+  // Bar label text — dark for readability on colored bars
+  .bar-label {
+    fill: #333 !important;
+    font-size: 11px;
+    font-weight: 600;
+  }
 }

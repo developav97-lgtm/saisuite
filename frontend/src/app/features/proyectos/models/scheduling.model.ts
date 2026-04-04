@@ -5,14 +5,14 @@
 // ── Constraint types ─────────────────────────────────────────────────────────
 
 export type ConstraintType =
-  | 'ASAP'
-  | 'ALAP'
-  | 'MUST_START_ON'
-  | 'MUST_FINISH_ON'
-  | 'START_NO_EARLIER_THAN'
-  | 'START_NO_LATER_THAN'
-  | 'FINISH_NO_EARLIER_THAN'
-  | 'FINISH_NO_LATER_THAN';
+  | 'asap'
+  | 'alap'
+  | 'must_start_on'
+  | 'must_finish_on'
+  | 'start_no_earlier_than'
+  | 'start_no_later_than'
+  | 'finish_no_earlier_than'
+  | 'finish_no_later_than';
 
 export type DependencyType = 'FS' | 'SS' | 'FF';
 
@@ -67,6 +67,30 @@ export interface LevelResourcesRequest {
   max_iterations?: number;
 }
 
+/** Cambio individual de una tarea en la nivelación. */
+export interface LevelResourcesTaskChange {
+  task_id: string;
+  task_name: string;
+  current_start: string;
+  new_start: string;
+  current_end: string;
+  new_end: string;
+}
+
+export interface OverloadTask {
+  task_name: string;
+  porcentaje: number;
+}
+
+export interface UnresolvableOverload {
+  user_name: string;
+  overload_days: number;
+  date_from: string;
+  date_to: string;
+  tasks: OverloadTask[];
+  max_pct: number;
+}
+
 /** Respuesta de ResourceLevelingView. */
 export interface LevelResourcesResult {
   tasks_moved: number;
@@ -76,6 +100,8 @@ export interface LevelResourcesResult {
   leveling_effective: boolean;
   warnings: string[];
   dry_run: boolean;
+  task_changes?: LevelResourcesTaskChange[];
+  unresolvable_overloads?: UnresolvableOverload[];
 }
 
 // ── Critical Path ─────────────────────────────────────────────────────────────

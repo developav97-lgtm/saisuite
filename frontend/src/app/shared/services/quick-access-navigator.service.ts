@@ -21,6 +21,9 @@ export class QuickAccessNavigatorService {
   /** Rutas que este servicio puede manejar internamente */
   private routes: QuickAccessRoute[] = [];
 
+  /** URL de la última navegación interceptada (para extraer params) */
+  private currentInterceptedUrl = '';
+
   /** Emite la URL interceptada para que el dialog la procese */
   private readonly interceptedSubject = new Subject<string>();
   readonly intercepted$ = this.interceptedSubject.asObservable();
@@ -37,6 +40,7 @@ export class QuickAccessNavigatorService {
   unregister(): void {
     this.isActive = false;
     this.routes = [];
+    this.currentInterceptedUrl = '';
   }
 
   /** Emite si la URL puede manejarse dentro del dialog; retorna true si la absorbe */
@@ -45,6 +49,7 @@ export class QuickAccessNavigatorService {
     const path = url.split('?')[0];
     const canHandle = this.routes.some(r => this.matchPattern(r.pattern, path));
     if (canHandle) {
+      this.currentInterceptedUrl = url;
       this.interceptedSubject.next(url);
       return true;
     }
@@ -56,6 +61,20 @@ export class QuickAccessNavigatorService {
     const path = url.split('?')[0];
     const route = this.routes.find(r => this.matchPattern(r.pattern, path));
     return route ? route.loader() : null;
+  }
+
+  /**
+   * Extrae un param nombrado de la última URL interceptada.
+   * Útil para componentes cargados con NgComponentOutlet que no tienen ActivatedRoute.
+   * Ej: getParam('id') en la URL /terceros/abc-123/editar → 'abc-123'
+   */
+  getParam(name: string): string | null {
+    const path = this.currentInterceptedUrl.split('?')[0];
+    for (const route of this.routes) {
+      const params = this.extractParams(route.pattern, path);
+      if (params && name in params) return params[name];
+    }
+    return null;
   }
 
   /**
@@ -72,5 +91,20 @@ export class QuickAccessNavigatorService {
     const pathParts   = path.split('/').filter(Boolean);
     if (patternParts.length !== pathParts.length) return false;
     return patternParts.every((part, i) => part.startsWith(':') || part === pathParts[i]);
+  }
+
+  private extractParams(pattern: string, path: string): Record<string, string> | null {
+    const patternParts = pattern.split('/').filter(Boolean);
+    const pathParts   = path.split('/').filter(Boolean);
+    if (patternParts.length !== pathParts.length) return null;
+    const params: Record<string, string> = {};
+    for (let i = 0; i < patternParts.length; i++) {
+      if (patternParts[i].startsWith(':')) {
+        params[patternParts[i].slice(1)] = pathParts[i];
+      } else if (patternParts[i] !== pathParts[i]) {
+        return null;
+      }
+    }
+    return params;
   }
 }

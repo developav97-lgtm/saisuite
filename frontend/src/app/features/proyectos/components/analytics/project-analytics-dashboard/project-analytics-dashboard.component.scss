@@ -42,7 +42,7 @@
 .pad-kpi__value {
   font-size: 28px;
   font-weight: 700;
-  color: var(--sc-text-primary, #111827);
+  color: var(--sc-text-color);
   line-height: 1;
   margin-bottom: 6px;
 }
@@ -52,15 +52,15 @@
   font-weight: 500;
 
   &--up {
-    color: var(--sc-color-success, #4caf50);
+    color: var(--sc-success, #4caf50);
   }
 
   &--warn {
-    color: var(--sc-color-warning, #ffc107);
+    color: var(--sc-warning, #ffc107);
   }
 
   &--danger {
-    color: var(--sc-color-danger, #f44336);
+    color: var(--sc-danger, #f44336);
   }
 }
 
@@ -88,4 +88,11 @@
 .pad-chart-container {
   position: relative;
   height: 280px;
+}
+
+.pad-chart-title--sub {
+  font-size: 0.65em;
+  font-weight: 400;
+  color: var(--sc-text-muted);
+  margin-left: 4px;
 }

@@ -1,0 +1,213 @@
+<div class="sc-page">
+
+  <!-- Header -->
+  <div class="sc-page-header">
+    <h1 class="sc-page-header__title">SaiDashboard</h1>
+    <div class="dl-header-actions">
+      @if (viewMode() === 'list') {
+        <button mat-stroked-button matTooltip="Ver como tarjetas" (click)="setViewMode('cards')">
+          <mat-icon>grid_view</mat-icon>
+          Cards
+        </button>
+      } @else {
+        <button mat-stroked-button matTooltip="Ver como tabla" (click)="setViewMode('list')">
+          <mat-icon>view_list</mat-icon>
+          Lista
+        </button>
+      }
+      <button mat-raised-button color="primary" (click)="nuevo()"
+              [disabled]="trialStatus()?.tipo_acceso === 'none'">
+        <mat-icon>add</mat-icon>
+        Nuevo dashboard
+      </button>
+    </div>
+  </div>
+
+  <!-- Trial banner -->
+  <app-trial-banner
+    [trialStatus]="trialStatus()"
+    (activateTrial)="activateTrial()"
+    (contactSales)="null" />
+
+  <!-- Search -->
+  <div class="dl-filters-card sc-card">
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="dl-search">
+      <mat-label>Buscar dashboards...</mat-label>
+      <input matInput [ngModel]="searchText()" (ngModelChange)="searchText.set($event)"
+             (keyup.enter)="onSearch()" />
+      <button mat-icon-button matSuffix (click)="onSearch()" aria-label="Buscar">
+        <mat-icon>search</mat-icon>
+      </button>
+    </mat-form-field>
+  </div>
+
+  <!-- Progress bar -->
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate" class="dl-progress" />
+  }
+
+  <!-- Favoritos section -->
+  @if (favoritos().length > 0) {
+    <div class="dl-section">
+      <h2 class="dl-section-title">
+        <mat-icon>star</mat-icon> Mis Favoritos
+      </h2>
+      <div class="dl-fav-grid">
+        @for (d of favoritos(); track d.id) {
+          <div class="dl-fav-card sc-card" (click)="verDashboard(d.id)">
+            <div class="dl-fav-header">
+              <mat-icon class="dl-fav-icon">dashboard</mat-icon>
+              <button mat-icon-button class="dl-fav-star"
+                      (click)="toggleFavorite(d, $event)" matTooltip="Quitar de favoritos">
+                <mat-icon>star</mat-icon>
+              </button>
+            </div>
+            <p class="dl-fav-title">{{ d.titulo }}</p>
+            <p class="dl-fav-meta">{{ d.card_count }} tarjetas</p>
+          </div>
+        }
+      </div>
+    </div>
+  }
+
+  <!-- My dashboards -->
+  <div class="dl-section">
+    <h2 class="dl-section-title">
+      <mat-icon>space_dashboard</mat-icon> Mis Dashboards
+    </h2>
+
+    @if (viewMode() === 'list') {
+      <!-- Table view -->
+      <mat-table [dataSource]="filteredDashboards()" class="dl-table">
+
+        <ng-container matColumnDef="titulo">
+          <mat-header-cell *matHeaderCellDef>T&iacute;tulo</mat-header-cell>
+          <mat-cell *matCellDef="let d" class="dl-cell-titulo">
+            @if (d.es_default) {
+              <mat-icon class="dl-default-icon" matTooltip="Dashboard predeterminado">push_pin</mat-icon>
+            }
+            {{ d.titulo }}
+          </mat-cell>
+        </ng-container>
+
+        <ng-container matColumnDef="card_count">
+          <mat-header-cell *matHeaderCellDef>Tarjetas</mat-header-cell>
+          <mat-cell *matCellDef="let d">
+            <span class="dl-count-chip">{{ d.card_count }}</span>
+          </mat-cell>
+        </ng-container>
+
+        <ng-container matColumnDef="created_at">
+          <mat-header-cell *matHeaderCellDef>Creado</mat-header-cell>
+          <mat-cell *matCellDef="let d">{{ d.created_at | date:'dd/MM/yyyy' }}</mat-cell>
+        </ng-container>
+
+        <ng-container matColumnDef="acciones">
+          <mat-header-cell *matHeaderCellDef class="dl-col-acciones"></mat-header-cell>
+          <mat-cell *matCellDef="let d" class="dl-col-acciones">
+            <button mat-icon-button matTooltip="Favorito" (click)="toggleFavorite(d, $event)">
+              <mat-icon>{{ d.es_favorito ? 'star' : 'star_border' }}</mat-icon>
+            </button>
+            <button mat-icon-button [matMenuTriggerFor]="rowMenu"
+                    (click)="$event.stopPropagation()" matTooltip="Opciones">
+              <mat-icon>more_vert</mat-icon>
+            </button>
+            <mat-menu #rowMenu="matMenu">
+              <button mat-menu-item (click)="verDashboard(d.id)">
+                <mat-icon>visibility</mat-icon> Ver
+              </button>
+              <button mat-menu-item (click)="editDashboard(d.id)">
+                <mat-icon>edit</mat-icon> Editar
+              </button>
+              <button mat-menu-item (click)="setDefault(d)">
+                <mat-icon>push_pin</mat-icon> Predeterminado
+              </button>
+              <mat-divider />
+              <button mat-menu-item (click)="confirmarEliminar(d)">
+                <mat-icon color="warn">delete_outline</mat-icon>
+                <span class="dl-delete-text">Eliminar</span>
+              </button>
+            </mat-menu>
+          </mat-cell>
+        </ng-container>
+
+        <mat-header-row *matHeaderRowDef="displayedColumns" />
+        <mat-row *matRowDef="let row; columns: displayedColumns;"
+                 class="dl-row" (click)="verDashboard(row.id)" />
+      </mat-table>
+    } @else {
+      <!-- Cards view -->
+      <div class="dl-cards-grid">
+        @for (d of filteredDashboards(); track d.id) {
+          <div class="dl-card sc-card" (click)="verDashboard(d.id)">
+            <div class="dl-card-header">
+              <mat-icon class="dl-card-icon">dashboard</mat-icon>
+              <div class="dl-card-badges">
+                @if (d.es_default) {
+                  <mat-icon class="dl-default-icon" matTooltip="Predeterminado">push_pin</mat-icon>
+                }
+                <button mat-icon-button (click)="toggleFavorite(d, $event)">
+                  <mat-icon>{{ d.es_favorito ? 'star' : 'star_border' }}</mat-icon>
+                </button>
+              </div>
+            </div>
+            <p class="dl-card-title">{{ d.titulo }}</p>
+            @if (d.descripcion) {
+              <p class="dl-card-desc">{{ d.descripcion }}</p>
+            }
+            <div class="dl-card-meta">
+              <span>{{ d.card_count }} tarjetas</span>
+              <span>{{ d.created_at | date:'dd/MM/yyyy' }}</span>
+            </div>
+            <div class="dl-card-actions">
+              <button mat-icon-button matTooltip="Editar" (click)="editDashboard(d.id); $event.stopPropagation()">
+                <mat-icon>edit</mat-icon>
+              </button>
+              <button mat-icon-button matTooltip="Eliminar" color="warn"
+                      (click)="confirmarEliminar(d); $event.stopPropagation()">
+                <mat-icon>delete_outline</mat-icon>
+              </button>
+            </div>
+          </div>
+        }
+      </div>
+    }
+
+    <!-- Empty state -->
+    @if (!loading() && filteredDashboards().length === 0) {
+      <div class="sc-empty-state dl-empty">
+        <mat-icon>space_dashboard</mat-icon>
+        <p>No hay dashboards creados.</p>
+        <button mat-raised-button color="primary" (click)="nuevo()">
+          <mat-icon>add</mat-icon> Nuevo dashboard
+        </button>
+      </div>
+    }
+  </div>
+
+  <!-- Shared with me -->
+  @if (filteredShared().length > 0) {
+    <div class="dl-section">
+      <h2 class="dl-section-title">
+        <mat-icon>group</mat-icon> Compartidos conmigo
+      </h2>
+
+      <div class="dl-cards-grid">
+        @for (d of filteredShared(); track d.id) {
+          <div class="dl-card sc-card" (click)="verDashboard(d.id)">
+            <div class="dl-card-header">
+              <mat-icon class="dl-card-icon">dashboard</mat-icon>
+              <span class="dl-shared-chip">Compartido</span>
+            </div>
+            <p class="dl-card-title">{{ d.titulo }}</p>
+            <p class="dl-card-owner">Por: {{ d.user_email }}</p>
+            <div class="dl-card-meta">
+              <span>{{ d.card_count }} tarjetas</span>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  }
+
+</div>

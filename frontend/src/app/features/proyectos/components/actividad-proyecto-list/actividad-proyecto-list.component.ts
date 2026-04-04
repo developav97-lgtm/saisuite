@@ -49,6 +49,7 @@ export class ActividadProyectoListComponent implements OnInit, OnDestroy {
   readonly saving           = signal(false);
   readonly editingAp        = signal<ActividadProyecto | null>(null);
   readonly costoDisplay     = signal('');
+  readonly cantidadDisplay  = signal('');
 
   /** Cantidad ejecutada siempre deshabilitada — se calcula automáticamente desde tareas. */
   readonly puedeEjecutar = computed(() =>
@@ -112,6 +113,7 @@ export class ActividadProyectoListComponent implements OnInit, OnDestroy {
   abrirDialogAsignar(): void {
     this.editingAp.set(null);
     this.costoDisplay.set('');
+    this.cantidadDisplay.set('');
     this.form.reset({ cantidad_ejecutada: 0 });
     // cantidad_ejecutada siempre calculada automáticamente desde tareas (P3)
     this.form.get('cantidad_ejecutada')?.disable();
@@ -122,14 +124,16 @@ export class ActividadProyectoListComponent implements OnInit, OnDestroy {
 
   abrirDialogEditar(ap: ActividadProyecto): void {
     this.editingAp.set(ap);
-    const costo = parseFloat(ap.costo_unitario || '0');
+    const costo    = parseFloat(ap.costo_unitario || '0');
+    const cantidad = parseFloat(ap.cantidad_planificada || '0');
     this.form.patchValue({
       actividad:            ap.actividad,
-      cantidad_planificada: parseFloat(ap.cantidad_planificada || '0'),
+      cantidad_planificada: cantidad,
       cantidad_ejecutada:   parseFloat(ap.cantidad_ejecutada || '0'),
       costo_unitario:       costo,
     });
     this.costoDisplay.set(costo > 0 ? costo.toLocaleString('es-CO') : '');
+    this.cantidadDisplay.set(cantidad > 0 ? cantidad.toLocaleString('es-CO') : '');
     // actividad y cantidad_ejecutada no editables en modo edición (P3)
     this.form.get('actividad')?.disable();
     this.form.get('cantidad_ejecutada')?.disable();
@@ -176,6 +180,25 @@ export class ActividadProyectoListComponent implements OnInit, OnDestroy {
   onCancelar(): void {
     this.form.get('actividad')?.enable();
     this.dialogRef?.close();
+  }
+
+  // ── Formato cantidad planificada ─────────────────────────────
+  onCantidadInput(event: Event): void {
+    const raw    = (event.target as HTMLInputElement).value;
+    const digits = raw.replace(/[^0-9]/g, '');
+    const num    = digits ? parseInt(digits, 10) : 0;
+    this.form.get('cantidad_planificada')!.setValue(num, { emitEvent: false });
+    this.cantidadDisplay.set(digits ? num.toLocaleString('es-CO') : '');
+  }
+
+  onCantidadFocus(): void {
+    const val = this.form.get('cantidad_planificada')?.value ?? 0;
+    this.cantidadDisplay.set(val > 0 ? String(val) : '');
+  }
+
+  onCantidadBlur(): void {
+    const val = this.form.get('cantidad_planificada')?.value ?? 0;
+    this.cantidadDisplay.set(val > 0 ? (val as number).toLocaleString('es-CO') : '');
   }
 
   // ── Formato costo unitario (P2) ─────────────────────────────

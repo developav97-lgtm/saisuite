@@ -4,6 +4,7 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     CompanyViewSet,
     CompanyMeView,
+    CompanyMeLogoView,
     ModuleActivateView,
     ModuleDeactivateView,
     LicenseListCreateView,
@@ -24,6 +25,7 @@ router.register('', CompanyViewSet, basename='company')
 
 urlpatterns = [
     path('me/', CompanyMeView.as_view(), name='company-me'),
+    path('me/logo/', CompanyMeLogoView.as_view(), name='company-me-logo'),
     path('<uuid:pk>/modules/activate/',   ModuleActivateView.as_view(),   name='company-module-activate'),
     path('<uuid:pk>/modules/deactivate/', ModuleDeactivateView.as_view(), name='company-module-deactivate'),
     # Licencias (rutas legacy — mantenidas por compatibilidad)
