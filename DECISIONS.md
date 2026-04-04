@@ -1,3 +1,28 @@
+## DEC-046: OpenAI gpt-4o-mini para CFO Virtual (en lugar de Anthropic Claude)
+**Fecha:** 2026-04-03
+**Estado:** ✅ Decidido
+
+**Contexto:** El CFO Virtual del módulo SaiDashboard necesita un modelo de lenguaje para responder preguntas financieras. El plan original (PROMPT-CLAUDECODE-SAIDASHBOARD.md) asumía Claude API de Anthropic.
+
+**Opciones consideradas:**
+1. **Claude (Anthropic)** — Alta calidad, pero requiere suscripción adicional
+2. **OpenAI gpt-4o-mini** — Precio muy bajo (~$0.15/M tokens input), suficiente para análisis financiero de PyMEs, API key ya disponible en el proyecto
+
+**Decisión:** OpenAI `gpt-4o-mini` vía workflow n8n.
+
+**Razón:** Costo 10x menor que modelos equivalentes de Anthropic para el caso de uso (respuestas de análisis financiero ~500 tokens). La empresa ya tiene API key de OpenAI activa.
+
+**Implementación:**
+- Workflow n8n: `n8n/workflows/cfo-virtual.json`
+- Key en `.env` raíz (gitignored): `OPENAI_API_KEY`
+- n8n la recibe como `$env.OPENAI_API_KEY`
+
+**Consecuencias:** Si en el futuro se quiere cambiar de modelo, solo se modifica el nodo HTTP en n8n, sin tocar Django ni Angular.
+
+**Criterios de revisión:** Si gpt-4o-mini da respuestas insuficientes para análisis complejos, evaluar gpt-4o o Claude Sonnet.
+
+---
+
 ## DEC-042: ngx-echarts como librería de gráficos para SaiDashboard
 **Fecha:** 2026-04-01
 **Estado:** ✅ Decidido

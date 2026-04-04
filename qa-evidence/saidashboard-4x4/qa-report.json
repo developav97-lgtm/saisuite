@@ -1,0 +1,110 @@
+[
+  {
+    "scenario": "1-desktop-light",
+    "viewport": "1920x1080",
+    "dark": false,
+    "screenshots": [
+      "1-desktop-light-01-saidashboard-list.png",
+      "1-desktop-light-02-saidashboard-list-full.png",
+      "1-desktop-light-03-sidebar.png",
+      "1-desktop-light-04-empty-or-trial-state.png"
+    ],
+    "issues": [],
+    "checks": {
+      "navigatedUrl": "http://localhost:4200/saidashboard",
+      "reachedSaiDashboard": true,
+      "sidebar": {
+        "hasModule": true,
+        "hasMisDashboards": true,
+        "hasNuevoDashboard": true,
+        "rawText": "appsMódulosSaiDashboardbar_chartMis Dashboardsadd_chartNuevo DashboardbusinessValMen TechSaicloud v1.0.0"
+      },
+      "hasHorizontalScroll": false,
+      "dashboardCount": 0,
+      "pageHeading": "SaiDashboard"
+    }
+  },
+  {
+    "scenario": "2-desktop-dark",
+    "viewport": "1920x1080",
+    "dark": true,
+    "screenshots": [
+      "2-desktop-dark-01-saidashboard-list.png",
+      "2-desktop-dark-02-saidashboard-list-full.png",
+      "2-desktop-dark-03-sidebar.png",
+      "2-desktop-dark-04-empty-or-trial-state.png"
+    ],
+    "issues": [],
+    "checks": {
+      "navigatedUrl": "http://localhost:4200/saidashboard",
+      "reachedSaiDashboard": true,
+      "sidebar": {
+        "hasModule": true,
+        "hasMisDashboards": true,
+        "hasNuevoDashboard": true,
+        "rawText": "appsMódulosSaiDashboardbar_chartMis Dashboardsadd_chartNuevo DashboardbusinessValMen TechSaicloud v1.0.0"
+      },
+      "hasHorizontalScroll": false,
+      "darkModeActive": true,
+      "dashboardCount": 0,
+      "pageHeading": "SaiDashboard"
+    }
+  },
+  {
+    "scenario": "3-mobile-light",
+    "viewport": "375x812",
+    "dark": false,
+    "screenshots": [
+      "3-mobile-light-01-saidashboard-list.png",
+      "3-mobile-light-02-saidashboard-list-full.png",
+      "3-mobile-light-03-sidebar.png",
+      "3-mobile-light-04-empty-or-trial-state.png"
+    ],
+    "issues": [
+      "16 elements with touch target < 44px: [{\"tag\":\"BUTTON\",\"text\":\"menu\",\"width\":32,\"height\":32},{\"tag\":\"BUTTON\",\"text\":\"notifications 1\",\"width\":32,\"height\":32},{\"tag\":\"BUTTON\",\"text\":\"dark_mode\",\"width\":32,\"height\":32}]"
+    ],
+    "checks": {
+      "navigatedUrl": "http://localhost:4200/saidashboard",
+      "reachedSaiDashboard": true,
+      "sidebar": {
+        "hasModule": true,
+        "hasMisDashboards": true,
+        "hasNuevoDashboard": true,
+        "rawText": "SaicloudcloseappsMódulosSaiDashboardbar_chartMis Dashboardsadd_chartNuevo Dashboard"
+      },
+      "hasHorizontalScroll": false,
+      "touchTargetIssues": 16,
+      "dashboardCount": 0,
+      "pageHeading": "Saicloud"
+    }
+  },
+  {
+    "scenario": "4-mobile-dark",
+    "viewport": "375x812",
+    "dark": true,
+    "screenshots": [
+      "4-mobile-dark-01-saidashboard-list.png",
+      "4-mobile-dark-02-saidashboard-list-full.png",
+      "4-mobile-dark-03-sidebar.png",
+      "4-mobile-dark-04-empty-or-trial-state.png"
+    ],
+    "issues": [
+      "16 elements with touch target < 44px: [{\"tag\":\"BUTTON\",\"text\":\"menu\",\"width\":32,\"height\":32},{\"tag\":\"BUTTON\",\"text\":\"notifications 1\",\"width\":32,\"height\":32},{\"tag\":\"BUTTON\",\"text\":\"light_mode\",\"width\":32,\"height\":32}]"
+    ],
+    "checks": {
+      "navigatedUrl": "http://localhost:4200/saidashboard",
+      "reachedSaiDashboard": true,
+      "sidebar": {
+        "hasModule": true,
+        "hasMisDashboards": true,
+        "hasNuevoDashboard": true,
+        "rawText": "SaicloudcloseappsMódulosSaiDashboardbar_chartMis Dashboardsadd_chartNuevo Dashboard"
+      },
+      "hasHorizontalScroll": false,
+      "darkModeActive": true,
+      "touchTargetIssues": 16,
+      "dashboardCount": 0,
+      "pageHeading": "Saicloud"
+    }
+  }
+]

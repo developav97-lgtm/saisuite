@@ -5,6 +5,8 @@ Endpoints para dashboard CRUD, cards, shares, reports, catalog, filters, trial.
 from django.urls import path
 
 from apps.dashboard.views import (
+    # CFO Virtual
+    CfoVirtualView,
     # Dashboard CRUD
     DashboardListCreateView,
     DashboardDetailView,
@@ -68,4 +70,7 @@ urlpatterns = [
     # ── Trial ──
     path('trial/activate/', TrialActivateView.as_view(), name='trial-activate'),
     path('trial/status/', TrialStatusView.as_view(), name='trial-status'),
+
+    # ── CFO Virtual ──
+    path('cfo-virtual/', CfoVirtualView.as_view(), name='cfo-virtual'),
 ]

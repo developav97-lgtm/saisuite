@@ -92,6 +92,13 @@
 
   &__action {
     color: var(--sc-text-muted) !important;
+
+    @media (max-width: 768px) {
+      min-width: 44px !important;
+      min-height: 44px !important;
+      width: 44px !important;
+      height: 44px !important;
+    }
   }
 
   &__sep {

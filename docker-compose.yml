@@ -56,13 +56,27 @@ services:
     ports:
       - "5678:5678"
     environment:
-      - N8N_BASIC_AUTH_ACTIVE=true
-      - N8N_BASIC_AUTH_USER=admin
-      - N8N_BASIC_AUTH_PASSWORD=admin_local
+      # Base de datos — PostgreSQL (evita timeouts de SQLite)
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=db
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=saisuite_dev
+      - DB_POSTGRESDB_USER=saisuite
+      - DB_POSTGRESDB_PASSWORD=saisuite_local
+      - DB_POSTGRESDB_SCHEMA=n8n
+      # URL base para webhooks
       - WEBHOOK_URL=http://localhost:5678/
+      # OpenAI API Key para CFO Virtual
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      # Desactivar telemetría (evita errores EAI_AGAIN en logs)
+      - N8N_DIAGNOSTICS_ENABLED=false
+      - N8N_VERSION_NOTIFICATIONS_ENABLED=false
     volumes:
       - n8n_data:/home/node/.n8n
       - ./n8n/workflows:/workflows
+    depends_on:
+      db:
+        condition: service_healthy
 
 volumes:
   postgres_data:

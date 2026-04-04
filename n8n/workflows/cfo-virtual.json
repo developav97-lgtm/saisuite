@@ -1,0 +1,87 @@
+{
+  "name": "CFO Virtual — SaiDashboard",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "cfo-virtual",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "cfo-virtual"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.OPENAI_API_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"gpt-4o-mini\",\n  \"max_tokens\": 1024,\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"Eres el CFO Virtual de {{ $json.body.company_name }}, un asistente financiero experto en contabilidad colombiana (PUC) y análisis de PyMEs. Responde en español, de forma concisa y práctica. Usa los datos financieros del contexto para dar respuestas basadas en datos reales. Si no hay datos suficientes, indícalo claramente.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Datos financieros del período {{ $json.body.context.periodo }}:\\n{{ Object.entries($json.body.context).filter(([k]) => k !== 'periodo').map(([k, v]) => `- ${k}: $${Number(v).toLocaleString('es-CO', {minimumFractionDigits: 0})}`).join('\\n') }}\\n\\nPregunta: {{ $json.body.question }}\"\n    }\n  ]\n}",
+        "options": {}
+      },
+      "id": "openai-api",
+      "name": "OpenAI API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ response: $json.choices[0].message.content }) }}",
+        "options": {}
+      },
+      "id": "respond",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [720, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ response: 'Lo siento, ocurrió un error procesando tu consulta. Intenta de nuevo.' }) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "respond-error",
+      "name": "Respond Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [720, 480]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [{ "node": "OpenAI API", "type": "main", "index": 0 }]
+      ]
+    },
+    "OpenAI API": {
+      "main": [
+        [{ "node": "Respond to Webhook", "type": "main", "index": 0 }]
+      ],
+      "error": [
+        [{ "node": "Respond Error", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": ["saidashboard", "cfo-virtual", "ai", "openai"]
+}

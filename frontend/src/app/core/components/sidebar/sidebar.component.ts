@@ -75,8 +75,24 @@ export class SidebarComponent implements OnInit, OnDestroy {
       sectionLabel: 'Módulos',
       items: [
         { label: 'Proyectos',       icon: 'engineering',          route: '/proyectos' },
+        { label: 'SaiDashboard',    icon: 'bar_chart',            route: '/saidashboard' },
         { label: 'Terceros',        icon: 'contacts',             route: '/terceros' },
         { label: 'Administración',  icon: 'admin_panel_settings', route: '/admin/usuarios' },
+      ],
+    },
+  ];
+
+  private readonly SAIDASHBOARD_NAV: NavSection[] = [
+    {
+      items: [
+        { label: 'Módulos', icon: 'apps', route: '/dashboard' },
+      ],
+    },
+    {
+      sectionLabel: 'SaiDashboard',
+      items: [
+        { label: 'Mis Dashboards', icon: 'bar_chart',    route: '/saidashboard', exact: true },
+        { label: 'Nuevo Dashboard', icon: 'add_chart',   route: '/saidashboard/nuevo' },
       ],
     },
   ];
@@ -265,10 +281,11 @@ export class SidebarComponent implements OnInit, OnDestroy {
     const mod = this.detectModule(url);
     let sections: NavSection[];
     switch (mod) {
-      case 'proyectos': sections = this.PROYECTOS_NAV; break;
-      case 'admin':     sections = this.ADMIN_NAV;     break;
-      case 'terceros':  sections = this.TERCEROS_NAV;  break;
-      default:          sections = this.HOME_NAV;
+      case 'proyectos':    sections = this.PROYECTOS_NAV;    break;
+      case 'admin':        sections = this.ADMIN_NAV;        break;
+      case 'terceros':     sections = this.TERCEROS_NAV;     break;
+      case 'saidashboard': sections = this.SAIDASHBOARD_NAV; break;
+      default:             sections = this.HOME_NAV;
     }
 
     // Filtrar ítems que requieren permiso que el usuario no tiene
@@ -292,6 +309,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
     if (url.startsWith('/proyectos'))    return 'proyectos';
     if (url.startsWith('/admin'))        return 'admin';
     if (url.startsWith('/terceros'))     return 'terceros';
+    if (url.startsWith('/saidashboard')) return 'saidashboard';
     return 'home';
   }
 

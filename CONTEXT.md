@@ -1,7 +1,64 @@
 # CONTEXT.md - Estado del Proyecto Saicloud
 
 **Última actualización:** 03 Abril 2026
-**Sesión:** Correcciones UX/Mobile — Proyectos, Terceros, Admin (Consecutivos, Usuarios)
+**Sesión:** SaiDashboard — Pendientes post-agentes + Correcciones UX/Mobile
+
+---
+
+## ✅ COMPLETADO (03 Abril 2026) — SaiDashboard: Pendientes post-agentes A/B/C
+
+### 1. Sidebar — Navegación SaiDashboard
+- Agregado `SaiDashboard` al `HOME_NAV` (ícono `bar_chart`)
+- Creado `SAIDASHBOARD_NAV` con "Mis Dashboards" y "Nuevo Dashboard"
+- `detectModule()` reconoce `/saidashboard`
+- Archivo: `frontend/.../sidebar.component.ts`
+
+### 2. CFO Virtual — Endpoint Backend + Workflow n8n
+- `CfoVirtualService` en `services.py`: llama webhook n8n con contexto financiero (últimos 12 meses por título contable)
+- `CfoVirtualView` en `views.py`: `POST /api/v1/dashboard/cfo-virtual/`
+- Workflow n8n importado: `n8n/workflows/cfo-virtual.json` — Webhook → OpenAI gpt-4o-mini → response
+- **Modelo IA: OpenAI gpt-4o-mini** (no Anthropic — DEC-046)
+- Credencial configurada en n8n como "Header Auth" (no `$env` — más seguro)
+- API key en `.env` raíz (gitignored): `OPENAI_API_KEY`
+- `requests==2.32.3` agregado a `requirements.txt` e instalado en imagen
+- n8n migrado de SQLite → PostgreSQL (schema `n8n`) para evitar timeouts
+- Prueba exitosa: `POST /webhook/cfo-virtual` retorna análisis financiero real
+
+### 3. Tests Frontend — 64/64 pasando
+- 4 servicios: 100% cobertura de métodos HTTP
+- 4 componentes: kpi-card, trial-banner, dashboard-list, ai-assistant
+- `tsconfig.spec.saidashboard.json` para ejecutar aislados
+- Corregido error pre-existente en `tercero.service.spec.ts`
+
+### 4. Validación 4x4 — Aprobada con fixes
+- Desktop Light ✅ | Desktop Dark ✅ | Mobile Light ✅ | Mobile Dark ✅
+- **Fixes aplicados:**
+  - Topbar action buttons: `44x44px` mínimo en mobile (afecta todos los módulos)
+  - Sidebar nav items: `min-height: 44px` (afecta todos los módulos)
+  - Dashboard-list header buttons: `min-height: 44px` en mobile
+  - Colores hardcodeados → `var(--sc-warning)` y `var(--sc-error)`
+
+### Pendientes menores (no bloqueantes)
+- ⏳ Test manual: segunda activación de trial debe retornar error "prueba ya utilizada"
+- ⏳ Test manual: Export PDF genera archivo descargable
+- ⏳ Test backend: `python manage.py test apps.contabilidad apps.dashboard` (requiere Docker)
+
+### Archivos modificados esta sesión (SaiDashboard)
+- `frontend/src/app/core/components/sidebar/sidebar.component.ts` — nav SaiDashboard
+- `frontend/src/app/core/components/sidebar/sidebar.component.scss` — touch targets
+- `frontend/src/app/core/components/topbar/topbar.component.scss` — touch targets mobile
+- `backend/apps/dashboard/services.py` — CfoVirtualService
+- `backend/apps/dashboard/views.py` — CfoVirtualView
+- `backend/apps/dashboard/urls.py` — ruta cfo-virtual/
+- `backend/requirements.txt` — requests==2.32.3
+- `n8n/workflows/cfo-virtual.json` — workflow OpenAI
+- `docker-compose.yml` — n8n con PostgreSQL + OPENAI_API_KEY
+- `.env` (raíz, gitignored) — OPENAI_API_KEY
+- `frontend/.../dashboard-list.component.scss` — touch targets + colores
+- `frontend/src/app/features/saidashboard/services/*.spec.ts` — 4 specs servicios
+- `frontend/src/app/features/saidashboard/components/*/**.spec.ts` — 4 specs componentes
+- `frontend/tsconfig.spec.saidashboard.json` — tsconfig aislado para tests
+- `DECISIONS.md` — DEC-046 (OpenAI en lugar de Anthropic)
 
 ---
 

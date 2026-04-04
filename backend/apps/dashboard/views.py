@@ -30,6 +30,7 @@ from apps.dashboard.services import (
     FilterService,
     CatalogService,
     ReportService,
+    CfoVirtualService,
 )
 
 logger = logging.getLogger(__name__)
@@ -437,3 +438,42 @@ class TrialStatusView(APIView):
         result = TrialService.get_trial_status(company.id)
         out = TrialStatusSerializer(result)
         return Response(out.data)
+
+
+# ──────────────────────────────────────────────
+# CFO Virtual
+# ──────────────────────────────────────────────
+
+class CfoVirtualView(APIView):
+    """
+    POST /api/v1/dashboard/cfo-virtual/
+    Recibe {question} y retorna {response} del asistente financiero IA.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        question = request.data.get('question', '').strip()
+        if not question:
+            return Response(
+                {'error': 'El campo question es requerido.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        company = _get_company(request)
+        if not company:
+            return Response(
+                {'error': 'Usuario sin empresa asignada.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            response_text = CfoVirtualService.ask(question, company)
+        except Exception as exc:
+            detail = getattr(exc, 'detail', str(exc))
+            return Response({'error': str(detail)}, status=status.HTTP_502_BAD_GATEWAY)
+
+        logger.info(
+            'cfo_virtual_query',
+            extra={'company_id': str(company.id), 'user_id': str(request.user.id)},
+        )
+        return Response({'response': response_text})

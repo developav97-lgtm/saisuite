@@ -2,11 +2,14 @@
 SaiSuite -- Dashboard: Services
 TODA la logica de negocio va aqui. Las views solo orquestan.
 """
+import datetime
 import logging
 from datetime import timedelta
 
+import requests
+from django.conf import settings
 from django.db import transaction
-from django.db.models import Q, QuerySet
+from django.db.models import Q, QuerySet, Sum
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError, PermissionDenied, NotFound
 
@@ -601,3 +604,69 @@ class ReportService:
             },
         )
         return result
+
+
+# ──────────────────────────────────────────────
+# CFO Virtual Service
+# ──────────────────────────────────────────────
+
+_TITULO_LABELS = {
+    '1': 'Activo', '2': 'Pasivo', '3': 'Patrimonio',
+    '4': 'Ingresos', '5': 'Gastos', '6': 'Costos',
+    '7': 'Costos de Producción',
+}
+
+
+class CfoVirtualService:
+    """
+    Servicio CFO Virtual — llama al workflow n8n que consulta Claude AI
+    con contexto financiero resumido de la empresa.
+    """
+
+    @staticmethod
+    def ask(question: str, company) -> str:
+        webhook_url = (
+            getattr(settings, 'N8N_WEBHOOK_BASE', 'http://n8n:5678').rstrip('/')
+            + '/webhook/cfo-virtual'
+        )
+
+        context = CfoVirtualService._build_financial_context(company)
+
+        payload = {
+            'question': question,
+            'company_name': str(company.name),
+            'context': context,
+        }
+
+        try:
+            resp = requests.post(webhook_url, json=payload, timeout=30)
+            resp.raise_for_status()
+            return resp.json().get('response', 'Sin respuesta del asistente.')
+        except requests.exceptions.Timeout:
+            logger.warning('cfo_virtual_timeout', extra={'company_id': str(company.id)})
+            raise ValidationError('El asistente tardó demasiado. Intenta de nuevo.')
+        except requests.exceptions.RequestException as exc:
+            logger.error('cfo_virtual_error', extra={'error': str(exc), 'company_id': str(company.id)})
+            raise ValidationError('No se pudo conectar con el asistente financiero.')
+
+    @staticmethod
+    def _build_financial_context(company) -> dict:
+        """Construye un resumen financiero de los últimos 12 meses por título contable."""
+        cutoff = timezone.now().date() - datetime.timedelta(days=365)
+
+        rows = (
+            MovimientoContable.objects
+            .filter(company=company, fecha__gte=cutoff)
+            .values('cdgottl')
+            .annotate(debito=Sum('debito'), credito=Sum('credito'))
+        )
+
+        context: dict = {}
+        for row in rows:
+            ttl = str(row['cdgottl'] or '')
+            label = _TITULO_LABELS.get(ttl[:1], f'Grupo {ttl}')
+            context[f'{label}_debito'] = float(row['debito'] or 0)
+            context[f'{label}_credito'] = float(row['credito'] or 0)
+
+        context['periodo'] = f"{cutoff.isoformat()} / {timezone.now().date().isoformat()}"
+        return context

@@ -96,7 +96,7 @@ describe('TerceroService', () => {
       const paginatedResponse = { count: 1, next: null, previous: null, results: [mockTerceroList] };
       let result: TerceroList[] = [];
 
-      service.list({}).subscribe(t => result = t);
+      service.list({}).subscribe((t: any) => result = t);
 
       const req = httpMock.expectOne(`${baseUrl}/`);
       expect(req.request.method).toBe('GET');
@@ -109,7 +109,7 @@ describe('TerceroService', () => {
     it('debe retornar lista desde respuesta no paginada (array directo)', () => {
       let result: TerceroList[] = [];
 
-      service.list({}).subscribe(t => result = t);
+      service.list({}).subscribe((t: any) => result = t);
 
       const req = httpMock.expectOne(`${baseUrl}/`);
       req.flush([mockTerceroList]);

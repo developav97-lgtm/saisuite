@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./out-tsc/spec-saidashboard",
+    "types": ["jasmine"]
+  },
+  "include": [
+    "src/app/features/saidashboard/**/*.ts",
+    "src/app/core/**/*.ts",
+    "src/app/shared/**/*.ts",
+    "src/environments/*.ts"
+  ]
+}
