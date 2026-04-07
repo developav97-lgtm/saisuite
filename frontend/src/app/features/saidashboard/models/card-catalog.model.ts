@@ -12,6 +12,8 @@ export interface CardCatalogItem {
   color: string;
   icono: string;
   requiere: string[];
+  /** Si true, la tarjeta requiere configuracion adicional (filtros_config) antes de agregar */
+  requiere_config?: boolean;
 }
 
 export interface CardCategory {

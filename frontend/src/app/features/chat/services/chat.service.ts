@@ -89,6 +89,10 @@ export class ChatService {
     return this.http.get<Record<string, string>>(`${this.baseUrl}/presencia/`);
   }
 
+  crearConversacionBot(context: string): Observable<Conversacion> {
+    return this.http.post<Conversacion>(`${this.baseUrl}/conversaciones/bot/`, { context });
+  }
+
   buscarMensajes(conversacionId: string, query: string): Observable<{ results: Mensaje[]; query: string }> {
     const params = new HttpParams().set('q', query);
     return this.http.get<{ results: Mensaje[]; query: string }>(

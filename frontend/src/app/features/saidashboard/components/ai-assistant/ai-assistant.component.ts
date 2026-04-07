@@ -17,6 +17,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { ChatStateService } from '../../../../core/services/chat-state.service';
 
 interface AssistantMessage {
   role: 'user' | 'assistant';
@@ -54,6 +55,7 @@ const QUICK_ACTIONS = [
 export class AiAssistantComponent {
   private readonly http = inject(HttpClient);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly chatState = inject(ChatStateService);
 
   readonly messagesContainer = viewChild<ElementRef<HTMLElement>>('messagesContainer');
 
@@ -105,6 +107,10 @@ export class AiAssistantComponent {
           this.scrollToBottom();
         },
       });
+  }
+
+  openFullChat(): void {
+    this.chatState.openBot('dashboard');
   }
 
   onKeydown(event: KeyboardEvent): void {

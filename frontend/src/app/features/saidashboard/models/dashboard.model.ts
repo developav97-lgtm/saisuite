@@ -1,5 +1,7 @@
 /** Dashboard module models — mirrors backend DRF serializers exactly. */
 
+import { ReportFilter } from './report-filter.model';
+
 export interface DashboardUser {
   id: string;
   email: string;
@@ -35,6 +37,7 @@ export interface DashboardListItem {
   es_favorito: boolean;
   es_default: boolean;
   orientacion: DashboardOrientation;
+  filtros_default: ReportFilter | null;
   user_email: string;
   card_count: number;
   created_at: string;
@@ -48,10 +51,12 @@ export interface DashboardDetail {
   es_favorito: boolean;
   es_default: boolean;
   orientacion: DashboardOrientation;
+  filtros_default: ReportFilter | null;
   user: DashboardUser;
   cards: DashboardCard[];
   shares: DashboardShare[];
   created_at: string;
+  updated_at: string;
 }
 
 export interface DashboardCreate {
@@ -59,6 +64,7 @@ export interface DashboardCreate {
   descripcion?: string;
   es_privado?: boolean;
   orientacion?: DashboardOrientation;
+  filtros_default?: ReportFilter;
 }
 
 export interface DashboardCardCreate {
@@ -91,5 +97,5 @@ export interface ShareRequest {
   puede_editar?: boolean;
 }
 
-export type ChartType = 'bar' | 'line' | 'pie' | 'area' | 'waterfall' | 'gauge' | 'kpi';
+export type ChartType = 'bar' | 'line' | 'pie' | 'area' | 'waterfall' | 'gauge' | 'kpi' | 'table';
 export type DashboardOrientation = 'horizontal' | 'vertical';

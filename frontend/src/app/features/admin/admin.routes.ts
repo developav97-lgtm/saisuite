@@ -72,6 +72,11 @@ export const ADMIN_ROUTES: Routes = [
         loadComponent: () =>
           import('./internal-users/internal-user-form.component').then(m => m.InternalUserFormComponent),
       },
+      {
+        path: 'packages',
+        loadComponent: () =>
+          import('./packages/package-catalog.component').then(m => m.PackageCatalogComponent),
+      },
       { path: '', redirectTo: 'usuarios', pathMatch: 'full' },
     ],
   },

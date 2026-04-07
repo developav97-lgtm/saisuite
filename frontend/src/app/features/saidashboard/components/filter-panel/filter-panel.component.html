@@ -95,6 +95,29 @@
     </mat-form-field>
   </div>
 
+  <!-- Monthly series toggle + year selector -->
+  <div class="fp-monthly">
+    <mat-slide-toggle [checked]="agruparPorMes()"
+                      (change)="agruparPorMes.set($event.checked); emitFilter()"
+                      color="accent"
+                      matTooltip="Ver datos mes a mes en lugar de totales">
+      Ver por mes
+    </mat-slide-toggle>
+
+    @if (agruparPorMes()) {
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="fp-field fp-field--sm">
+        <mat-label>Año</mat-label>
+        <mat-select [value]="anio()"
+                    (selectionChange)="anio.set($event.value); emitFilter()">
+          <mat-option [value]="null">Automático</mat-option>
+          @for (a of aniosDisponibles(); track a) {
+            <mat-option [value]="a">{{ a }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    }
+  </div>
+
   <!-- Compare toggle + actions -->
   <div class="fp-actions">
     <mat-slide-toggle [checked]="compararPeriodo()"
@@ -112,4 +135,15 @@
       </button>
     </div>
   </div>
+
+  <!-- Save as default banner -->
+  @if (hasPendingChanges()) {
+    <div class="fp-save-banner">
+      <mat-icon class="fp-save-banner__icon">info</mat-icon>
+      <span>Filtros modificados</span>
+      <button mat-stroked-button color="primary" (click)="onSaveAsDefault()" class="fp-save-banner__btn">
+        <mat-icon>bookmark</mat-icon> Guardar como predeterminado
+      </button>
+    </div>
+  }
 </mat-expansion-panel>

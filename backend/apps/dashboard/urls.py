@@ -13,6 +13,7 @@ from apps.dashboard.views import (
     DashboardSetDefaultView,
     DashboardToggleFavoriteView,
     DashboardSharedWithMeView,
+    DashboardSaveFiltersView,
     # Cards
     DashboardCardListCreateView,
     DashboardCardDetailView,
@@ -44,6 +45,7 @@ urlpatterns = [
     path('<uuid:dashboard_id>/', DashboardDetailView.as_view(), name='dashboard-detail'),
     path('<uuid:dashboard_id>/set-default/', DashboardSetDefaultView.as_view(), name='set-default'),
     path('<uuid:dashboard_id>/toggle-favorite/', DashboardToggleFavoriteView.as_view(), name='toggle-favorite'),
+    path('<uuid:dashboard_id>/filters/', DashboardSaveFiltersView.as_view(), name='save-filters'),
 
     # ── Cards ──
     path('<uuid:dashboard_id>/cards/', DashboardCardListCreateView.as_view(), name='card-list-create'),

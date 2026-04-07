@@ -20,9 +20,33 @@ from .serializers import (
     MensajeEditSerializer,
     MensajeSerializer,
 )
+from rest_framework.views import APIView
+
 from .services import ChatService, PresenceService
 
 logger = logging.getLogger(__name__)
+
+
+class BotConversacionView(APIView):
+    """
+    POST /api/v1/chat/conversaciones/bot/
+    Crea o obtiene una conversacion con el bot IA.
+    Body: { "context": "dashboard" }
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        context = request.data.get('context', 'dashboard').strip()
+        if not context:
+            context = 'dashboard'
+
+        company = getattr(request.user, 'effective_company', None)
+        if not company:
+            return Response({'error': 'Sin empresa asignada.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        conv = ChatService.obtener_o_crear_conversacion_bot(request.user, company, bot_context=context)
+        serializer = ConversacionListSerializer(conv, context={'request': request})
+        return Response(serializer.data)
 
 
 class MensajePagination(PageNumberPagination):
@@ -116,6 +140,16 @@ def enviar_mensaje_view(request, conversacion_id):
 
     # Push WS broadcast desde contexto sync HTTP — sin deadlock posible
     ChatService.broadcast_nuevo_mensaje(mensaje, conversacion_id)
+
+    # Si es conversacion bot, lanzar respuesta en background
+    if mensaje.conversacion.bot_context:
+        import threading
+        from apps.chat.services import BotResponseService
+        threading.Thread(
+            target=BotResponseService.process_bot_message,
+            args=(mensaje.conversacion, mensaje.contenido, request.user),
+            daemon=True,
+        ).start()
 
     output = MensajeSerializer(mensaje)
     return Response(output.data, status=status.HTTP_201_CREATED)

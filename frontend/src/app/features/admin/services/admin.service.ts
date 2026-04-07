@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { AdminUser, CompanyLicense, CompanySettings, CreateUserDto, UserRole } from '../models/admin.models';
+import { AdminUser, AgentTokenInfo, CompanyLicense, CompanySettings, CreateUserDto, UserRole } from '../models/admin.models';
 
 export interface ListUsersParams {
   search?: string;
@@ -80,5 +80,11 @@ export class AdminService {
 
   deleteLogo(): Observable<void> {
     return this.http.delete<void>('/api/v1/companies/me/logo/');
+  }
+
+  // ── Agent Tokens ─────────────────────────────────────────────────────────
+
+  getMyAgentTokens(): Observable<AgentTokenInfo[]> {
+    return this.http.get<AgentTokenInfo[]>('/api/v1/companies/agent-tokens/me/');
   }
 }

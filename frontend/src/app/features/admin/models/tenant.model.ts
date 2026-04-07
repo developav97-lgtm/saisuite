@@ -186,3 +186,86 @@ export const MODULE_LABELS: Record<string, string> = {
   soporte:   'Soporte',
   dashboard: 'SaiDashboard',
 };
+
+// ── LicensePackage (catálogo global) ─────────────────────────────────────
+export type PackageType = 'module' | 'user_seats' | 'ai_tokens' | 'ai_messages';
+
+export const PACKAGE_TYPE_LABELS: Record<PackageType, string> = {
+  module:      'Módulo',
+  user_seats:  'Puestos de usuario',
+  ai_tokens:   'Tokens IA',
+  ai_messages: 'Mensajes IA',
+};
+
+export interface LicensePackage {
+  id: string;
+  code: string;
+  name: string;
+  description: string;
+  package_type: PackageType;
+  package_type_display: string;
+  module_code: string;
+  quantity: number;
+  price_monthly: string;
+  price_annual: string;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface LicensePackageWriteRequest {
+  code: string;
+  name: string;
+  description?: string;
+  package_type: PackageType;
+  module_code?: string;
+  quantity?: number;
+  price_monthly: number;
+  price_annual: number;
+  is_active?: boolean;
+}
+
+// ── LicensePackageItem (paquete asignado a una licencia) ──────────────────
+export interface LicensePackageItem {
+  id: string;
+  package: LicensePackage;
+  quantity: number;
+  added_at: string;
+  added_by_email: string | null;
+}
+
+// ── MonthlyLicenseSnapshot ────────────────────────────────────────────────
+export interface MonthlyLicenseSnapshot {
+  id: string;
+  month: string;
+  snapshot: Record<string, unknown>;
+  created_at: string;
+}
+
+// ── AIUsageLog ────────────────────────────────────────────────────────────
+export interface AIUsageSummary {
+  total_requests: number;
+  total_tokens: number;
+  messages_quota: number;
+  messages_used: number;
+  tokens_quota: number;
+  tokens_used: number;
+  messages_pct: number;
+  tokens_pct: number;
+}
+
+export interface AIUsagePerUser {
+  user_id: string;
+  email: string;
+  full_name: string;
+  total_requests: number;
+  total_tokens: number;
+}
+
+export interface AgentTokenInfo {
+  id: string;
+  token: string;
+  label: string;
+  is_active: boolean;
+  last_used: string | null;
+  created_at: string;
+}

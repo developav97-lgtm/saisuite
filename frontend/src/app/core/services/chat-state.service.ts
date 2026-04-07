@@ -8,14 +8,21 @@ import { Injectable, signal } from '@angular/core';
 export class ChatStateService {
   readonly isOpen = signal(false);
   readonly requestedConversacionId = signal<string | null>(null);
+  readonly requestedBotContext = signal<string | null>(null);
 
   open(conversacionId?: string): void {
     if (conversacionId) this.requestedConversacionId.set(conversacionId);
     this.isOpen.set(true);
   }
 
+  openBot(context: string): void {
+    this.requestedBotContext.set(context);
+    this.isOpen.set(true);
+  }
+
   close(): void {
     this.isOpen.set(false);
     this.requestedConversacionId.set(null);
+    this.requestedBotContext.set(null);
   }
 }

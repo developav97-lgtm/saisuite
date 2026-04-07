@@ -1,11 +1,91 @@
 # CONTEXT.md - Estado del Proyecto Saicloud
 
-**Última actualización:** 03 Abril 2026
-**Sesión:** SaiDashboard — Pendientes post-agentes + Correcciones UX/Mobile
+**Ultima actualizacion:** 03 Abril 2026
+**Sesion:** 6 Features — Licencias, IA en Chat, Manuales, AWS
 
 ---
 
-## ✅ COMPLETADO (03 Abril 2026) — SaiDashboard: Pendientes post-agentes A/B/C
+## COMPLETADO (03 Abril 2026) — 6 Features Transversales
+
+### F6: Sistema de Licencias con Paquetes
+- 4 modelos nuevos: `LicensePackage`, `LicensePackageItem`, `MonthlyLicenseSnapshot`, `AIUsageLog`
+- 3 services: `PackageService`, `AIUsageService`, `SnapshotService`
+- `RenewalService.auto_generate_renewals()` — auto-genera renovaciones 5 dias antes de vencimiento
+- API admin: CRUD paquetes, asignar/quitar de licencia, snapshots mensuales, uso IA
+- 2 management commands: `auto_generate_renewals` (daily), `generate_monthly_snapshots` (monthly)
+- Migracion: `0009_licensepackage_aiusagelog_licensepackageitem_and_more`
+
+### F5: AI Token/Message Tracking
+- `AIUsageService` integrado en `CfoVirtualService.ask()` — verifica quota antes, registra uso despues
+- n8n workflow actualizado para retornar `usage` (prompt_tokens, completion_tokens, model) de OpenAI
+- Endpoints: `GET /licenses/me/ai-usage/` y `/ai-usage/by-user/`
+
+### F3: Asistente IA en Chat
+- **Backend:** Campo `is_bot` en User + campo `bot_context` en Conversacion
+- `BotResponseService` — procesa mensajes al bot, genera respuesta via CfoVirtualService
+- Endpoint: `POST /api/v1/chat/conversaciones/bot/` con body `{ "context": "dashboard" }`
+- WebSocket consumer dispara respuesta del bot en thread background
+- Migraciones: `users.0006_user_is_bot`, `chat.0005_conversacion_bot_context`
+- **Frontend:** `ChatStateService.openBot(context)`, `ChatService.crearConversacionBot()`
+- Chat panel detecta bot conversations: icono `smart_toy`, nombre "CFO Virtual"
+- Chat window: oculta uploads en bot, typing dice "Analizando...", estilo diferente para msgs bot
+- Chat list: icono IA en lugar de avatar para conversaciones bot
+- SaiDashboard ai-assistant: boton "Abrir chat completo" → `chatState.openBot('dashboard')`
+
+### F4: Manual SaiDashboard
+- `docs/manuales/MANUAL-SAIDASHBOARD-SAICLOUD.md` — 15 secciones basadas en codigo real
+- Solo funcionalidades implementadas (verificado contra componentes y modelos)
+
+### F1: Manual Agente Go
+- `docs/manuales/MANUAL-AGENTE-SAICLOUD.md` — 11 secciones para usuario no tecnico
+- Comandos CLI verificados contra `agent-go/cmd/agent/main.go`
+- Incluye configuracion multi-empresa y solucion de problemas
+
+### F2: AWS Infrastructure
+- `docs/aws/AWS-INFRASTRUCTURE.md` — documento de tracking de recursos
+- Pendiente: crear SQS queues e IAM user (requiere interaccion usuario)
+
+### Archivos creados/modificados esta sesion
+**Backend:**
+- `backend/apps/companies/models.py` — 4 modelos nuevos
+- `backend/apps/companies/services.py` — PackageService, AIUsageService, SnapshotService, RenewalService enhancement
+- `backend/apps/companies/serializers.py` — 7 serializers nuevos
+- `backend/apps/companies/views.py` — 8 views nuevas
+- `backend/apps/companies/urls.py` — rutas actualizadas
+- `backend/apps/companies/admin_urls.py` — rutas admin actualizadas
+- `backend/apps/companies/package_urls.py` — NUEVO
+- `backend/apps/companies/admin.py` — 4 modelos registrados
+- `backend/apps/companies/management/commands/auto_generate_renewals.py` — NUEVO
+- `backend/apps/companies/management/commands/generate_monthly_snapshots.py` — NUEVO
+- `backend/apps/users/models.py` — is_bot field
+- `backend/apps/chat/models.py` — bot_context field
+- `backend/apps/chat/services.py` — obtener_o_crear_conversacion_bot, BotResponseService
+- `backend/apps/chat/views.py` — BotConversacionView
+- `backend/apps/chat/urls.py` — ruta bot
+- `backend/apps/chat/consumers.py` — trigger bot response
+- `backend/apps/dashboard/services.py` — CfoVirtualService con quota + usage tracking
+- `backend/apps/dashboard/views.py` — user param a CfoVirtualService
+- `backend/config/urls.py` — ruta admin/packages/
+- `n8n/workflows/cfo-virtual.json` — retorna usage tokens
+
+**Frontend:**
+- `frontend/src/app/core/services/chat-state.service.ts` — requestedBotContext, openBot()
+- `frontend/src/app/core/components/shell/shell.component.html` — openBotContext binding
+- `frontend/src/app/features/chat/models/chat.models.ts` — bot_context field
+- `frontend/src/app/features/chat/services/chat.service.ts` — crearConversacionBot()
+- `frontend/src/app/features/chat/components/chat-panel/` — bot conversation handling
+- `frontend/src/app/features/chat/components/chat-list/` — bot styling
+- `frontend/src/app/features/chat/components/chat-window/` — bot UI differences
+- `frontend/src/app/features/saidashboard/components/ai-assistant/` — openFullChat()
+
+**Docs:**
+- `docs/manuales/MANUAL-AGENTE-SAICLOUD.md` — NUEVO
+- `docs/manuales/MANUAL-SAIDASHBOARD-SAICLOUD.md` — NUEVO
+- `docs/aws/AWS-INFRASTRUCTURE.md` — NUEVO
+
+---
+
+## COMPLETADO (03 Abril 2026) — SaiDashboard: Pendientes post-agentes A/B/C
 
 ### 1. Sidebar — Navegación SaiDashboard
 - Agregado `SaiDashboard` al `HOME_NAV` (ícono `bar_chart`)

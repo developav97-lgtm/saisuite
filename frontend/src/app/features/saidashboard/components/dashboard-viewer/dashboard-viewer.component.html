@@ -13,6 +13,11 @@
       <button mat-icon-button matTooltip="Favorito" (click)="toggleFavorite()">
         <mat-icon>{{ isFavorite() ? 'star' : 'star_border' }}</mat-icon>
       </button>
+      <button mat-stroked-button matTooltip="Pregunta al CFO Virtual sobre estos datos"
+              class="dv-cfo-btn" (click)="openCfoVirtual()">
+        <mat-icon>smart_toy</mat-icon>
+        <span class="dv-cfo-label">CFO Virtual</span>
+      </button>
       <button mat-icon-button matTooltip="Filtros" (click)="toggleFilters()">
         <mat-icon>filter_list</mat-icon>
       </button>
@@ -38,7 +43,11 @@
 
   <!-- Filter panel (togglable) -->
   @if (showFilters()) {
-    <app-filter-panel (filterChange)="onFilterChange($event)" />
+    <app-filter-panel
+      [savedFilter]="dashboard()?.filtros_default ?? null"
+      (filterChange)="onFilterChange($event)"
+      (saveAsDefault)="onSaveAsDefault($event)"
+    />
   }
 
   <!-- Progress bar -->
@@ -71,11 +80,12 @@
                  [style.grid-column]="'span ' + cwd.card.width"
                  [style.grid-row]="'span ' + cwd.card.height">
               <app-chart-card
-                [chartType]="cwd.card.chart_type"
+                [chartType]="cwd.card.filtros_config['agrupar_por_mes'] ? 'bar' : cwd.card.chart_type"
                 [title]="getCardTitle(cwd)"
                 [labels]="cwd.data?.labels ?? []"
                 [datasets]="cwd.data?.datasets ?? []"
-                [loading]="cwd.loading" />
+                [loading]="cwd.loading"
+                [isMonthly]="cwd.card.filtros_config['agrupar_por_mes'] === true" />
             </div>
           }
         </div>

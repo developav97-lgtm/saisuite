@@ -222,3 +222,247 @@ class CuentaContable(models.Model):
 
     def __str__(self):
         return f'{self.codigo} - {self.descripcion}'
+
+
+class TerceroSaiopen(models.Model):
+    """
+    Espejo de la tabla CUST de Saiopen (clientes, proveedores, empleados).
+    Sync incremental por campo Version cada gl_interval_minutes.
+    READ-ONLY desde Saicloud.
+    """
+    company = models.ForeignKey(
+        'companies.Company',
+        on_delete=models.CASCADE,
+        related_name='terceros_saiopen',
+        db_index=True,
+    )
+    id_n = models.CharField(
+        max_length=30,
+        help_text='Identificador interno Saiopen (ID_N)',
+    )
+    nit = models.CharField(max_length=30, blank=True, default='')
+    nombre = models.CharField(max_length=120, blank=True, default='')
+    direccion = models.CharField(max_length=120, blank=True, default='')
+    ciudad = models.CharField(max_length=60, blank=True, default='')
+    departamento = models.CharField(max_length=100, blank=True, default='')
+    telefono = models.CharField(max_length=30, blank=True, default='')
+    telefono2 = models.CharField(max_length=30, blank=True, default='')
+    email = models.CharField(max_length=100, blank=True, default='')
+    es_cliente = models.BooleanField(default=False)
+    es_proveedor = models.BooleanField(default=False)
+    es_empleado = models.BooleanField(default=False)
+    activo = models.BooleanField(default=True)
+    # Cuentas contables del tercero
+    acct = models.CharField(max_length=30, blank=True, default='',
+                            help_text='Cuenta contable cliente (ACCT)')
+    acctp = models.CharField(max_length=30, blank=True, default='',
+                             help_text='Cuenta contable proveedor (ACCTP)')
+    regimen = models.CharField(max_length=10, blank=True, default='')
+    fecha_creacion = models.DateField(null=True, blank=True)
+    descuento = models.DecimalField(max_digits=8, decimal_places=2, default=0)
+    creditlmt = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    version_saiopen = models.BigIntegerField(
+        default=0,
+        help_text='Version field from CUST trigger (change detection)',
+    )
+    sincronizado_en = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'cont_tercero_saiopen'
+        unique_together = [('company', 'id_n')]
+        verbose_name = 'Tercero Saiopen'
+        verbose_name_plural = 'Terceros Saiopen'
+        ordering = ['nombre']
+
+    def __str__(self):
+        return f'{self.nombre} ({self.nit or self.id_n})'
+
+
+class ListaSaiopen(models.Model):
+    """
+    Espejo de la tabla LISTA de Saiopen (departamentos y centros de costo).
+    Tipo: 'DP' = departamento, 'CC' = centro de costo.
+    """
+    class Tipo(models.TextChoices):
+        DEPARTAMENTO = 'DP', 'Departamento'
+        CENTRO_COSTO = 'CC', 'Centro de costo'
+
+    company = models.ForeignKey(
+        'companies.Company',
+        on_delete=models.CASCADE,
+        related_name='listas_saiopen',
+        db_index=True,
+    )
+    tipo = models.CharField(max_length=2, choices=Tipo.choices, db_index=True)
+    codigo = models.IntegerField()
+    descripcion = models.CharField(max_length=80)
+    activo = models.BooleanField(default=True)
+    sincronizado_en = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'cont_lista_saiopen'
+        unique_together = [('company', 'tipo', 'codigo')]
+        verbose_name = 'Lista Saiopen (DP/CC)'
+        verbose_name_plural = 'Listas Saiopen (DP/CC)'
+        ordering = ['tipo', 'codigo']
+
+    def __str__(self):
+        return f'[{self.tipo}] {self.codigo} - {self.descripcion}'
+
+
+class ProyectoSaiopen(models.Model):
+    """
+    Espejo de la tabla PROYECTOS de Saiopen.
+    Permite relacionar movimientos GL con proyectos contables.
+    """
+    company = models.ForeignKey(
+        'companies.Company',
+        on_delete=models.CASCADE,
+        related_name='proyectos_saiopen',
+        db_index=True,
+    )
+    codigo = models.CharField(max_length=10)
+    descripcion = models.CharField(max_length=120, blank=True, default='')
+    cliente_nit = models.CharField(max_length=30, blank=True, default='')
+    fecha_inicio = models.DateField(null=True, blank=True)
+    fecha_estimada_fin = models.DateField(null=True, blank=True)
+    costo_estimado = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    estado = models.CharField(max_length=10, blank=True, default='')
+    sincronizado_en = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'cont_proyecto_saiopen'
+        unique_together = [('company', 'codigo')]
+        verbose_name = 'Proyecto Saiopen'
+        verbose_name_plural = 'Proyectos Saiopen'
+        ordering = ['codigo']
+
+    def __str__(self):
+        return f'{self.codigo} - {self.descripcion}'
+
+
+class ActividadSaiopen(models.Model):
+    """
+    Espejo de la tabla ACTIVIDADES de Saiopen.
+    Actividades asociadas a proyectos.
+    """
+    company = models.ForeignKey(
+        'companies.Company',
+        on_delete=models.CASCADE,
+        related_name='actividades_saiopen',
+        db_index=True,
+    )
+    codigo = models.CharField(max_length=10)
+    descripcion = models.CharField(max_length=120, blank=True, default='')
+    proyecto_codigo = models.CharField(max_length=10, blank=True, default='')
+    departamento_codigo = models.IntegerField(default=0)
+    centro_costo_codigo = models.IntegerField(default=0)
+    sincronizado_en = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'cont_actividad_saiopen'
+        unique_together = [('company', 'codigo', 'proyecto_codigo')]
+        verbose_name = 'Actividad Saiopen'
+        verbose_name_plural = 'Actividades Saiopen'
+        ordering = ['proyecto_codigo', 'codigo']
+
+    def __str__(self):
+        return f'{self.codigo} - {self.descripcion} (Proy: {self.proyecto_codigo})'
+
+
+class ShipToSaiopen(models.Model):
+    """
+    Espejo de la tabla SHIPTO de Saiopen — direcciones de envío del tercero.
+    PK compuesta: (ID_N, SUCCLIENTE). SUCCLIENTE=0 es la dirección principal.
+    Se sincroniza atómicamente junto con CUST.
+    READ-ONLY desde Saicloud.
+    """
+    company = models.ForeignKey(
+        'companies.Company',
+        on_delete=models.CASCADE,
+        related_name='shipto_saiopen',
+        db_index=True,
+    )
+    id_n = models.CharField(
+        max_length=30,
+        help_text='ID_N del tercero en CUST',
+        db_index=True,
+    )
+    succliente = models.IntegerField(
+        default=0,
+        help_text='Número de sucursal. 0 = dirección principal.',
+    )
+    descripcion = models.CharField(max_length=120, blank=True, default='')
+    nombre = models.CharField(max_length=120, blank=True, default='')
+    addr1 = models.CharField(max_length=120, blank=True, default='')
+    addr2 = models.CharField(max_length=120, blank=True, default='')
+    ciudad = models.CharField(max_length=60, blank=True, default='')
+    departamento = models.CharField(max_length=100, blank=True, default='')
+    cod_dpto = models.CharField(max_length=3, blank=True, default='')
+    cod_municipio = models.CharField(max_length=6, blank=True, default='')
+    pais = models.CharField(max_length=60, blank=True, default='')
+    telefono = models.CharField(max_length=30, blank=True, default='')
+    email = models.CharField(max_length=100, blank=True, default='')
+    zona = models.IntegerField(default=0)
+    id_vend = models.IntegerField(default=0)
+    estado = models.CharField(max_length=20, blank=True, default='')
+    es_principal = models.BooleanField(
+        default=False,
+        help_text='True si succliente == 0',
+    )
+    sincronizado_en = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'cont_shipto_saiopen'
+        unique_together = [('company', 'id_n', 'succliente')]
+        verbose_name = 'ShipTo Saiopen'
+        verbose_name_plural = 'ShipTos Saiopen'
+        ordering = ['id_n', 'succliente']
+
+    def __str__(self):
+        return f'{self.id_n} [{self.succliente}] {self.descripcion or self.nombre}'
+
+
+class TributariaSaiopen(models.Model):
+    """
+    Espejo de la tabla TRIBUTARIA de Saiopen — info tributaria del tercero.
+    Relación 1:1 con TerceroSaiopen. Se sincroniza atómicamente junto con CUST.
+    READ-ONLY desde Saicloud.
+    """
+    company = models.ForeignKey(
+        'companies.Company',
+        on_delete=models.CASCADE,
+        related_name='tributaria_saiopen',
+        db_index=True,
+    )
+    id_n = models.CharField(
+        max_length=30,
+        help_text='ID_N del tercero en CUST',
+    )
+    tdoc = models.SmallIntegerField(
+        default=0,
+        help_text='Tipo de documento (FK a TRIBUTARIA_TIPODOCUMENTO)',
+    )
+    tipo_contribuyente = models.SmallIntegerField(
+        default=0,
+        help_text='1=persona jurídica, 2=persona natural',
+    )
+    primer_nombre = models.CharField(max_length=100, blank=True, default='')
+    segundo_nombre = models.CharField(max_length=100, blank=True, default='')
+    primer_apellido = models.CharField(max_length=100, blank=True, default='')
+    segundo_apellido = models.CharField(max_length=100, blank=True, default='')
+    sincronizado_en = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'cont_tributaria_saiopen'
+        unique_together = [('company', 'id_n')]
+        verbose_name = 'Tributaria Saiopen'
+        verbose_name_plural = 'Tributarias Saiopen'
+        ordering = ['id_n']
+
+    def __str__(self):
+        nombre = ' '.join(filter(None, [
+            self.primer_nombre, self.segundo_nombre,
+            self.primer_apellido, self.segundo_apellido,
+        ]))
+        return f'{self.id_n} - {nombre or "(jurídica)"}'

@@ -3,6 +3,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"os"
@@ -14,7 +15,7 @@ import (
 	"github.com/valmentech/saicloud-agent/internal/winsvc"
 )
 
-const version = "1.0.0"
+const version = "1.0.4"
 
 func main() {
 	if len(os.Args) < 2 {
@@ -140,7 +141,13 @@ func runServe() {
 	logger.Info("starting saicloud agent", "version", version)
 
 	orch := sync.NewOrchestrator(cfg, logger)
-	orch.Run()
+
+	// RunAsService reports Running to Windows SCM before any sync work begins.
+	// The context is cancelled by SCM on Stop/Shutdown, enabling graceful shutdown.
+	if err := winsvc.RunAsService(func(ctx context.Context) { orch.RunWithContext(ctx) }); err != nil {
+		logger.Error("service error", "error", err)
+		os.Exit(1)
+	}
 }
 
 func runInstall() {

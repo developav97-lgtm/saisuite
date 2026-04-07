@@ -1,0 +1,38 @@
+{
+  "agent_version": "1.0.0",
+  "configurator_port": 8765,
+  "log_level": "info",
+  "log_file": "C:/SaicloudAgent/logs/agent.log",
+  "transport": "sqs",
+  "sqs": {
+    "access_key_id": "AKIAXBIY476C5BT4V2P4",
+    "secret_access_key": "REEMPLAZAR_CON_SECRET_KEY",
+    "region": "us-east-1",
+    "queue_url": "https://sqs.us-east-1.amazonaws.com/483772923781/saicloud-to-cloud-prod"
+  },
+  "connections": [
+    {
+      "id": "conn_001",
+      "name": "Empresa Principal S.A.S",
+      "enabled": true,
+      "firebird": {
+        "host": "localhost",
+        "port": 3050,
+        "database": "C:/SAIOPEN/DATOS/EMPRESA1.FDB",
+        "user": "SYSDBA",
+        "password": "masterkey"
+      },
+      "saicloud": {
+        "api_url": "https://api.saicloud.co",
+        "company_id": "UUID-DE-LA-EMPRESA",
+        "agent_token": "JWT-TOKEN-DEL-AGENTE"
+      },
+      "sync": {
+        "gl_interval_minutes": 15,
+        "reference_interval_hours": 24,
+        "batch_size": 500,
+        "last_conteo_gl": 0
+      }
+    }
+  ]
+}

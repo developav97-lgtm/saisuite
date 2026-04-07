@@ -13,24 +13,25 @@ import (
 // GLSync handles the incremental synchronization of GL (General Ledger) records.
 // It uses the CONTEO column as a watermark to fetch only new records since the last sync.
 type GLSync struct {
-	cfg       *config.AgentConfig
-	fbClient  *firebird.Client
-	apiClient *api.Client
-	logger    *slog.Logger
+	cfg      *config.AgentConfig
+	fbClient *firebird.Client
+	sender   Sender
+	logger   *slog.Logger
 }
 
 // NewGLSync creates a new GL sync handler.
+// The sender can be an HTTP client or an SQS publisher depending on configuration.
 func NewGLSync(
 	cfg *config.AgentConfig,
 	fbClient *firebird.Client,
-	apiClient *api.Client,
+	sender Sender,
 	logger *slog.Logger,
 ) *GLSync {
 	return &GLSync{
-		cfg:       cfg,
-		fbClient:  fbClient,
-		apiClient: apiClient,
-		logger:    logger,
+		cfg:      cfg,
+		fbClient: fbClient,
+		sender:   sender,
+		logger:   logger,
 	}
 }
 
@@ -93,7 +94,7 @@ func (g *GLSync) Sync(conn config.Connection) error {
 			"last_conteo", newLastConteo,
 		)
 
-		if err := g.apiClient.PostGLBatch(payload); err != nil {
+		if err := g.sender.PostGLBatch(payload); err != nil {
 			g.logger.Error("GL batch POST failed",
 				"conn_id", conn.ID,
 				"batch", batchCount,

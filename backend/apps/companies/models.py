@@ -305,3 +305,130 @@ class LicenseRenewal(models.Model):
 
     def __str__(self):
         return f'{self.license.company.name} — renovación {self.get_status_display()} ({self.new_expires_at})'
+
+
+class LicensePackage(models.Model):
+    """Paquete configurable para licencias. Catalogo global, no multi-tenant."""
+
+    class PackageType(models.TextChoices):
+        MODULE      = 'module',      'Modulo'
+        USER_SEATS  = 'user_seats',  'Puestos de usuario'
+        AI_TOKENS   = 'ai_tokens',   'Tokens IA'
+        AI_MESSAGES = 'ai_messages', 'Mensajes IA'
+
+    id            = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    code          = models.CharField(max_length=50, unique=True, help_text='Slug unico: mod_dashboard, seats_5, ai_1000')
+    name          = models.CharField(max_length=100)
+    description   = models.TextField(blank=True, default='')
+    package_type  = models.CharField(max_length=20, choices=PackageType.choices)
+    module_code   = models.CharField(max_length=50, blank=True, default='', help_text='Solo para type=module. Ej: dashboard, proyectos')
+    quantity      = models.PositiveIntegerField(default=0, help_text='Cantidad: seats o tokens segun tipo')
+    price_monthly = models.DecimalField(max_digits=15, decimal_places=2, default=0, help_text='Precio mensual COP')
+    price_annual  = models.DecimalField(max_digits=15, decimal_places=2, default=0, help_text='Precio anual COP')
+    is_active     = models.BooleanField(default=True)
+    created_at    = models.DateTimeField(default=timezone.now)
+    updated_at    = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Paquete de licencia'
+        verbose_name_plural = 'Paquetes de licencia'
+        ordering = ['package_type', 'name']
+
+    def __str__(self):
+        return f'{self.name} ({self.code})'
+
+
+class LicensePackageItem(models.Model):
+    """Paquete asignado a una licencia especifica."""
+
+    id       = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    license  = models.ForeignKey(CompanyLicense, on_delete=models.CASCADE, related_name='package_items')
+    package  = models.ForeignKey(LicensePackage, on_delete=models.PROTECT, related_name='assignments')
+    quantity = models.PositiveIntegerField(default=1, help_text='Cantidad de este paquete asignado')
+    added_at = models.DateTimeField(default=timezone.now)
+    added_by = models.ForeignKey('users.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='package_assignments')
+
+    class Meta:
+        verbose_name = 'Paquete asignado'
+        verbose_name_plural = 'Paquetes asignados'
+        unique_together = ('license', 'package')
+        ordering = ['-added_at']
+
+    def __str__(self):
+        return f'{self.license.company.name} — {self.package.name} x{self.quantity}'
+
+
+class MonthlyLicenseSnapshot(models.Model):
+    """Snapshot mensual del estado de una licencia. Registro historico."""
+
+    id         = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    license    = models.ForeignKey(CompanyLicense, on_delete=models.CASCADE, related_name='snapshots')
+    month      = models.DateField(help_text='Primer dia del mes del snapshot')
+    snapshot   = models.JSONField(default=dict, help_text='Estado completo de la licencia al momento del snapshot')
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        verbose_name = 'Snapshot mensual de licencia'
+        verbose_name_plural = 'Snapshots mensuales de licencia'
+        unique_together = ('license', 'month')
+        ordering = ['-month']
+
+    def __str__(self):
+        return f'{self.license.company.name} — {self.month:%Y-%m}'
+
+
+class AIUsageLog(models.Model):
+    """Registro de uso de IA por request. Tracking granular por usuario."""
+
+    id                = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    company           = models.ForeignKey('companies.Company', on_delete=models.CASCADE, related_name='ai_usage_logs')
+    user              = models.ForeignKey('users.User', on_delete=models.CASCADE, related_name='ai_usage_logs')
+    request_type      = models.CharField(max_length=50, help_text='Tipo: cfo_virtual, project_assistant, manual_guide')
+    module_context    = models.CharField(max_length=50, help_text='Modulo: dashboard, proyectos, general')
+    prompt_tokens     = models.PositiveIntegerField(default=0)
+    completion_tokens = models.PositiveIntegerField(default=0)
+    total_tokens      = models.PositiveIntegerField(default=0)
+    model_used        = models.CharField(max_length=50, default='gpt-4o-mini')
+    question_preview  = models.CharField(max_length=200, blank=True, default='', help_text='Primeros 200 chars de la pregunta')
+    created_at        = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        verbose_name = 'Registro de uso IA'
+        verbose_name_plural = 'Registros de uso IA'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['company', '-created_at']),
+            models.Index(fields=['user', '-created_at']),
+        ]
+
+    def __str__(self):
+        return f'{self.user.email} — {self.request_type} ({self.total_tokens} tokens)'
+
+
+class AgentToken(models.Model):
+    """
+    Token estático de larga vida para autenticar el agente Go en los endpoints de sync.
+    No expira — se revoca manualmente rotando el token.
+    Un company puede tener múltiples tokens (multi-PC), pero normalmente uno activo.
+    """
+    id         = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    company    = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='agent_tokens')
+    token      = models.CharField(max_length=64, unique=True, editable=False)
+    label      = models.CharField(max_length=100, blank=True, help_text='Etiqueta para identificar el equipo, ej: "PC principal oficina"')
+    is_active  = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_used  = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = 'Token de agente'
+        verbose_name_plural = 'Tokens de agente'
+        ordering = ['-created_at']
+
+    def save(self, *args, **kwargs):
+        if not self.token:
+            import secrets
+            self.token = secrets.token_urlsafe(48)
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f'{self.company.name} — {self.label or self.id} ({"activo" if self.is_active else "revocado"})'

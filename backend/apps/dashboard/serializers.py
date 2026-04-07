@@ -96,6 +96,7 @@ class DashboardListSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'titulo', 'descripcion', 'es_privado',
             'es_favorito', 'es_default', 'orientacion',
+            'filtros_default',
             'user_email', 'card_count', 'created_at',
         ]
         read_only_fields = ['id', 'created_at']
@@ -115,6 +116,7 @@ class DashboardDetailSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'titulo', 'descripcion', 'es_privado',
             'es_favorito', 'es_default', 'orientacion',
+            'filtros_default',
             'user', 'cards', 'shares',
             'created_at', 'updated_at',
         ]
@@ -142,6 +144,7 @@ class DashboardCreateSerializer(serializers.Serializer):
         choices=Dashboard.Orientacion.choices,
         default='portrait',
     )
+    filtros_default = serializers.DictField(required=False, default=dict)
 
 
 class DashboardUpdateSerializer(serializers.Serializer):
@@ -153,6 +156,12 @@ class DashboardUpdateSerializer(serializers.Serializer):
         choices=Dashboard.Orientacion.choices,
         required=False,
     )
+    filtros_default = serializers.DictField(required=False)
+
+
+class DashboardSaveFiltersSerializer(serializers.Serializer):
+    """Serializer para guardar filtros predeterminados de un dashboard."""
+    filtros_default = serializers.DictField()
 
 
 # ──────────────────────────────────────────────
@@ -182,6 +191,7 @@ class CardDataRequestSerializer(serializers.Serializer):
     """Serializer para solicitar datos de una tarjeta."""
     card_type_code = serializers.CharField(max_length=50)
     filtros = serializers.DictField(required=False, default=dict)
+    card_config = serializers.DictField(required=False, default=dict)
 
 
 class CardDataResponseSerializer(serializers.Serializer):

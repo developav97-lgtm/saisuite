@@ -55,6 +55,12 @@ CATEGORIAS_CATALOG = {
         'icono': 'compare_arrows',
         'orden': 6,
     },
+    'personalizado': {
+        'nombre': 'Personalizado',
+        'descripcion': 'Tarjetas configuradas por el usuario con rangos de cuentas especificos',
+        'icono': 'tune',
+        'orden': 7,
+    },
 }
 
 
@@ -188,6 +194,26 @@ CARD_CATALOG = {
     },
 
     # ── Cartera ──
+    'ROTACION_CARTERA': {
+        'nombre': 'Rotacion de Cartera (dias)',
+        'categoria': 'cartera',
+        'descripcion': 'Dias promedio de recuperacion de cartera: (CxC / Ingresos) * 365',
+        'chart_types': ['kpi', 'gauge'],
+        'chart_default': 'kpi',
+        'color': '#1976D2',
+        'icono': 'loop',
+        'requiere': [],
+    },
+    'CONCENTRACION_INGRESOS_TERCERO': {
+        'nombre': 'Concentracion de Ingresos por Tercero',
+        'categoria': 'cartera',
+        'descripcion': 'Top 10 clientes por participacion en los ingresos totales',
+        'chart_types': ['bar', 'pie', 'table'],
+        'chart_default': 'bar',
+        'color': '#0D47A1',
+        'icono': 'donut_large',
+        'requiere': [],
+    },
     'CARTERA_TOTAL': {
         'nombre': 'Cartera Total',
         'categoria': 'cartera',
@@ -221,15 +247,26 @@ CARD_CATALOG = {
     'MOVIMIENTO_POR_TERCERO': {
         'nombre': 'Movimiento por Tercero',
         'categoria': 'cartera',
-        'descripcion': 'Debitos y creditos agrupados por tercero',
+        'descripcion': 'Debitos y creditos de un rango de cuentas agrupados por tercero. Requiere configurar el rango de cuentas y el top N.',
         'chart_types': ['table', 'bar'],
         'chart_default': 'table',
         'color': '#1E88E5',
         'icono': 'person_search',
         'requiere': [],
+        'requiere_config': True,
     },
 
     # ── Proveedores ──
+    'ROTACION_PROVEEDORES': {
+        'nombre': 'Rotacion de Proveedores (dias)',
+        'categoria': 'proveedores',
+        'descripcion': 'Dias promedio de pago a proveedores: (CxP / Costo de Ventas) * 365',
+        'chart_types': ['kpi', 'gauge'],
+        'chart_default': 'kpi',
+        'color': '#D32F2F',
+        'icono': 'loop',
+        'requiere': [],
+    },
     'CUENTAS_POR_PAGAR': {
         'nombre': 'Cuentas por Pagar',
         'categoria': 'proveedores',
@@ -262,6 +299,26 @@ CARD_CATALOG = {
     },
 
     # ── Proyectos ──
+    'INGRESOS_POR_PROYECTO': {
+        'nombre': 'Ingresos por Proyecto',
+        'categoria': 'proyectos',
+        'descripcion': 'Distribucion de ingresos (titulo 4) por proyecto contable',
+        'chart_types': ['bar', 'pie', 'table'],
+        'chart_default': 'bar',
+        'color': '#00897B',
+        'icono': 'stacked_bar_chart',
+        'requiere': ['usa_proyectos_actividades'],
+    },
+    'GASTOS_ACTIVIDAD_PROYECTO': {
+        'nombre': 'Gastos: Actividad x Proyecto',
+        'categoria': 'proyectos',
+        'descripcion': 'Costos y gastos cruzados por actividad y proyecto (matriz)',
+        'chart_types': ['bar', 'table'],
+        'chart_default': 'bar',
+        'color': '#00695C',
+        'icono': 'grid_on',
+        'requiere': ['usa_proyectos_actividades'],
+    },
     'COSTO_POR_PROYECTO': {
         'nombre': 'Costo por Proyecto',
         'categoria': 'proyectos',
@@ -284,6 +341,26 @@ CARD_CATALOG = {
     },
 
     # ── Comparativos ──
+    'FLUJO_CAJA_OPERACIONAL': {
+        'nombre': 'Flujo de Caja Operacional',
+        'categoria': 'comparativos',
+        'descripcion': 'Evolucion mensual de cobros (CxC) menos pagos (CxP)',
+        'chart_types': ['bar', 'line', 'area'],
+        'chart_default': 'bar',
+        'color': '#0097A7',
+        'icono': 'waterfall_chart',
+        'requiere': [],
+    },
+    'DEUDA_PATRIMONIO_MENSUAL': {
+        'nombre': 'Relacion Deuda / Patrimonio',
+        'categoria': 'comparativos',
+        'descripcion': 'Evolucion mensual del ratio pasivo sobre patrimonio',
+        'chart_types': ['line', 'area', 'bar'],
+        'chart_default': 'line',
+        'color': '#6D4C41',
+        'icono': 'balance',
+        'requiere': [],
+    },
     'COMPARATIVO_PERIODOS': {
         'nombre': 'Comparativo de Periodos',
         'categoria': 'comparativos',
@@ -303,6 +380,37 @@ CARD_CATALOG = {
         'color': '#37474F',
         'icono': 'timeline',
         'requiere': [],
+    },
+
+    # ── Personalizado ──
+    'CUSTOM_RANGO_CUENTAS': {
+        'nombre': 'Rango de Cuentas Personalizado',
+        'categoria': 'personalizado',
+        'descripcion': (
+            'Suma un rango configurable de cuentas del PUC. '
+            'Configura nivel (titulo/grupo/cuenta/subcuenta/auxiliar), '
+            'rango de codigos y direccion del movimiento.'
+        ),
+        'chart_types': ['kpi', 'bar', 'line', 'area'],
+        'chart_default': 'kpi',
+        'color': '#546E7A',
+        'icono': 'tune',
+        'requiere': [],
+        'requiere_config': True,
+    },
+    'DISTRIBUCION_POR_PROYECTO': {
+        'nombre': 'Distribucion por Proyecto',
+        'categoria': 'personalizado',
+        'descripcion': (
+            'Toma un rango de cuentas configurable y distribuye el saldo '
+            'por proyecto contable. Ideal para ver ingresos o gastos por proyecto.'
+        ),
+        'chart_types': ['bar', 'pie', 'table'],
+        'chart_default': 'bar',
+        'color': '#00838F',
+        'icono': 'account_tree',
+        'requiere': ['usa_proyectos_actividades'],
+        'requiere_config': True,
     },
 }
 

@@ -10,7 +10,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
 
-from .models import Company, CompanyLicense
+from .models import Company, CompanyLicense, LicensePackage, LicensePackageItem, AgentToken
 from .permissions import IsSuperAdmin
 from .serializers import (
     CompanyListSerializer,
@@ -26,8 +26,15 @@ from .serializers import (
     LicenseRenewalSerializer,
     TenantCreateSerializer,
     TenantWithLicenseSerializer,
+    LicensePackageSerializer,
+    LicensePackageWriteSerializer,
+    LicensePackageItemSerializer,
+    MonthlyLicenseSnapshotSerializer,
+    AIUsageSummarySerializer,
+    AIUsagePerUserSerializer,
+    AIUsageLogSerializer,
 )
-from .services import CompanyService, LicenseService, RenewalService
+from .services import CompanyService, LicenseService, RenewalService, PackageService, AIUsageService
 
 logger = logging.getLogger(__name__)
 
@@ -463,3 +470,221 @@ class AdminRenewalCancelView(APIView):
             )
         renewal = RenewalService.cancel_renewal(renewal, cancelled_by=request.user)
         return Response(LicenseRenewalSerializer(renewal).data)
+
+
+# ── Paquetes de licencia (Admin) ────────────────────────────────────────────
+
+class AdminPackageListView(APIView):
+    """
+    GET  /api/v1/admin/packages/ — catalogo de paquetes.
+    POST /api/v1/admin/packages/ — crear paquete.
+    """
+
+    permission_classes = [IsSuperAdmin]
+
+    def get(self, request):
+        package_type = request.query_params.get('type')
+        packages = PackageService.list_packages(package_type=package_type)
+        return Response(LicensePackageSerializer(packages, many=True).data)
+
+    def post(self, request):
+        serializer = LicensePackageWriteSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        package = PackageService.create_package(serializer.validated_data)
+        return Response(LicensePackageSerializer(package).data, status=status.HTTP_201_CREATED)
+
+
+class AdminPackageDetailView(APIView):
+    """
+    PATCH /api/v1/admin/packages/{pk}/ — editar paquete (nombre, precio, etc.).
+    """
+
+    permission_classes = [IsSuperAdmin]
+
+    def get(self, request, pk):
+        package = PackageService.get_package(str(pk))
+        return Response(LicensePackageSerializer(package).data)
+
+    def patch(self, request, pk):
+        package = PackageService.get_package(str(pk))
+        serializer = LicensePackageWriteSerializer(data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        updated = PackageService.update_package(package, serializer.validated_data)
+        return Response(LicensePackageSerializer(updated).data)
+
+
+class AdminLicensePackagesView(APIView):
+    """
+    GET  /api/v1/admin/tenants/{pk}/license/packages/ — paquetes asignados.
+    POST /api/v1/admin/tenants/{pk}/license/packages/ — agregar paquete a licencia.
+    """
+
+    permission_classes = [IsSuperAdmin]
+
+    def get(self, request, pk):
+        company = CompanyService.get_company(str(pk))
+        license_obj = LicenseService.get_license(company)
+        items = license_obj.package_items.select_related('package', 'added_by').all()
+        return Response(LicensePackageItemSerializer(items, many=True).data)
+
+    def post(self, request, pk):
+        company = CompanyService.get_company(str(pk))
+        license_obj = LicenseService.get_license(company)
+        package_id = request.data.get('package_id')
+        quantity = request.data.get('quantity', 1)
+        if not package_id:
+            return Response({'package_id': 'Requerido.'}, status=status.HTTP_400_BAD_REQUEST)
+        package = PackageService.get_package(str(package_id))
+        item = PackageService.add_package_to_license(
+            license_obj, package, quantity=int(quantity), added_by=request.user,
+        )
+        return Response(LicensePackageItemSerializer(item).data, status=status.HTTP_201_CREATED)
+
+
+class AdminLicensePackageRemoveView(APIView):
+    """
+    DELETE /api/v1/admin/tenants/{pk}/license/packages/{item_pk}/
+    Quita un paquete de la licencia.
+    """
+
+    permission_classes = [IsSuperAdmin]
+
+    def delete(self, request, pk, item_pk):
+        try:
+            item = LicensePackageItem.objects.select_related('license', 'package').get(
+                id=item_pk, license__company_id=pk,
+            )
+        except LicensePackageItem.DoesNotExist:
+            return Response({'detail': 'Paquete asignado no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+        PackageService.remove_package_from_license(item, removed_by=request.user)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class AdminLicenseSnapshotsView(APIView):
+    """GET /api/v1/admin/tenants/{pk}/license/snapshots/ — snapshots mensuales."""
+
+    permission_classes = [IsSuperAdmin]
+
+    def get(self, request, pk):
+        company = CompanyService.get_company(str(pk))
+        license_obj = LicenseService.get_license(company)
+        snapshots = license_obj.snapshots.all()
+        return Response(MonthlyLicenseSnapshotSerializer(snapshots, many=True).data)
+
+
+# ── Uso de IA ────────────────────────────────────────────────────────────────
+
+class AIUsageMeView(APIView):
+    """
+    GET /api/v1/companies/licenses/me/ai-usage/ — resumen de uso IA de mi empresa.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        company = getattr(request.user, 'effective_company', None)
+        if not company:
+            return Response({'detail': 'Sin empresa asignada.'}, status=status.HTTP_404_NOT_FOUND)
+        summary = AIUsageService.get_usage_summary(company)
+        return Response(AIUsageSummarySerializer(summary).data)
+
+
+class AIUsageByUserView(APIView):
+    """
+    GET /api/v1/companies/licenses/me/ai-usage/by-user/ — uso IA por usuario.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        company = getattr(request.user, 'effective_company', None)
+        if not company:
+            return Response({'detail': 'Sin empresa asignada.'}, status=status.HTTP_404_NOT_FOUND)
+        per_user = AIUsageService.get_per_user_usage(company)
+        return Response(AIUsagePerUserSerializer(per_user, many=True).data)
+
+
+class AdminAIUsageView(APIView):
+    """GET /api/v1/admin/tenants/{pk}/license/ai-usage/ — uso IA de un tenant."""
+
+    permission_classes = [IsSuperAdmin]
+
+    def get(self, request, pk):
+        company = CompanyService.get_company(str(pk))
+        summary = AIUsageService.get_usage_summary(company)
+        return Response(AIUsageSummarySerializer(summary).data)
+
+
+class AdminAgentTokenListView(APIView):
+    """
+    GET  /api/v1/admin/tenants/{pk}/agent-tokens/  — lista tokens del agente
+    POST /api/v1/admin/tenants/{pk}/agent-tokens/  — genera un nuevo token
+    """
+    permission_classes = [IsSuperAdmin]
+
+    def get(self, request, pk):
+        tokens = AgentToken.objects.filter(company_id=pk).order_by('-created_at')
+        data = [
+            {
+                'id': str(t.id),
+                'token': t.token,
+                'label': t.label,
+                'is_active': t.is_active,
+                'last_used': t.last_used,
+                'created_at': t.created_at,
+            }
+            for t in tokens
+        ]
+        return Response(data)
+
+    def post(self, request, pk):
+        company = CompanyService.get_company(str(pk))
+        label = request.data.get('label', '')
+        token = AgentToken.objects.create(company=company, label=label)
+        return Response({
+            'id': str(token.id),
+            'token': token.token,
+            'label': token.label,
+            'is_active': token.is_active,
+            'created_at': token.created_at,
+        }, status=status.HTTP_201_CREATED)
+
+
+class AdminAgentTokenRevokeView(APIView):
+    """POST /api/v1/admin/tenants/{pk}/agent-tokens/{token_pk}/revoke/"""
+    permission_classes = [IsSuperAdmin]
+
+    def post(self, request, pk, token_pk):
+        try:
+            token = AgentToken.objects.get(id=token_pk, company_id=pk)
+        except AgentToken.DoesNotExist:
+            return Response({'detail': 'Token no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+        token.is_active = False
+        token.save(update_fields=['is_active'])
+        return Response({'detail': 'Token revocado.'})
+
+
+class MyAgentTokensView(APIView):
+    """
+    GET /api/v1/companies/agent-tokens/me/
+    Retorna los tokens del agente de la empresa del usuario autenticado (company_admin).
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        company = getattr(request.user, 'company', None)
+        if company is None:
+            return Response([])
+        tokens = AgentToken.objects.filter(company=company, is_active=True).order_by('-created_at')
+        data = [
+            {
+                'id': str(t.id),
+                'token': t.token,
+                'label': t.label,
+                'is_active': t.is_active,
+                'last_used': t.last_used,
+                'created_at': t.created_at,
+            }
+            for t in tokens
+        ]
+        return Response(data)

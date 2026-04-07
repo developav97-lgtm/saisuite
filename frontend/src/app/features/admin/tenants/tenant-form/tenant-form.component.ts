@@ -19,7 +19,9 @@ import { MatDividerModule } from '@angular/material/divider';
 import { MatDialog } from '@angular/material/dialog';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { TenantService } from '../../services/tenant.service';
+import { PackageService } from '../../services/package.service';
 import { ToastService } from '../../../../core/services/toast.service';
 import { NavigationHistoryService } from '../../../../core/services/navigation-history.service';
 import { ConfirmDialogComponent } from '../../../../shared/components/confirm-dialog/confirm-dialog.component';
@@ -27,6 +29,8 @@ import {
   Tenant, TenantLicense, LicenseHistory, LicenseRenewal,
   LICENSE_STATUS_LABELS, PLAN_LABELS, MODULE_LABELS,
   LICENSE_PERIOD_LABELS, LICENSE_PERIOD_DAYS, LicensePeriod,
+  LicensePackage, LicensePackageItem, MonthlyLicenseSnapshot,
+  AIUsageSummary, AIUsagePerUser, PACKAGE_TYPE_LABELS, AgentTokenInfo,
 } from '../../models/tenant.model';
 
 const AVAILABLE_MODULES = ['proyectos', 'crm', 'soporte', 'dashboard'];
@@ -58,17 +62,18 @@ function dateToStr(d: Date | null): string {
     MatFormFieldModule, MatSelectModule, MatCheckboxModule,
     MatProgressBarModule, MatTabsModule, MatTableModule,
     MatChipsModule, MatTooltipModule, MatDividerModule,
-    MatDatepickerModule, MatNativeDateModule,
+    MatDatepickerModule, MatNativeDateModule, MatSlideToggleModule,
   ],
 })
 export class TenantFormComponent implements OnInit {
-  private readonly route         = inject(ActivatedRoute);
-  private readonly router        = inject(Router);
-  private readonly fb            = inject(FormBuilder);
-  private readonly tenantService = inject(TenantService);
-  private readonly toast         = inject(ToastService);
-  private readonly navHistory    = inject(NavigationHistoryService);
-  private readonly dialog        = inject(MatDialog);
+  private readonly route          = inject(ActivatedRoute);
+  private readonly router         = inject(Router);
+  private readonly fb             = inject(FormBuilder);
+  private readonly tenantService  = inject(TenantService);
+  private readonly packageService = inject(PackageService);
+  private readonly toast          = inject(ToastService);
+  private readonly navHistory     = inject(NavigationHistoryService);
+  private readonly dialog         = inject(MatDialog);
 
   readonly loading  = signal(false);
   readonly saving   = signal(false);
@@ -82,6 +87,30 @@ export class TenantFormComponent implements OnInit {
   readonly confirmingPayment   = signal(false);
   readonly creatingRenewal     = signal(false);
   readonly cancellingRenewal   = signal(false);
+
+  // ── Paquetes ──────────────────────────────────────────────────────────────
+  readonly licensePackages      = signal<LicensePackageItem[]>([]);
+  readonly allPackages          = signal<LicensePackage[]>([]);
+  readonly loadingPackages      = signal(false);
+  readonly addingPackage        = signal(false);
+  readonly selectedPackageId    = signal<string>('');
+  readonly snapshots            = signal<MonthlyLicenseSnapshot[]>([]);
+
+  // ── Uso IA ────────────────────────────────────────────────────────────────
+  readonly aiUsage              = signal<AIUsageSummary | null>(null);
+  readonly aiUsageByUser        = signal<AIUsagePerUser[]>([]);
+  readonly loadingAI            = signal(false);
+
+  // ── Tokens del agente ─────────────────────────────────────────────────────
+  readonly agentTokens          = signal<AgentTokenInfo[]>([]);
+  readonly loadingTokens        = signal(false);
+  readonly creatingToken        = signal(false);
+
+  readonly PACKAGE_TYPE_LABELS = PACKAGE_TYPE_LABELS;
+  readonly packageColumns      = ['name', 'type', 'quantity', 'added_at', 'actions'];
+  readonly aiUserColumns       = ['email', 'requests', 'tokens'];
+  readonly snapshotColumns     = ['month', 'plan', 'status', 'users'];
+  readonly tokenColumns        = ['label', 'token', 'last_used', 'actions'];
 
   readonly isEdit    = computed(() => !!this.tenantId());
   readonly pageTitle = computed(() => this.isEdit() ? 'Editar empresa' : 'Nueva empresa');
@@ -414,10 +443,174 @@ export class TenantFormComponent implements OnInit {
     });
   }
 
+  // Tab index: 0=Empresa, 1=Licencia, 2=Paquetes, 3=Uso IA, 4=Tokens, 5=Historial
+  onTabChange(index: number): void {
+    if (index === 2) this.loadPackagesTab();
+    if (index === 3) this.loadAITab();
+    if (index === 4) this.loadAgentTokensTab();
+  }
+
   licenseStatusColor(): 'primary' | 'accent' | 'warn' {
     const s = this.license()?.status;
     if (s === 'active') return 'primary';
     if (s === 'trial') return 'accent';
     return 'warn';
+  }
+
+  // ── Paquetes ──────────────────────────────────────────────────────────────
+
+  loadPackagesTab(): void {
+    const id = this.tenantId();
+    if (!id) return;
+    this.loadingPackages.set(true);
+    this.tenantService.getLicensePackages(id).subscribe({
+      next: items => {
+        this.licensePackages.set(items);
+        this.loadingPackages.set(false);
+      },
+      error: () => { this.toast.error('Error al cargar paquetes'); this.loadingPackages.set(false); },
+    });
+    this.packageService.listPackages().subscribe({
+      next: pkgs => this.allPackages.set(pkgs.filter(p => p.is_active)),
+      error: ()   => {},
+    });
+    this.tenantService.getLicenseSnapshots(id).subscribe({
+      next: snaps => this.snapshots.set(snaps),
+      error: ()    => {},
+    });
+  }
+
+  availablePackagesToAdd(): LicensePackage[] {
+    const assigned = new Set(this.licensePackages().map(i => i.package.id));
+    return this.allPackages().filter(p => !assigned.has(p.id));
+  }
+
+  agregarPaquete(): void {
+    const pkgId = this.selectedPackageId();
+    const id    = this.tenantId();
+    if (!pkgId || !id) return;
+    this.addingPackage.set(true);
+    this.tenantService.addLicensePackage(id, pkgId).subscribe({
+      next: () => {
+        this.toast.success('Paquete agregado a la licencia');
+        this.selectedPackageId.set('');
+        this.addingPackage.set(false);
+        this.loadPackagesTab();
+        this.loadLicense(id);
+      },
+      error: () => { this.toast.error('Error al agregar paquete'); this.addingPackage.set(false); },
+    });
+  }
+
+  quitarPaquete(item: LicensePackageItem): void {
+    const ref = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        title: 'Quitar paquete',
+        message: `¿Quitar el paquete "${item.package.name}" de esta licencia? Esto ajustará los límites de la empresa.`,
+        confirmText: 'Quitar',
+        confirmColor: 'warn',
+      },
+    });
+    ref.afterClosed().subscribe(ok => {
+      if (!ok) return;
+      const id = this.tenantId()!;
+      this.tenantService.removeLicensePackage(id, item.id).subscribe({
+        next: () => {
+          this.toast.success('Paquete removido');
+          this.loadPackagesTab();
+          this.loadLicense(id);
+        },
+        error: () => this.toast.error('Error al quitar paquete'),
+      });
+    });
+  }
+
+  packageTypeLabel(type: string): string {
+    return PACKAGE_TYPE_LABELS[type as keyof typeof PACKAGE_TYPE_LABELS] ?? type;
+  }
+
+  snapshotMonth(snap: MonthlyLicenseSnapshot): string {
+    const d = new Date(snap.month + 'T00:00:00');
+    return d.toLocaleDateString('es-CO', { month: 'long', year: 'numeric' });
+  }
+
+  // ── Uso IA ────────────────────────────────────────────────────────────────
+
+  loadAITab(): void {
+    const id = this.tenantId();
+    if (!id) return;
+    this.loadingAI.set(true);
+    this.tenantService.getAIUsage(id).subscribe({
+      next: data => { this.aiUsage.set(data); this.loadingAI.set(false); },
+      error: ()   => { this.loadingAI.set(false); },
+    });
+    this.tenantService.getAIUsageByUser(id).subscribe({
+      next: data => this.aiUsageByUser.set(data),
+      error: ()   => {},
+    });
+  }
+
+  pctColor(pct: number): string {
+    if (pct >= 90) return 'warn';
+    if (pct >= 60) return 'accent';
+    return 'primary';
+  }
+
+  // ── Tokens del agente ─────────────────────────────────────────────────────
+
+  loadAgentTokensTab(): void {
+    const id = this.tenantId();
+    if (!id) return;
+    this.loadingTokens.set(true);
+    this.tenantService.getAgentTokens(id).subscribe({
+      next: data => { this.agentTokens.set(data); this.loadingTokens.set(false); },
+      error: ()   => { this.loadingTokens.set(false); },
+    });
+  }
+
+  crearAgentToken(): void {
+    const id = this.tenantId();
+    if (!id) return;
+    this.creatingToken.set(true);
+    this.tenantService.createAgentToken(id, '').subscribe({
+      next: (token) => {
+        this.agentTokens.update(list => [token, ...list]);
+        this.creatingToken.set(false);
+        this.toast.success('Token creado correctamente.');
+      },
+      error: () => {
+        this.creatingToken.set(false);
+        this.toast.error('No se pudo crear el token.');
+      },
+    });
+  }
+
+  revocarToken(token: AgentTokenInfo): void {
+    const id = this.tenantId();
+    if (!id) return;
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        title: 'Revocar token',
+        message: `¿Estás seguro de revocar el token "${token.label || token.token.slice(0, 12) + '...'}"? El agente dejará de funcionar con este token.`,
+        confirmText: 'Revocar',
+        confirmColor: 'warn',
+      },
+    });
+    dialogRef.afterClosed().subscribe(confirmed => {
+      if (!confirmed) return;
+      this.tenantService.revokeAgentToken(id, token.id).subscribe({
+        next: () => {
+          this.agentTokens.update(list => list.filter(t => t.id !== token.id));
+          this.toast.success('Token revocado.');
+        },
+        error: () => this.toast.error('No se pudo revocar el token.'),
+      });
+    });
+  }
+
+  copyToken(value: string): void {
+    navigator.clipboard.writeText(value).then(() => {
+      this.toast.success('Token copiado al portapapeles.');
+    });
   }
 }

@@ -10,214 +10,296 @@
   }
 
   @if (company(); as c) {
-    <div class="cs-layout">
+    <mat-tab-group animationDuration="150ms">
 
-      <!-- ── Columna principal ──────────────────────────────── -->
-      <div class="cs-main">
+      <!-- ── Tab: General ──────────────────────────────────────── -->
+      <mat-tab label="General">
+        <div class="cs-layout cs-tab-content">
 
-        <!-- Logo de empresa -->
-        <div class="sc-card">
-          <div class="sc-card__header">
-            <mat-icon>image</mat-icon>
-            <span class="sc-card__title">Logo de empresa</span>
-          </div>
-          <div class="sc-card__body">
-            <div class="cs-logo-section">
-              <div class="cs-logo-preview">
-                @if (currentLogoUrl) {
-                  <img [src]="currentLogoUrl" alt="Logo de empresa" class="cs-logo-preview__img" />
-                } @else {
-                  <div class="cs-logo-preview__placeholder">
-                    <mat-icon>business</mat-icon>
-                    <span>Sin logo</span>
+          <!-- Columna principal -->
+          <div class="cs-main">
+
+            <!-- Logo de empresa -->
+            <div class="sc-card">
+              <div class="sc-card__header">
+                <mat-icon>image</mat-icon>
+                <span class="sc-card__title">Logo de empresa</span>
+              </div>
+              <div class="sc-card__body">
+                <div class="cs-logo-section">
+                  <div class="cs-logo-preview">
+                    @if (currentLogoUrl) {
+                      <img [src]="currentLogoUrl" alt="Logo de empresa" class="cs-logo-preview__img" />
+                    } @else {
+                      <div class="cs-logo-preview__placeholder">
+                        <mat-icon>business</mat-icon>
+                        <span>Sin logo</span>
+                      </div>
+                    }
                   </div>
-                }
-              </div>
-              <div class="cs-logo-actions">
-                <p class="cs-logo-actions__hint">PNG, JPG, WebP o GIF — máx. 2 MB. Aparecerá en los reportes PDF del proyecto.</p>
-                <div class="cs-logo-actions__buttons">
-                  <button mat-stroked-button color="primary"
-                          [disabled]="uploading()"
-                          (click)="triggerFilePicker()">
-                    <mat-icon>upload</mat-icon>
-                    {{ currentLogoUrl ? 'Cambiar logo' : 'Subir logo' }}
-                  </button>
-                  @if (currentLogoUrl) {
-                    <button mat-icon-button color="warn"
-                            [disabled]="uploading()"
-                            matTooltip="Eliminar logo"
-                            (click)="deleteLogo()">
-                      <mat-icon>delete</mat-icon>
-                    </button>
-                  }
-                </div>
-                @if (uploading()) {
-                  <mat-progress-bar mode="indeterminate" class="cs-logo-actions__progress" />
-                }
-              </div>
-            </div>
-            <!-- Input oculto -->
-            <input #fileInput type="file" accept="image/png,image/jpeg,image/webp,image/gif"
-                   style="display:none" (change)="onFileSelected($event)" />
-          </div>
-        </div>
-
-        <!-- Información general -->
-        <div class="sc-card">
-          <div class="sc-card__header">
-            <mat-icon>business</mat-icon>
-            <span class="sc-card__title">Información general</span>
-          </div>
-          <div class="sc-card__body">
-            <div class="cs-fields-grid">
-
-              <div class="cs-field">
-                <span class="cs-field__label">Nombre</span>
-                <span class="cs-field__value cs-field__value--lg">{{ c.name }}</span>
-              </div>
-
-              <div class="cs-field">
-                <span class="cs-field__label">NIT</span>
-                <span class="cs-field__value cs-field__value--mono">{{ c.nit }}</span>
-              </div>
-
-              <div class="cs-field">
-                <span class="cs-field__label">Plan</span>
-                <span class="cs-plan cs-plan--{{ c.plan }}">{{ planLabels[c.plan] ?? c.plan }}</span>
-              </div>
-
-              <div class="cs-field">
-                <span class="cs-field__label">Estado</span>
-                @if (c.is_active) {
-                  <span class="cs-status cs-status--active">
-                    <span class="cs-status__dot"></span>Activa
-                  </span>
-                } @else {
-                  <span class="cs-status cs-status--inactive">
-                    <span class="cs-status__dot"></span>Inactiva
-                  </span>
-                }
-              </div>
-
-              <div class="cs-field">
-                <span class="cs-field__label">Creada</span>
-                <span class="cs-field__value">{{ c.created_at | date:'mediumDate':'':'es-CO' }}</span>
-              </div>
-
-              <div class="cs-field">
-                <span class="cs-field__label">Integración Saiopen</span>
-                @if (c.saiopen_enabled) {
-                  <span class="cs-status cs-status--active">
-                    <span class="cs-status__dot"></span>Activa
-                  </span>
-                } @else {
-                  <span class="cs-status cs-status--muted">
-                    <span class="cs-status__dot"></span>No configurada
-                  </span>
-                }
-              </div>
-
-            </div>
-          </div>
-        </div>
-
-        <!-- Módulos contratados -->
-        <div class="sc-card">
-          <div class="sc-card__header">
-            <mat-icon>apps</mat-icon>
-            <span class="sc-card__title">Módulos contratados</span>
-          </div>
-          <div class="sc-card__body">
-            <div class="cs-modules">
-              @if (license(); as lic) {
-                @for (mod of lic.modules_included; track mod) {
-                  <div class="cs-module cs-module--active">
-                    <div class="cs-module__icon-wrap">
-                      <mat-icon>
-                        {{ mod === 'ventas' ? 'shopping_cart' :
-                           mod === 'cobros' ? 'account_balance_wallet' :
-                           mod === 'dashboard' ? 'home' : 'work' }}
-                      </mat-icon>
+                  <div class="cs-logo-actions">
+                    <p class="cs-logo-actions__hint">PNG, JPG, WebP o GIF — máx. 2 MB. Aparecerá en los reportes PDF del proyecto.</p>
+                    <div class="cs-logo-actions__buttons">
+                      <button mat-stroked-button color="primary"
+                              [disabled]="uploading()"
+                              (click)="triggerFilePicker()">
+                        <mat-icon>upload</mat-icon>
+                        {{ currentLogoUrl ? 'Cambiar logo' : 'Subir logo' }}
+                      </button>
+                      @if (currentLogoUrl) {
+                        <button mat-icon-button color="warn"
+                                [disabled]="uploading()"
+                                matTooltip="Eliminar logo"
+                                (click)="deleteLogo()">
+                          <mat-icon>delete</mat-icon>
+                        </button>
+                      }
                     </div>
-                    <span class="cs-module__name">{{ moduleLabels[mod] ?? mod }}</span>
-                    <mat-icon class="cs-module__status-icon">check_circle</mat-icon>
+                    @if (uploading()) {
+                      <mat-progress-bar mode="indeterminate" class="cs-logo-actions__progress" />
+                    }
                   </div>
-                }
-                @if (lic.modules_included.length === 0) {
-                  <p class="cs-empty">Sin módulos en la licencia.</p>
-                }
-              } @else if (!loading()) {
-                <p class="cs-empty">Sin módulos configurados.</p>
-              }
+                </div>
+                <!-- Input oculto -->
+                <input #fileInput type="file" accept="image/png,image/jpeg,image/webp,image/gif"
+                       style="display:none" (change)="onFileSelected($event)" />
+              </div>
             </div>
-          </div>
-        </div>
 
-      </div>
+            <!-- Información general -->
+            <div class="sc-card">
+              <div class="sc-card__header">
+                <mat-icon>business</mat-icon>
+                <span class="sc-card__title">Información general</span>
+              </div>
+              <div class="sc-card__body">
+                <div class="cs-fields-grid">
 
-      <!-- ── Columna lateral ────────────────────────────────── -->
-      <div class="cs-side">
+                  <div class="cs-field">
+                    <span class="cs-field__label">Nombre</span>
+                    <span class="cs-field__value cs-field__value--lg">{{ c.name }}</span>
+                  </div>
 
-        <!-- Licencia -->
-        @if (license(); as lic) {
-          <div class="sc-card">
-            <div class="sc-card__header">
-              <mat-icon>verified</mat-icon>
-              <span class="sc-card__title">Licencia</span>
+                  <div class="cs-field">
+                    <span class="cs-field__label">NIT</span>
+                    <span class="cs-field__value cs-field__value--mono">{{ c.nit }}</span>
+                  </div>
+
+                  <div class="cs-field">
+                    <span class="cs-field__label">Plan</span>
+                    <span class="cs-plan cs-plan--{{ c.plan }}">{{ planLabels[c.plan] ?? c.plan }}</span>
+                  </div>
+
+                  <div class="cs-field">
+                    <span class="cs-field__label">Estado</span>
+                    @if (c.is_active) {
+                      <span class="cs-status cs-status--active">
+                        <span class="cs-status__dot"></span>Activa
+                      </span>
+                    } @else {
+                      <span class="cs-status cs-status--inactive">
+                        <span class="cs-status__dot"></span>Inactiva
+                      </span>
+                    }
+                  </div>
+
+                  <div class="cs-field">
+                    <span class="cs-field__label">Creada</span>
+                    <span class="cs-field__value">{{ c.created_at | date:'mediumDate':'':'es-CO' }}</span>
+                  </div>
+
+                  <div class="cs-field">
+                    <span class="cs-field__label">Integración Saiopen</span>
+                    @if (c.saiopen_enabled) {
+                      <span class="cs-status cs-status--active">
+                        <span class="cs-status__dot"></span>Activa
+                      </span>
+                    } @else {
+                      <span class="cs-status cs-status--muted">
+                        <span class="cs-status__dot"></span>No configurada
+                      </span>
+                    }
+                  </div>
+
+                </div>
+              </div>
             </div>
-            <div class="sc-card__body">
 
-              <!-- Estado destacado -->
-              <div class="cs-license-status cs-license-status--{{ lic.status }}">
-                <mat-icon class="cs-license-status__icon">
-                  {{ lic.is_expired || lic.status === 'expired' || lic.status === 'suspended' ? 'lock' : lic.status === 'trial' ? 'hourglass_empty' : 'verified' }}
-                </mat-icon>
-                <div>
-                  <span class="cs-license-status__label">{{ licenseStatusLabels[lic.status] }}</span>
-                  @if (lic.is_expired) {
-                    <span class="cs-license-status__sub">Expirada</span>
-                  } @else if (lic.days_until_expiry <= 5) {
-                    <span class="cs-license-status__sub cs-license-status__sub--warn">Vence en {{ lic.days_until_expiry }} día(s)</span>
-                  } @else {
-                    <span class="cs-license-status__sub">{{ lic.days_until_expiry }} días restantes</span>
+            <!-- Módulos contratados -->
+            <div class="sc-card">
+              <div class="sc-card__header">
+                <mat-icon>apps</mat-icon>
+                <span class="sc-card__title">Módulos contratados</span>
+              </div>
+              <div class="sc-card__body">
+                <div class="cs-modules">
+                  @if (license(); as lic) {
+                    @for (mod of lic.modules_included; track mod) {
+                      <div class="cs-module cs-module--active">
+                        <div class="cs-module__icon-wrap">
+                          <mat-icon>
+                            {{ mod === 'ventas' ? 'shopping_cart' :
+                               mod === 'cobros' ? 'account_balance_wallet' :
+                               mod === 'dashboard' ? 'home' : 'work' }}
+                          </mat-icon>
+                        </div>
+                        <span class="cs-module__name">{{ moduleLabels[mod] ?? mod }}</span>
+                        <mat-icon class="cs-module__status-icon">check_circle</mat-icon>
+                      </div>
+                    }
+                    @if (lic.modules_included.length === 0) {
+                      <p class="cs-empty">Sin módulos en la licencia.</p>
+                    }
+                  } @else if (!loading()) {
+                    <p class="cs-empty">Sin módulos configurados.</p>
                   }
                 </div>
               </div>
+            </div>
 
-              <!-- Detalles -->
-              <div class="cs-license-fields">
-                <div class="cs-field">
-                  <span class="cs-field__label">Vigencia</span>
-                  <span class="cs-field__value">
-                    {{ lic.starts_at | date:'dd/MM/yyyy' }} — {{ lic.expires_at | date:'dd/MM/yyyy' }}
-                  </span>
+          </div>
+
+          <!-- Columna lateral -->
+          <div class="cs-side">
+
+            @if (license(); as lic) {
+              <div class="sc-card">
+                <div class="sc-card__header">
+                  <mat-icon>verified</mat-icon>
+                  <span class="sc-card__title">Licencia</span>
                 </div>
-                <div class="cs-field">
-                  <span class="cs-field__label">Usuarios máximos</span>
-                  <span class="cs-field__value">{{ lic.max_users }}</span>
+                <div class="sc-card__body">
+
+                  <div class="cs-license-status cs-license-status--{{ lic.status }}">
+                    <mat-icon class="cs-license-status__icon">
+                      {{ lic.is_expired || lic.status === 'expired' || lic.status === 'suspended' ? 'lock' : lic.status === 'trial' ? 'hourglass_empty' : 'verified' }}
+                    </mat-icon>
+                    <div>
+                      <span class="cs-license-status__label">{{ licenseStatusLabels[lic.status] }}</span>
+                      @if (lic.is_expired) {
+                        <span class="cs-license-status__sub">Expirada</span>
+                      } @else if (lic.days_until_expiry <= 5) {
+                        <span class="cs-license-status__sub cs-license-status__sub--warn">Vence en {{ lic.days_until_expiry }} día(s)</span>
+                      } @else {
+                        <span class="cs-license-status__sub">{{ lic.days_until_expiry }} días restantes</span>
+                      }
+                    </div>
+                  </div>
+
+                  <div class="cs-license-fields">
+                    <div class="cs-field">
+                      <span class="cs-field__label">Vigencia</span>
+                      <span class="cs-field__value">
+                        {{ lic.starts_at | date:'dd/MM/yyyy' }} — {{ lic.expires_at | date:'dd/MM/yyyy' }}
+                      </span>
+                    </div>
+                    <div class="cs-field">
+                      <span class="cs-field__label">Usuarios máximos</span>
+                      <span class="cs-field__value">{{ lic.max_users }}</span>
+                    </div>
+                  </div>
+
                 </div>
               </div>
+            } @else if (!loading()) {
+              <div class="sc-card">
+                <div class="sc-card__header">
+                  <mat-icon>verified</mat-icon>
+                  <span class="sc-card__title">Licencia</span>
+                </div>
+                <div class="sc-card__body">
+                  <div class="cs-no-license">
+                    <mat-icon>lock_open</mat-icon>
+                    <p>Sin licencia configurada. Contacta a ValMen Tech.</p>
+                  </div>
+                </div>
+              </div>
+            }
 
-            </div>
           </div>
-        } @else if (!loading()) {
-          <div class="sc-card">
+
+        </div>
+      </mat-tab>
+
+      <!-- ── Tab: Integración ──────────────────────────────────── -->
+      <mat-tab>
+        <ng-template mat-tab-label>
+          <mat-icon class="cs-tab-icon">link</mat-icon>
+          Integración
+        </ng-template>
+        <div class="cs-tab-content">
+
+          <div class="sc-card cs-integration-card">
             <div class="sc-card__header">
-              <mat-icon>verified</mat-icon>
-              <span class="sc-card__title">Licencia</span>
+              <mat-icon>integration_instructions</mat-icon>
+              <span class="sc-card__title">Credenciales de integración del Agente Saicloud</span>
             </div>
             <div class="sc-card__body">
-              <div class="cs-no-license">
-                <mat-icon>lock_open</mat-icon>
-                <p>Sin licencia configurada. Contacta a ValMen Tech.</p>
+              <p class="cs-integration-hint">
+                Estas credenciales son necesarias para configurar el Agente Saicloud en Windows.
+                Proporciónaselas a ValMen Tech — ellos preconfiguran el paquete de instalación.
+              </p>
+
+              <!-- Company ID -->
+              <div class="cs-credential">
+                <div class="cs-credential__info">
+                  <span class="cs-credential__label">Company ID</span>
+                  <span class="cs-credential__desc">Identificador único de tu empresa en la plataforma.</span>
+                  <code class="cs-credential__value">{{ c.id }}</code>
+                </div>
+                <button mat-icon-button
+                        matTooltip="Copiar Company ID"
+                        (click)="copyToClipboard(c.id, 'Company ID')">
+                  <mat-icon>content_copy</mat-icon>
+                </button>
               </div>
+
+              <!-- Agent Token(s) -->
+              @if (loadingTokens()) {
+                <mat-progress-bar mode="indeterminate" class="cs-integration-loading" />
+              }
+
+              @for (token of agentTokens(); track token.id) {
+                <div class="cs-credential">
+                  <div class="cs-credential__info">
+                    <span class="cs-credential__label">
+                      Token del Agente
+                      @if (token.label) { <span class="cs-credential__badge">{{ token.label }}</span> }
+                    </span>
+                    <span class="cs-credential__desc">
+                      Clave secreta que autoriza al agente a enviar datos. No compartir públicamente.
+                    </span>
+                    <code class="cs-credential__value cs-credential__value--secret">{{ token.token }}</code>
+                    @if (token.last_used) {
+                      <span class="cs-credential__meta">
+                        Último uso: {{ token.last_used | date:'dd/MM/yyyy HH:mm' }}
+                      </span>
+                    } @else {
+                      <span class="cs-credential__meta cs-credential__meta--muted">Nunca usado</span>
+                    }
+                  </div>
+                  <button mat-icon-button
+                          matTooltip="Copiar token"
+                          (click)="copyToClipboard(token.token, 'Token del agente')">
+                    <mat-icon>content_copy</mat-icon>
+                  </button>
+                </div>
+              }
+
+              @if (!loadingTokens() && agentTokens().length === 0) {
+                <div class="cs-no-token">
+                  <mat-icon>warning_amber</mat-icon>
+                  <p>No hay tokens activos. Contacta a ValMen Tech para obtener uno.</p>
+                </div>
+              }
+
             </div>
           </div>
-        }
 
-      </div>
+        </div>
+      </mat-tab>
 
-    </div>
+    </mat-tab-group>
   }
 
 </div>

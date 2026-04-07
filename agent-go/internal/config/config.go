@@ -11,13 +11,27 @@ import (
 	"time"
 )
 
+// SQSConfig holds the AWS SQS configuration for the agent transport layer.
+// When Transport is "sqs", the agent sends data to SQS instead of posting
+// directly to the Django API. The Django backend consumes from SQS.
+type SQSConfig struct {
+	AccessKeyID     string `json:"access_key_id"`
+	SecretAccessKey string `json:"secret_access_key"`
+	Region          string `json:"region"`
+	QueueURL        string `json:"queue_url"`
+}
+
 // AgentConfig is the root configuration for the Saicloud Agent.
 type AgentConfig struct {
-	AgentVersion    string       `json:"agent_version"`
-	ConfiguratorPort int         `json:"configurator_port"`
-	LogLevel        string       `json:"log_level"`
-	LogFile         string       `json:"log_file"`
-	Connections     []Connection `json:"connections"`
+	AgentVersion     string       `json:"agent_version"`
+	ConfiguratorPort int          `json:"configurator_port"`
+	LogLevel         string       `json:"log_level"`
+	LogFile          string       `json:"log_file"`
+	// Transport selects the delivery mechanism: "http" (default) or "sqs".
+	// Use "sqs" when the agent runs on-premise and needs reliable async delivery.
+	Transport        string       `json:"transport"`
+	SQS              SQSConfig    `json:"sqs"`
+	Connections      []Connection `json:"connections"`
 
 	mu       sync.RWMutex `json:"-"`
 	filePath string       `json:"-"`
@@ -62,6 +76,7 @@ type SyncConfig struct {
 	ReferenceIntervalHours int        `json:"reference_interval_hours"`
 	BatchSize              int        `json:"batch_size"`
 	LastConteoGL           int64      `json:"last_conteo_gl"`
+	LastVersionCust        int64      `json:"last_version_cust"`
 	LastSyncAcct           *time.Time `json:"last_sync_acct"`
 	LastSyncCust           *time.Time `json:"last_sync_cust"`
 	LastSyncLista          *time.Time `json:"last_sync_lista"`
@@ -86,10 +101,15 @@ func configFilePath() (string, error) {
 // Default returns a default AgentConfig with one sample connection.
 func Default() *AgentConfig {
 	return &AgentConfig{
-		AgentVersion:    "1.0.0",
+		AgentVersion:     "1.0.0",
 		ConfiguratorPort: 8765,
-		LogLevel:        "info",
-		LogFile:         "C:/SaicloudAgent/logs/agent.log",
+		LogLevel:         "info",
+		LogFile:          "C:/SaicloudAgent/logs/agent.log",
+		Transport:        "http",
+		SQS: SQSConfig{
+			Region:   "us-east-1",
+			QueueURL: "https://sqs.us-east-1.amazonaws.com/483772923781/saicloud-to-cloud-prod",
+		},
 		Connections: []Connection{
 			{
 				ID:      "conn_001",
@@ -258,6 +278,20 @@ func (cfg *AgentConfig) RemoveConnection(id string) error {
 		}
 	}
 	return fmt.Errorf("connection '%s' not found", id)
+}
+
+// UpdateCustVersion updates the last_version_cust watermark for a connection and persists the config.
+func (cfg *AgentConfig) UpdateCustVersion(connID string, lastVersion int64) error {
+	cfg.mu.Lock()
+	for i := range cfg.Connections {
+		if cfg.Connections[i].ID == connID {
+			cfg.Connections[i].Sync.LastVersionCust = lastVersion
+			cfg.mu.Unlock()
+			return Save(cfg)
+		}
+	}
+	cfg.mu.Unlock()
+	return fmt.Errorf("connection '%s' not found", connID)
 }
 
 // UpdateWatermark updates the last_conteo_gl watermark for a connection and persists the config.

@@ -314,3 +314,138 @@
   gap: 0.5rem;
   margin-bottom: 0.5rem;
 }
+
+// ── Paquetes ──────────────────────────────────────────────────────────────
+
+.tf-pkg-add-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+
+  button { white-space: nowrap; }
+}
+
+.tf-pkg-select {
+  flex: 1;
+  min-width: 220px;
+}
+
+.tf-pkg-table,
+.tf-snap-table,
+.tf-ai-table {
+  width: 100%;
+  min-width: 400px;
+}
+
+.tf-pkg-name {
+  font-weight: 500;
+  color: var(--sc-text-primary);
+}
+
+.tf-pkg-code {
+  font-size: 0.75rem;
+  color: var(--sc-text-secondary);
+  font-family: monospace;
+}
+
+.tf-subsection-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin: 16px 0 8px;
+  color: var(--sc-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.tf-snap-month {
+  text-transform: capitalize;
+}
+
+.tf-num {
+  text-align: right !important;
+}
+
+// ── Uso IA ────────────────────────────────────────────────────────────────
+
+.tf-ai-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-bottom: 8px;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.tf-ai-card {
+  background: var(--sc-surface);
+  border: 1px solid var(--sc-border);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.tf-ai-label {
+  font-size: 0.78rem;
+  color: var(--sc-text-secondary);
+  margin: 0 0 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.tf-ai-value {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--sc-text-primary);
+  margin: 0 0 8px;
+}
+
+.tf-ai-pct {
+  font-size: 0.75rem;
+  color: var(--sc-text-secondary);
+  margin: 4px 0 0;
+}
+
+.tf-ai-email {
+  font-size: 0.78rem;
+  color: var(--sc-text-secondary);
+}
+
+// ── Table responsive ──────────────────────────────────────────────────────
+
+.table-responsive {
+  display: block;
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin-bottom: 16px;
+}
+
+// ── Tokens del agente ──────────────────────────────────────────
+.tf-tokens-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.tf-tokens-hint {
+  font-size: 0.875rem;
+  color: var(--sc-text-muted);
+  margin: 0;
+  max-width: 520px;
+  line-height: 1.5;
+}
+
+.tf-token-value {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.75rem;
+  letter-spacing: 0.02em;
+  color: var(--sc-primary, #1976d2);
+  word-break: break-all;
+  margin-right: 4px;
+}

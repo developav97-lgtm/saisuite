@@ -9,6 +9,7 @@ import (
 	"github.com/valmentech/saicloud-agent/internal/api"
 	"github.com/valmentech/saicloud-agent/internal/config"
 	"github.com/valmentech/saicloud-agent/internal/firebird"
+	sqspkg "github.com/valmentech/saicloud-agent/internal/sqs"
 )
 
 // Handlers implements the REST API handlers for the configurator.
@@ -269,14 +270,26 @@ func (h *Handlers) TestConnection(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Test Saicloud API
-	apiClient := api.NewClient(conn.Saicloud.APIURL, conn.Saicloud.AgentToken, h.logger)
-	if err := apiClient.HealthCheck(); err != nil {
-		result.SaicloudOK = false
-		result.SaicloudMsg = fmt.Sprintf("API check failed: %v", err)
+	// Test Saicloud connection (SQS or HTTP depending on transport)
+	if h.cfg.Transport == "sqs" {
+		sqsCfg := h.cfg.SQS
+		pub := sqspkg.New(sqsCfg.AccessKeyID, sqsCfg.SecretAccessKey, sqsCfg.Region, sqsCfg.QueueURL, h.logger)
+		if err := pub.Ping(r.Context()); err != nil {
+			result.SaicloudOK = false
+			result.SaicloudMsg = fmt.Sprintf("SQS check failed: %v", err)
+		} else {
+			result.SaicloudOK = true
+			result.SaicloudMsg = fmt.Sprintf("SQS queue reachable (%s)", sqsCfg.QueueURL)
+		}
 	} else {
-		result.SaicloudOK = true
-		result.SaicloudMsg = "API connection successful"
+		apiClient := api.NewClient(conn.Saicloud.APIURL, conn.Saicloud.AgentToken, h.logger)
+		if err := apiClient.HealthCheck(); err != nil {
+			result.SaicloudOK = false
+			result.SaicloudMsg = fmt.Sprintf("API check failed: %v", err)
+		} else {
+			result.SaicloudOK = true
+			result.SaicloudMsg = "API connection successful"
+		}
 	}
 
 	writeJSON(w, http.StatusOK, jsonResponse{

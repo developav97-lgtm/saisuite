@@ -73,17 +73,28 @@ type GLBatchData struct {
 }
 
 // ReferencePayload is the top-level payload for reference table syncs.
+// Data can be ReferenceData (standard tables) or CustBatchData (CUST atomic sync).
 type ReferencePayload struct {
-	Type      string        `json:"type"`
-	CompanyID string        `json:"company_id"`
-	ConnID    string        `json:"conn_id"`
-	Timestamp string        `json:"timestamp"`
-	Data      ReferenceData `json:"data"`
+	Type      string      `json:"type"`
+	CompanyID string      `json:"company_id"`
+	ConnID    string      `json:"conn_id"`
+	Timestamp string      `json:"timestamp"`
+	Data      interface{} `json:"data"`
 }
 
 // ReferenceData contains the reference records and count.
 type ReferenceData struct {
 	Records    interface{} `json:"records"`
+	TotalCount int         `json:"total_count"`
+}
+
+// CustBatchData is the payload data for cust_batch / cust_full messages.
+// It carries CUST records together with their related SHIPTO and TRIBUTARIA
+// records so Django can upsert all three tables atomically.
+type CustBatchData struct {
+	Records    interface{} `json:"records"`
+	ShipTo     interface{} `json:"shipto"`
+	Tributaria interface{} `json:"tributaria"`
 	TotalCount int         `json:"total_count"`
 }
 

@@ -11,6 +11,7 @@ import {
   ShareRequest,
   DashboardShare,
 } from '../models/dashboard.model';
+import { ReportFilter } from '../models/report-filter.model';
 
 @Injectable({ providedIn: 'root' })
 export class DashboardService {
@@ -81,5 +82,13 @@ export class DashboardService {
 
   revokeShare(dashboardId: string, userId: string): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/${dashboardId}/share/${userId}/`);
+  }
+
+  // ── Filters ─────────────────────────────────────────────────
+
+  saveDefaultFilters(id: string, filtros: ReportFilter): Observable<DashboardDetail> {
+    return this.http.put<DashboardDetail>(`${this.baseUrl}/${id}/filters/`, {
+      filtros_default: filtros,
+    });
   }
 }

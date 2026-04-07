@@ -28,7 +28,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"model\": \"gpt-4o-mini\",\n  \"max_tokens\": 1024,\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"Eres el CFO Virtual de {{ $json.body.company_name }}, un asistente financiero experto en contabilidad colombiana (PUC) y análisis de PyMEs. Responde en español, de forma concisa y práctica. Usa los datos financieros del contexto para dar respuestas basadas en datos reales. Si no hay datos suficientes, indícalo claramente.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Datos financieros del período {{ $json.body.context.periodo }}:\\n{{ Object.entries($json.body.context).filter(([k]) => k !== 'periodo').map(([k, v]) => `- ${k}: $${Number(v).toLocaleString('es-CO', {minimumFractionDigits: 0})}`).join('\\n') }}\\n\\nPregunta: {{ $json.body.question }}\"\n    }\n  ]\n}",
+        "jsonBody": "={\n  \"model\": \"gpt-4o-mini\",\n  \"max_tokens\": 1024,\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"Eres el CFO Virtual de {{ $json.body.company_name }}, un asistente financiero experto en contabilidad colombiana (PUC) y análisis de PyMEs. Responde en español, de forma concisa y práctica. Usa los datos financieros del contexto para dar respuestas basadas en datos reales. Si no hay datos suficientes, indícalo claramente.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"{{ $json.body.context_str }}\\n\\nPregunta: {{ $json.body.question }}\"\n    }\n  ]\n}",
         "options": {}
       },
       "id": "openai-api",
@@ -40,7 +40,7 @@
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ JSON.stringify({ response: $json.choices[0].message.content }) }}",
+        "responseBody": "={{ JSON.stringify({ response: $json.choices[0].message.content, usage: { prompt_tokens: $json.usage.prompt_tokens, completion_tokens: $json.usage.completion_tokens, total_tokens: $json.usage.total_tokens, model: $json.model } }) }}",
         "options": {}
       },
       "id": "respond",

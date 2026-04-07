@@ -35,6 +35,20 @@ services:
       db:
         condition: service_healthy
 
+  # ── SQS Worker (Agente Saiopen → Django) ────────────────────────
+  sqs-worker:
+    build: ./backend
+    container_name: saisuite-sqs-worker
+    restart: unless-stopped
+    command: python manage.py sqs_worker
+    volumes:
+      - ./backend:/app
+    env_file:
+      - ./backend/.env
+    depends_on:
+      db:
+        condition: service_healthy
+
   # ── Angular (dev server) ─────────────────────────────────────────
   frontend:
     build:

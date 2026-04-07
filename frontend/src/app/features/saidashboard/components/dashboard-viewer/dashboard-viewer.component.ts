@@ -35,6 +35,7 @@ import { FilterPanelComponent } from '../filter-panel/filter-panel.component';
 import { TrialBannerComponent } from '../trial-banner/trial-banner.component';
 import { ShareDialogComponent, ShareDialogData } from '../share-dialog/share-dialog.component';
 import { ToastService } from '../../../../core/services/toast.service';
+import { ChatStateService } from '../../../../core/services/chat-state.service';
 
 interface CardWithData {
   card: DashboardCard;
@@ -68,6 +69,7 @@ export class DashboardViewerComponent implements OnInit {
   private readonly trialService = inject(TrialService);
   private readonly dialog = inject(MatDialog);
   private readonly toast = inject(ToastService);
+  private readonly chatState = inject(ChatStateService);
   private readonly navHistory = inject(NavigationHistoryService);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -91,11 +93,15 @@ export class DashboardViewerComponent implements OnInit {
   readonly isFavorite = computed(() => this.dashboard()?.es_favorito ?? false);
 
   readonly kpiCards = computed(() =>
-    this.cardsWithData().filter(c => c.card.chart_type === 'kpi'),
+    this.cardsWithData().filter(c =>
+      c.card.chart_type === 'kpi' && !c.card.filtros_config['agrupar_por_mes'],
+    ),
   );
 
   readonly chartCards = computed(() =>
-    this.cardsWithData().filter(c => c.card.chart_type !== 'kpi'),
+    this.cardsWithData().filter(c =>
+      c.card.chart_type !== 'kpi' || !!c.card.filtros_config['agrupar_por_mes'],
+    ),
   );
 
   ngOnInit(): void {
@@ -116,6 +122,12 @@ export class DashboardViewerComponent implements OnInit {
         next: detail => {
           this.dashboard.set(detail);
           this.loading.set(false);
+
+          // Inicializar filtros desde filtros_default del dashboard
+          if (detail.filtros_default) {
+            this.currentFilter.set(detail.filtros_default);
+          }
+
           this.loadAllCardData(detail.cards);
         },
         error: () => {
@@ -150,6 +162,7 @@ export class DashboardViewerComponent implements OnInit {
       this.reportService.getCardData({
         card_type_code: card.card_type_code,
         filtros: filter,
+        card_config: card.filtros_config,
       }),
     );
 
@@ -182,8 +195,27 @@ export class DashboardViewerComponent implements OnInit {
     }
   }
 
+  onSaveAsDefault(filter: ReportFilter): void {
+    const d = this.dashboard();
+    if (!d) return;
+
+    this.dashboardService.saveDefaultFilters(d.id, filter)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: updated => {
+          this.dashboard.set(updated);
+          this.toast.success('Filtros guardados como predeterminados.');
+        },
+        error: () => this.toast.error('Error al guardar filtros predeterminados.'),
+      });
+  }
+
   toggleFilters(): void {
     this.showFilters.update(v => !v);
+  }
+
+  openCfoVirtual(): void {
+    this.chatState.openBot('dashboard');
   }
 
   toggleFavorite(): void {

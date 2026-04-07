@@ -27,6 +27,7 @@ _EXEMPT_PREFIXES = (
     '/api/v1/auth/',
     '/api/v1/companies/licenses/',
     '/api/v1/admin/',
+    '/api/v1/contabilidad/sync/',  # Endpoints del agente Go — auth via AgentToken
 )
 
 

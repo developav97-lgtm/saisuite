@@ -210,6 +210,14 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             return
 
         try:
+            # Ensure consumer is in this conversation's group before sending.
+            # Needed when a bot conversation is created via REST and the WS consumer
+            # hasn't yet processed the new_conversation broadcast (race condition).
+            group_name = f'chat_{conversacion_id}'
+            if group_name not in self.conversation_groups:
+                await self.channel_layer.group_add(group_name, self.channel_name)
+                self.conversation_groups.append(group_name)
+
             # _create_message returns (mensaje, message_data) — serialization happens
             # inside database_sync_to_async to avoid re-entering sync from async context.
             mensaje, message_data = await self._create_message(
@@ -312,7 +320,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 
     @database_sync_to_async
     def _create_message(self, conversacion_id, user, contenido, imagen_url, responde_a_id):
-        from apps.chat.services import ChatService
+        from apps.chat.services import ChatService, BotResponseService
         from .serializers import MensajeSerializer
 
         mensaje = ChatService.enviar_mensaje(
@@ -326,6 +334,17 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         # from inside database_sync_to_async (which causes a deadlock).
         # Use _serialize_para_ws to convert UUID/datetime/Decimal to msgpack-safe types.
         message_data = ChatService._serialize_para_ws(MensajeSerializer(mensaje).data)
+
+        # If this is a bot conversation, trigger bot response in background
+        conversacion = mensaje.conversacion
+        if conversacion.bot_context:
+            import threading
+            threading.Thread(
+                target=BotResponseService.process_bot_message,
+                args=(conversacion, contenido, user),
+                daemon=True,
+            ).start()
+
         return mensaje, message_data
 
     @database_sync_to_async

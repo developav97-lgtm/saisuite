@@ -6,8 +6,9 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatTabsModule } from '@angular/material/tabs';
 import { AdminService } from '../services/admin.service';
-import { CompanyLicense, CompanySettings, LICENSE_STATUS_LABELS, MODULE_LABELS } from '../models/admin.models';
+import { AgentTokenInfo, CompanyLicense, CompanySettings, LICENSE_STATUS_LABELS, MODULE_LABELS } from '../models/admin.models';
 import { ToastService } from '../../../core/services/toast.service';
 
 const PLAN_LABELS: Record<string, string | undefined> = {
@@ -30,6 +31,7 @@ const MAX_SIZE_MB = 2;
     MatProgressBarModule,
     MatButtonModule,
     MatTooltipModule,
+    MatTabsModule,
   ],
 })
 export class CompanySettingsComponent implements OnInit {
@@ -43,6 +45,8 @@ export class CompanySettingsComponent implements OnInit {
   readonly loading      = signal(false);
   readonly uploading    = signal(false);
   readonly logoPreview  = signal<string | null>(null);
+  readonly agentTokens  = signal<AgentTokenInfo[]>([]);
+  readonly loadingTokens = signal(false);
 
   readonly planLabels          = PLAN_LABELS;
   readonly moduleLabels        = MODULE_LABELS;
@@ -57,6 +61,21 @@ export class CompanySettingsComponent implements OnInit {
     this.adminService.getMyLicense().subscribe({
       next: (lic) => this.license.set(lic),
       error: () => { /* silencioso si no tiene licencia configurada */ },
+    });
+    this.loadIntegrationTokens();
+  }
+
+  loadIntegrationTokens(): void {
+    this.loadingTokens.set(true);
+    this.adminService.getMyAgentTokens().subscribe({
+      next: (tokens) => { this.agentTokens.set(tokens); this.loadingTokens.set(false); },
+      error: ()       => { this.loadingTokens.set(false); },
+    });
+  }
+
+  copyToClipboard(value: string, label: string): void {
+    navigator.clipboard.writeText(value).then(() => {
+      this.toast.success(`${label} copiado al portapapeles.`);
     });
   }
 

@@ -43,6 +43,17 @@ class Dashboard(BaseModel):
         choices=Orientacion.choices,
         default=Orientacion.PORTRAIT,
     )
+    filtros_default = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text=(
+            'Filtros predeterminados del dashboard. '
+            'Se cargan automaticamente al abrir el dashboard en el viewer. '
+            'Estructura: {fecha_desde, fecha_hasta, periodo, tercero_ids, '
+            'proyecto_codigos, departamento_codigos, centro_costo_codigos, '
+            'agrupar_por_mes, anio}'
+        ),
+    )
 
     class Meta:
         verbose_name = 'Dashboard'

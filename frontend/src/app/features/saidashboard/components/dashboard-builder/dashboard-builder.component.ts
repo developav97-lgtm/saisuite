@@ -34,6 +34,8 @@ import {
   DashboardCreate,
   ChartType,
 } from '../../models/dashboard.model';
+import { ReportFilter } from '../../models/report-filter.model';
+import { FilterPanelComponent } from '../filter-panel/filter-panel.component';
 import { CategoryWithCards, CardCatalogItem } from '../../models/card-catalog.model';
 import {
   CardSelectorComponent,
@@ -41,6 +43,12 @@ import {
 } from '../card-selector/card-selector.component';
 import { ConfirmDialogComponent } from '../../../../shared/components/confirm-dialog/confirm-dialog.component';
 import { ToastService } from '../../../../core/services/toast.service';
+import {
+  CustomCardConfigComponent,
+  CustomCardConfigDialogData,
+  CustomCardConfigDialogResult,
+} from '../custom-card-config/custom-card-config.component';
+import { CustomRangoCuentasConfig } from '../../models/report-filter.model';
 
 interface BuilderCard {
   id: string | null; // null for new unsaved cards
@@ -54,6 +62,7 @@ interface BuilderCard {
   width: number;
   height: number;
   orden: number;
+  filtros_config?: Record<string, unknown>;
 }
 
 @Component({
@@ -76,6 +85,7 @@ interface BuilderCard {
     MatProgressSpinnerModule,
     MatExpansionModule,
     MatSlideToggleModule,
+    FilterPanelComponent,
   ],
   templateUrl: './dashboard-builder.component.html',
   styleUrl: './dashboard-builder.component.scss',
@@ -99,6 +109,9 @@ export class DashboardBuilderComponent implements OnInit {
   readonly builderCards = signal<BuilderCard[]>([]);
   readonly isMobile = signal(window.innerWidth < 768);
   readonly hasUnsavedChanges = signal(false);
+
+  /** Filtros predeterminados configurados en el builder */
+  readonly defaultFilters = signal<ReportFilter | null>(null);
 
   readonly form = new FormGroup({
     titulo: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.maxLength(255)] }),
@@ -136,6 +149,7 @@ export class DashboardBuilderComponent implements OnInit {
             descripcion: detail.descripcion,
             es_privado: detail.es_privado,
           });
+          this.defaultFilters.set(detail.filtros_default ?? null);
           this.builderCards.set(
             detail.cards.map(c => this.cardToBuilderCard(c)),
           );
@@ -170,6 +184,7 @@ export class DashboardBuilderComponent implements OnInit {
       width: c.width,
       height: c.height,
       orden: c.orden,
+      filtros_config: c.filtros_config ?? {},
     };
   }
 
@@ -200,11 +215,32 @@ export class DashboardBuilderComponent implements OnInit {
   }
 
   addCardFromCatalog(catalogCard: CardCatalogItem): void {
-    const result: CardSelectorResult = {
+    if (catalogCard.requiere_config) {
+      const configRef = this.dialog.open(CustomCardConfigComponent, {
+        width: '520px',
+        maxWidth: '95vw',
+        data: {
+          cardTypeCode: catalogCard.code,
+          cardNombre: catalogCard.nombre,
+          initialConfig: null,
+        } as CustomCardConfigDialogData,
+      });
+      configRef.afterClosed().subscribe((result: CustomCardConfigDialogResult | null) => {
+        if (result) {
+          this.addCard({
+            card: catalogCard,
+            chartType: catalogCard.chart_default,
+            filtrosConfig: result.config as unknown as Record<string, unknown>,
+          });
+        }
+      });
+      return;
+    }
+
+    this.addCard({
       card: catalogCard,
       chartType: catalogCard.chart_default,
-    };
-    this.addCard(result);
+    });
   }
 
   private addCard(result: CardSelectorResult): void {
@@ -221,6 +257,7 @@ export class DashboardBuilderComponent implements OnInit {
       width: 2,
       height: 1,
       orden: cards.length,
+      filtros_config: result.filtrosConfig ?? {},
     };
     this.builderCards.update(list => [...list, newCard]);
     this.hasUnsavedChanges.set(true);
@@ -240,9 +277,50 @@ export class DashboardBuilderComponent implements OnInit {
     });
 
     ref.afterClosed().subscribe(confirmed => {
-      if (confirmed) {
+      if (!confirmed) return;
+
+      // Si la tarjeta ya existe en el servidor, eliminarla via API
+      const dashboardId = this.dashboardId();
+      if (card.id && dashboardId) {
+        this.dashboardService.deleteCard(dashboardId, card.id)
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe({
+            next: () => {
+              this.builderCards.update(list => list.filter((_, i) => i !== index));
+              this.toast.success('Tarjeta eliminada.');
+            },
+            error: () => this.toast.error('Error al eliminar la tarjeta.'),
+          });
+      } else {
+        // Tarjeta nueva (sin guardar), solo eliminar del estado local
         this.builderCards.update(list => list.filter((_, i) => i !== index));
+      }
+    });
+  }
+
+  editCardConfig(index: number): void {
+    const card = this.builderCards()[index];
+    const ref = this.dialog.open(CustomCardConfigComponent, {
+      width: '520px',
+      maxWidth: '95vw',
+      data: {
+        cardTypeCode: card.card_type_code,
+        cardNombre: card.titulo_personalizado,
+        initialConfig: card.filtros_config as unknown as CustomRangoCuentasConfig,
+      } as CustomCardConfigDialogData,
+    });
+
+    ref.afterClosed().subscribe((result: CustomCardConfigDialogResult | null) => {
+      if (result) {
+        this.builderCards.update(list =>
+          list.map((c, i) =>
+            i === index
+              ? { ...c, filtros_config: result.config as unknown as Record<string, unknown> }
+              : c,
+          ),
+        );
         this.hasUnsavedChanges.set(true);
+        this.toast.success('Configuración actualizada.');
       }
     });
   }
@@ -278,13 +356,21 @@ export class DashboardBuilderComponent implements OnInit {
     }
 
     this.saving.set(true);
-    const formValue = this.form.getRawValue();
+    const formValue: DashboardCreate = {
+      ...this.form.getRawValue(),
+      ...(this.defaultFilters() ? { filtros_default: this.defaultFilters()! } : {}),
+    };
 
     if (this.isNew()) {
       this.createDashboard(formValue);
     } else {
       this.updateDashboard(formValue);
     }
+  }
+
+  onDefaultFiltersChange(filter: ReportFilter): void {
+    this.defaultFilters.set(filter);
+    this.hasUnsavedChanges.set(true);
   }
 
   private createDashboard(formValue: DashboardCreate): void {
@@ -317,30 +403,38 @@ export class DashboardBuilderComponent implements OnInit {
 
   private saveCards(dashboardId: string): void {
     const cards = this.builderCards();
-
-    // For new cards, add them first
     const newCards = cards.filter(c => c.id === null);
     const existingCards = cards.filter(c => c.id !== null);
 
-    if (newCards.length > 0) {
-      const addPromises = newCards.map(c => {
-        const create: DashboardCardCreate = {
-          card_type_code: c.card_type_code,
-          chart_type: c.chart_type,
-          pos_x: c.pos_x,
-          pos_y: c.pos_y,
-          width: c.width,
-          height: c.height,
-          titulo_personalizado: c.titulo_personalizado,
-          orden: c.orden,
-        };
-        return this.dashboardService.addCard(dashboardId, create).toPromise();
-      });
+    const addPromises = newCards.map(c => {
+      const create: DashboardCardCreate = {
+        card_type_code: c.card_type_code,
+        chart_type: c.chart_type,
+        pos_x: c.pos_x,
+        pos_y: c.pos_y,
+        width: c.width,
+        height: c.height,
+        titulo_personalizado: c.titulo_personalizado,
+        orden: c.orden,
+        filtros_config: c.filtros_config ?? {},
+      };
+      return this.dashboardService.addCard(dashboardId, create).toPromise();
+    });
 
-      Promise.all(addPromises)
-        .then(results => {
-          // Update builder cards with IDs from server
-          const newIds = results.map(r => r?.id ?? null);
+    // Actualizar filtros_config y titulo de tarjetas existentes
+    const updatePromises = existingCards.map(c =>
+      this.dashboardService.updateCard(dashboardId, c.id!, {
+        titulo_personalizado: c.titulo_personalizado,
+        filtros_config: c.filtros_config ?? {},
+        chart_type: c.chart_type,
+      }).toPromise(),
+    );
+
+    Promise.all([...addPromises, ...updatePromises])
+      .then(results => {
+        if (newCards.length > 0) {
+          const newResults = results.slice(0, newCards.length);
+          const newIds = newResults.map(r => (r as { id?: string } | undefined)?.id ?? null);
           let newIndex = 0;
           this.builderCards.update(list =>
             list.map(c => {
@@ -350,19 +444,13 @@ export class DashboardBuilderComponent implements OnInit {
               return c;
             }),
           );
-          this.saveLayout(dashboardId);
-        })
-        .catch(() => {
-          this.saving.set(false);
-          this.toast.error('Error al agregar tarjetas.');
-        });
-    } else if (existingCards.length > 0) {
-      this.saveLayout(dashboardId);
-    } else {
-      this.saving.set(false);
-      this.hasUnsavedChanges.set(false);
-      this.toast.success('Dashboard guardado correctamente.');
-    }
+        }
+        this.saveLayout(dashboardId);
+      })
+      .catch(() => {
+        this.saving.set(false);
+        this.toast.error('Error al guardar las tarjetas.');
+      });
   }
 
   private saveLayout(dashboardId: string): void {

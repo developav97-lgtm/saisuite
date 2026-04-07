@@ -21,10 +21,18 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { CardCatalogService } from '../../services/card-catalog.service';
 import { CardCatalogItem, CategoryWithCards } from '../../models/card-catalog.model';
 import { ChartType } from '../../models/dashboard.model';
+import { CustomRangoCuentasConfig } from '../../models/report-filter.model';
+import {
+  CustomCardConfigComponent,
+  CustomCardConfigDialogData,
+  CustomCardConfigDialogResult,
+} from '../custom-card-config/custom-card-config.component';
+import { MatDialog } from '@angular/material/dialog';
 
 export interface CardSelectorResult {
   card: CardCatalogItem;
   chartType: ChartType;
+  filtrosConfig?: Record<string, unknown>;
 }
 
 @Component({
@@ -48,6 +56,7 @@ export interface CardSelectorResult {
 export class CardSelectorComponent implements OnInit {
   private readonly catalogService = inject(CardCatalogService);
   private readonly dialogRef = inject(MatDialogRef<CardSelectorComponent>);
+  private readonly dialog = inject(MatDialog);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly categories = signal<CategoryWithCards[]>([]);
@@ -105,9 +114,33 @@ export class CardSelectorComponent implements OnInit {
   confirm(): void {
     const card = this.selectedCard();
     const chartType = this.selectedChartType();
-    if (card && chartType) {
-      this.dialogRef.close({ card, chartType } as CardSelectorResult);
+    if (!card || !chartType) return;
+
+    // Si la tarjeta requiere configuracion adicional, abrir el diálogo de config
+    if (card.requiere_config) {
+      const configRef = this.dialog.open(CustomCardConfigComponent, {
+        width: '520px',
+        maxWidth: '95vw',
+        data: {
+          cardTypeCode: card.code,
+          cardNombre: card.nombre,
+          initialConfig: null,
+        } as CustomCardConfigDialogData,
+      });
+
+      configRef.afterClosed().subscribe((result: CustomCardConfigDialogResult | null) => {
+        if (result) {
+          this.dialogRef.close({
+            card,
+            chartType,
+            filtrosConfig: result.config as unknown as Record<string, unknown>,
+          } as CardSelectorResult);
+        }
+      });
+      return;
     }
+
+    this.dialogRef.close({ card, chartType } as CardSelectorResult);
   }
 
   cancel(): void {

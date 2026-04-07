@@ -10,6 +10,11 @@ import {
   LicensePaymentRequest,
   LicenseHistory,
   LicenseRenewal,
+  LicensePackageItem,
+  MonthlyLicenseSnapshot,
+  AIUsageSummary,
+  AIUsagePerUser,
+  AgentTokenInfo,
 } from '../models/tenant.model';
 
 const BASE = '/api/v1/admin/tenants';
@@ -87,5 +92,49 @@ export class TenantService {
       `/api/v1/admin/tenants/${tenantId}/license/renewal/cancel/`,
       {}
     );
+  }
+
+  // ── Paquetes de licencia ──────────────────────────────────────────────────
+
+  getLicensePackages(tenantId: string): Observable<LicensePackageItem[]> {
+    return this.http.get<LicensePackageItem[]>(`${BASE}/${tenantId}/license/packages/`);
+  }
+
+  addLicensePackage(tenantId: string, packageId: string, quantity = 1): Observable<LicensePackageItem> {
+    return this.http.post<LicensePackageItem>(`${BASE}/${tenantId}/license/packages/`, { package_id: packageId, quantity });
+  }
+
+  removeLicensePackage(tenantId: string, itemId: string): Observable<void> {
+    return this.http.delete<void>(`${BASE}/${tenantId}/license/packages/${itemId}/`);
+  }
+
+  // ── Snapshots mensuales ───────────────────────────────────────────────────
+
+  getLicenseSnapshots(tenantId: string): Observable<MonthlyLicenseSnapshot[]> {
+    return this.http.get<MonthlyLicenseSnapshot[]>(`${BASE}/${tenantId}/license/snapshots/`);
+  }
+
+  // ── Uso IA ────────────────────────────────────────────────────────────────
+
+  getAIUsage(tenantId: string): Observable<AIUsageSummary> {
+    return this.http.get<AIUsageSummary>(`${BASE}/${tenantId}/license/ai-usage/`);
+  }
+
+  getAIUsageByUser(tenantId: string): Observable<AIUsagePerUser[]> {
+    return this.http.get<AIUsagePerUser[]>(`${BASE}/${tenantId}/license/ai-usage/by-user/`);
+  }
+
+  // ── Tokens del agente ─────────────────────────────────────────────────────
+
+  getAgentTokens(tenantId: string): Observable<AgentTokenInfo[]> {
+    return this.http.get<AgentTokenInfo[]>(`${BASE}/${tenantId}/agent-tokens/`);
+  }
+
+  createAgentToken(tenantId: string, label: string): Observable<AgentTokenInfo> {
+    return this.http.post<AgentTokenInfo>(`${BASE}/${tenantId}/agent-tokens/`, { label });
+  }
+
+  revokeAgentToken(tenantId: string, tokenId: string): Observable<void> {
+    return this.http.post<void>(`${BASE}/${tenantId}/agent-tokens/${tokenId}/revoke/`, {});
   }
 }

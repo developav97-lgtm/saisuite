@@ -14,6 +14,7 @@ from apps.dashboard.serializers import (
     DashboardDetailSerializer,
     DashboardCreateSerializer,
     DashboardUpdateSerializer,
+    DashboardSaveFiltersSerializer,
     DashboardCardSerializer,
     DashboardCardCreateSerializer,
     DashboardCardUpdateSerializer,
@@ -32,6 +33,8 @@ from apps.dashboard.services import (
     ReportService,
     CfoVirtualService,
 )
+
+# ReportService.save_default_filters está en ReportService (re-exportado aquí para claridad)
 
 logger = logging.getLogger(__name__)
 
@@ -283,6 +286,7 @@ class CardDataView(APIView):
             company_id=company.id,
             card_type_code=serializer.validated_data['card_type_code'],
             filtros=serializer.validated_data.get('filtros', {}),
+            card_config=serializer.validated_data.get('card_config', {}),
         )
         out = CardDataResponseSerializer(data)
         return Response(out.data)
@@ -444,6 +448,26 @@ class TrialStatusView(APIView):
 # CFO Virtual
 # ──────────────────────────────────────────────
 
+class DashboardSaveFiltersView(APIView):
+    """
+    PUT /api/v1/dashboard/{id}/filters/
+    Guarda filtros_default en el dashboard. Retorna el dashboard actualizado.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def put(self, request, dashboard_id):
+        serializer = DashboardSaveFiltersSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        dashboard = ReportService.save_default_filters(
+            dashboard_id=dashboard_id,
+            user=request.user,
+            filtros=serializer.validated_data['filtros_default'],
+        )
+        out = DashboardDetailSerializer(dashboard)
+        return Response(out.data)
+
+
 class CfoVirtualView(APIView):
     """
     POST /api/v1/dashboard/cfo-virtual/
@@ -467,7 +491,7 @@ class CfoVirtualView(APIView):
             )
 
         try:
-            response_text = CfoVirtualService.ask(question, company)
+            response_text = CfoVirtualService.ask(question, company, user=request.user)
         except Exception as exc:
             detail = getattr(exc, 'detail', str(exc))
             return Response({'error': str(detail)}, status=status.HTTP_502_BAD_GATEWAY)

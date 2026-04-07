@@ -16,7 +16,7 @@
     <mat-progress-bar mode="indeterminate" />
   }
 
-  <mat-tab-group [class.tf-tabs-hidden]="!isEdit()">
+  <mat-tab-group [class.tf-tabs-hidden]="!isEdit()" (selectedTabChange)="onTabChange($event.index)">
 
     <!-- ── Tab 1: Empresa ──────────────────────────────────────────────────── -->
     <mat-tab label="Datos empresa">
@@ -291,7 +291,300 @@
       </div>
     </mat-tab>
 
-    <!-- ── Tab 3: Historial (solo edición) ────────────────────────────────── -->
+    <!-- ── Tab 3: Paquetes (solo edición) ────────────────────────────────── -->
+    @if (isEdit()) {
+      <mat-tab label="Paquetes">
+        <ng-template matTabContent>
+          <div class="tf-section">
+
+            @if (loadingPackages()) {
+              <mat-progress-bar mode="indeterminate" />
+            }
+
+            <!-- Agregar paquete -->
+            @if (availablePackagesToAdd().length > 0) {
+              <div class="tf-pkg-add-row">
+                <mat-form-field appearance="outline" class="tf-pkg-select">
+                  <mat-label>Agregar paquete</mat-label>
+                  <mat-select [value]="selectedPackageId()"
+                    (selectionChange)="selectedPackageId.set($event.value)">
+                    @for (p of availablePackagesToAdd(); track p.id) {
+                      <mat-option [value]="p.id">
+                        {{ p.name }} — {{ p.code }}
+                      </mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+                <button mat-raised-button color="primary"
+                  [disabled]="!selectedPackageId() || addingPackage()"
+                  (click)="agregarPaquete()">
+                  <mat-icon>add</mat-icon>
+                  Agregar
+                </button>
+              </div>
+            }
+
+            <!-- Lista de paquetes asignados -->
+            @if (licensePackages().length === 0 && !loadingPackages()) {
+              <div class="sc-empty-state">
+                <mat-icon>inventory_2</mat-icon>
+                <p>Sin paquetes asignados</p>
+              </div>
+            } @else {
+              <h4 class="tf-subsection-title">Paquetes asignados</h4>
+              <div class="table-responsive">
+                <table mat-table [dataSource]="licensePackages()" class="tf-pkg-table mat-elevation-z1">
+
+                  <ng-container matColumnDef="name">
+                    <th mat-header-cell *matHeaderCellDef>Paquete</th>
+                    <td mat-cell *matCellDef="let i">
+                      <div class="tf-pkg-name">{{ i.package.name }}</div>
+                      <div class="tf-pkg-code">{{ i.package.code }}</div>
+                    </td>
+                  </ng-container>
+
+                  <ng-container matColumnDef="type">
+                    <th mat-header-cell *matHeaderCellDef>Tipo</th>
+                    <td mat-cell *matCellDef="let i">{{ packageTypeLabel(i.package.package_type) }}</td>
+                  </ng-container>
+
+                  <ng-container matColumnDef="quantity">
+                    <th mat-header-cell *matHeaderCellDef class="tf-num">Cant.</th>
+                    <td mat-cell *matCellDef="let i" class="tf-num">{{ i.quantity }}</td>
+                  </ng-container>
+
+                  <ng-container matColumnDef="added_at">
+                    <th mat-header-cell *matHeaderCellDef>Agregado</th>
+                    <td mat-cell *matCellDef="let i">{{ i.added_at | date:'dd/MM/yyyy' }}</td>
+                  </ng-container>
+
+                  <ng-container matColumnDef="actions">
+                    <th mat-header-cell *matHeaderCellDef></th>
+                    <td mat-cell *matCellDef="let i">
+                      <button mat-icon-button color="warn" matTooltip="Quitar paquete"
+                        (click)="quitarPaquete(i)">
+                        <mat-icon>remove_circle_outline</mat-icon>
+                      </button>
+                    </td>
+                  </ng-container>
+
+                  <tr mat-header-row *matHeaderRowDef="packageColumns"></tr>
+                  <tr mat-row *matRowDef="let row; columns: packageColumns;"></tr>
+                </table>
+              </div>
+            }
+
+            <!-- Snapshots mensuales -->
+            @if (snapshots().length > 0) {
+              <mat-divider class="tf-divider" />
+              <h4 class="tf-subsection-title">Snapshots mensuales</h4>
+              <div class="table-responsive">
+                <table mat-table [dataSource]="snapshots()" class="tf-snap-table mat-elevation-z1">
+
+                  <ng-container matColumnDef="month">
+                    <th mat-header-cell *matHeaderCellDef>Mes</th>
+                    <td mat-cell *matCellDef="let s" class="tf-snap-month">{{ snapshotMonth(s) }}</td>
+                  </ng-container>
+
+                  <ng-container matColumnDef="plan">
+                    <th mat-header-cell *matHeaderCellDef>Plan</th>
+                    <td mat-cell *matCellDef="let s">{{ s.snapshot['plan'] ?? '—' }}</td>
+                  </ng-container>
+
+                  <ng-container matColumnDef="status">
+                    <th mat-header-cell *matHeaderCellDef>Estado</th>
+                    <td mat-cell *matCellDef="let s">{{ STATUS_LABELS[s.snapshot['status']] ?? s.snapshot['status'] }}</td>
+                  </ng-container>
+
+                  <ng-container matColumnDef="users">
+                    <th mat-header-cell *matHeaderCellDef class="tf-num">Usuarios</th>
+                    <td mat-cell *matCellDef="let s" class="tf-num">{{ s.snapshot['max_users'] ?? '—' }}</td>
+                  </ng-container>
+
+                  <tr mat-header-row *matHeaderRowDef="snapshotColumns"></tr>
+                  <tr mat-row *matRowDef="let row; columns: snapshotColumns;"></tr>
+                </table>
+              </div>
+            }
+
+          </div>
+        </ng-template>
+      </mat-tab>
+    }
+
+    <!-- ── Tab 4: Uso IA (solo edición) ───────────────────────────────────── -->
+    @if (isEdit()) {
+      <mat-tab label="Uso IA">
+        <ng-template matTabContent>
+          <div class="tf-section">
+
+            @if (loadingAI()) {
+              <mat-progress-bar mode="indeterminate" />
+            }
+
+            @if (!aiUsage() && !loadingAI()) {
+              <div class="sc-empty-state">
+                <mat-icon>auto_awesome</mat-icon>
+                <p>Sin datos de uso IA</p>
+              </div>
+            }
+
+            @if (aiUsage()) {
+              <!-- Resumen de cuotas -->
+              <div class="tf-ai-grid">
+
+                <div class="tf-ai-card">
+                  <p class="tf-ai-label">Mensajes IA del mes</p>
+                  <p class="tf-ai-value">
+                    {{ aiUsage()!.messages_used | number }} / {{ aiUsage()!.messages_quota | number }}
+                  </p>
+                  <mat-progress-bar
+                    [mode]="'determinate'"
+                    [value]="aiUsage()!.messages_pct"
+                    [color]="pctColor(aiUsage()!.messages_pct)">
+                  </mat-progress-bar>
+                  <p class="tf-ai-pct">{{ aiUsage()!.messages_pct | number:'1.0-0' }}% usado</p>
+                </div>
+
+                <div class="tf-ai-card">
+                  <p class="tf-ai-label">Tokens IA del mes</p>
+                  <p class="tf-ai-value">
+                    {{ aiUsage()!.tokens_used | number }} / {{ aiUsage()!.tokens_quota | number }}
+                  </p>
+                  <mat-progress-bar
+                    [mode]="'determinate'"
+                    [value]="aiUsage()!.tokens_pct"
+                    [color]="pctColor(aiUsage()!.tokens_pct)">
+                  </mat-progress-bar>
+                  <p class="tf-ai-pct">{{ aiUsage()!.tokens_pct | number:'1.0-0' }}% usado</p>
+                </div>
+
+                <div class="tf-ai-card">
+                  <p class="tf-ai-label">Total solicitudes</p>
+                  <p class="tf-ai-value">{{ aiUsage()!.total_requests | number }}</p>
+                </div>
+
+                <div class="tf-ai-card">
+                  <p class="tf-ai-label">Total tokens</p>
+                  <p class="tf-ai-value">{{ aiUsage()!.total_tokens | number }}</p>
+                </div>
+
+              </div>
+
+              <!-- Uso por usuario -->
+              @if (aiUsageByUser().length > 0) {
+                <mat-divider class="tf-divider" />
+                <h4 class="tf-subsection-title">Consumo por usuario</h4>
+                <div class="table-responsive">
+                  <table mat-table [dataSource]="aiUsageByUser()" class="tf-ai-table mat-elevation-z1">
+
+                    <ng-container matColumnDef="email">
+                      <th mat-header-cell *matHeaderCellDef>Usuario</th>
+                      <td mat-cell *matCellDef="let u">
+                        <div>{{ u.full_name }}</div>
+                        <div class="tf-ai-email">{{ u.email }}</div>
+                      </td>
+                    </ng-container>
+
+                    <ng-container matColumnDef="requests">
+                      <th mat-header-cell *matHeaderCellDef class="tf-num">Solicitudes</th>
+                      <td mat-cell *matCellDef="let u" class="tf-num">{{ u.total_requests | number }}</td>
+                    </ng-container>
+
+                    <ng-container matColumnDef="tokens">
+                      <th mat-header-cell *matHeaderCellDef class="tf-num">Tokens</th>
+                      <td mat-cell *matCellDef="let u" class="tf-num">{{ u.total_tokens | number }}</td>
+                    </ng-container>
+
+                    <tr mat-header-row *matHeaderRowDef="aiUserColumns"></tr>
+                    <tr mat-row *matRowDef="let row; columns: aiUserColumns;"></tr>
+                  </table>
+                </div>
+              }
+            }
+
+          </div>
+        </ng-template>
+      </mat-tab>
+    }
+
+    <!-- ── Tab 5: Tokens del agente (solo edición) ───────────────────────── -->
+    @if (isEdit()) {
+      <mat-tab label="Tokens del agente">
+        <ng-template matTabContent>
+          <div class="tf-section">
+
+            <div class="tf-tokens-header">
+              <p class="tf-tokens-hint">
+                Los tokens del agente autorizan al Agente Saicloud (Windows) a enviar datos.
+                Cada empresa tiene un token "Principal" generado automaticamente.
+              </p>
+              <button mat-stroked-button color="primary"
+                      [disabled]="creatingToken()"
+                      (click)="crearAgentToken()">
+                <mat-icon>add</mat-icon>
+                Nuevo token
+              </button>
+            </div>
+
+            @if (loadingTokens()) {
+              <mat-progress-bar mode="indeterminate" />
+            }
+
+            @if (!loadingTokens() && agentTokens().length === 0) {
+              <div class="sc-empty-state">
+                <mat-icon>vpn_key</mat-icon>
+                <p>Sin tokens activos</p>
+                <button mat-stroked-button color="primary" (click)="crearAgentToken()">
+                  Generar primer token
+                </button>
+              </div>
+            }
+
+            @if (agentTokens().length > 0) {
+              <div class="table-responsive">
+                <table mat-table [dataSource]="agentTokens()" class="mat-elevation-z1">
+                  <ng-container matColumnDef="label">
+                    <th mat-header-cell *matHeaderCellDef>Etiqueta</th>
+                    <td mat-cell *matCellDef="let t">{{ t.label || '—' }}</td>
+                  </ng-container>
+                  <ng-container matColumnDef="token">
+                    <th mat-header-cell *matHeaderCellDef>Token</th>
+                    <td mat-cell *matCellDef="let t">
+                      <code class="tf-token-value">{{ t.token }}</code>
+                      <button mat-icon-button matTooltip="Copiar token" (click)="copyToken(t.token)">
+                        <mat-icon>content_copy</mat-icon>
+                      </button>
+                    </td>
+                  </ng-container>
+                  <ng-container matColumnDef="last_used">
+                    <th mat-header-cell *matHeaderCellDef>Último uso</th>
+                    <td mat-cell *matCellDef="let t">
+                      {{ t.last_used ? (t.last_used | date:'dd/MM/yyyy HH:mm') : 'Nunca' }}
+                    </td>
+                  </ng-container>
+                  <ng-container matColumnDef="actions">
+                    <th mat-header-cell *matHeaderCellDef></th>
+                    <td mat-cell *matCellDef="let t">
+                      <button mat-icon-button color="warn"
+                              matTooltip="Revocar token"
+                              (click)="revocarToken(t)">
+                        <mat-icon>block</mat-icon>
+                      </button>
+                    </td>
+                  </ng-container>
+                  <tr mat-header-row *matHeaderRowDef="tokenColumns"></tr>
+                  <tr mat-row *matRowDef="let row; columns: tokenColumns;"></tr>
+                </table>
+              </div>
+            }
+
+          </div>
+        </ng-template>
+      </mat-tab>
+    }
+
+    <!-- ── Tab 6: Historial (solo edición) ────────────────────────────────── -->
     @if (isEdit()) {
       <mat-tab label="Historial de licencia">
         <div class="tf-section">

@@ -3,12 +3,58 @@
 package winsvc
 
 import (
+	"context"
 	"fmt"
 	"time"
 
 	"golang.org/x/sys/windows/svc"
 	"golang.org/x/sys/windows/svc/mgr"
 )
+
+// agentService implements svc.Handler so Windows SCM can manage the lifecycle.
+type agentService struct {
+	fn func(ctx context.Context)
+}
+
+// Execute is called by the Windows SCM when the service starts.
+// It reports Running immediately (so SCM doesn't time out), then calls fn(ctx).
+// When SCM sends Stop/Shutdown, ctx is cancelled and workers shut down gracefully.
+func (s *agentService) Execute(args []string, r <-chan svc.ChangeRequest, changes chan<- svc.Status) (bool, uint32) {
+	const cmdsAccepted = svc.AcceptStop | svc.AcceptShutdown
+
+	changes <- svc.Status{State: svc.StartPending}
+	changes <- svc.Status{State: svc.Running, Accepts: cmdsAccepted}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		s.fn(ctx)
+	}()
+
+	for {
+		select {
+		case c := <-r:
+			switch c.Cmd {
+			case svc.Stop, svc.Shutdown:
+				cancel()
+				changes <- svc.Status{State: svc.StopPending}
+				<-done
+				return false, 0
+			}
+		case <-done:
+			return false, 0
+		}
+	}
+}
+
+// runAsService registers fn with the Windows SCM under the given service name.
+// fn receives a context that is cancelled when SCM sends Stop/Shutdown.
+func runAsService(name string, fn func(ctx context.Context)) error {
+	return svc.Run(name, &agentService{fn: fn})
+}
 
 // installWindows registers the agent as a Windows Service using the Windows Service Manager.
 func installWindows() error {

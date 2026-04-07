@@ -60,7 +60,8 @@ type UploadStep = 'compressing' | 'uploading' | null;
           <div class="chat-window__msg"
                [attr.data-msg-id]="msg.id"
                [class.chat-window__msg--mine]="msg.remitente === currentUserId()"
-               [class.chat-window__msg--theirs]="msg.remitente !== currentUserId()">
+               [class.chat-window__msg--theirs]="msg.remitente !== currentUserId()"
+               [class.chat-window__msg--bot]="isBot() && msg.remitente !== currentUserId()">
           @if (msg.responde_a_contenido) {
             <div class="chat-window__reply-preview"
                  (click)="scrollToMessage(msg.responde_a)">
@@ -156,7 +157,11 @@ type UploadStep = 'compressing' | 'uploading' | null;
           <span class="chat-window__typing-dots">
             <span></span><span></span><span></span>
           </span>
-          {{ typingUserName() }} escribiendo...
+          @if (isBot()) {
+            Analizando...
+          } @else {
+            {{ typingUserName() }} escribiendo...
+          }
         </div>
       }
     </div>
@@ -232,30 +237,32 @@ type UploadStep = 'compressing' | 'uploading' | null;
                class="chat-window__file-hidden"
                (change)="onImageSelected($event)" />
 
-        <!-- + button with popup menu -->
-        <div class="chat-window__attach-wrap">
-          <button mat-icon-button
-                  class="chat-window__attach-btn"
-                  [class.chat-window__attach-btn--open]="attachMenuOpen()"
-                  (click)="toggleAttachMenu()">
-            <mat-icon>add</mat-icon>
-          </button>
-          @if (attachMenuOpen()) {
-            <div class="chat-window__attach-backdrop" (click)="attachMenuOpen.set(false)"></div>
-            <div class="chat-window__attach-menu">
-              <button class="chat-window__attach-option"
-                      (click)="fileInput.click(); attachMenuOpen.set(false)">
-                <mat-icon>attach_file</mat-icon>
-                <span>Archivo</span>
-              </button>
-              <button class="chat-window__attach-option"
-                      (click)="imageInput.click(); attachMenuOpen.set(false)">
-                <mat-icon>image</mat-icon>
-                <span>Imagen</span>
-              </button>
-            </div>
-          }
-        </div>
+        <!-- + button with popup menu (hidden for bot conversations) -->
+        @if (!isBot()) {
+          <div class="chat-window__attach-wrap">
+            <button mat-icon-button
+                    class="chat-window__attach-btn"
+                    [class.chat-window__attach-btn--open]="attachMenuOpen()"
+                    (click)="toggleAttachMenu()">
+              <mat-icon>add</mat-icon>
+            </button>
+            @if (attachMenuOpen()) {
+              <div class="chat-window__attach-backdrop" (click)="attachMenuOpen.set(false)"></div>
+              <div class="chat-window__attach-menu">
+                <button class="chat-window__attach-option"
+                        (click)="fileInput.click(); attachMenuOpen.set(false)">
+                  <mat-icon>attach_file</mat-icon>
+                  <span>Archivo</span>
+                </button>
+                <button class="chat-window__attach-option"
+                        (click)="imageInput.click(); attachMenuOpen.set(false)">
+                  <mat-icon>image</mat-icon>
+                  <span>Imagen</span>
+                </button>
+              </div>
+            }
+          </div>
+        }
 
         <app-message-input
           class="chat-window__msg-input"
@@ -351,6 +358,11 @@ type UploadStep = 'compressing' | 'uploading' | null;
         color: var(--sc-text-color, #1a202c);
         border-bottom-left-radius: 2px;
         box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+      }
+
+      &--bot {
+        background: var(--sc-primary-50, rgba(21, 101, 192, 0.06));
+        border-left: 3px solid var(--sc-primary, #1565c0);
       }
     }
 
@@ -898,6 +910,8 @@ export class ChatWindowComponent implements OnInit {
   readonly currentUserId = input('');
   readonly jumpToId = input<string | null>(null);
   readonly back = output<void>();
+
+  readonly isBot = computed(() => !!this.conversacion().bot_context);
 
   readonly messages = signal<Mensaje[]>([]);
   readonly loadingMessages = signal(false);

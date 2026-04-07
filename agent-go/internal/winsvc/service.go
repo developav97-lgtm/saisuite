@@ -5,6 +5,7 @@
 package winsvc
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -32,6 +33,13 @@ func Uninstall() error {
 		return fmt.Errorf("Windows Service management is only available on Windows (current OS: %s)", runtime.GOOS)
 	}
 	return uninstallWindows()
+}
+
+// RunAsService runs fn under Windows SCM control (reports Running before fn executes).
+// fn receives a context cancelled when SCM sends Stop/Shutdown.
+// On non-Windows it simply calls fn(context.Background()) directly.
+func RunAsService(fn func(ctx context.Context)) error {
+	return runAsService(serviceName, fn)
 }
 
 // executablePath returns the full path to the current executable.

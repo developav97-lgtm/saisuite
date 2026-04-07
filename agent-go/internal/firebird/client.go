@@ -79,12 +79,53 @@ type CustRecord struct {
 	Company       string  `json:"company"`
 	Addr1         string  `json:"addr1"`
 	City          string  `json:"city"`
+	Departamento  string  `json:"departamento"`
 	Phone1        string  `json:"phone1"`
+	Phone2        string  `json:"phone2"`
 	Email         string  `json:"email"`
 	Cliente       string  `json:"cliente"`
 	Proveedor     string  `json:"proveedor"`
 	Empleado      string  `json:"empleado"`
 	Activo        bool    `json:"activo"`
+	Version       int64   `json:"version"`
+	Acct          string  `json:"acct"`
+	AcctP         string  `json:"acctp"`
+	Regimen       string  `json:"regimen"`
+	FechaCreacion string  `json:"fecha_creacion"`
+	Descuento     float64 `json:"descuento"`
+	CreditLmt     float64 `json:"creditlmt"`
+}
+
+// ShipToRecord represents a shipping address (SHIPTO) linked to a CUST entry.
+type ShipToRecord struct {
+	IDN          string `json:"id_n"`
+	SucCliente   int    `json:"succliente"`
+	Descripcion  string `json:"descripcion"`
+	Company      string `json:"company"`
+	Addr1        string `json:"addr1"`
+	Addr2        string `json:"addr2"`
+	City         string `json:"city"`
+	Departamento string `json:"departamento"`
+	CodDpto      string `json:"cod_dpto"`
+	CodMunicipio string `json:"cod_municipio"`
+	Phone1       string `json:"phone1"`
+	Email        string `json:"email"`
+	Pais         string `json:"pais"`
+	Zona         int    `json:"zona"`
+	IDVend       int    `json:"id_vend"`
+	Estado       string `json:"estado"`
+}
+
+// TributariaRecord represents the tax/tributaria info for a CUST entry (1:1).
+type TributariaRecord struct {
+	IDN               string `json:"id_n"`
+	Company           string `json:"company"`
+	Tdoc              int    `json:"tdoc"`
+	TipoContribuyente int    `json:"tipo_contribuyente"`
+	PrimerNombre      string `json:"primer_nombre"`
+	SegundoNombre     string `json:"segundo_nombre"`
+	PrimerApellido    string `json:"primer_apellido"`
+	SegundoApellido   string `json:"segundo_apellido"`
 }
 
 // ListaRecord represents a department or cost center from the LISTA table.
@@ -387,36 +428,45 @@ func (c *Client) QueryAllAcct() ([]AcctRecord, error) {
 	return records, nil
 }
 
-// QueryAllCust fetches all third-party entities from the CUST table.
-func (c *Client) QueryAllCust() ([]CustRecord, error) {
-	if c.db == nil {
-		return nil, fmt.Errorf("database not connected")
-	}
-
+// queryCust executes a CUST SELECT with optional WHERE clause and args.
+// Returns records and the max Version seen (0 if empty result).
+func (c *Client) queryCust(where string, args ...interface{}) ([]CustRecord, int64, error) {
+	// ACCT and ACCTP are DOUBLE PRECISION in Firebird — select as numeric, format in Go.
+	// FECHA_CREACION is DATE — scan as NullString to avoid sql.NullTime driver issues.
+	// Do NOT use CAST() on numeric columns — it causes silent hangs with some Firebird drivers.
 	query := `
-		SELECT ID_N, NIT, COMPANY, ADDR1, CITY, PHONE1, EMAIL,
-			CLIENTE, PROVEEDOR, EMPLEADO, INACTIVO
-		FROM CUST
-		ORDER BY ID_N`
+		SELECT ID_N, NIT, COMPANY, ADDR1, CITY, DEPARTAMENTO, PHONE1, PHONE2, EMAIL,
+			CLIENTE, PROVEEDOR, EMPLEADO, INACTIVO, Version,
+			ACCT, ACCTP,
+			REGIMEN, FECHA_CREACION, DESCUENTO, CREDITLMT
+		FROM CUST` + where + `
+		ORDER BY Version ASC`
 
-	rows, err := c.db.Query(query)
+	rows, err := c.db.Query(query, args...)
 	if err != nil {
-		return nil, fmt.Errorf("CUST query failed: %w", err)
+		return nil, 0, fmt.Errorf("CUST query failed: %w", err)
 	}
 	defer rows.Close()
 
 	var records []CustRecord
+	var maxVersion int64
 	for rows.Next() {
 		var r CustRecord
-		var idn, nit, company, addr1, city, phone1, email sql.NullString
+		var idn, nit, company, addr1, city, depto, phone1, phone2, email sql.NullString
 		var cliente, proveedor, empleado, inactivo sql.NullString
+		var version sql.NullInt64
+		var acct, acctp sql.NullFloat64
+		var regimen sql.NullString
+		var fechaCreacion sql.NullString
+		var descuento, creditlmt sql.NullFloat64
 
 		err := rows.Scan(
-			&idn, &nit, &company, &addr1, &city, &phone1, &email,
-			&cliente, &proveedor, &empleado, &inactivo,
+			&idn, &nit, &company, &addr1, &city, &depto, &phone1, &phone2, &email,
+			&cliente, &proveedor, &empleado, &inactivo, &version,
+			&acct, &acctp, &regimen, &fechaCreacion, &descuento, &creditlmt,
 		)
 		if err != nil {
-			return nil, fmt.Errorf("CUST row scan failed: %w", err)
+			return nil, 0, fmt.Errorf("CUST row scan failed: %w", err)
 		}
 
 		r.IDN = trimString(idn)
@@ -424,22 +474,253 @@ func (c *Client) QueryAllCust() ([]CustRecord, error) {
 		r.Company = trimString(company)
 		r.Addr1 = trimString(addr1)
 		r.City = trimString(city)
+		r.Departamento = trimString(depto)
 		r.Phone1 = trimString(phone1)
+		r.Phone2 = trimString(phone2)
 		r.Email = trimString(email)
 		r.Cliente = trimString(cliente)
 		r.Proveedor = trimString(proveedor)
 		r.Empleado = trimString(empleado)
 		// INACTIVO is CHAR(1): 'S' means inactive
 		r.Activo = trimString(inactivo) != "S"
+		if version.Valid {
+			r.Version = version.Int64
+			if r.Version > maxVersion {
+				maxVersion = r.Version
+			}
+		}
+		// Format DOUBLE PRECISION account codes as trimmed strings (e.g. 1.1301e+04 → "11301")
+		if acct.Valid && acct.Float64 != 0 {
+			r.Acct = fmt.Sprintf("%.0f", acct.Float64)
+		}
+		if acctp.Valid && acctp.Float64 != 0 {
+			r.AcctP = fmt.Sprintf("%.0f", acctp.Float64)
+		}
+		r.Regimen = trimString(regimen)
+		r.FechaCreacion = strings.TrimSpace(fechaCreacion.String)
+		if descuento.Valid {
+			r.Descuento = descuento.Float64
+		}
+		if creditlmt.Valid {
+			r.CreditLmt = creditlmt.Float64
+		}
 
 		records = append(records, r)
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("CUST rows iteration error: %w", err)
+		return nil, 0, fmt.Errorf("CUST rows iteration error: %w", err)
+	}
+	return records, maxVersion, nil
+}
+
+// QueryAllCust fetches all CUST records (first sync / full reset).
+// Returns records and the max Version seen.
+func (c *Client) QueryAllCust() ([]CustRecord, int64, error) {
+	if c.db == nil {
+		return nil, 0, fmt.Errorf("database not connected")
+	}
+	records, maxVersion, err := c.queryCust("")
+	if err != nil {
+		return nil, 0, err
+	}
+	c.logger.Info("CUST full query completed", "count", len(records), "max_version", maxVersion)
+	return records, maxVersion, nil
+}
+
+// QueryCustSince fetches only CUST records with Version > lastVersion.
+// Returns records and the new max Version (caller should persist this).
+func (c *Client) QueryCustSince(lastVersion int64) ([]CustRecord, int64, error) {
+	if c.db == nil {
+		return nil, 0, fmt.Errorf("database not connected")
+	}
+	records, maxVersion, err := c.queryCust(" WHERE Version > ?", lastVersion)
+	if err != nil {
+		return nil, 0, err
+	}
+	c.logger.Info("CUST incremental query completed",
+		"last_version", lastVersion, "count", len(records), "max_version", maxVersion)
+	return records, maxVersion, nil
+}
+
+// QueryShipToByIDN fetches SHIPTO records for the given ID_N values.
+// If idns is empty, returns all SHIPTO records (used on first sync).
+// Chunks requests to stay within Firebird's IN-list limit (~1500).
+func (c *Client) QueryShipToByIDN(idns []string) ([]ShipToRecord, error) {
+	if c.db == nil {
+		return nil, fmt.Errorf("database not connected")
 	}
 
-	c.logger.Info("CUST query completed", "count", len(records))
+	var all []ShipToRecord
+	if len(idns) == 0 {
+		// Full sync — no filter
+		return c.queryShipTo("", nil)
+	}
+
+	const chunkSize = 500
+	for i := 0; i < len(idns); i += chunkSize {
+		end := i + chunkSize
+		if end > len(idns) {
+			end = len(idns)
+		}
+		chunk := idns[i:end]
+		placeholders := make([]string, len(chunk))
+		args := make([]interface{}, len(chunk))
+		for j, id := range chunk {
+			placeholders[j] = "?"
+			args[j] = id
+		}
+		where := " WHERE ID_N IN (" + strings.Join(placeholders, ",") + ")"
+		batch, err := c.queryShipTo(where, args)
+		if err != nil {
+			return nil, err
+		}
+		all = append(all, batch...)
+	}
+	return all, nil
+}
+
+func (c *Client) queryShipTo(where string, args []interface{}) ([]ShipToRecord, error) {
+	query := `
+		SELECT ID_N, SUCCLIENTE, DESCRIPCION, COMPANY, ADDR1, ADDR2, CITY, DEPARTAMENTO,
+			COD_DPTO, COD_MUNICIPIO, PHONE1, EMAIL, PAIS, ZONA, ID_VEND, ESTADO
+		FROM SHIPTO` + where + `
+		ORDER BY ID_N, SUCCLIENTE`
+
+	rows, err := c.db.Query(query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("SHIPTO query failed: %w", err)
+	}
+	defer rows.Close()
+
+	var records []ShipToRecord
+	for rows.Next() {
+		var r ShipToRecord
+		var idn, desc, company, addr1, addr2, city, depto sql.NullString
+		var codDpto, codMun, phone1, email, pais, estado sql.NullString
+		var sucCliente, zona, idVend sql.NullInt64
+
+		err := rows.Scan(
+			&idn, &sucCliente, &desc, &company, &addr1, &addr2, &city, &depto,
+			&codDpto, &codMun, &phone1, &email, &pais, &zona, &idVend, &estado,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("SHIPTO row scan failed: %w", err)
+		}
+
+		r.IDN = trimString(idn)
+		if sucCliente.Valid {
+			r.SucCliente = int(sucCliente.Int64)
+		}
+		r.Descripcion = trimString(desc)
+		r.Company = trimString(company)
+		r.Addr1 = trimString(addr1)
+		r.Addr2 = trimString(addr2)
+		r.City = trimString(city)
+		r.Departamento = trimString(depto)
+		r.CodDpto = trimString(codDpto)
+		r.CodMunicipio = trimString(codMun)
+		r.Phone1 = trimString(phone1)
+		r.Email = trimString(email)
+		r.Pais = trimString(pais)
+		if zona.Valid {
+			r.Zona = int(zona.Int64)
+		}
+		if idVend.Valid {
+			r.IDVend = int(idVend.Int64)
+		}
+		r.Estado = trimString(estado)
+
+		records = append(records, r)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("SHIPTO rows iteration error: %w", err)
+	}
+	return records, nil
+}
+
+// QueryTributariaByIDN fetches TRIBUTARIA records for the given ID_N values.
+// If idns is empty, returns all TRIBUTARIA records (used on first sync).
+func (c *Client) QueryTributariaByIDN(idns []string) ([]TributariaRecord, error) {
+	if c.db == nil {
+		return nil, fmt.Errorf("database not connected")
+	}
+
+	var all []TributariaRecord
+	if len(idns) == 0 {
+		return c.queryTributaria("", nil)
+	}
+
+	const chunkSize = 500
+	for i := 0; i < len(idns); i += chunkSize {
+		end := i + chunkSize
+		if end > len(idns) {
+			end = len(idns)
+		}
+		chunk := idns[i:end]
+		placeholders := make([]string, len(chunk))
+		args := make([]interface{}, len(chunk))
+		for j, id := range chunk {
+			placeholders[j] = "?"
+			args[j] = id
+		}
+		where := " WHERE ID_N IN (" + strings.Join(placeholders, ",") + ")"
+		batch, err := c.queryTributaria(where, args)
+		if err != nil {
+			return nil, err
+		}
+		all = append(all, batch...)
+	}
+	return all, nil
+}
+
+func (c *Client) queryTributaria(where string, args []interface{}) ([]TributariaRecord, error) {
+	query := `
+		SELECT ID_N, COMPANY, TDOC, TIPO_CONTRIBUYENTE,
+			PRIMER_NOMBRE, SEGUNDO_NOMBRE, PRIMER_APELLIDO, SEGUNDO_APELLIDO
+		FROM TRIBUTARIA` + where + `
+		ORDER BY ID_N`
+
+	rows, err := c.db.Query(query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("TRIBUTARIA query failed: %w", err)
+	}
+	defer rows.Close()
+
+	var records []TributariaRecord
+	for rows.Next() {
+		var r TributariaRecord
+		var idn, company, primerNombre, segundoNombre, primerApe, segundoApe sql.NullString
+		var tdoc, tipoContrib sql.NullInt64
+
+		err := rows.Scan(
+			&idn, &company, &tdoc, &tipoContrib,
+			&primerNombre, &segundoNombre, &primerApe, &segundoApe,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("TRIBUTARIA row scan failed: %w", err)
+		}
+
+		r.IDN = trimString(idn)
+		r.Company = trimString(company)
+		if tdoc.Valid {
+			r.Tdoc = int(tdoc.Int64)
+		}
+		if tipoContrib.Valid {
+			r.TipoContribuyente = int(tipoContrib.Int64)
+		}
+		r.PrimerNombre = trimString(primerNombre)
+		r.SegundoNombre = trimString(segundoNombre)
+		r.PrimerApellido = trimString(primerApe)
+		r.SegundoApellido = trimString(segundoApe)
+
+		records = append(records, r)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("TRIBUTARIA rows iteration error: %w", err)
+	}
 	return records, nil
 }
 

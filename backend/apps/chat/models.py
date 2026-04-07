@@ -28,6 +28,12 @@ class Conversacion(BaseModel):
         on_delete=models.CASCADE,
         related_name='conversaciones_recibidas',
     )
+    bot_context = models.CharField(
+        max_length=50,
+        blank=True,
+        default='',
+        help_text='Contexto del modulo para conversaciones con bot: dashboard, proyectos, general',
+    )
     ultimo_mensaje = models.ForeignKey(
         'Mensaje',
         on_delete=models.SET_NULL,

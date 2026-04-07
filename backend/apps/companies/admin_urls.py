@@ -1,6 +1,6 @@
 """
-SaiSuite — Admin URLs: Gestión de Tenants
-Rutas bajo /api/v1/admin/tenants/
+SaiSuite — Admin URLs: Gestión de Tenants y Paquetes
+Rutas bajo /api/v1/admin/tenants/ y /api/v1/admin/packages/
 Solo accesibles por superadmins.
 """
 from django.urls import path
@@ -15,6 +15,14 @@ from .views import (
     AdminLicenseRenewalView,
     AdminRenewalConfirmView,
     AdminRenewalCancelView,
+    AdminPackageListView,
+    AdminPackageDetailView,
+    AdminLicensePackagesView,
+    AdminLicensePackageRemoveView,
+    AdminLicenseSnapshotsView,
+    AdminAIUsageView,
+    AdminAgentTokenListView,
+    AdminAgentTokenRevokeView,
 )
 
 urlpatterns = [
@@ -27,4 +35,10 @@ urlpatterns = [
     path('<uuid:pk>/license/renewal/',          AdminLicenseRenewalView.as_view(), name='admin-license-renewal'),
     path('<uuid:pk>/license/renewal/confirm/',  AdminRenewalConfirmView.as_view(), name='admin-renewal-confirm'),
     path('<uuid:pk>/license/renewal/cancel/',   AdminRenewalCancelView.as_view(),  name='admin-renewal-cancel'),
+    path('<uuid:pk>/license/packages/',                    AdminLicensePackagesView.as_view(),       name='admin-license-packages'),
+    path('<uuid:pk>/license/packages/<uuid:item_pk>/',     AdminLicensePackageRemoveView.as_view(),  name='admin-license-package-remove'),
+    path('<uuid:pk>/license/snapshots/',                   AdminLicenseSnapshotsView.as_view(),      name='admin-license-snapshots'),
+    path('<uuid:pk>/license/ai-usage/',                    AdminAIUsageView.as_view(),               name='admin-ai-usage'),
+    path('<uuid:pk>/agent-tokens/',                        AdminAgentTokenListView.as_view(),         name='admin-agent-tokens'),
+    path('<uuid:pk>/agent-tokens/<uuid:token_pk>/revoke/', AdminAgentTokenRevokeView.as_view(),       name='admin-agent-token-revoke'),
 ]

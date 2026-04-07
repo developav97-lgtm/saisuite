@@ -19,6 +19,7 @@ Endpoints:
 from django.urls import path
 
 from . import views
+from .views import BotConversacionView
 
 app_name = 'chat'
 
@@ -27,6 +28,11 @@ urlpatterns = [
         'conversaciones/',
         views.conversaciones_view,
         name='conversaciones',
+    ),
+    path(
+        'conversaciones/bot/',
+        BotConversacionView.as_view(),
+        name='chat-bot-conversation',
     ),
     path(
         'conversaciones/<uuid:conversacion_id>/mensajes/',

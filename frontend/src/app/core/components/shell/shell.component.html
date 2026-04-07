@@ -59,6 +59,7 @@
 <app-chat-panel
   [isOpen]="chatState.isOpen()"
   [openConversacionId]="chatState.requestedConversacionId()"
+  [openBotContext]="chatState.requestedBotContext()"
   (close)="chatState.close()"
   (unreadCountChange)="chatUnreadCount.set($event)" />
 

@@ -4,7 +4,9 @@ import {
   DestroyRef,
   OnInit,
   computed,
+  effect,
   inject,
+  input,
   output,
   signal,
 } from '@angular/core';
@@ -21,6 +23,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatChipsModule } from '@angular/material/chips';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { debounceTime, distinctUntilChanged, switchMap } from 'rxjs';
 import { ReportService } from '../../services/report.service';
 import {
@@ -47,6 +50,7 @@ import {
     MatAutocompleteModule,
     MatExpansionModule,
     MatChipsModule,
+    MatTooltipModule,
   ],
   templateUrl: './filter-panel.component.html',
   styleUrl: './filter-panel.component.scss',
@@ -55,7 +59,14 @@ export class FilterPanelComponent implements OnInit {
   private readonly reportService = inject(ReportService);
   private readonly destroyRef = inject(DestroyRef);
 
+  /** Filtros guardados del dashboard. Se cargan al abrir. */
+  readonly savedFilter = input<ReportFilter | null>(null);
+  /** Controla si el panel empieza expandido (default: true). Usar false en el builder. */
+  readonly startExpanded = input<boolean>(true);
+
   readonly filterChange = output<ReportFilter>();
+  /** Emitido cuando el usuario quiere guardar los filtros actuales como predeterminados */
+  readonly saveAsDefault = output<ReportFilter>();
 
   // ── State ──────────────────────────────────────────────────
   readonly fechaDesde = signal<Date | null>(null);
@@ -67,6 +78,17 @@ export class FilterPanelComponent implements OnInit {
   readonly compararPeriodo = signal(false);
   readonly expanded = signal(true);
 
+  /** Si true, retorna serie mensual de 12 barras */
+  readonly agruparPorMes = signal(false);
+  /** Año para la serie mensual */
+  readonly anio = signal<string | null>(null);
+
+  /** True cuando los filtros actuales difieren de los guardados */
+  readonly hasPendingChanges = signal(false);
+
+  /** Indica si los filtros guardados ya fueron cargados (para no recargar en cada cambio) */
+  private _savedFilterLoaded = false;
+
   // Autocomplete
   readonly terceroSearch = new FormControl('');
   readonly terceroOptions = signal<FilterTercero[]>([]);
@@ -75,6 +97,16 @@ export class FilterPanelComponent implements OnInit {
   readonly proyectos = signal<FilterProyecto[]>([]);
   readonly departamentos = signal<FilterDepartamento[]>([]);
   readonly periodos = signal<FilterPeriodo[]>([]);
+
+  // Años disponibles extraidos de periodos
+  readonly aniosDisponibles = computed(() => {
+    const set = new Set<string>();
+    for (const p of this.periodos()) {
+      const anio = (p.periodo ?? '').slice(0, 4);
+      if (anio) set.add(anio);
+    }
+    return Array.from(set).sort().reverse();
+  });
 
   // Active filter count for collapsed badge
   readonly activeFilterCount = computed(() => {
@@ -85,10 +117,23 @@ export class FilterPanelComponent implements OnInit {
     if (this.selectedProyecto()) count++;
     if (this.selectedDepartamento()) count++;
     if (this.selectedPeriodo()) count++;
+    if (this.agruparPorMes()) count++;
     return count;
   });
 
+  constructor() {
+    // Carga el savedFilter cuando llega (una sola vez)
+    effect(() => {
+      const saved = this.savedFilter();
+      if (saved && !this._savedFilterLoaded) {
+        this._savedFilterLoaded = true;
+        this._loadFromFilter(saved);
+      }
+    });
+  }
+
   ngOnInit(): void {
+    this.expanded.set(this.startExpanded());
     this.loadFilterOptions();
     this.setupTerceroAutocomplete();
   }
@@ -114,6 +159,23 @@ export class FilterPanelComponent implements OnInit {
       switchMap(q => this.reportService.searchTerceros(q ?? '')),
       takeUntilDestroyed(this.destroyRef),
     ).subscribe(results => this.terceroOptions.set(results));
+  }
+
+  /** Carga los valores de un ReportFilter en las señales del panel */
+  private _loadFromFilter(filter: ReportFilter): void {
+    this.fechaDesde.set(filter.fecha_desde ? new Date(filter.fecha_desde) : null);
+    this.fechaHasta.set(filter.fecha_hasta ? new Date(filter.fecha_hasta) : null);
+    this.selectedProyecto.set(filter.proyecto_codigo ?? null);
+    this.selectedDepartamento.set(filter.departamento_codigo ?? null);
+    this.selectedPeriodo.set(filter.periodo ?? null);
+    this.compararPeriodo.set(filter.comparar_periodo ?? false);
+    this.agruparPorMes.set(filter.agrupar_por_mes ?? false);
+    this.anio.set(filter.anio ?? null);
+    // Tercero: carga solo el id; la UI mostrara el autocomplete vacío
+    if (filter.tercero_id) {
+      this.selectedTercero.set({ id: filter.tercero_id, nombre: filter.tercero_id });
+    }
+    this.emitFilter();
   }
 
   // ── Quick period buttons ───────────────────────────────────
@@ -175,15 +237,29 @@ export class FilterPanelComponent implements OnInit {
     this.selectedDepartamento.set(null);
     this.selectedPeriodo.set(null);
     this.compararPeriodo.set(false);
+    this.agruparPorMes.set(false);
+    this.anio.set(null);
     this.terceroSearch.setValue('');
     this.emitFilter();
   }
 
-  private emitFilter(): void {
+  onSaveAsDefault(): void {
+    const filter = this._buildFilter();
+    this.saveAsDefault.emit(filter);
+    // Marcamos como sin cambios pendientes
+    this.hasPendingChanges.set(false);
+  }
+
+  emitFilter(): void {
+    const filter = this._buildFilter();
+    this.filterChange.emit(filter);
+    this._checkPendingChanges(filter);
+  }
+
+  private _buildFilter(): ReportFilter {
     const desde = this.fechaDesde();
     const hasta = this.fechaHasta();
-
-    const filter: ReportFilter = {
+    return {
       fecha_desde: desde ? this.formatDate(desde) : null,
       fecha_hasta: hasta ? this.formatDate(hasta) : null,
       tercero_id: this.selectedTercero()?.id ?? null,
@@ -191,8 +267,19 @@ export class FilterPanelComponent implements OnInit {
       departamento_codigo: this.selectedDepartamento() ?? null,
       periodo: this.selectedPeriodo() ?? null,
       comparar_periodo: this.compararPeriodo(),
+      agrupar_por_mes: this.agruparPorMes(),
+      anio: this.anio() ?? null,
     };
-    this.filterChange.emit(filter);
+  }
+
+  private _checkPendingChanges(current: ReportFilter): void {
+    const saved = this.savedFilter();
+    if (!saved) {
+      this.hasPendingChanges.set(false);
+      return;
+    }
+    const equal = JSON.stringify(current) === JSON.stringify(saved);
+    this.hasPendingChanges.set(!equal);
   }
 
   private formatDate(d: Date): string {

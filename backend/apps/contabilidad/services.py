@@ -12,6 +12,12 @@ from apps.contabilidad.models import (
     MovimientoContable,
     ConfiguracionContable,
     CuentaContable,
+    TerceroSaiopen,
+    ShipToSaiopen,
+    TributariaSaiopen,
+    ListaSaiopen,
+    ProyectoSaiopen,
+    ActividadSaiopen,
 )
 
 logger = logging.getLogger(__name__)
@@ -91,9 +97,9 @@ class SyncService:
                     batch=record.get('batch'),
                     invc=record.get('invc', ''),
                     descripcion=record.get('descripcion', ''),
-                    fecha=record['fecha'],
-                    duedate=record.get('duedate'),
-                    periodo=record['periodo'],
+                    fecha=record['fecha'] or None,  # None triggers NOT NULL error caught below
+                    duedate=record.get('duedate') or None,
+                    periodo=record.get('periodo', ''),
                     departamento_codigo=record.get('departamento_codigo'),
                     departamento_nombre=record.get('departamento_nombre', ''),
                     centro_costo_codigo=record.get('centro_costo_codigo'),
@@ -174,17 +180,20 @@ class SyncService:
 
         for idx, record in enumerate(records):
             try:
+                # Agent sends: acct, nvel, class, cdgo_ttl, cdgo_grpo, cdgo_cnta, cdgo_sbcnta
+                # Accept both naming conventions (Go agent fields and normalized names)
+                codigo_raw = record.get('codigo') or record.get('acct')
                 obj = CuentaContable(
                     company_id=company_id,
-                    codigo=Decimal(str(record['codigo'])),
+                    codigo=Decimal(str(codigo_raw)),
                     descripcion=record.get('descripcion', ''),
-                    nivel=record.get('nivel', 0),
-                    clase=record.get('clase', ''),
+                    nivel=record.get('nivel') or record.get('nvel') or 0,
+                    clase=record.get('clase') or record.get('class', ''),
                     tipo=record.get('tipo', ''),
-                    titulo_codigo=record.get('titulo_codigo', 0),
-                    grupo_codigo=record.get('grupo_codigo', 0),
-                    cuenta_codigo=record.get('cuenta_codigo', 0),
-                    subcuenta_codigo=record.get('subcuenta_codigo', 0),
+                    titulo_codigo=record.get('titulo_codigo') or record.get('cdgo_ttl') or 0,
+                    grupo_codigo=record.get('grupo_codigo') or record.get('cdgo_grpo') or 0,
+                    cuenta_codigo=record.get('cuenta_codigo') or record.get('cdgo_cnta') or 0,
+                    subcuenta_codigo=record.get('subcuenta_codigo') or record.get('cdgo_sbcnta') or 0,
                     posicion_financiera=record.get('posicion_financiera', 0),
                 )
                 objects_to_upsert.append(obj)
@@ -236,6 +245,325 @@ class SyncService:
             'updated': updated,
             'errors': errors,
         }
+
+    @staticmethod
+    def process_reference(table: str, company_id, records: list[dict], data: dict = None) -> dict:
+        """
+        Dispatcher para tablas de referencia.
+        table: 'cust', 'cust_batch', 'lista', 'proyectos', 'actividades'
+        data: dict completo del mensaje SQS (solo para cust/cust_batch — incluye shipto y tributaria)
+        """
+        if table in ('cust', 'cust_batch'):
+            return SyncService._process_cust(company_id, records, data or {})
+        handlers = {
+            'lista':       SyncService._process_lista,
+            'proyectos':   SyncService._process_proyectos,
+            'actividades': SyncService._process_actividades,
+        }
+        handler = handlers.get(table)
+        if handler is None:
+            logger.warning('process_reference_unknown_table', extra={'table': table})
+            return {'inserted': 0, 'updated': 0, 'errors': [f'Unknown table: {table}']}
+        return handler(company_id, records)
+
+    @staticmethod
+    def _process_cust(company_id, records: list[dict], data: dict) -> dict:
+        """
+        Upsert atómico de CUST + SHIPTO + TRIBUTARIA.
+        data puede contener 'shipto' y 'tributaria' como listas adicionales.
+        Al finalizar dispara la doble vía hacia el modelo Tercero de la app.
+        """
+        if not records:
+            return {'inserted': 0, 'updated': 0, 'errors': []}
+
+        # ── 1. Construir objetos TerceroSaiopen ──────────────────────────────
+        def _bool_field(val) -> bool:
+            if isinstance(val, bool):
+                return val
+            return str(val).strip().upper() in ('Y', 'T', 'TRUE', 'S', '1')
+
+        terceros = []
+        for r in records:
+            id_n = str(r.get('id_n', '')).strip()
+            if not id_n:
+                continue
+            activo = not _bool_field(r.get('inactivo', False))
+            fecha_raw = r.get('fecha_creacion', '') or ''
+            fecha = None
+            if fecha_raw:
+                try:
+                    from datetime import date
+                    fecha = date.fromisoformat(fecha_raw[:10])
+                except (ValueError, TypeError):
+                    pass
+            terceros.append(TerceroSaiopen(
+                company_id=company_id,
+                id_n=id_n,
+                nit=str(r.get('nit', '')).strip(),
+                nombre=str(r.get('company', '')).strip(),
+                direccion=str(r.get('addr1', '')).strip(),
+                ciudad=str(r.get('city', '')).strip(),
+                departamento=str(r.get('departamento', '')).strip(),
+                telefono=str(r.get('phone1', '')).strip(),
+                telefono2=str(r.get('phone2', '')).strip(),
+                email=str(r.get('email', '')).strip(),
+                es_cliente=_bool_field(r.get('cliente', False)),
+                es_proveedor=_bool_field(r.get('proveedor', False)),
+                es_empleado=_bool_field(r.get('empleado', False)),
+                activo=activo,
+                acct=str(r.get('acct', '')).strip(),
+                acctp=str(r.get('acctp', '')).strip(),
+                regimen=str(r.get('regimen', '')).strip(),
+                fecha_creacion=fecha,
+                descuento=r.get('descuento') or 0,
+                creditlmt=r.get('creditlmt') or 0,
+                version_saiopen=int(r.get('version') or 0),
+            ))
+
+        existing_ids = set(TerceroSaiopen.objects.filter(
+            company_id=company_id,
+            id_n__in=[o.id_n for o in terceros],
+        ).values_list('id_n', flat=True))
+
+        # ── 2. Construir objetos ShipToSaiopen ───────────────────────────────
+        shipto_list = data.get('shipto') or []
+        shiptos = []
+        for r in shipto_list:
+            id_n = str(r.get('id_n', '')).strip()
+            if not id_n:
+                continue
+            suc = int(r.get('succliente') or 0)
+            shiptos.append(ShipToSaiopen(
+                company_id=company_id,
+                id_n=id_n,
+                succliente=suc,
+                descripcion=str(r.get('descripcion', '')).strip(),
+                nombre=str(r.get('company', '')).strip(),
+                addr1=str(r.get('addr1', '')).strip(),
+                addr2=str(r.get('addr2', '')).strip(),
+                ciudad=str(r.get('city', '')).strip(),
+                departamento=str(r.get('departamento', '')).strip(),
+                cod_dpto=str(r.get('cod_dpto', '')).strip(),
+                cod_municipio=str(r.get('cod_municipio', '')).strip(),
+                pais=str(r.get('pais', '')).strip(),
+                telefono=str(r.get('phone1', '')).strip(),
+                email=str(r.get('email', '')).strip(),
+                zona=int(r.get('zona') or 0),
+                id_vend=int(r.get('id_vend') or 0),
+                estado=str(r.get('estado', '')).strip(),
+                es_principal=(suc == 0),
+            ))
+
+        # ── 3. Construir objetos TributariaSaiopen ───────────────────────────
+        trib_list = data.get('tributaria') or []
+        tributarias = []
+        for r in trib_list:
+            id_n = str(r.get('id_n', '')).strip()
+            if not id_n:
+                continue
+            tributarias.append(TributariaSaiopen(
+                company_id=company_id,
+                id_n=id_n,
+                tdoc=int(r.get('tdoc') or 0),
+                tipo_contribuyente=int(r.get('tipo_contribuyente') or 0),
+                primer_nombre=str(r.get('primer_nombre', '')).strip(),
+                segundo_nombre=str(r.get('segundo_nombre', '')).strip(),
+                primer_apellido=str(r.get('primer_apellido', '')).strip(),
+                segundo_apellido=str(r.get('segundo_apellido', '')).strip(),
+            ))
+
+        # ── 4. Upsert atómico de las tres tablas ─────────────────────────────
+        with transaction.atomic():
+            TerceroSaiopen.objects.bulk_create(
+                terceros,
+                update_conflicts=True,
+                unique_fields=['company', 'id_n'],
+                update_fields=[
+                    'nit', 'nombre', 'direccion', 'ciudad', 'departamento',
+                    'telefono', 'telefono2', 'email',
+                    'es_cliente', 'es_proveedor', 'es_empleado', 'activo',
+                    'acct', 'acctp', 'regimen', 'fecha_creacion',
+                    'descuento', 'creditlmt', 'version_saiopen',
+                ],
+            )
+            if shiptos:
+                ShipToSaiopen.objects.bulk_create(
+                    shiptos,
+                    update_conflicts=True,
+                    unique_fields=['company', 'id_n', 'succliente'],
+                    update_fields=[
+                        'descripcion', 'nombre', 'addr1', 'addr2', 'ciudad',
+                        'departamento', 'cod_dpto', 'cod_municipio', 'pais',
+                        'telefono', 'email', 'zona', 'id_vend', 'estado', 'es_principal',
+                    ],
+                )
+            if tributarias:
+                TributariaSaiopen.objects.bulk_create(
+                    tributarias,
+                    update_conflicts=True,
+                    unique_fields=['company', 'id_n'],
+                    update_fields=[
+                        'tdoc', 'tipo_contribuyente',
+                        'primer_nombre', 'segundo_nombre',
+                        'primer_apellido', 'segundo_apellido',
+                    ],
+                )
+
+        logger.info('cust_processed', extra={
+            'company_id': str(company_id),
+            'cust': len(terceros),
+            'shipto': len(shiptos),
+            'tributaria': len(tributarias),
+            'existing': len(existing_ids),
+        })
+
+        # ── 5. Doble vía → modelo Tercero de la app ──────────────────────────
+        try:
+            from apps.terceros.services import TerceroSyncService
+            TerceroSyncService.upsert_from_saiopen(
+                company_id=company_id,
+                terceros_saiopen=terceros,
+                shipto_list=shiptos,
+                tributaria_list=tributarias,
+            )
+        except Exception:
+            logger.exception('cust_tercero_sync_failed', extra={'company_id': str(company_id)})
+            # No propagamos — el upsert del espejo ya fue exitoso
+
+        return {
+            'inserted': len(terceros) - len(existing_ids),
+            'updated': len(existing_ids),
+            'errors': [],
+        }
+
+    @staticmethod
+    def _process_lista(company_id, records: list[dict]) -> dict:
+        """Upsert de departamentos y centros de costo desde LISTA de Saiopen."""
+        if not records:
+            return {'inserted': 0, 'updated': 0, 'errors': []}
+
+        objects = []
+        for r in records:
+            tipo = str(r.get('tipo', '')).strip().upper()
+            codigo = r.get('codigo')
+            if not tipo or codigo is None:
+                continue
+            objects.append(ListaSaiopen(
+                company_id=company_id,
+                tipo=tipo,
+                codigo=int(codigo),
+                descripcion=str(r.get('descripcion', '')).strip(),
+                activo=str(r.get('dpcc_est', 'A')).strip().upper() != 'I',
+            ))
+
+        existing = set(
+            ListaSaiopen.objects.filter(
+                company_id=company_id,
+                tipo__in=[o.tipo for o in objects],
+                codigo__in=[o.codigo for o in objects],
+            ).values_list('codigo', flat=True)
+        )
+
+        with transaction.atomic():
+            ListaSaiopen.objects.bulk_create(
+                objects,
+                update_conflicts=True,
+                unique_fields=['company', 'tipo', 'codigo'],
+                update_fields=['descripcion', 'activo'],
+            )
+
+        logger.info('lista_processed', extra={'company_id': str(company_id), 'total': len(objects)})
+        return {'inserted': len(objects) - len(existing), 'updated': len(existing), 'errors': []}
+
+    @staticmethod
+    def _process_proyectos(company_id, records: list[dict]) -> dict:
+        """Upsert de proyectos Saiopen."""
+        if not records:
+            return {'inserted': 0, 'updated': 0, 'errors': []}
+
+        objects = []
+        errors = []
+        for idx, r in enumerate(records):
+            codigo = str(r.get('codigo', '')).strip()
+            if not codigo:
+                continue
+            try:
+                from datetime import datetime
+
+                def _parse_date(s):
+                    if not s:
+                        return None
+                    try:
+                        return datetime.strptime(s[:10], '%Y-%m-%d').date()
+                    except ValueError:
+                        return None
+
+                objects.append(ProyectoSaiopen(
+                    company_id=company_id,
+                    codigo=codigo,
+                    descripcion=str(r.get('descripcion', '')).strip(),
+                    cliente_nit=str(r.get('id_nit', '')).strip(),
+                    fecha_inicio=_parse_date(r.get('fecha_i')),
+                    fecha_estimada_fin=_parse_date(r.get('fecha_est_t')),
+                    costo_estimado=Decimal(str(r.get('costo_est', 0) or 0)),
+                    estado=str(r.get('pro_est', '')).strip(),
+                ))
+            except Exception as exc:
+                errors.append(f'Record {idx}: {exc}')
+
+        existing = set(ProyectoSaiopen.objects.filter(
+            company_id=company_id,
+            codigo__in=[o.codigo for o in objects],
+        ).values_list('codigo', flat=True))
+
+        with transaction.atomic():
+            ProyectoSaiopen.objects.bulk_create(
+                objects,
+                update_conflicts=True,
+                unique_fields=['company', 'codigo'],
+                update_fields=['descripcion', 'cliente_nit', 'fecha_inicio',
+                               'fecha_estimada_fin', 'costo_estimado', 'estado'],
+            )
+
+        logger.info('proyectos_processed', extra={'company_id': str(company_id), 'total': len(objects)})
+        return {'inserted': len(objects) - len(existing), 'updated': len(existing), 'errors': errors}
+
+    @staticmethod
+    def _process_actividades(company_id, records: list[dict]) -> dict:
+        """Upsert de actividades Saiopen."""
+        if not records:
+            return {'inserted': 0, 'updated': 0, 'errors': []}
+
+        objects = []
+        for r in records:
+            codigo = str(r.get('codigo', '')).strip()
+            proyecto = str(r.get('proyecto', '')).strip()
+            if not codigo:
+                continue
+            objects.append(ActividadSaiopen(
+                company_id=company_id,
+                codigo=codigo,
+                descripcion=str(r.get('descripcion', '')).strip(),
+                proyecto_codigo=proyecto,
+                departamento_codigo=int(r.get('dp', 0) or 0),
+                centro_costo_codigo=int(r.get('cc', 0) or 0),
+            ))
+
+        existing = set(ActividadSaiopen.objects.filter(
+            company_id=company_id,
+            codigo__in=[o.codigo for o in objects],
+        ).values_list('codigo', flat=True))
+
+        with transaction.atomic():
+            ActividadSaiopen.objects.bulk_create(
+                objects,
+                update_conflicts=True,
+                unique_fields=['company', 'codigo', 'proyecto_codigo'],
+                update_fields=['descripcion', 'departamento_codigo', 'centro_costo_codigo'],
+            )
+
+        logger.info('actividades_processed', extra={'company_id': str(company_id), 'total': len(objects)})
+        return {'inserted': len(objects) - len(existing), 'updated': len(existing), 'errors': []}
 
     @staticmethod
     def get_sync_status(company_id) -> dict:

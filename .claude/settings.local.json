@@ -327,7 +327,12 @@
       "mcp__playwright__browser_hover",
       "mcp__playwright__browser_resize",
       "Bash(docker-compose restart:*)",
-      "Bash(find /Users/juanandrade/Desktop/saisuite -name *.env -o -name .env*)"
+      "Bash(find /Users/juanandrade/Desktop/saisuite -name *.env -o -name .env*)",
+      "Bash(python -c \"import ast; ast.parse\\(open\\('backend/apps/companies/models.py'\\).read\\(\\)\\); print\\('models.py: syntax OK'\\)\")",
+      "Bash(python -c \"import ast; ast.parse\\(open\\('backend/apps/companies/admin.py'\\).read\\(\\)\\); print\\('admin.py: syntax OK'\\)\")",
+      "Bash(python manage.py makemigrations users chat)",
+      "Bash(aws --version)",
+      "Bash(aws sts:*)"
     ]
   }
 }

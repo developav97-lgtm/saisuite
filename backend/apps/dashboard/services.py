@@ -68,6 +68,7 @@ class DashboardService:
             descripcion=data.get('descripcion', ''),
             es_privado=data.get('es_privado', True),
             orientacion=data.get('orientacion', 'portrait'),
+            filtros_default=data.get('filtros_default', {}),
         )
         dashboard.save()
 
@@ -121,7 +122,7 @@ class DashboardService:
             if not share or not share.puede_editar:
                 raise PermissionDenied('No tienes permiso para editar este dashboard.')
 
-        for field in ('titulo', 'descripcion', 'es_privado', 'orientacion'):
+        for field in ('titulo', 'descripcion', 'es_privado', 'orientacion', 'filtros_default'):
             if field in data:
                 setattr(dashboard, field, data[field])
 
@@ -502,9 +503,10 @@ class FilterService:
                 | Q(tercero_id__icontains=query)
             )
 
-        return list(
-            qs.order_by('tercero_nombre')[:50]
-        )
+        return [
+            {'id': row['tercero_id'], 'nombre': row['tercero_nombre'] or row['tercero_id']}
+            for row in qs.order_by('tercero_nombre')[:50]
+        ]
 
     @staticmethod
     def get_available_proyectos(company_id) -> list[dict]:
@@ -585,15 +587,20 @@ class ReportService:
     """Servicio para generar datos de reportes para tarjetas."""
 
     @staticmethod
-    def get_card_data(company_id, card_type_code: str, filtros: dict) -> dict:
+    def get_card_data(
+        company_id, card_type_code: str, filtros: dict, card_config: dict | None = None
+    ) -> dict:
         """
         Genera los datos para una tarjeta.
         Valida que el card_type_code exista en el catalogo.
+        card_config: configuracion especifica para tarjetas personalizadas.
         """
         if card_type_code not in CARD_CATALOG:
             raise ValidationError(f'Tipo de tarjeta no valido: {card_type_code}')
 
-        result = _report_engine.get_card_data(company_id, card_type_code, filtros)
+        result = _report_engine.get_card_data(
+            company_id, card_type_code, filtros, card_config or {}
+        )
 
         logger.info(
             'card_data_generated',
@@ -604,6 +611,33 @@ class ReportService:
             },
         )
         return result
+
+    @staticmethod
+    def save_default_filters(dashboard_id, user, filtros: dict) -> Dashboard:
+        """
+        Guarda los filtros_default del dashboard.
+        Requiere ser dueno o tener puede_editar en el share.
+        """
+        dashboard = DashboardService.get_dashboard(dashboard_id, user)
+
+        if dashboard.user_id != user.id:
+            share = DashboardShare.objects.filter(
+                dashboard=dashboard, compartido_con=user,
+            ).first()
+            if not share or not share.puede_editar:
+                raise PermissionDenied('No tienes permiso para guardar filtros en este dashboard.')
+
+        dashboard.filtros_default = filtros
+        dashboard.save(update_fields=['filtros_default', 'updated_at'])
+
+        logger.info(
+            'dashboard_filters_saved',
+            extra={
+                'dashboard_id': str(dashboard_id),
+                'user_id': str(user.id),
+            },
+        )
+        return dashboard
 
 
 # ──────────────────────────────────────────────
@@ -619,29 +653,91 @@ _TITULO_LABELS = {
 
 class CfoVirtualService:
     """
-    Servicio CFO Virtual — llama al workflow n8n que consulta Claude AI
+    Servicio CFO Virtual — llama al workflow n8n que consulta OpenAI
     con contexto financiero resumido de la empresa.
+    Integra control de cuota IA y registro de uso por usuario.
     """
 
     @staticmethod
-    def ask(question: str, company) -> str:
-        webhook_url = (
-            getattr(settings, 'N8N_WEBHOOK_BASE', 'http://n8n:5678').rstrip('/')
-            + '/webhook/cfo-virtual'
-        )
+    def ask(question: str, company, user=None) -> str:
+        """
+        Llama directamente a OpenAI con contexto financiero de la empresa.
+        Verifica cuota IA antes de enviar y registra uso despues.
+        """
+        from apps.companies.services import AIUsageService
+
+        # Verificar cuota IA
+        quota = AIUsageService.check_quota(company)
+        if not quota['allowed']:
+            raise ValidationError(
+                'Has alcanzado el limite de uso de IA este mes. '
+                f'Mensajes restantes: {quota["remaining_messages"]}, '
+                f'Tokens restantes: {quota["remaining_tokens"]}.'
+            )
+
+        openai_api_key = getattr(settings, 'OPENAI_API_KEY', '')
+        if not openai_api_key:
+            raise ValidationError('El asistente de IA no está configurado.')
 
         context = CfoVirtualService._build_financial_context(company)
+        año = context.pop('año_analizado', '')
+        periodo = context.pop('periodo', '')
+        lines = [f'Resumen financiero año {año} ({periodo}) de {company.name}:']
+        for k, v in context.items():
+            if k.endswith('_pct'):
+                lines.append(f'- {k.replace("_", " ")}: {v:.1f}%')
+            elif isinstance(v, (int, float)):
+                lines.append(f'- {k.replace("_", " ")}: ${v:,.0f} COP')
+            else:
+                lines.append(f'- {k.replace("_", " ")}: {v}')
+        context_str = '\n'.join(lines)
+
+        system_prompt = (
+            f'Eres el CFO Virtual de {company.name}, un asistente financiero experto en '
+            'contabilidad colombiana (PUC) y análisis de PyMEs. '
+            'Tienes acceso COMPLETO a los datos financieros reales de la empresa proporcionados en el mensaje. '
+            'SIEMPRE usa esos datos para responder con números específicos. '
+            'Responde en español, de forma concisa y práctica.'
+        )
 
         payload = {
-            'question': question,
-            'company_name': str(company.name),
-            'context': context,
+            'model': 'gpt-4o-mini',
+            'max_tokens': 1024,
+            'messages': [
+                {'role': 'system', 'content': system_prompt},
+                {'role': 'user', 'content': f'{context_str}\n\nPregunta: {question}'},
+            ],
         }
 
         try:
-            resp = requests.post(webhook_url, json=payload, timeout=30)
+            resp = requests.post(
+                'https://api.openai.com/v1/chat/completions',
+                json=payload,
+                headers={
+                    'Authorization': f'Bearer {openai_api_key}',
+                    'Content-Type': 'application/json',
+                },
+                timeout=30,
+            )
             resp.raise_for_status()
-            return resp.json().get('response', 'Sin respuesta del asistente.')
+            data = resp.json()
+            response_text = data['choices'][0]['message']['content']
+
+            # Registrar uso de tokens
+            usage = data.get('usage', {})
+            if user:
+                AIUsageService.record_usage(
+                    company=company,
+                    user=user,
+                    request_type='cfo_virtual',
+                    module_context='dashboard',
+                    prompt_tokens=usage.get('prompt_tokens', 0),
+                    completion_tokens=usage.get('completion_tokens', 0),
+                    model_used=data.get('model', 'gpt-4o-mini'),
+                    question_preview=question[:200],
+                )
+
+            return response_text
         except requests.exceptions.Timeout:
             logger.warning('cfo_virtual_timeout', extra={'company_id': str(company.id)})
             raise ValidationError('El asistente tardó demasiado. Intenta de nuevo.')
@@ -651,22 +747,68 @@ class CfoVirtualService:
 
     @staticmethod
     def _build_financial_context(company) -> dict:
-        """Construye un resumen financiero de los últimos 12 meses por título contable."""
-        cutoff = timezone.now().date() - datetime.timedelta(days=365)
+        """
+        Construye un resumen financiero enriquecido para el CFO Virtual.
+        Incluye el año en curso (enero-diciembre) y métricas derivadas en español claro.
+        """
+        today = timezone.now().date()
+
+        # Usar el año con el último movimiento registrado (puede ser año anterior si aún no hay datos del actual)
+        last_mov = (
+            MovimientoContable.objects
+            .filter(company=company)
+            .order_by('-fecha')
+            .values_list('fecha', flat=True)
+            .first()
+        )
+        year = last_mov.year if last_mov else today.year
+
+        # Año completo: enero 1 — diciembre 31 (o hoy si es el año en curso)
+        fecha_inicio = datetime.date(year, 1, 1)
+        fecha_fin = min(datetime.date(year, 12, 31), today)
 
         rows = (
             MovimientoContable.objects
-            .filter(company=company, fecha__gte=cutoff)
-            .values('cdgottl')
+            .filter(company=company, fecha__gte=fecha_inicio, fecha__lte=fecha_fin)
+            .values('titulo_codigo')
             .annotate(debito=Sum('debito'), credito=Sum('credito'))
         )
 
-        context: dict = {}
+        totals: dict = {}
         for row in rows:
-            ttl = str(row['cdgottl'] or '')
-            label = _TITULO_LABELS.get(ttl[:1], f'Grupo {ttl}')
-            context[f'{label}_debito'] = float(row['debito'] or 0)
-            context[f'{label}_credito'] = float(row['credito'] or 0)
+            ttl = str(row['titulo_codigo'] or '')
+            key = ttl[:1]
+            if key not in totals:
+                totals[key] = {'debito': 0.0, 'credito': 0.0}
+            totals[key]['debito'] += float(row['debito'] or 0)
+            totals[key]['credito'] += float(row['credito'] or 0)
 
-        context['periodo'] = f"{cutoff.isoformat()} / {timezone.now().date().isoformat()}"
+        def get(titulo, side):
+            return totals.get(titulo, {}).get(side, 0.0)
+
+        ingresos = get('4', 'credito') - get('4', 'debito')
+        costos = get('6', 'debito') - get('6', 'credito')
+        gastos = get('5', 'debito') - get('5', 'credito')
+        utilidad_bruta = ingresos - costos
+        utilidad_operacional = utilidad_bruta - gastos
+        activo_total = get('1', 'debito') - get('1', 'credito')
+        pasivo_total = get('2', 'credito') - get('2', 'debito')
+        patrimonio = get('3', 'credito') - get('3', 'debito')
+        margen_bruto = (utilidad_bruta / ingresos * 100) if ingresos else 0
+        margen_operacional = (utilidad_operacional / ingresos * 100) if ingresos else 0
+
+        context = {
+            'año_analizado': str(year),
+            'periodo': f'01/01/{year} al {fecha_fin.strftime("%d/%m/%Y")}',
+            'Ingresos_netos_COP': round(ingresos, 2),
+            'Costos_de_ventas_COP': round(costos, 2),
+            'Utilidad_bruta_COP': round(utilidad_bruta, 2),
+            'Gastos_operacionales_COP': round(gastos, 2),
+            'Utilidad_operacional_COP': round(utilidad_operacional, 2),
+            'Activo_total_COP': round(activo_total, 2),
+            'Pasivo_total_COP': round(pasivo_total, 2),
+            'Patrimonio_COP': round(patrimonio, 2),
+            'Margen_bruto_pct': round(margen_bruto, 1),
+            'Margen_operacional_pct': round(margen_operacional, 1),
+        }
         return context

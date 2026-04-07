@@ -60,6 +60,10 @@ class User(AbstractBaseUser, PermissionsMixin):
         default=False,
         help_text='Superadmin global ValMen Tech',
     )
+    is_bot         = models.BooleanField(
+        default=False,
+        help_text='True para usuarios bot/IA',
+    )
     tenant_activo  = models.ForeignKey(
         'companies.Company',
         on_delete=models.SET_NULL,

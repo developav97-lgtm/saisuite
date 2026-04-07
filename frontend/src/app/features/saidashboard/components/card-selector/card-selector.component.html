@@ -3,14 +3,16 @@
   Agregar tarjeta
 </h2>
 
-<mat-dialog-content class="cs-content">
-  <!-- Search -->
+<!-- Search fuera del content para que no haga scroll -->
+<div class="cs-search-wrapper">
   <mat-form-field appearance="outline" subscriptSizing="dynamic" class="cs-search">
     <mat-label>Buscar tarjeta...</mat-label>
     <input matInput [ngModel]="searchText()" (ngModelChange)="searchText.set($event)" />
     <mat-icon matSuffix>search</mat-icon>
   </mat-form-field>
+</div>
 
+<mat-dialog-content class="cs-content">
   @if (loading()) {
     <mat-progress-bar mode="indeterminate" />
   }

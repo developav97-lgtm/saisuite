@@ -1,0 +1,15 @@
+# Binarios compilados
+agent.exe
+agent
+*.exe
+
+# Archivo de configuración real (contiene credenciales)
+# El cliente recibe este archivo pre-configurado por ValMen Tech
+saicloud-agent.json
+
+# Logs
+logs/
+*.log
+
+# Build artifacts
+dist/

@@ -61,14 +61,18 @@ import { PresenceService } from '../../services/presence.service';
       @for (conv of conversaciones(); track conv.id) {
         <button class="chat-list__item" (click)="selectConversacion.emit(conv)">
           <div class="chat-list__avatar-wrap">
-            <mat-icon class="chat-list__avatar">account_circle</mat-icon>
-            <span class="chat-list__presence-dot"
-                  [class.chat-list__presence-dot--online]="presenceService.getStatus(getPeerId(conv)) === 'online'">
-            </span>
+            @if (conv.bot_context) {
+              <mat-icon class="chat-list__avatar chat-list__avatar--bot">smart_toy</mat-icon>
+            } @else {
+              <mat-icon class="chat-list__avatar">account_circle</mat-icon>
+              <span class="chat-list__presence-dot"
+                    [class.chat-list__presence-dot--online]="presenceService.getStatus(getPeerId(conv)) === 'online'">
+              </span>
+            }
           </div>
           <div class="chat-list__info">
             <div class="chat-list__row-top">
-              <span class="chat-list__name">{{ getPeerName(conv) }}</span>
+              <span class="chat-list__name">{{ conv.bot_context ? getBotName(conv.bot_context) : getPeerName(conv) }}</span>
               <span class="chat-list__time">
                 @if (conv.ultimo_mensaje_at) {
                   {{ conv.ultimo_mensaje_at | date:'shortTime' }}
@@ -163,6 +167,10 @@ import { PresenceService } from '../../services/presence.service';
       width: 40px;
       height: 40px;
       color: var(--sc-text-muted, #718096);
+
+      &--bot {
+        color: var(--sc-primary, #1565c0);
+      }
     }
 
     .chat-list__presence-dot {
@@ -293,6 +301,14 @@ export class ChatListComponent {
     return conv.participante_1 === this.currentUserId()
       ? conv.participante_2
       : conv.participante_1;
+  }
+
+  getBotName(context: string): string {
+    const names: Record<string, string> = {
+      dashboard: 'CFO Virtual',
+      proyectos: 'Asistente de Proyectos',
+    };
+    return names[context] ?? 'Asistente IA';
   }
 
   onSearch(query: string): void {

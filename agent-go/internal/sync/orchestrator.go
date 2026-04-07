@@ -16,6 +16,7 @@ import (
 	"github.com/valmentech/saicloud-agent/internal/api"
 	"github.com/valmentech/saicloud-agent/internal/config"
 	"github.com/valmentech/saicloud-agent/internal/firebird"
+	"github.com/valmentech/saicloud-agent/internal/sqs"
 )
 
 // Orchestrator manages sync workers for all enabled connections.
@@ -44,6 +45,19 @@ func (o *Orchestrator) Run() {
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 
+	go func() {
+		sig := <-sigCh
+		o.logger.Info("received shutdown signal", "signal", sig.String())
+		fmt.Printf("\nReceived %s, shutting down gracefully...\n", sig)
+		cancel()
+	}()
+
+	o.RunWithContext(ctx)
+}
+
+// RunWithContext starts sync workers using an external context.
+// When ctx is cancelled (e.g. by Windows SCM Stop), all workers shut down gracefully.
+func (o *Orchestrator) RunWithContext(ctx context.Context) {
 	enabled := o.cfg.EnabledConnections()
 	if len(enabled) == 0 {
 		o.logger.Warn("no enabled connections found, nothing to sync")
@@ -63,11 +77,7 @@ func (o *Orchestrator) Run() {
 		}(conn)
 	}
 
-	// Wait for shutdown signal
-	sig := <-sigCh
-	o.logger.Info("received shutdown signal", "signal", sig.String())
-	fmt.Printf("\nReceived %s, shutting down gracefully...\n", sig)
-	cancel()
+	<-ctx.Done()
 
 	// Wait for all workers to finish
 	wg.Wait()
@@ -117,14 +127,25 @@ func (o *Orchestrator) TestConnection(conn *config.Connection) error {
 	}
 	fmt.Printf("OK (GL records: %d, max CONTEO: %d)\n", total, maxConteo)
 
-	// Test Saicloud API connection
-	fmt.Print("  Testing Saicloud API connection... ")
-	apiClient := api.NewClient(conn.Saicloud.APIURL, conn.Saicloud.AgentToken, o.logger)
-	if err := apiClient.HealthCheck(); err != nil {
-		fmt.Println("FAILED")
-		return fmt.Errorf("saicloud API health check failed: %w", err)
+	// Test Saicloud connection (SQS or HTTP depending on transport)
+	if o.cfg.Transport == "sqs" {
+		fmt.Print("  Testing SQS queue connection... ")
+		sqsCfg := o.cfg.SQS
+		pub := sqs.New(sqsCfg.AccessKeyID, sqsCfg.SecretAccessKey, sqsCfg.Region, sqsCfg.QueueURL, o.logger)
+		if err := pub.Ping(context.Background()); err != nil {
+			fmt.Println("FAILED")
+			return fmt.Errorf("SQS connection failed: %w", err)
+		}
+		fmt.Printf("OK (%s)\n", sqsCfg.QueueURL)
+	} else {
+		fmt.Print("  Testing Saicloud API connection... ")
+		apiClient := api.NewClient(conn.Saicloud.APIURL, conn.Saicloud.AgentToken, o.logger)
+		if err := apiClient.HealthCheck(); err != nil {
+			fmt.Println("FAILED")
+			return fmt.Errorf("saicloud API health check failed: %w", err)
+		}
+		fmt.Println("OK")
 	}
-	fmt.Println("OK")
 
 	// Summary
 	pending := maxConteo - conn.Sync.LastConteoGL
@@ -158,6 +179,7 @@ func (o *Orchestrator) runWorker(ctx context.Context, conn config.Connection) {
 
 	// Run immediately on startup, then on ticker
 	o.doGLSync(conn, logger)
+	o.doCustSync(conn, logger)
 	o.doReferenceSync(conn, logger)
 
 	for {
@@ -167,13 +189,14 @@ func (o *Orchestrator) runWorker(ctx context.Context, conn config.Connection) {
 			return
 		case <-glTicker.C:
 			o.doGLSync(conn, logger)
+			o.doCustSync(conn, logger)
 		case <-refTicker.C:
 			o.doReferenceSync(conn, logger)
 		}
 	}
 }
 
-// syncOnce executes a single GL + reference sync cycle for a connection.
+// syncOnce executes a single GL + CUST + reference sync cycle for a connection.
 func (o *Orchestrator) syncOnce(conn config.Connection) error {
 	logger := o.logger.With("conn_id", conn.ID, "conn_name", conn.Name)
 
@@ -181,11 +204,28 @@ func (o *Orchestrator) syncOnce(conn config.Connection) error {
 		return fmt.Errorf("GL sync failed: %w", err)
 	}
 
+	if err := o.doCustSync(conn, logger); err != nil {
+		return fmt.Errorf("CUST sync failed: %w", err)
+	}
+
 	if err := o.doReferenceSync(conn, logger); err != nil {
 		return fmt.Errorf("reference sync failed: %w", err)
 	}
 
 	return nil
+}
+
+// buildSender creates the appropriate Sender based on the configured transport.
+// "sqs" uses AWS SQS; anything else (default "http") posts directly to the API.
+func (o *Orchestrator) buildSender(conn config.Connection, logger *slog.Logger) Sender {
+	if o.cfg.Transport == "sqs" {
+		sqsCfg := o.cfg.SQS
+		pub := sqs.New(sqsCfg.AccessKeyID, sqsCfg.SecretAccessKey, sqsCfg.Region, sqsCfg.QueueURL, logger)
+		logger.Info("transport: SQS", "queue_url", sqsCfg.QueueURL)
+		return newSQSSender(pub, logger)
+	}
+	logger.Info("transport: HTTP", "api_url", conn.Saicloud.APIURL)
+	return newHTTPSender(api.NewClient(conn.Saicloud.APIURL, conn.Saicloud.AgentToken, logger))
 }
 
 // doGLSync runs the incremental GL synchronization.
@@ -199,10 +239,23 @@ func (o *Orchestrator) doGLSync(conn config.Connection, logger *slog.Logger) err
 	}
 	defer fbClient.Close()
 
-	apiClient := api.NewClient(conn.Saicloud.APIURL, conn.Saicloud.AgentToken, logger)
-
-	syncer := NewGLSync(o.cfg, fbClient, apiClient, logger)
+	sender := o.buildSender(conn, logger)
+	syncer := NewGLSync(o.cfg, fbClient, sender, logger)
 	return syncer.Sync(conn)
+}
+
+// doCustSync runs the incremental CUST sync (with SHIPTO and TRIBUTARIA atomically).
+func (o *Orchestrator) doCustSync(conn config.Connection, logger *slog.Logger) error {
+	fbClient := firebird.New(conn.Firebird.DSN(), logger)
+	if err := fbClient.Connect(); err != nil {
+		logger.Error("firebird connection failed for CUST sync", "error", err)
+		return err
+	}
+	defer fbClient.Close()
+
+	sender := o.buildSender(conn, logger)
+	syncer := NewReferenceSync(o.cfg, fbClient, sender, logger)
+	return syncer.SyncCustIncremental(conn)
 }
 
 // doReferenceSync runs the full sync for all reference tables.
@@ -216,8 +269,7 @@ func (o *Orchestrator) doReferenceSync(conn config.Connection, logger *slog.Logg
 	}
 	defer fbClient.Close()
 
-	apiClient := api.NewClient(conn.Saicloud.APIURL, conn.Saicloud.AgentToken, logger)
-
-	syncer := NewReferenceSync(o.cfg, fbClient, apiClient, logger)
+	sender := o.buildSender(conn, logger)
+	syncer := NewReferenceSync(o.cfg, fbClient, sender, logger)
 	return syncer.SyncAll(conn)
 }

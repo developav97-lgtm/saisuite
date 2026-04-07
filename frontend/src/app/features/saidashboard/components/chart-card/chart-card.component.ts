@@ -139,6 +139,7 @@ export class ChartCardComponent implements OnDestroy {
   readonly title = input<string>('');
   readonly loading = input<boolean>(false);
   readonly showMenu = input<boolean>(true);
+  readonly isMonthly = input<boolean>(false);
 
   readonly chartContainer = viewChild<ElementRef<HTMLDivElement>>('chartContainer');
 
@@ -149,6 +150,7 @@ export class ChartCardComponent implements OnDestroy {
 
   private chartInstance: unknown = null;
   private resizeObserver: ResizeObserver | null = null;
+  private fullscreenHandler: (() => void) | null = null;
 
   constructor() {
     // Render chart when inputs change
@@ -158,9 +160,10 @@ export class ChartCardComponent implements OnDestroy {
       const lbls = this.labels();
       const ds = this.datasets();
       const isLoading = this.loading();
+      const monthly = this.isMonthly();
 
       if (container && !isLoading && ds.length > 0) {
-        this.renderChart(container.nativeElement, type, lbls, ds);
+        this.renderChart(container.nativeElement, type, lbls, ds, monthly);
       }
     });
   }
@@ -168,13 +171,32 @@ export class ChartCardComponent implements OnDestroy {
   ngOnDestroy(): void {
     this.disposeChart();
     this.resizeObserver?.disconnect();
+    if (this.fullscreenHandler) {
+      document.removeEventListener('fullscreenchange', this.fullscreenHandler);
+    }
   }
 
   onFullscreen(): void {
     const el = this.chartContainer()?.nativeElement;
-    if (el?.requestFullscreen) {
-      el.requestFullscreen();
+    if (!el?.requestFullscreen) return;
+
+    // Registrar handler para forzar resize al salir de fullscreen
+    if (!this.fullscreenHandler) {
+      this.fullscreenHandler = () => {
+        const isFullscreen = !!document.fullscreenElement;
+        if (!isFullscreen) {
+          // Limpiar height inline que algunos browsers inyectan al salir
+          el.style.height = '';
+        }
+        // Forzar resize del chart en ambos casos (entrar y salir)
+        const chart = this.chartInstance as { resize?: () => void } | null;
+        // requestAnimationFrame da tiempo al browser de aplicar los estilos antes del resize
+        requestAnimationFrame(() => chart?.resize?.());
+      };
+      document.addEventListener('fullscreenchange', this.fullscreenHandler);
     }
+
+    el.requestFullscreen();
   }
 
   private async renderChart(
@@ -182,6 +204,7 @@ export class ChartCardComponent implements OnDestroy {
     type: ChartType,
     labels: string[],
     datasets: DatasetItem[],
+    isMonthly = false,
   ): Promise<void> {
     const echarts = await import('echarts');
     this.disposeChart();
@@ -193,7 +216,9 @@ export class ChartCardComponent implements OnDestroy {
     const textColor = isDark ? '#e2e8f0' : '#1a202c';
     const mutedColor = isDark ? '#718096' : '#a0aec0';
 
-    const option = this.buildOption(type, labels, datasets, textColor, mutedColor);
+    const option = isMonthly && type === 'bar'
+      ? this.buildMonthlyBarOption(labels, datasets, textColor, mutedColor)
+      : this.buildOption(type, labels, datasets, textColor, mutedColor);
     chart.setOption(option);
 
     // Observe container resize for responsiveness
@@ -225,7 +250,7 @@ export class ChartCardComponent implements OnDestroy {
         return {
           color: colorPalette,
           textStyle: baseTextStyle,
-          tooltip: { trigger: 'axis' },
+          tooltip: { trigger: 'axis', confine: true, formatter: this.axisFormatter() },
           legend: {
             show: datasets.length > 1,
             bottom: 0,
@@ -237,7 +262,7 @@ export class ChartCardComponent implements OnDestroy {
           series: datasets.map(ds => ({
             name: ds.label,
             type: 'bar',
-            data: ds.data,
+            data: ds.data.map(Number),
             barMaxWidth: 40,
             itemStyle: { borderRadius: [4, 4, 0, 0] },
           })),
@@ -248,7 +273,7 @@ export class ChartCardComponent implements OnDestroy {
         return {
           color: colorPalette,
           textStyle: baseTextStyle,
-          tooltip: { trigger: 'axis' },
+          tooltip: { trigger: 'axis', confine: true, formatter: this.axisFormatter() },
           legend: {
             show: datasets.length > 1,
             bottom: 0,
@@ -260,7 +285,7 @@ export class ChartCardComponent implements OnDestroy {
           series: datasets.map(ds => ({
             name: ds.label,
             type: 'line',
-            data: ds.data,
+            data: ds.data.map(Number),
             smooth: true,
             areaStyle: type === 'area' ? { opacity: 0.15 } : undefined,
           })),
@@ -270,7 +295,7 @@ export class ChartCardComponent implements OnDestroy {
         return {
           color: colorPalette,
           textStyle: baseTextStyle,
-          tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
+          tooltip: { trigger: 'item', confine: true, formatter: '{b}: {c} ({d}%)' },
           legend: {
             orient: 'vertical',
             right: '5%',
@@ -287,10 +312,13 @@ export class ChartCardComponent implements OnDestroy {
             emphasis: { label: { show: true, fontSize: 14, fontWeight: 'bold' } },
             data: labels.map((l, i) => ({
               name: l,
-              value: datasets[0]?.data[i] ?? 0,
+              value: Number(datasets[0]?.data[i] ?? 0),
             })),
           }],
         };
+
+      case 'table':
+        return this.buildTableOption(labels, datasets, textColor, mutedColor);
 
       case 'waterfall':
         return this.buildWaterfallOption(labels, datasets, textColor, mutedColor);
@@ -321,16 +349,128 @@ export class ChartCardComponent implements OnDestroy {
         return {
           color: colorPalette,
           textStyle: baseTextStyle,
-          tooltip: { trigger: 'axis' },
+          tooltip: { trigger: 'axis', confine: true, formatter: this.axisFormatter() },
           xAxis: { type: 'category', data: labels, axisLabel },
           yAxis: { type: 'value', axisLabel },
           series: datasets.map(ds => ({
             name: ds.label,
             type: 'bar',
-            data: ds.data,
+            data: ds.data.map(Number),
           })),
         };
     }
+  }
+
+  private buildTableOption(
+    labels: string[],
+    datasets: DatasetItem[],
+    textColor: string,
+    mutedColor: string,
+  ): Record<string, unknown> {
+    const colorPalette = [
+      '#1565c0', '#42a5f5', '#0d47a1', '#90caf9',
+      '#2e7d32', '#66bb6a', '#f57f17', '#ffa726',
+    ];
+    const formatCOP = (value: number): string =>
+      new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(value);
+
+    return {
+      color: colorPalette,
+      textStyle: { color: textColor, fontSize: 12 },
+      tooltip: {
+        trigger: 'axis',
+        confine: true,
+        axisPointer: { type: 'shadow' },
+        formatter: (params: { seriesName: string; value: number; name: string }[]) =>
+          `${params[0]?.name ?? ''}<br/>` +
+          params.map(p => `${p.seriesName}: ${formatCOP(p.value)}`).join('<br/>'),
+      },
+      legend: {
+        show: datasets.length > 1,
+        bottom: 0,
+        textStyle: { color: mutedColor },
+      },
+      grid: {
+        left: '3%', right: '4%',
+        bottom: datasets.length > 1 ? '15%' : '8%',
+        top: '8%',
+        containLabel: true,
+      },
+      xAxis: { type: 'value', axisLabel: { color: mutedColor, fontSize: 11 } },
+      yAxis: {
+        type: 'category',
+        data: [...labels].reverse(),
+        axisLabel: {
+          color: mutedColor,
+          fontSize: 11,
+          width: 120,
+          overflow: 'truncate',
+        },
+      },
+      series: datasets.map(ds => ({
+        name: ds.label,
+        type: 'bar',
+        data: [...ds.data].map(Number).reverse(),
+        barMaxWidth: 24,
+        itemStyle: { borderRadius: [0, 4, 4, 0] },
+        label: {
+          show: true,
+          position: 'right',
+          formatter: (p: { value: number }) => formatCOP(p.value),
+          fontSize: 10,
+          color: mutedColor,
+        },
+      })),
+    };
+  }
+
+  private buildMonthlyBarOption(
+    labels: string[],
+    datasets: DatasetItem[],
+    textColor: string,
+    mutedColor: string,
+  ): Record<string, unknown> {
+    const colorPalette = [
+      '#1565c0', '#42a5f5', '#0d47a1', '#90caf9',
+      '#2e7d32', '#66bb6a', '#f57f17', '#ffa726',
+    ];
+    const formatCOP = (value: number): string =>
+      new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(value);
+
+    return {
+      color: colorPalette,
+      textStyle: { color: textColor, fontSize: 12 },
+      tooltip: {
+        trigger: 'axis',
+        confine: true,
+        formatter: (params: { seriesName: string; value: number }[]) =>
+          params.map(p => `${p.seriesName}: ${formatCOP(p.value)}`).join('<br/>'),
+      },
+      legend: {
+        show: datasets.length > 1,
+        bottom: 0,
+        textStyle: { color: mutedColor },
+      },
+      grid: {
+        left: '3%', right: '4%',
+        bottom: datasets.length > 1 ? '25%' : '18%',
+        top: '8%',
+        containLabel: true,
+      },
+      xAxis: {
+        type: 'category',
+        data: labels,
+        axisLabel: { color: mutedColor, fontSize: 11, rotate: 45 },
+      },
+      yAxis: { type: 'value', axisLabel: { color: mutedColor, fontSize: 11 } },
+      series: datasets.map(ds => ({
+        name: ds.label,
+        type: 'bar',
+        data: ds.data.map(Number),
+        barMaxWidth: 20,
+        itemStyle: { borderRadius: [4, 4, 0, 0] },
+      })),
+    };
   }
 
   private buildWaterfallOption(
@@ -339,7 +479,7 @@ export class ChartCardComponent implements OnDestroy {
     textColor: string,
     mutedColor: string,
   ): Record<string, unknown> {
-    const data = datasets[0]?.data ?? [];
+    const data = (datasets[0]?.data ?? []).map(Number);
     const helperData: (number | string)[] = [];
     const posData: (number | string)[] = [];
     const negData: (number | string)[] = [];
@@ -363,9 +503,20 @@ export class ChartCardComponent implements OnDestroy {
       running += val;
     }
 
+    const formatCOPw = (value: number): string =>
+      new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(value);
+
     return {
       textStyle: { color: textColor },
-      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+      tooltip: {
+        trigger: 'axis',
+        confine: true,
+        axisPointer: { type: 'shadow' },
+        formatter: (params: { seriesName: string; value: number | string }[]) => {
+          const visible = params.filter(p => p.seriesName !== 'Invisible' && p.value !== '-');
+          return visible.map(p => `${p.seriesName}: ${formatCOPw(Number(p.value))}`).join('<br/>');
+        },
+      },
       grid: { left: '3%', right: '4%', bottom: '8%', top: '8%', containLabel: true },
       xAxis: { type: 'category', data: labels, axisLabel: { color: mutedColor } },
       yAxis: { type: 'value', axisLabel: { color: mutedColor } },
@@ -377,6 +528,7 @@ export class ChartCardComponent implements OnDestroy {
           data: helperData,
           itemStyle: { borderColor: 'transparent', color: 'transparent' },
           emphasis: { itemStyle: { borderColor: 'transparent', color: 'transparent' } },
+          tooltip: { show: false },
         },
         {
           name: 'Positivo',
@@ -393,6 +545,16 @@ export class ChartCardComponent implements OnDestroy {
           itemStyle: { color: '#c62828', borderRadius: [4, 4, 0, 0] },
         },
       ],
+    };
+  }
+
+  /** Formateador de tooltip COP para ejes (bar/line/area). */
+  private axisFormatter() {
+    const fmt = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 });
+    return (params: { seriesName: string; value: number; name: string }[]) => {
+      const header = params[0]?.name ?? '';
+      const rows = params.map(p => `${p.seriesName}: ${fmt.format(Number(p.value))}`).join('<br/>');
+      return header ? `${header}<br/>${rows}` : rows;
     };
   }
 

@@ -117,76 +117,106 @@
           </div>
         </aside>
 
-        <!-- Canvas: card grid with drag & drop -->
-        <main class="db-canvas">
-          <div class="db-canvas-header">
-            <span class="db-canvas-label">
-              <mat-icon>grid_view</mat-icon>
-              {{ builderCards().length }} tarjetas
-            </span>
-            @if (hasUnsavedChanges()) {
-              <span class="db-unsaved-badge">Cambios sin guardar</span>
+        <!-- Main area: canvas + filters below -->
+        <div class="db-main">
+
+          <!-- Default filters config — encima del canvas, colapsable -->
+          <div class="sc-card">
+            <div class="sc-card__header">
+              <mat-icon>filter_list</mat-icon>
+              <h3 class="sc-card__title">Filtros predeterminados</h3>
+              <span class="db-filters-hint" matTooltip="Estos filtros se aplicarán automáticamente al abrir el dashboard. El usuario podrá modificarlos en la vista.">
+                <mat-icon class="db-filters-hint__icon">help_outline</mat-icon>
+              </span>
+            </div>
+            <div class="sc-card__body--gap">
+              <app-filter-panel
+                (filterChange)="onDefaultFiltersChange($event)"
+                [savedFilter]="defaultFilters()"
+                [startExpanded]="false"
+              />
+            </div>
+          </div>
+
+          <!-- Canvas: card grid with drag & drop -->
+          <div class="db-canvas">
+            <div class="db-canvas-header">
+              <span class="db-canvas-label">
+                <mat-icon>grid_view</mat-icon>
+                {{ builderCards().length }} tarjetas
+              </span>
+              @if (hasUnsavedChanges()) {
+                <span class="db-unsaved-badge">Cambios sin guardar</span>
+              }
+            </div>
+
+            @if (builderCards().length === 0) {
+              <div class="sc-empty-state db-empty">
+                <mat-icon>dashboard_customize</mat-icon>
+                <p>Arrastra tarjetas desde el panel lateral o usa el bot&oacute;n para agregar.</p>
+                <button mat-raised-button color="primary" (click)="openCardSelector()">
+                  <mat-icon>add</mat-icon> Agregar tarjeta
+                </button>
+              </div>
+            } @else {
+              <div cdkDropList
+                   [cdkDropListData]="builderCards()"
+                   (cdkDropListDropped)="onCardDrop($event)"
+                   class="db-grid">
+                @for (card of builderCards(); track card.orden; let i = $index) {
+                  <div cdkDrag class="db-builder-card"
+                       [style.grid-column]="'span ' + card.width">
+                    <!-- Drag handle -->
+                    <div class="db-builder-card-header" cdkDragHandle>
+                      <mat-icon class="db-drag-handle">drag_indicator</mat-icon>
+                      <mat-icon [style.color]="card.color">{{ card.icono }}</mat-icon>
+                      <input class="db-inline-title"
+                             [value]="card.titulo_personalizado"
+                             (change)="onTitleChange(i, $event)"
+                             maxlength="255" />
+                      <div class="db-builder-card-actions">
+                        <!-- Config button for custom cards -->
+                        @if (card.card_type_code === 'CUSTOM_RANGO_CUENTAS' || card.card_type_code === 'DISTRIBUCION_POR_PROYECTO' || card.card_type_code === 'MOVIMIENTO_POR_TERCERO') {
+                          <button mat-icon-button matTooltip="Configurar tarjeta" color="primary"
+                                  (click)="editCardConfig(i)">
+                            <mat-icon>tune</mat-icon>
+                          </button>
+                        }
+                        <!-- Size controls -->
+                        <button mat-icon-button matTooltip="1 columna"
+                                (click)="updateCardSize(i, 1, 1)">
+                          <mat-icon>crop_square</mat-icon>
+                        </button>
+                        <button mat-icon-button matTooltip="2 columnas"
+                                (click)="updateCardSize(i, 2, 1)">
+                          <mat-icon>crop_landscape</mat-icon>
+                        </button>
+                        <button mat-icon-button matTooltip="4 columnas"
+                                (click)="updateCardSize(i, 4, 1)">
+                          <mat-icon>crop_16_9</mat-icon>
+                        </button>
+                        <button mat-icon-button matTooltip="Eliminar" color="warn"
+                                (click)="removeCard(i)">
+                          <mat-icon>delete_outline</mat-icon>
+                        </button>
+                      </div>
+                    </div>
+                    <div class="db-builder-card-body">
+                      <div class="db-card-preview">
+                        <mat-icon>{{ card.icono }}</mat-icon>
+                        <span>{{ card.chart_type }}</span>
+                      </div>
+                    </div>
+
+                    <!-- CDK drag placeholder -->
+                    <div *cdkDragPlaceholder class="db-drag-placeholder"></div>
+                  </div>
+                }
+              </div>
             }
           </div>
 
-          @if (builderCards().length === 0) {
-            <div class="sc-empty-state db-empty">
-              <mat-icon>dashboard_customize</mat-icon>
-              <p>Arrastra tarjetas desde el panel lateral o usa el bot&oacute;n para agregar.</p>
-              <button mat-raised-button color="primary" (click)="openCardSelector()">
-                <mat-icon>add</mat-icon> Agregar tarjeta
-              </button>
-            </div>
-          } @else {
-            <div cdkDropList
-                 [cdkDropListData]="builderCards()"
-                 (cdkDropListDropped)="onCardDrop($event)"
-                 class="db-grid">
-              @for (card of builderCards(); track card.orden; let i = $index) {
-                <div cdkDrag class="db-builder-card"
-                     [style.grid-column]="'span ' + card.width">
-                  <!-- Drag handle -->
-                  <div class="db-builder-card-header" cdkDragHandle>
-                    <mat-icon class="db-drag-handle">drag_indicator</mat-icon>
-                    <mat-icon [style.color]="card.color">{{ card.icono }}</mat-icon>
-                    <input class="db-inline-title"
-                           [value]="card.titulo_personalizado"
-                           (change)="onTitleChange(i, $event)"
-                           maxlength="255" />
-                    <div class="db-builder-card-actions">
-                      <!-- Size controls -->
-                      <button mat-icon-button matTooltip="1 columna"
-                              (click)="updateCardSize(i, 1, 1)">
-                        <mat-icon>crop_square</mat-icon>
-                      </button>
-                      <button mat-icon-button matTooltip="2 columnas"
-                              (click)="updateCardSize(i, 2, 1)">
-                        <mat-icon>crop_landscape</mat-icon>
-                      </button>
-                      <button mat-icon-button matTooltip="4 columnas"
-                              (click)="updateCardSize(i, 4, 1)">
-                        <mat-icon>crop_16_9</mat-icon>
-                      </button>
-                      <button mat-icon-button matTooltip="Eliminar" color="warn"
-                              (click)="removeCard(i)">
-                        <mat-icon>delete_outline</mat-icon>
-                      </button>
-                    </div>
-                  </div>
-                  <div class="db-builder-card-body">
-                    <div class="db-card-preview">
-                      <mat-icon>{{ card.icono }}</mat-icon>
-                      <span>{{ card.chart_type }}</span>
-                    </div>
-                  </div>
-
-                  <!-- CDK drag placeholder -->
-                  <div *cdkDragPlaceholder class="db-drag-placeholder"></div>
-                </div>
-              }
-            </div>
-          }
-        </main>
+        </div><!-- /db-main -->
       </div>
     }
   }

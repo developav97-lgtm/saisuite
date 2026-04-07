@@ -7,7 +7,10 @@ import logging
 from datetime import date, timedelta
 from rest_framework.exceptions import ValidationError, NotFound
 
-from .models import Company, CompanyModule, CompanyLicense, LicensePayment, LicenseHistory, LicenseRenewal
+from .models import (Company, CompanyModule, CompanyLicense, LicensePayment,
+                      LicenseHistory, LicenseRenewal, LicensePackage,
+                      LicensePackageItem, MonthlyLicenseSnapshot, AIUsageLog,
+                      AgentToken)
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +48,9 @@ class CompanyService:
             saiopen_db_path=data.get('saiopen_db_path', ''),
             is_active=True,
         )
+        # Auto-generate first agent token so the Go agent can connect immediately
+        AgentToken.objects.create(company=company, label='Principal')
+
         logger.info(
             'company_created',
             extra={'company_id': str(company.id), 'nit': company.nit, 'company_name': company.name},
@@ -544,3 +550,316 @@ class RenewalService:
 
         logger.info('renewal_cancelled', extra={'renewal_id': str(renewal.id)})
         return renewal
+
+    @staticmethod
+    def auto_generate_renewals() -> int:
+        """
+        Auto-genera renovaciones para licencias que expiran en 5 dias o menos
+        y no tienen renovacion pendiente/confirmada.
+        Llamar diariamente via management command.
+        """
+        expiring = LicenseService.get_expiring_soon(days=5)
+        generated = 0
+        for lic in expiring:
+            existing = RenewalService.get_pending_renewal(lic)
+            if existing:
+                continue
+            RenewalService.create_renewal(lic, period=lic.period, auto_generated=True)
+            generated += 1
+        logger.info('auto_renewals_generated', extra={'count': generated})
+        return generated
+
+
+class PackageService:
+    """Gestion del catalogo de paquetes y asignacion a licencias."""
+
+    @staticmethod
+    def list_packages(package_type: str | None = None):
+        qs = LicensePackage.objects.filter(is_active=True)
+        if package_type:
+            qs = qs.filter(package_type=package_type)
+        return qs
+
+    @staticmethod
+    def get_package(package_id: str) -> LicensePackage:
+        try:
+            return LicensePackage.objects.get(id=package_id)
+        except LicensePackage.DoesNotExist:
+            raise NotFound('Paquete no encontrado.')
+
+    @staticmethod
+    def create_package(data: dict) -> LicensePackage:
+        code = data.get('code', '').strip()
+        if LicensePackage.objects.filter(code=code).exists():
+            raise ValidationError({'code': 'Ya existe un paquete con este codigo.'})
+        package = LicensePackage.objects.create(**data)
+        logger.info('package_created', extra={'package_id': str(package.id), 'code': package.code})
+        return package
+
+    @staticmethod
+    def update_package(package: LicensePackage, data: dict) -> LicensePackage:
+        allowed = ['name', 'description', 'quantity', 'price_monthly', 'price_annual', 'is_active']
+        for field in allowed:
+            if field in data:
+                setattr(package, field, data[field])
+        package.save()
+        logger.info('package_updated', extra={'package_id': str(package.id)})
+        return package
+
+    @staticmethod
+    def add_package_to_license(license_obj: CompanyLicense, package: LicensePackage, quantity: int = 1, added_by=None) -> LicensePackageItem:
+        """
+        Agrega un paquete a una licencia y actualiza los campos correspondientes.
+        - module: agrega module_code a modules_included
+        - user_seats: suma quantity a max_users
+        - ai_tokens: suma quantity a ai_tokens_quota
+        - ai_messages: suma quantity a messages_quota
+        """
+        if LicensePackageItem.objects.filter(license=license_obj, package=package).exists():
+            raise ValidationError('Este paquete ya esta asignado a la licencia.')
+
+        item = LicensePackageItem.objects.create(
+            license=license_obj, package=package, quantity=quantity, added_by=added_by,
+        )
+
+        # Actualizar campos de la licencia segun tipo de paquete
+        PackageService._apply_package_to_license(license_obj, package, quantity)
+
+        LicenseHistory.objects.create(
+            license=license_obj,
+            change_type=LicenseHistory.ChangeType.MODIFIED,
+            changed_by=added_by,
+            notes=f'Paquete agregado: {package.name} x{quantity}',
+        )
+
+        logger.info('package_added_to_license', extra={
+            'license_id': str(license_obj.id), 'package_code': package.code, 'qty': quantity,
+        })
+        return item
+
+    @staticmethod
+    def remove_package_from_license(item: LicensePackageItem, removed_by=None) -> None:
+        """Quita un paquete de una licencia y revierte los campos."""
+        license_obj = item.license
+        package = item.package
+        quantity = item.quantity
+
+        PackageService._revert_package_from_license(license_obj, package, quantity)
+
+        LicenseHistory.objects.create(
+            license=license_obj,
+            change_type=LicenseHistory.ChangeType.MODIFIED,
+            changed_by=removed_by,
+            notes=f'Paquete removido: {package.name} x{quantity}',
+        )
+
+        item.delete()
+        logger.info('package_removed_from_license', extra={
+            'license_id': str(license_obj.id), 'package_code': package.code,
+        })
+
+    @staticmethod
+    def _apply_package_to_license(license_obj: CompanyLicense, package: LicensePackage, quantity: int):
+        """Aplica el efecto de un paquete sobre la licencia."""
+        if package.package_type == LicensePackage.PackageType.MODULE:
+            modules = list(license_obj.modules_included or [])
+            if package.module_code and package.module_code not in modules:
+                modules.append(package.module_code)
+                license_obj.modules_included = modules
+                license_obj.save(update_fields=['modules_included'])
+                # Activar CompanyModule correspondiente
+                CompanyService.activate_module(license_obj.company, package.module_code)
+
+        elif package.package_type == LicensePackage.PackageType.USER_SEATS:
+            license_obj.max_users += package.quantity * quantity
+            license_obj.save(update_fields=['max_users'])
+
+        elif package.package_type == LicensePackage.PackageType.AI_TOKENS:
+            license_obj.ai_tokens_quota += package.quantity * quantity
+            license_obj.save(update_fields=['ai_tokens_quota'])
+
+        elif package.package_type == LicensePackage.PackageType.AI_MESSAGES:
+            license_obj.messages_quota += package.quantity * quantity
+            license_obj.save(update_fields=['messages_quota'])
+
+    @staticmethod
+    def _revert_package_from_license(license_obj: CompanyLicense, package: LicensePackage, quantity: int):
+        """Revierte el efecto de un paquete sobre la licencia."""
+        if package.package_type == LicensePackage.PackageType.MODULE:
+            modules = list(license_obj.modules_included or [])
+            if package.module_code in modules:
+                modules.remove(package.module_code)
+                license_obj.modules_included = modules
+                license_obj.save(update_fields=['modules_included'])
+
+        elif package.package_type == LicensePackage.PackageType.USER_SEATS:
+            license_obj.max_users = max(1, license_obj.max_users - package.quantity * quantity)
+            license_obj.save(update_fields=['max_users'])
+
+        elif package.package_type == LicensePackage.PackageType.AI_TOKENS:
+            license_obj.ai_tokens_quota = max(0, license_obj.ai_tokens_quota - package.quantity * quantity)
+            license_obj.save(update_fields=['ai_tokens_quota'])
+
+        elif package.package_type == LicensePackage.PackageType.AI_MESSAGES:
+            license_obj.messages_quota = max(0, license_obj.messages_quota - package.quantity * quantity)
+            license_obj.save(update_fields=['messages_quota'])
+
+
+class AIUsageService:
+    """Tracking y control de uso de IA por empresa/usuario."""
+
+    @staticmethod
+    def check_quota(company: Company) -> dict:
+        """
+        Verifica si la empresa puede hacer una request IA.
+        Retorna {allowed, remaining_messages, remaining_tokens}.
+        """
+        try:
+            lic = CompanyLicense.objects.get(company=company)
+        except CompanyLicense.DoesNotExist:
+            return {'allowed': False, 'remaining_messages': 0, 'remaining_tokens': 0}
+
+        remaining_msgs = max(0, lic.messages_quota - lic.messages_used)
+        remaining_tokens = max(0, lic.ai_tokens_quota - lic.ai_tokens_used)
+
+        # Permitido si tiene quota de mensajes O de tokens (al menos uno configurado)
+        has_msg_quota = lic.messages_quota > 0
+        has_token_quota = lic.ai_tokens_quota > 0
+
+        if not has_msg_quota and not has_token_quota:
+            allowed = False  # No tiene ningun paquete IA
+        elif has_msg_quota and remaining_msgs <= 0:
+            allowed = False
+        elif has_token_quota and remaining_tokens <= 0:
+            allowed = False
+        else:
+            allowed = True
+
+        return {
+            'allowed': allowed,
+            'remaining_messages': remaining_msgs,
+            'remaining_tokens': remaining_tokens,
+        }
+
+    @staticmethod
+    def record_usage(
+        company: Company, user, request_type: str, module_context: str,
+        prompt_tokens: int = 0, completion_tokens: int = 0,
+        model_used: str = 'gpt-4o-mini', question_preview: str = '',
+    ) -> AIUsageLog:
+        """Registra una request IA y actualiza contadores de la licencia."""
+        total_tokens = prompt_tokens + completion_tokens
+        log = AIUsageLog.objects.create(
+            company=company,
+            user=user,
+            request_type=request_type,
+            module_context=module_context,
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+            total_tokens=total_tokens,
+            model_used=model_used,
+            question_preview=question_preview[:200],
+        )
+
+        # Incrementar contadores en la licencia
+        try:
+            lic = CompanyLicense.objects.get(company=company)
+            lic.messages_used += 1
+            lic.ai_tokens_used += total_tokens
+            lic.save(update_fields=['messages_used', 'ai_tokens_used'])
+        except CompanyLicense.DoesNotExist:
+            pass
+
+        logger.info('ai_usage_recorded', extra={
+            'company_id': str(company.id), 'user_id': str(user.id),
+            'type': request_type, 'tokens': total_tokens,
+        })
+        return log
+
+    @staticmethod
+    def get_usage_summary(company: Company) -> dict:
+        """Resumen de uso IA del periodo actual."""
+        from django.db.models import Sum, Count
+        try:
+            lic = CompanyLicense.objects.get(company=company)
+        except CompanyLicense.DoesNotExist:
+            return {}
+
+        agg = AIUsageLog.objects.filter(company=company).aggregate(
+            total_requests=Count('id'),
+            total_tokens=Sum('total_tokens'),
+            total_prompt=Sum('prompt_tokens'),
+            total_completion=Sum('completion_tokens'),
+        )
+
+        return {
+            'messages_quota': lic.messages_quota,
+            'messages_used': lic.messages_used,
+            'ai_tokens_quota': lic.ai_tokens_quota,
+            'ai_tokens_used': lic.ai_tokens_used,
+            'total_requests': agg['total_requests'] or 0,
+            'total_tokens_all_time': agg['total_tokens'] or 0,
+        }
+
+    @staticmethod
+    def get_per_user_usage(company: Company) -> list[dict]:
+        """Uso de IA agrupado por usuario."""
+        from django.db.models import Sum, Count
+        return list(
+            AIUsageLog.objects.filter(company=company)
+            .values('user__id', 'user__email', 'user__first_name', 'user__last_name')
+            .annotate(
+                requests=Count('id'),
+                tokens=Sum('total_tokens'),
+            )
+            .order_by('-tokens')
+        )
+
+
+class SnapshotService:
+    """Generacion de snapshots mensuales de licencias."""
+
+    @staticmethod
+    def generate_monthly_snapshots() -> int:
+        """
+        Genera snapshot del mes actual para todas las licencias activas.
+        Idempotente: no duplica si ya existe el snapshot del mes.
+        """
+        today = date.today()
+        first_of_month = today.replace(day=1)
+        active_statuses = [CompanyLicense.Status.TRIAL, CompanyLicense.Status.ACTIVE]
+        licenses = CompanyLicense.objects.filter(
+            status__in=active_statuses,
+        ).select_related('company')
+
+        created = 0
+        for lic in licenses:
+            if MonthlyLicenseSnapshot.objects.filter(license=lic, month=first_of_month).exists():
+                continue
+
+            snapshot_data = {
+                'company_name': lic.company.name,
+                'plan': lic.plan,
+                'status': lic.status,
+                'period': lic.period,
+                'starts_at': str(lic.starts_at),
+                'expires_at': str(lic.expires_at),
+                'max_users': lic.max_users,
+                'concurrent_users': lic.concurrent_users,
+                'modules_included': lic.modules_included,
+                'messages_quota': lic.messages_quota,
+                'messages_used': lic.messages_used,
+                'ai_tokens_quota': lic.ai_tokens_quota,
+                'ai_tokens_used': lic.ai_tokens_used,
+                'packages': list(
+                    lic.package_items.values('package__code', 'package__name', 'quantity')
+                ),
+            }
+
+            MonthlyLicenseSnapshot.objects.create(
+                license=lic, month=first_of_month, snapshot=snapshot_data,
+            )
+            created += 1
+
+        logger.info('monthly_snapshots_generated', extra={'count': created, 'month': str(first_of_month)})
+        return created

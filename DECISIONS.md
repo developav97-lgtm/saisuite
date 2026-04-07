@@ -1,3 +1,59 @@
+## DEC-049: Asistente IA como bot en el sistema de chat existente
+**Fecha:** 2026-04-03
+**Estado:** Decidido
+
+**Contexto:** El CFO Virtual tenia endpoint backend pero no UI accesible. Se necesitaba decidir donde ubicar la interaccion con IA.
+
+**Opciones consideradas:**
+1. Widget flotante independiente por modulo (ya existia ai-assistant component)
+2. Canal especial en el chat existente (bot como participante)
+3. Pagina/ruta dedicada para IA
+
+**Decision:** Bot como participante de conversacion en el chat existente (#2).
+
+**Razon:** Reutiliza toda la infraestructura de chat (WebSocket, UI, historial, search). Un solo lugar para comunicacion humana e IA. El campo `bot_context` permite saber desde que modulo se habla para enrutar a la logica correcta (dashboard→CfoVirtual, proyectos→futuro).
+
+**Implementacion:**
+- `User.is_bot=True` para usuario bot global
+- `Conversacion.bot_context` para contexto del modulo
+- `BotResponseService` enruta segun contexto
+- Thread daemon en consumer para no bloquear WebSocket
+
+**Consecuencias:** Futuras integraciones IA (asistente de proyectos, guia de manuales) solo requieren agregar un case en `BotResponseService` y un nuevo `bot_context`.
+
+---
+
+## DEC-048: LicensePackage como catalogo global para licencias modulares
+**Fecha:** 2026-04-03
+**Estado:** Decidido
+
+**Contexto:** El sistema de licencias necesitaba ser "armable" — modulos, usuarios y tokens IA como items independientes con precios editables.
+
+**Opciones:**
+1. Campos fijos en CompanyLicense (ya existente)
+2. Paquetes como entidades separadas con relacion many-to-many
+
+**Decision:** Modelo `LicensePackage` global + `LicensePackageItem` de relacion.
+
+**Razon:** Permite agregar/quitar paquetes sin cambiar schema. Precios editables. Cada empresa puede tener combinacion unica de paquetes.
+
+**Tipos de paquete:** module, user_seats, ai_tokens, ai_messages
+**Efecto:** Al agregar/quitar un paquete, `PackageService` actualiza automaticamente los campos de `CompanyLicense` (modules_included, max_users, ai_tokens_quota, messages_quota).
+
+---
+
+## DEC-047: AIUsageLog para tracking granular de consumo IA
+**Fecha:** 2026-04-03
+**Estado:** Decidido
+
+**Contexto:** Se necesita registrar cada request IA para control de cuota y visibilidad de consumo por usuario.
+
+**Decision:** Modelo `AIUsageLog` con tracking por request (prompt_tokens, completion_tokens, model, user, module_context). `AIUsageService.check_quota()` verifica antes de cada request y `record_usage()` registra despues.
+
+**Integracion:** n8n workflow retorna `usage` de OpenAI en el response → Django lo parsea y registra.
+
+---
+
 ## DEC-046: OpenAI gpt-4o-mini para CFO Virtual (en lugar de Anthropic Claude)
 **Fecha:** 2026-04-03
 **Estado:** ✅ Decidido

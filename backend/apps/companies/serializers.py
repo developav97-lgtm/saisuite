@@ -4,7 +4,10 @@ Los serializers SOLO transforman datos. Sin lógica de negocio.
 """
 from rest_framework import serializers
 
-from .models import Company, CompanyModule, CompanyLicense, LicensePayment, LicenseHistory, LicenseRenewal
+from .models import (
+    Company, CompanyModule, CompanyLicense, LicensePayment, LicenseHistory,
+    LicenseRenewal, LicensePackage, LicensePackageItem, MonthlyLicenseSnapshot, AIUsageLog,
+)
 
 
 class CompanyModuleSerializer(serializers.ModelSerializer):
@@ -295,3 +298,98 @@ class TenantWithLicenseSerializer(serializers.ModelSerializer):
         return list(
             CompanyModule.objects.filter(company=obj, is_active=True).values_list('module', flat=True)
         )
+
+
+# ── Paquetes de licencia ───────────���────────────────────────────────────────
+
+class LicensePackageSerializer(serializers.ModelSerializer):
+    """Lectura de paquetes del catalogo."""
+
+    package_type_display = serializers.CharField(source='get_package_type_display', read_only=True)
+
+    class Meta:
+        model = LicensePackage
+        fields = [
+            'id', 'code', 'name', 'description',
+            'package_type', 'package_type_display',
+            'module_code', 'quantity',
+            'price_monthly', 'price_annual',
+            'is_active', 'created_at', 'updated_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+
+class LicensePackageWriteSerializer(serializers.Serializer):
+    """Escritura de paquetes del catalogo."""
+
+    code          = serializers.CharField(max_length=50)
+    name          = serializers.CharField(max_length=100)
+    description   = serializers.CharField(allow_blank=True, default='', required=False)
+    package_type  = serializers.ChoiceField(choices=LicensePackage.PackageType.choices)
+    module_code   = serializers.CharField(max_length=50, allow_blank=True, default='', required=False)
+    quantity      = serializers.IntegerField(min_value=0, default=0, required=False)
+    price_monthly = serializers.DecimalField(max_digits=15, decimal_places=2, default=0, required=False)
+    price_annual  = serializers.DecimalField(max_digits=15, decimal_places=2, default=0, required=False)
+    is_active     = serializers.BooleanField(default=True, required=False)
+
+
+class LicensePackageItemSerializer(serializers.ModelSerializer):
+    """Paquete asignado a una licencia."""
+
+    package_name = serializers.CharField(source='package.name', read_only=True)
+    package_code = serializers.CharField(source='package.code', read_only=True)
+    package_type = serializers.CharField(source='package.package_type', read_only=True)
+    added_by_email = serializers.CharField(source='added_by.email', read_only=True, default=None)
+
+    class Meta:
+        model = LicensePackageItem
+        fields = [
+            'id', 'package', 'package_name', 'package_code', 'package_type',
+            'quantity', 'added_at', 'added_by', 'added_by_email',
+        ]
+        read_only_fields = ['id', 'added_at']
+
+
+class MonthlyLicenseSnapshotSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MonthlyLicenseSnapshot
+        fields = ['id', 'month', 'snapshot', 'created_at']
+        read_only_fields = fields
+
+
+# ── Uso de IA ───────────────��────────────────────────��──────────────────────
+
+class AIUsageLogSerializer(serializers.ModelSerializer):
+    user_email = serializers.CharField(source='user.email', read_only=True)
+    user_name  = serializers.SerializerMethodField()
+
+    class Meta:
+        model = AIUsageLog
+        fields = [
+            'id', 'user', 'user_email', 'user_name',
+            'request_type', 'module_context',
+            'prompt_tokens', 'completion_tokens', 'total_tokens',
+            'model_used', 'question_preview', 'created_at',
+        ]
+        read_only_fields = fields
+
+    def get_user_name(self, obj) -> str:
+        return f'{obj.user.first_name} {obj.user.last_name}'.strip() or obj.user.email
+
+
+class AIUsageSummarySerializer(serializers.Serializer):
+    messages_quota       = serializers.IntegerField()
+    messages_used        = serializers.IntegerField()
+    ai_tokens_quota      = serializers.IntegerField()
+    ai_tokens_used       = serializers.IntegerField()
+    total_requests       = serializers.IntegerField()
+    total_tokens_all_time = serializers.IntegerField()
+
+
+class AIUsagePerUserSerializer(serializers.Serializer):
+    user__id         = serializers.UUIDField()
+    user__email      = serializers.CharField()
+    user__first_name = serializers.CharField()
+    user__last_name  = serializers.CharField()
+    requests         = serializers.IntegerField()
+    tokens           = serializers.IntegerField()

@@ -13,6 +13,7 @@ import { ChatService } from '../../services/chat.service';
 import { ChatSocketService } from '../../services/chat-socket.service';
 import { PresenceService } from '../../services/presence.service';
 import { AuthService } from '../../../../core/auth/auth.service';
+import { ChatStateService } from '../../../../core/services/chat-state.service';
 import { Conversacion } from '../../models/chat.models';
 
 @Component({
@@ -29,13 +30,21 @@ import { Conversacion } from '../../models/chat.models';
           <button mat-icon-button (click)="backToList()">
             <mat-icon>arrow_back</mat-icon>
           </button>
-          <div class="chat-panel__peer">
-            <span class="chat-panel__title">{{ peerName() }}</span>
-            <span class="chat-panel__status"
-                  [class.chat-panel__status--online]="peerStatus() === 'online'">
-              {{ peerStatus() === 'online' ? 'En línea' : 'Desconectado' }}
-            </span>
-          </div>
+          @if (activeConversacion()!.bot_context) {
+            <mat-icon class="chat-panel__icon">smart_toy</mat-icon>
+            <div class="chat-panel__peer">
+              <span class="chat-panel__title">{{ peerName() }}</span>
+              <span class="chat-panel__status chat-panel__status--online">En línea</span>
+            </div>
+          } @else {
+            <div class="chat-panel__peer">
+              <span class="chat-panel__title">{{ peerName() }}</span>
+              <span class="chat-panel__status"
+                    [class.chat-panel__status--online]="peerStatus() === 'online'">
+                {{ peerStatus() === 'online' ? 'En línea' : 'Desconectado' }}
+              </span>
+            </div>
+          }
           <span class="spacer"></span>
           <button mat-icon-button
                   [class.chat-panel__search-active]="searchOpen()"
@@ -169,12 +178,14 @@ export class ChatPanelComponent implements OnInit, OnDestroy {
   private readonly chatService = inject(ChatService);
   private readonly chatSocket = inject(ChatSocketService);
   private readonly authService = inject(AuthService);
+  private readonly chatState = inject(ChatStateService);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly appRef = inject(ApplicationRef);
   readonly presenceService = inject(PresenceService);
 
   readonly isOpen = input(false);
   readonly openConversacionId = input<string | null>(null);
+  readonly openBotContext = input<string | null>(null);
   readonly close = output<void>();
   readonly unreadCountChange = output<number>();
 
@@ -189,6 +200,9 @@ export class ChatPanelComponent implements OnInit, OnDestroy {
   readonly peerName = computed(() => {
     const conv = this.activeConversacion();
     if (!conv) return '';
+    if (conv.bot_context) {
+      return this.getBotDisplayName(conv.bot_context);
+    }
     const userId = this.currentUserId();
     return conv.participante_1 === userId
       ? conv.participante_2_nombre
@@ -245,6 +259,15 @@ export class ChatPanelComponent implements OnInit, OnDestroy {
     // Find the conversation in the loaded list and open it directly.
     // markForCheck() is required because toObservable() fires its effect AFTER
     // the view renders, so the signal update alone won't schedule another CD pass.
+    // When openBot() is called via ChatStateService, create/open the bot conversation
+    toObservable(this.openBotContext).pipe(
+      filter((ctx): ctx is string => ctx !== null),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe(ctx => {
+      this.openBotConversation(ctx);
+      this.chatState.requestedBotContext.set(null);
+    });
+
     toObservable(this.openConversacionId).pipe(
       filter((id): id is string => id !== null),
       takeUntilDestroyed(this.destroyRef),
@@ -335,5 +358,30 @@ export class ChatPanelComponent implements OnInit, OnDestroy {
         this.refreshConversaciones();
       },
     });
+  }
+
+  private openBotConversation(context: string): void {
+    this.chatService.crearConversacionBot(context).subscribe({
+      next: (conv) => {
+        const existing = this.conversaciones().find(c => c.id === conv.id);
+        if (!existing) {
+          this.conversaciones.update(list => [conv, ...list]);
+        }
+        this.activeConversacion.set(conv);
+        this.cdr.markForCheck();
+        this.appRef.tick();
+      },
+      error: (err) => {
+        console.error('Error creating bot conversation:', err);
+      },
+    });
+  }
+
+  private getBotDisplayName(context: string): string {
+    const names: Record<string, string> = {
+      dashboard: 'CFO Virtual',
+      proyectos: 'Asistente de Proyectos',
+    };
+    return names[context] ?? 'Asistente IA';
   }
 }

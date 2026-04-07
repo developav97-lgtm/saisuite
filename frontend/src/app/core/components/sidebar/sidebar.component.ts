@@ -205,6 +205,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
           sectionLabel: 'Superadmin ValMen Tech',
           items: [
             { label: 'Tenants',           icon: 'domain',               route: '/admin/tenants' },
+            { label: 'Paquetes',          icon: 'inventory_2',          route: '/admin/packages' },
             { label: 'Usuarios internos', icon: 'supervised_user_circle', route: '/admin/usuarios-internos' },
           ],
         },

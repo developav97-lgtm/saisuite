@@ -8,6 +8,9 @@ from apps.contabilidad.models import (
     MovimientoContable,
     ConfiguracionContable,
     CuentaContable,
+    TerceroSaiopen,
+    ShipToSaiopen,
+    TributariaSaiopen,
 )
 
 
@@ -74,6 +77,75 @@ class CuentaContableAdmin(admin.ModelAdmin):
         'titulo_codigo', 'grupo_codigo', 'cuenta_codigo',
         'subcuenta_codigo', 'posicion_financiera',
     ]
+    list_per_page = 50
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(TerceroSaiopen)
+class TerceroSaiopenAdmin(admin.ModelAdmin):
+    """Admin readonly para terceros sincronizados desde CUST."""
+    list_display = [
+        'id_n', 'nit', 'nombre', 'company', 'ciudad',
+        'es_cliente', 'es_proveedor', 'es_empleado', 'activo', 'sincronizado_en',
+    ]
+    list_filter = ['company', 'es_cliente', 'es_proveedor', 'es_empleado', 'activo']
+    search_fields = ['id_n', 'nit', 'nombre', 'email']
+    readonly_fields = [
+        'company', 'id_n', 'nit', 'nombre', 'direccion', 'ciudad', 'departamento',
+        'telefono', 'telefono2', 'email', 'es_cliente', 'es_proveedor', 'es_empleado',
+        'activo', 'acct', 'acctp', 'regimen', 'fecha_creacion', 'descuento',
+        'creditlmt', 'version_saiopen', 'sincronizado_en',
+    ]
+    list_per_page = 50
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(ShipToSaiopen)
+class ShipToSaiopenAdmin(admin.ModelAdmin):
+    """Admin readonly para direcciones de envío sincronizadas desde SHIPTO."""
+    list_display = [
+        'id_n', 'succliente', 'descripcion', 'company',
+        'ciudad', 'departamento', 'es_principal', 'estado', 'sincronizado_en',
+    ]
+    list_filter = ['company', 'es_principal', 'estado']
+    search_fields = ['id_n', 'nombre', 'descripcion', 'addr1']
+    list_per_page = 50
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(TributariaSaiopen)
+class TributariaSaiopenAdmin(admin.ModelAdmin):
+    """Admin readonly para información tributaria sincronizada desde TRIBUTARIA."""
+    list_display = [
+        'id_n', 'company', 'tdoc', 'tipo_contribuyente',
+        'primer_nombre', 'primer_apellido', 'sincronizado_en',
+    ]
+    list_filter = ['company', 'tdoc', 'tipo_contribuyente']
+    search_fields = ['id_n', 'primer_nombre', 'primer_apellido']
     list_per_page = 50
 
     def has_add_permission(self, request):

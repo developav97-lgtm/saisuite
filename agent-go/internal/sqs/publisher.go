@@ -1,7 +1,7 @@
-// Package sqs provides an AWS SQS publisher for future use.
-// The current MVP uses direct HTTP POST to the Django API, but this package
-// is included as a structure for when the system scales to use SQS as the
-// message transport layer between the Go agent and Django.
+// Package sqs provides an AWS SQS publisher for the Saicloud Agent.
+// When the agent is configured with transport="sqs", all GL and reference
+// payloads are sent to SQS instead of being POSTed directly to the Django API.
+// The Django backend consumes from the queue asynchronously.
 package sqs
 
 import (
@@ -23,6 +23,8 @@ type Publisher struct {
 }
 
 // Message represents a message to be published to SQS.
+// The structure mirrors the HTTP payload so the Django consumer
+// can process both transports with the same handler.
 type Message struct {
 	Type      string      `json:"type"`
 	CompanyID string      `json:"company_id"`
@@ -31,8 +33,34 @@ type Message struct {
 	Data      interface{} `json:"data"`
 }
 
-// NewPublisher creates a new SQS publisher.
-// This is a placeholder for future SQS integration.
+// New creates a Publisher using explicit AWS credentials.
+// This is the primary constructor — it does not read environment variables
+// or the shared credentials file; all values come from the agent config.
+func New(accessKeyID, secretAccessKey, region, queueURL string, logger *slog.Logger) *Publisher {
+	staticProvider := aws.CredentialsProviderFunc(func(_ context.Context) (aws.Credentials, error) {
+		return aws.Credentials{
+			AccessKeyID:     accessKeyID,
+			SecretAccessKey: secretAccessKey,
+			Source:          "SaicloudAgentConfig",
+		}, nil
+	})
+
+	cfg := aws.Config{
+		Region:      region,
+		Credentials: staticProvider,
+	}
+
+	client := sqs.NewFromConfig(cfg)
+
+	return &Publisher{
+		client:   client,
+		queueURL: queueURL,
+		logger:   logger,
+	}
+}
+
+// NewPublisher creates a Publisher from an already-constructed SQS client.
+// Kept for backwards compatibility and testing.
 func NewPublisher(client *sqs.Client, queueURL string, logger *slog.Logger) *Publisher {
 	return &Publisher{
 		client:   client,
@@ -41,8 +69,22 @@ func NewPublisher(client *sqs.Client, queueURL string, logger *slog.Logger) *Pub
 	}
 }
 
+// Ping verifies that the SQS queue is reachable and the credentials are valid
+// by calling GetQueueAttributes. Returns nil on success.
+func (p *Publisher) Ping(ctx context.Context) error {
+	_, err := p.client.GetQueueAttributes(ctx, &sqs.GetQueueAttributesInput{
+		QueueUrl:       aws.String(p.queueURL),
+		AttributeNames: []sqsTypes.QueueAttributeName{sqsTypes.QueueAttributeNameApproximateNumberOfMessages},
+	})
+	if err != nil {
+		return fmt.Errorf("SQS queue unreachable: %w", err)
+	}
+	return nil
+}
+
 // Publish sends a message to the SQS queue.
 // The message is serialized to JSON before sending.
+// MessageAttributes carry the type and company_id for server-side filtering.
 func (p *Publisher) Publish(ctx context.Context, msg Message) error {
 	data, err := json.Marshal(msg)
 	if err != nil {
@@ -75,6 +117,7 @@ func (p *Publisher) Publish(ctx context.Context, msg Message) error {
 		"message_id", *result.MessageId,
 		"type", msg.Type,
 		"company_id", msg.CompanyID,
+		"conn_id", msg.ConnID,
 	)
 
 	return nil

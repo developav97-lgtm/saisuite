@@ -22,6 +22,7 @@ urlpatterns = [
     path('api/v1/auth/', include('apps.users.urls')),
     path('api/v1/companies/', include('apps.companies.urls')),
     path('api/v1/admin/tenants/', include('apps.companies.admin_urls')),
+    path('api/v1/admin/packages/', include('apps.companies.package_urls')),
     path('api/v1/sync/', include('apps.sync_agent.urls')),
     path('api/v1/integrations/', include('apps.integrations.urls')),
     path('api/v1/core/', include('apps.core.urls')),

@@ -95,3 +95,12 @@ export interface CompanySettings {
   modules: CompanyModule[];
   created_at: string;
 }
+
+export interface AgentTokenInfo {
+  id: string;
+  token: string;
+  label: string;
+  is_active: boolean;
+  last_used: string | null;
+  created_at: string;
+}

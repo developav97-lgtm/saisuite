@@ -10,6 +10,7 @@ export interface Conversacion {
   ultimo_mensaje_contenido: string | null;
   ultimo_mensaje_at: string | null;
   mensajes_sin_leer: number;
+  bot_context?: string;
   created_at: string;
   updated_at: string;
 }

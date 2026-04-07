@@ -684,6 +684,163 @@ class ChatService:
             )
 
 
+    # ── Conversaciones con Bot ──────────────────────────────────────
+
+    @staticmethod
+    def obtener_o_crear_conversacion_bot(user, company, bot_context: str = 'dashboard'):
+        """
+        Obtiene o crea una conversacion con el bot IA.
+        El bot user es un usuario global con is_bot=True.
+        """
+        from apps.users.models import User
+
+        bot_user = User.objects.filter(is_bot=True).first()
+        if not bot_user:
+            # Crear bot user si no existe
+            bot_user = User.objects.create_user(
+                email='ai-assistant@saicloud.co',
+                password=None,
+                first_name='Asistente',
+                last_name='IA',
+                is_bot=True,
+                is_active=True,
+            )
+            logger.info('bot_user_created', extra={'bot_id': str(bot_user.id)})
+
+        # Buscar conversacion existente con este bot_context
+        conv = Conversacion.objects.filter(
+            company=company,
+            bot_context=bot_context,
+        ).filter(
+            Q(participante_1=user) | Q(participante_2=user)
+        ).filter(
+            Q(participante_1=bot_user) | Q(participante_2=bot_user)
+        ).first()
+
+        if conv:
+            return conv
+
+        # Crear nueva conversacion con el bot
+        # Normalizacion UUID como en las conversaciones normales
+        u1, u2 = sorted([user, bot_user], key=lambda u: str(u.id))
+        conv = Conversacion(
+            company=company,
+            participante_1=u1,
+            participante_2=u2,
+            bot_context=bot_context,
+        )
+        conv.save()
+
+        logger.info('bot_conversation_created', extra={
+            'conv_id': str(conv.id),
+            'user_id': str(user.id),
+            'bot_context': bot_context,
+        })
+
+        # Broadcast al usuario para que su consumer WS se una al grupo de la nueva conv
+        ChatService._broadcast_new_conversation(conv, u1, u2)
+
+        return conv
+
+
+class BotResponseService:
+    """Procesa mensajes enviados al bot y genera respuestas."""
+
+    @staticmethod
+    def process_bot_message(conversacion, user_message_content: str, user):
+        """
+        Procesa un mensaje enviado al bot y genera una respuesta.
+        1. Check AI quota
+        2. Route to appropriate service based on bot_context
+        3. Create bot response message
+        4. Broadcast via WebSocket
+        """
+        from apps.users.models import User
+        from apps.companies.services import AIUsageService
+
+        bot_user = User.objects.filter(is_bot=True).first()
+        if not bot_user:
+            return
+
+        company = conversacion.company
+        bot_context = conversacion.bot_context
+
+        # Check quota
+        quota = AIUsageService.check_quota(company)
+        if not quota['allowed']:
+            # Create error message from bot
+            error_msg = (
+                'Has alcanzado el limite de uso de IA este mes. '
+                'Contacta a tu administrador para ampliar tu paquete.'
+            )
+            BotResponseService._create_bot_message(conversacion, bot_user, error_msg)
+            return
+
+        # Route to appropriate service
+        try:
+            if bot_context == 'dashboard':
+                from apps.dashboard.services import CfoVirtualService
+                response_text = CfoVirtualService.ask(user_message_content, company, user=user)
+            else:
+                response_text = (
+                    f'El asistente para el modulo "{bot_context}" aun no esta disponible. '
+                    'Por ahora solo el CFO Virtual (modulo Dashboard) esta activo.'
+                )
+        except Exception as exc:
+            detail = getattr(exc, 'detail', str(exc))
+            response_text = f'Error del asistente: {detail}'
+            logger.error('bot_response_error', extra={
+                'conv_id': str(conversacion.id),
+                'error': str(exc),
+            })
+
+        BotResponseService._create_bot_message(conversacion, bot_user, response_text)
+
+    @staticmethod
+    def _create_bot_message(conversacion, bot_user, contenido: str):
+        """Crea un mensaje del bot y lo broadcast via WebSocket."""
+        import bleach
+
+        msg = Mensaje.objects.create(
+            company=conversacion.company,
+            conversacion=conversacion,
+            remitente=bot_user,
+            contenido=contenido,
+            contenido_html=bleach.clean(contenido, tags=[], strip=True),
+        )
+
+        # Update conversation last message
+        conversacion.ultimo_mensaje = msg
+        conversacion.ultimo_mensaje_at = msg.created_at
+        conversacion.save(update_fields=['ultimo_mensaje', 'ultimo_mensaje_at'])
+
+        # Broadcast via WebSocket al grupo de la conversación
+        ChatService.broadcast_nuevo_mensaje(msg, str(conversacion.id))
+
+        # También enviar directamente al user_group del usuario humano (no del bot),
+        # para garantizar entrega aunque el consumer aún no se haya unido al grupo conv.
+        try:
+            from channels.layers import get_channel_layer
+            from asgiref.sync import async_to_sync
+            from .serializers import MensajeSerializer
+            channel_layer = get_channel_layer()
+            if channel_layer:
+                human_user = (
+                    conversacion.participante_2
+                    if conversacion.participante_1 == bot_user
+                    else conversacion.participante_1
+                )
+                message_data = ChatService._serialize_para_ws(MensajeSerializer(msg).data)
+                async_to_sync(channel_layer.group_send)(
+                    f'chat_user_{human_user.id}',
+                    {'type': 'chat.new_message', 'data': message_data},
+                )
+        except Exception:
+            logger.exception('ws_bot_direct_push_failed', extra={'mensaje': str(msg.id)})
+
+        return msg
+
+
 class PresenceService:
     """
     Presencia en tiempo real usando Redis TTL.
