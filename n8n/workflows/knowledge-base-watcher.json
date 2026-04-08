@@ -1,0 +1,324 @@
+{
+  "name": "SaiSuite — Knowledge Base Watcher (Google Drive)",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyHour"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "={{ $env.N8N_GDRIVE_KB_FOLDER_ID }}",
+          "mode": "id"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "name": "Google Drive Trigger",
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "google-drive-oauth",
+          "name": "Google Drive SaiSuite KB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "file-type-check",
+              "leftValue": "={{ $json.mimeType }}",
+              "rightValue": "application/vnd.google-apps.document",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+      "name": "Filter — Only Supported Files",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "extension-check",
+              "leftValue": "={{ $json.name.split('.').pop().toLowerCase() }}",
+              "rightValue": "md,txt,pdf,docx",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "c3d4e5f6-a7b8-9012-cdef-123456789012",
+      "name": "Filter — Supported Extensions",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "d4e5f6a7-b8c9-0123-defa-234567890123",
+      "name": "Google Drive — Download File",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [850, 300],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "google-drive-oauth",
+          "name": "Google Drive SaiSuite KB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Detect module from folder path or file name\nconst fileName = $('Google Drive Trigger').first().json.name;\nconst filePath = $('Google Drive Trigger').first().json.parents?.[0] || '';\n\n// Module detection by filename prefix or keywords\nconst moduleMap = {\n  'MANUAL-PROYECTOS': 'proyectos',\n  'MANUAL-DASHBOARD': 'dashboard',\n  'MANUAL-SAIDASHBOARD': 'dashboard',\n  'MANUAL-TERCEROS': 'terceros',\n  'MANUAL-CONTABILIDAD': 'contabilidad',\n  'MANUAL-CHAT': 'general',\n  'MANUAL-AGENTE': 'general',\n  'norma': 'contabilidad',\n  'puc': 'contabilidad',\n  'niif': 'contabilidad',\n  'impuesto': 'contabilidad',\n  'tributari': 'contabilidad',\n  'faq': 'general',\n};\n\nlet detectedModule = 'general';\nconst fileNameLower = fileName.toLowerCase();\nfor (const [key, module] of Object.entries(moduleMap)) {\n  if (fileNameLower.includes(key.toLowerCase())) {\n    detectedModule = module;\n    break;\n  }\n}\n\n// Category detection\nlet category = 'manual';\nif (fileNameLower.includes('norma') || fileNameLower.includes('puc') || fileNameLower.includes('niif') || fileNameLower.includes('tributari')) {\n  category = 'norma';\n} else if (fileNameLower.includes('faq')) {\n  category = 'faq';\n} else if (fileNameLower.includes('guia')) {\n  category = 'guia';\n}\n\nreturn {\n  fileName,\n  module: detectedModule,\n  category,\n  driveFileId: $('Google Drive Trigger').first().json.id,\n};"
+      },
+      "id": "e5f6a7b8-c9d0-1234-efab-345678901234",
+      "name": "Code — Detect Module & Category",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.BACKEND_URL }}/api/v1/ai/knowledge/ingest/",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-N8N-Secret",
+              "value": "={{ $env.N8N_WEBHOOK_SECRET }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "data"
+            },
+            {
+              "name": "module",
+              "value": "={{ $('Code — Detect Module & Category').first().json.module }}"
+            },
+            {
+              "name": "category",
+              "value": "={{ $('Code — Detect Module & Category').first().json.category }}"
+            },
+            {
+              "name": "source_channel",
+              "value": "drive"
+            },
+            {
+              "name": "drive_file_id",
+              "value": "={{ $('Code — Detect Module & Category').first().json.driveFileId }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "f6a7b8c9-d0e1-2345-fabc-456789012345",
+      "name": "HTTP Request — Ingest to SaiSuite",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1250, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "success-check",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "error",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a7b8c9d0-e1f2-3456-abcd-567890123456",
+      "name": "IF — Success?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1450, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Log success\nconst response = $input.first().json;\nconsole.log(`[KB Watcher] Indexed: ${response.file_name} | Chunks: ${response.chunks_created} | Tokens: ${response.total_tokens} | Status: ${response.status}`);\nreturn {\n  success: true,\n  file: response.file_name,\n  chunks: response.chunks_created,\n  tokens: response.total_tokens,\n  is_update: response.is_update,\n  timestamp: new Date().toISOString(),\n};"
+      },
+      "id": "b8c9d0e1-f2a3-4567-bcde-678901234567",
+      "name": "Code — Log Success",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1650, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Log error for monitoring\nconst response = $input.first().json;\nconsole.error(`[KB Watcher] ERROR indexing: ${JSON.stringify(response)}`);\nreturn {\n  success: false,\n  error: response.error || 'Unknown error',\n  timestamp: new Date().toISOString(),\n};"
+      },
+      "id": "c9d0e1f2-a3b4-5678-cdef-789012345678",
+      "name": "Code — Log Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1650, 400]
+    }
+  ],
+  "connections": {
+    "Google Drive Trigger": {
+      "main": [
+        [
+          {
+            "node": "Filter — Only Supported Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter — Only Supported Files": {
+      "main": [
+        [
+          {
+            "node": "Filter — Supported Extensions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter — Supported Extensions": {
+      "main": [
+        [
+          {
+            "node": "Google Drive — Download File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Drive — Download File": {
+      "main": [
+        [
+          {
+            "node": "Code — Detect Module & Category",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code — Detect Module & Category": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request — Ingest to SaiSuite",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request — Ingest to SaiSuite": {
+      "main": [
+        [
+          {
+            "node": "IF — Success?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF — Success?": {
+      "main": [
+        [
+          {
+            "node": "Code — Log Success",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code — Log Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1.0.0",
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "instanceId": "saisuite-kb-watcher-v1"
+  },
+  "id": "kb-watcher-workflow-001",
+  "tags": ["knowledge-base", "google-drive", "ai", "rag"],
+  "notes": "Watches a Google Drive folder for new/updated documents and automatically indexes them into the SaiSuite Knowledge Base via the /api/v1/ai/knowledge/ingest/ endpoint. Requires: Google Drive OAuth2 credential + N8N_GDRIVE_KB_FOLDER_ID env var + N8N_WEBHOOK_SECRET env var + BACKEND_URL env var."
+}

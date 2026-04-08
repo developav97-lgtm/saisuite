@@ -1,3 +1,30 @@
+## [07 Abril 2026] ERROR: Go Firebird query cuelga sin error cuando columna es palabra reservada
+
+**Síntoma:** Go agent logueaba `syncing CUST incremental` y luego silencio total. La goroutine no completaba, no retornaba error, no había timeout. El proceso quedaba bloqueado indefinidamente.
+**Causa:** `Version` es una palabra reservada en Firebird SQL. La query `SELECT ... Version FROM CUST` fallaba internamente con `SQL error code = -206, Column unknown, VERSION`. El driver `nakagami/firebirdsql` no surfaceaba el error porque el punto de falla estaba en la iteración de filas (rows.Scan), no en la apertura de filas. Además, `doCustSync` ignoraba el valor de retorno del error, así que el error nunca llegaba a los logs.
+**Fix:** 1) Citar el campo como `"Version"` en todo el SQL. 2) En `orchestrator.go`, loggear el error de `SyncCustIncremental`: `if err := syncer.SyncCustIncremental(conn); err != nil { logger.Error(...) }`.
+**Prevención:** En Firebird 2.5, los identificadores que coincidan con palabras reservadas SQL deben ir entre comillas dobles. Revisar lista de reservadas antes de usar nombres de columna genéricos (Version, Date, Time, User, etc.). Siempre loggear errores de funciones que retornan `error` en el orchestrator.
+
+---
+
+## [07 Abril 2026] ERROR: SQS 413 — mensaje demasiado grande con 1755 CUST + SHIPTO + TRIBUTARIA
+
+**Síntoma:** `API error 413 from https://sqs.us-east-1.amazonaws.com/...` al intentar enviar el primer sync completo de CUST.
+**Causa:** El payload JSON con 1755 registros CUST + 1805 SHIPTO + 1742 TRIBUTARIA superaba el límite de 256KB de SQS.
+**Fix:** Chunking a 150 registros CUST por mensaje. Cada chunk incluye solo los SHIPTO/TRIBUTARIA correspondientes a los ID_N de ese chunk (lookup maps O(1)). `custChunkSize = 150` constante en `reference_sync.go`.
+**Prevención:** Para cualquier sync que incluya tablas relacionadas, estimar el tamaño del payload: (registros × bytes_promedio_por_registro) × 3 tablas. Si supera ~80KB, usar chunking. SQS límite es 256KB pero con overhead JSON y encoding hay que dejar margen.
+
+---
+
+## [07 Abril 2026] ERROR: KeyError 'created' en LogRecord al loggear en terceros/services.py
+
+**Síntoma:** `sqs_worker` crasheaba después de procesar CUST: `KeyError: 'created'`.
+**Causa:** Python's `logging.LogRecord` tiene atributo reservado `created` (timestamp del record). Pasar `extra={'created': ...}` intenta sobreescribirlo y lanza KeyError.
+**Fix:** Renombrar a `extra={'created_count': ..., 'updated_count': ...}`.
+**Prevención:** Los atributos reservados de LogRecord incluyen: `created`, `name`, `msg`, `args`, `levelname`, `levelno`, `pathname`, `filename`, `module`, `exc_info`, `exc_text`, `stack_info`, `lineno`, `funcName`, `msecs`, `relativeCreated`, `thread`, `threadName`, `process`, `processName`. Nunca usar estos como keys en `extra={}`.
+
+---
+
 ## [30 Marzo 2026] ERROR: UPSTASH_REDIS_URL con formato de comando CLI en .env
 
 **Sintoma:** WebSocket retorna 500 al conectar. Log: `ValueError: Redis URL must specify one of the following schemes (redis://, rediss://, unix://)`.

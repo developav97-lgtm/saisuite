@@ -131,7 +131,7 @@
 
   &--editing {
     border-left-color: var(--sc-primary, #1976d2);
-    background: var(--sc-surface-hover, #f8f9fa);
+    background: var(--sc-surface-card);
   }
 
   &__btns {
@@ -216,11 +216,11 @@
   background: var(--sc-surface-hover);
   color: var(--sc-text-secondary);
 
-  &--principal   { background: #e3f2fd; color: #1565c0; }
-  &--sucursal    { background: #e8f5e9; color: #2e7d32; }
-  &--bodega      { background: #fff3e0; color: #e65100; }
-  &--facturacion { background: #f3e5f5; color: #6a1b9a; }
-  &--otro        { background: #f5f5f5; color: #757575; }
+  &--principal   { background: color-mix(in srgb, #1976d2 15%, transparent); color: var(--sc-primary, #1976d2); }
+  &--sucursal    { background: color-mix(in srgb, #2e7d32 15%, transparent); color: #4caf50; }
+  &--bodega      { background: color-mix(in srgb, #e65100 15%, transparent); color: #ff9800; }
+  &--facturacion { background: color-mix(in srgb, #6a1b9a 15%, transparent); color: #ce93d8; }
+  &--otro        { background: var(--sc-surface-hover); color: var(--sc-text-muted); }
 }
 
 .tf-dir-principal {
@@ -229,8 +229,8 @@
   gap: 0.2rem;
   font-size: 0.7rem;
   font-weight: 600;
-  color: #1565c0;
-  background: #e3f2fd;
+  color: var(--sc-primary, #1976d2);
+  background: color-mix(in srgb, #1976d2 15%, transparent);
   padding: 2px 8px;
   border-radius: 10px;
 
@@ -253,7 +253,7 @@
   align-items: center;
   gap: 0.4rem;
   padding: 0.35rem 0.5rem;
-  background: var(--sc-surface-hover, #f5f5f5);
+  background: var(--sc-surface-hover);
   border-radius: var(--sc-radius);
   font-size: 0.82rem;
   color: var(--sc-text-muted);

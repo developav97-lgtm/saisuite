@@ -84,4 +84,9 @@ urlpatterns = [
         views.autocomplete_usuarios_view,
         name='autocomplete-usuarios',
     ),
+    path(
+        'conversaciones/bot/limpiar/',
+        views.limpiar_chat_bot_view,
+        name='limpiar-chat-bot',
+    ),
 ]

@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import {
+  AIFeedback, AIFeedbackCreate,
   Conversacion, Mensaje, MensajeCreate,
   AutocompleteEntidad, AutocompleteUsuario, PaginatedResponse,
 } from '../models/chat.models';
@@ -99,5 +100,13 @@ export class ChatService {
       `${this.baseUrl}/conversaciones/${conversacionId}/buscar/`,
       { params },
     );
+  }
+
+  enviarFeedbackIA(data: AIFeedbackCreate): Observable<AIFeedback> {
+    return this.http.post<AIFeedback>('/api/v1/ai/feedback/', data);
+  }
+
+  limpiarChatBot(): Observable<{ deleted: number }> {
+    return this.http.delete<{ deleted: number }>(`${this.baseUrl}/conversaciones/bot/limpiar/`);
   }
 }

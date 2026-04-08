@@ -22,7 +22,7 @@ from .serializers import (
 )
 from rest_framework.views import APIView
 
-from .services import ChatService, PresenceService
+from .services import ChatService, PresenceService, BotResponseService
 
 logger = logging.getLogger(__name__)
 
@@ -153,6 +153,17 @@ def enviar_mensaje_view(request, conversacion_id):
 
     output = MensajeSerializer(mensaje)
     return Response(output.data, status=status.HTTP_201_CREATED)
+
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def limpiar_chat_bot_view(request):
+    """DELETE: Elimina todos los mensajes de la conversación bot del usuario."""
+    company = getattr(request.user, 'effective_company', None)
+    if not company:
+        return Response({'error': 'Sin empresa asignada.'}, status=status.HTTP_400_BAD_REQUEST)
+    deleted = ChatService.limpiar_mensajes_bot(request.user, company)
+    return Response({'deleted': deleted}, status=status.HTTP_200_OK)
 
 
 @api_view(['POST'])

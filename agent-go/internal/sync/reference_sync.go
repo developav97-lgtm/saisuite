@@ -74,6 +74,9 @@ func (rs *ReferenceSync) SyncAll(conn config.Connection) error {
 // On first run (LastVersionCust == 0) it fetches everything.
 // For each affected ID_N it also fetches SHIPTO and TRIBUTARIA atomically.
 // Call this on the GL ticker (every gl_interval_minutes) for near-realtime delivery.
+// custChunkSize limits records per SQS message to stay under the 256KB limit.
+const custChunkSize = 150
+
 func (rs *ReferenceSync) SyncCustIncremental(conn config.Connection) error {
 	lastVersion := conn.Sync.LastVersionCust
 	rs.logger.Info("syncing CUST incremental", "conn_id", conn.ID, "last_version", lastVersion)
@@ -88,56 +91,84 @@ func (rs *ReferenceSync) SyncCustIncremental(conn config.Connection) error {
 		return nil
 	}
 
-	// On first sync (lastVersion==0) do a full scan of SHIPTO/TRIBUTARIA (no IN clause).
-	// On incremental syncs filter by the affected ID_N values only.
-	var shiptoIDNs []string
-	var tributariaIDNs []string
+	// Fetch all SHIPTO and TRIBUTARIA for this batch.
+	// On first sync (lastVersion==0) full scan; incremental: filter by affected ID_Ns.
+	var filterIDNs []string
 	if lastVersion > 0 {
 		for _, r := range custRecords {
-			shiptoIDNs = append(shiptoIDNs, r.IDN)
-			tributariaIDNs = append(tributariaIDNs, r.IDN)
+			filterIDNs = append(filterIDNs, r.IDN)
 		}
 	}
-	// Empty slice → QueryShipToByIDN / QueryTributariaByIDN do a full scan
 
-	// Fetch SHIPTO and TRIBUTARIA atomically with the CUST batch
-	shiptoRecords, err := rs.fbClient.QueryShipToByIDN(shiptoIDNs)
+	shiptoAll, err := rs.fbClient.QueryShipToByIDN(filterIDNs)
 	if err != nil {
 		return fmt.Errorf("SHIPTO query failed: %w", err)
 	}
-
-	tributariaRecords, err := rs.fbClient.QueryTributariaByIDN(tributariaIDNs)
+	tributariaAll, err := rs.fbClient.QueryTributariaByIDN(filterIDNs)
 	if err != nil {
 		return fmt.Errorf("TRIBUTARIA query failed: %w", err)
+	}
+
+	// Build lookup maps for SHIPTO and TRIBUTARIA by ID_N for fast slicing per chunk.
+	shiptoByIDN := make(map[string][]firebird.ShipToRecord, len(shiptoAll))
+	for _, s := range shiptoAll {
+		shiptoByIDN[s.IDN] = append(shiptoByIDN[s.IDN], s)
+	}
+	tributariaByIDN := make(map[string]firebird.TributariaRecord, len(tributariaAll))
+	for _, t := range tributariaAll {
+		tributariaByIDN[t.IDN] = t
 	}
 
 	msgType := "cust_batch"
 	if lastVersion == 0 {
 		msgType = "cust_full"
 	}
+	totalChunks := (len(custRecords) + custChunkSize - 1) / custChunkSize
 
-	payload := api.ReferencePayload{
-		Type:      msgType,
-		CompanyID: conn.Saicloud.CompanyID,
-		ConnID:    conn.ID,
-		Timestamp: time.Now().UTC().Format(time.RFC3339),
-		Data: api.CustBatchData{
-			Records:    custRecords,
-			ShipTo:     shiptoRecords,
-			Tributaria: tributariaRecords,
-			TotalCount: len(custRecords),
-		},
+	for i := 0; i < len(custRecords); i += custChunkSize {
+		end := i + custChunkSize
+		if end > len(custRecords) {
+			end = len(custRecords)
+		}
+		chunk := custRecords[i:end]
+		chunkNum := i/custChunkSize + 1
+
+		// Collect SHIPTO and TRIBUTARIA for this chunk's ID_Ns.
+		var chunkShipTo []firebird.ShipToRecord
+		var chunkTributaria []firebird.TributariaRecord
+		for _, r := range chunk {
+			chunkShipTo = append(chunkShipTo, shiptoByIDN[r.IDN]...)
+			if t, ok := tributariaByIDN[r.IDN]; ok {
+				chunkTributaria = append(chunkTributaria, t)
+			}
+		}
+
+		payload := api.ReferencePayload{
+			Type:      msgType,
+			CompanyID: conn.Saicloud.CompanyID,
+			ConnID:    conn.ID,
+			Timestamp: time.Now().UTC().Format(time.RFC3339),
+			Data: api.CustBatchData{
+				Records:     chunk,
+				ShipTo:      chunkShipTo,
+				Tributaria:  chunkTributaria,
+				TotalCount:  len(custRecords),
+				ChunkNum:    chunkNum,
+				TotalChunks: totalChunks,
+			},
+		}
+
+		if err := rs.sender.PostReference("cust", payload); err != nil {
+			return fmt.Errorf("chunk %d/%d send failed: %w", chunkNum, totalChunks, err)
+		}
+		rs.logger.Info("CUST chunk sent", "conn_id", conn.ID,
+			"chunk", chunkNum, "of", totalChunks, "records", len(chunk))
 	}
 
-	if err := rs.sender.PostReference("cust", payload); err != nil {
-		return err
-	}
-
-	// Persist the new watermark
+	// Persist watermark only after all chunks sent successfully.
 	if err := rs.cfg.UpdateCustVersion(conn.ID, maxVersion); err != nil {
 		rs.logger.Warn("failed to update CUST version watermark", "error", err)
 	}
-
 	if err := rs.cfg.UpdateReferenceSyncTime(conn.ID, "cust"); err != nil {
 		rs.logger.Warn("failed to update CUST sync time", "error", err)
 	}
@@ -145,8 +176,9 @@ func (rs *ReferenceSync) SyncCustIncremental(conn config.Connection) error {
 	rs.logger.Info("CUST incremental sync complete",
 		"conn_id", conn.ID,
 		"cust_records", len(custRecords),
-		"shipto_records", len(shiptoRecords),
-		"tributaria_records", len(tributariaRecords),
+		"shipto_records", len(shiptoAll),
+		"tributaria_records", len(tributariaAll),
+		"chunks", totalChunks,
 		"max_version", maxVersion,
 	)
 	return nil

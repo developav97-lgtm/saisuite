@@ -196,7 +196,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
 
   private get ADMIN_NAV(): NavSection[] {
     const user = this.authService.currentUser();
-    const isSuperadmin = user?.is_superadmin || user?.is_superuser;
+    const isSuperadmin = user?.is_superadmin || user?.role === 'valmen_admin';
 
     // SuperAdmin solo ve gestión de tenants y usuarios internos
     if (isSuperadmin) {
@@ -207,6 +207,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
             { label: 'Tenants',           icon: 'domain',               route: '/admin/tenants' },
             { label: 'Paquetes',          icon: 'inventory_2',          route: '/admin/packages' },
             { label: 'Usuarios internos', icon: 'supervised_user_circle', route: '/admin/usuarios-internos' },
+            { label: 'Base de Conocimiento IA', icon: 'auto_awesome',   route: '/admin/knowledge-base' },
           ],
         },
       ];
@@ -274,7 +275,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
     const user = this.authService.currentUser();
 
     // SuperAdmin siempre ve el nav de admin — nunca el de modulos de tenant
-    if (user?.is_superadmin || user?.is_superuser) {
+    if (user?.is_superadmin || user?.role === 'valmen_admin') {
       this.navSections = this.ADMIN_NAV;
       return;
     }
@@ -301,7 +302,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
     if (!codigo) return true;
     const user = this.authService.currentUser();
     if (!user) return false;
-    if (user.is_superadmin || user.is_superuser || user.is_staff) return true;
+    if (user.is_superadmin || user.role === 'valmen_admin' || user.is_staff) return true;
     const permisos = user.rol_granular?.permisos ?? [];
     return permisos.some(p => p.codigo === codigo);
   }

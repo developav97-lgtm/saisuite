@@ -63,18 +63,25 @@
 
               <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
                 <mat-label>Tipo de documento *</mat-label>
-                <mat-select formControlName="tipo_identificacion">
-                  @for (op of tipoIdentificacionOptions; track op.value) {
-                    <mat-option [value]="op.value">{{ op.label }}</mat-option>
-                  }
-                </mat-select>
+                @if (editMode()) {
+                  <input matInput [value]="tipoIdentificacionLabel()" readonly />
+                } @else {
+                  <mat-select formControlName="tipo_identificacion">
+                    @for (op of tipoIdentificacionOptions; track op.value) {
+                      <mat-option [value]="op.value">{{ op.label }}</mat-option>
+                    }
+                  </mat-select>
+                }
               </mat-form-field>
 
               <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
                 <mat-label>Número de identificación *</mat-label>
-                <input matInput formControlName="numero_identificacion" maxlength="50" placeholder="900123456-7" />
-                @if (form.get('numero_identificacion')?.invalid && form.get('numero_identificacion')?.touched) {
-                  <mat-error>Obligatorio.</mat-error>
+                <input matInput formControlName="numero_identificacion" maxlength="50" placeholder="900123456-7"
+                       [readonly]="editMode()" />
+                @if (!editMode()) {
+                  @if (form.get('numero_identificacion')?.invalid && form.get('numero_identificacion')?.touched) {
+                    <mat-error>Obligatorio.</mat-error>
+                  }
                 }
               </mat-form-field>
 

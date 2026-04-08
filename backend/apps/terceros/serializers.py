@@ -75,15 +75,18 @@ class TerceroCreateUpdateSerializer(serializers.ModelSerializer):
         ]
 
     def to_internal_value(self, data):
-        # Normalizar null → '' en todos los CharField opcionales antes de validar
+        # Normalizar null → '' y valores inútiles de Saiopen (SN, sn) → ''
         nullable_fields = [
             'primer_nombre', 'segundo_nombre', 'primer_apellido', 'segundo_apellido',
             'razon_social', 'tipo_tercero', 'email', 'telefono', 'celular',
         ]
+        SN_VALUES = {'sn', 'SN', 'S/N', 's/n', 'N/A', 'n/a', 'NA', 'na'}
         mutable = data.copy() if hasattr(data, 'copy') else dict(data)
         for field in nullable_fields:
-            if field in mutable and mutable[field] is None:
-                mutable[field] = ''
+            if field in mutable:
+                val = mutable[field]
+                if val is None or (isinstance(val, str) and val.strip() in SN_VALUES):
+                    mutable[field] = ''
         return super().to_internal_value(mutable)
 
     def validate(self, attrs):

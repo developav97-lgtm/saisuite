@@ -1,3 +1,10 @@
+---
+title: Manual de Usuario — SaiProyectos
+module: proyectos
+category: manual
+source: ValMen Tech — SaiCloud
+---
+
 # Manual de Usuario — Saicloud
 
 **Versión:** 1.1 — Marzo 2026 (Actualizado tras auditoría de implementación real)

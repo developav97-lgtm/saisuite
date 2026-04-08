@@ -53,7 +53,12 @@
                         [displayWith]="displayTercero"
                         (optionSelected)="onTerceroSelected($event.option.value)">
         @for (t of terceroOptions(); track t.id) {
-          <mat-option [value]="t">{{ t.nombre }}</mat-option>
+          <mat-option [value]="t">
+            <span>{{ t.nombre }}</span>
+            @if (t.identificacion) {
+              <span class="fp-option-id"> · {{ t.identificacion }}</span>
+            }
+          </mat-option>
         }
       </mat-autocomplete>
     </mat-form-field>

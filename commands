@@ -2,17 +2,22 @@ docker-compose exec frontend npm install primeng @primeuix/themes primeicons --f
 
 
 admin@demo.com      / demo123
-superadmin@valmentech.com / valmen2026!
 
+super user para admin django:
+superadmin@valmentech.com / valmen2026!
+valmen2026!
+
+admin:
 admin@andina.com
 coord@andina.com
 Admin1234!
 
 
-admin:
+superadmin:
 superadmin@valmentech.com
 Admin1234!
 
 soporte:
 soporte@valmentech.com
-soportevalmen
+Admin1234!
+

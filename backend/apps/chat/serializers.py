@@ -85,6 +85,7 @@ class ConversacionListSerializer(serializers.ModelSerializer):
             'participante_2', 'participante_2_nombre', 'participante_2_email',
             'ultimo_mensaje', 'ultimo_mensaje_contenido', 'ultimo_mensaje_at',
             'mensajes_sin_leer',
+            'bot_context',
             'created_at', 'updated_at',
         ]
 

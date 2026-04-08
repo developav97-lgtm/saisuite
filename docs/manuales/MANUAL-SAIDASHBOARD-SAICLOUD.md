@@ -1,3 +1,10 @@
+---
+title: Manual de Usuario — SaiDashboard
+module: dashboard
+category: manual
+source: ValMen Tech — SaiCloud
+---
+
 # Manual de Usuario — SaiDashboard
 
 **Version:** 1.0 — Abril 2026

@@ -1,7 +1,219 @@
 # CONTEXT.md - Estado del Proyecto Saicloud
 
-**Ultima actualizacion:** 03 Abril 2026
-**Sesion:** 6 Features — Licencias, IA en Chat, Manuales, AWS
+**Ultima actualizacion:** 08 Abril 2026
+**Sesion:** SaiDashboard Potenciación (cerrado) + Chat Bot Fixes + SaiBot UX mejoras
+
+---
+
+## COMPLETADO (08 Abril 2026) — SaiDashboard Potenciación + Chat Bot Fixes
+
+### SaiDashboard Potenciación — Plan Cerrado (100% implementado)
+Todo el plan `expressive-waddling-stardust.md` estaba ya implementado desde la sesión anterior. Verificado y cerrado.
+
+**Resumen de lo que estaba implementado:**
+- `filtros_default` JSONField en Dashboard model + migración aplicada
+- 9 nuevas tarjetas analíticas en `card_catalog.py`
+- Motor de reportes con series mensuales, `_aggregate_by_periodo_titulo`, tarjetas config
+- Serializers con `filtros_default` y `card_config`
+- `PUT /api/v1/dashboard/{id}/filters/` endpoint
+- Filter-panel con `savedFilter`, `hasPendingChanges`, banner guardar-como-predeterminado
+- Dashboard-viewer con `onSaveAsDefault`, `[isMonthly]` en chart-card
+
+### Bugs Chat Bot resueltos
+
+**Bug 1 — `isBot()` retornaba false (bot header, feedback, chips no aparecían)**
+- Causa: `ConversacionListSerializer` no incluía `bot_context` en `fields`
+- Fix: Agregado `'bot_context'` en `backend/apps/chat/serializers.py:88`
+- `isBot = computed(() => !!conversacion().bot_context)` ahora funciona
+
+**Bug 2 — Mensajes bot mostraban markdown crudo (`###`, `**bold**`)**
+- Causa: `_create_bot_message` usaba `bleach.clean(contenido, tags=[], strip=True)` → almacenaba texto plano
+- Fix: Instalar `Markdown==3.10.2` (agregado a `requirements.txt`), convertir `md.markdown(contenido, extensions=['nl2br','tables'])` → bleach con tags estructurales permitidos
+- Archivo: `backend/apps/chat/services.py` — `_create_bot_message()`
+
+**Bug 3 — SaiBot mostraba "Dashboard financiero" en cualquier ruta**
+- Causa: `moduleLabel` usaba solo `conversacion().bot_context` estático
+- Fix: `currentModule` computed signal que lee `router.url` + suscripción a `NavigationEnd` via `toSignal`
+- Mapa: `/proyectos` → "Proyectos", `/saidashboard` → "Dashboard financiero", `/dashboard` → "Asistente general", etc.
+- Archivo: `frontend/.../chat/components/chat-window/chat-window.component.ts`
+
+### Mejoras SaiBot UX
+
+**Animación "Analizando..." mientras el bot responde**
+- `botThinking = signal(false)` activado al enviar mensaje en bot, desactivado al llegar respuesta WS
+- `typingIndicator()` para bots retorna `botThinking()` directamente (no depende de WS typing event)
+- El template ya tenía la animación de 3 puntos + "Analizando..." — ahora se muestra
+
+**System prompt conversacional (respuestas cortas)**
+- `AIOrchestrator.SYSTEM_TEMPLATE` en `backend/apps/ai/services.py` actualizado
+- Nuevas reglas: máx 3-4 oraciones, guiar paso a paso (un paso por mensaje), esperar confirmación
+
+**Botón "Limpiar conversación" en bot header**
+- Backend: `ChatService.limpiar_mensajes_bot()` + `DELETE /api/v1/chat/conversaciones/bot/limpiar/`
+- Frontend: `ChatService.limpiarChatBot()` + `clearBotChat()` en chat-window + botón `delete_sweep` en bot header
+
+**"Base Conocimiento IA" oculto para company_admin**
+- Solo visible para `valmen_admin` / `is_superadmin`
+- Fix: removido del bloque `ADMIN_NAV` de company_admin en `sidebar.component.ts`
+
+### Archivos modificados esta sesión
+**Backend:**
+- `backend/apps/chat/serializers.py` — `bot_context` en `ConversacionListSerializer.fields`
+- `backend/apps/chat/services.py` — `_create_bot_message` markdown, `limpiar_mensajes_bot()`
+- `backend/apps/chat/views.py` — `limpiar_chat_bot_view`, import `BotResponseService`
+- `backend/apps/chat/urls.py` — ruta `conversaciones/bot/limpiar/`
+- `backend/apps/ai/services.py` — `AIOrchestrator.SYSTEM_TEMPLATE` conversacional
+- `backend/requirements.txt` — `Markdown==3.10.2`
+
+**Frontend:**
+- `frontend/.../chat/components/chat-window/chat-window.component.ts` — `botThinking`, `clearBotChat()`, bot header con botón limpiar, estilos, `currentModule` router-aware, `moduleLabel/suggestions` reactivos
+- `frontend/.../chat/services/chat.service.ts` — `limpiarChatBot()`
+- `frontend/.../sidebar/sidebar.component.ts` — "Base Conocimiento IA" solo valmen_admin; `currentModule` router-aware en chat-window
+
+### Pendientes
+- ⏳ Validación 4x4 (Desktop+Mobile × Light+Dark) del bot chat
+- ⏳ Tests unitarios AIOrchestrator y LearningService
+- ⏳ Proyectos Fase 4: 3 funcionalidades media/baja pendientes
+
+---
+
+## COMPLETADO (07 Abril 2026) — Pipeline Sync CUST/SHIPTO/TRIBUTARIA + Doble Vía
+
+### Objetivo
+Sincronización incremental de CUST (terceros) desde Firebird → SQS → Django, incluyendo SHIPTO (direcciones) y TRIBUTARIA (datos tributarios) atómicamente. Auto-creación de `Tercero` en la app al recibir datos de CUST.
+
+### Lo que se implementó
+
+**Go Agent (agent-go v1.0.4):**
+- `CustRecord` expandido a ~20 campos útiles (antes 11)
+- `ShipToRecord` — nuevo (17 campos): ID_N, SUCCLIENTE, ADDR1/2, CITY, etc.
+- `TributariaRecord` — nuevo (8 campos): ID_N, PRIMER_NOMBRE, etc.
+- `QueryCustSince(lastVersion)` — incremental por campo `"Version"` (reservado en Firebird, requiere comillas dobles)
+- `QueryShipToByIDN(idns)` — filtra solo los ID_N afectados (incremental)
+- `QueryTributariaByIDN(idns)` — filtra solo los ID_N afectados
+- Warm-up `COUNT(*)` antes del SELECT principal (quirk del driver nakagami/firebirdsql)
+- Sin `ORDER BY` en query CUST (colgaba en Firebird 2.5 sin índice en Version)
+- Chunking: 150 registros CUST por mensaje SQS (límite 256KB)
+- Lookup maps O(1) para asociar SHIPTO/TRIBUTARIA por ID_N en cada chunk
+- Watermark `LastVersionCust` persistido en config solo tras éxito de todos los chunks
+- CUST corre en el ticker de GL (cada 5 min), no en el de referencias (24h)
+- `SyncCustIncremental` en `reference_sync.go`, llamado desde `doCustSync` en `orchestrator.go`
+
+**Config Go:**
+- `LastVersionCust int64` en `SyncConfig` (config.go)
+
+**Django Backend:**
+- `ShipToSaiopen` — nuevo modelo (`cont_shipto_saiopen`), PK lógica (company, id_n, succliente)
+- `TributariaSaiopen` — nuevo modelo (`cont_tributaria_saiopen`), PK lógica (company, id_n)
+- `TerceroSaiopen` expandido: departamento, phone2, acct, acctp, regimen, fecha_creacion, descuento, creditlmt, version_saiopen
+- `_process_cust` en `contabilidad/services.py` actualizado para extraer `data['shipto']` y `data['tributaria']` del payload atómico
+- `_process_shipto` y `_process_tributaria` — handlers nuevos con `bulk_create(update_conflicts=True)`
+- `TerceroSyncService.upsert_from_saiopen()` en `terceros/services.py` — doble vía: crea/actualiza `Tercero` app a partir de TerceroSaiopen + TributariaSaiopen
+- `_REFERENCE_TYPE_MAP` actualizado en sqs_consumer: `cust_batch`, `cust_full`
+- Fix log key: `'created'` → `'created_count'` (reservado en Python logging)
+- Migración aplicada
+
+### Bug crítico resuelto: CUST query colgaba sin error
+- **Causa:** `"Version"` es palabra reservada en Firebird SQL — sin comillas daba `Column unknown VERSION`
+- **Mascarado por:** `doCustSync` no logueaba el error de retorno (return value ignorado)
+- **Fix:** comillas dobles + logging explícito del error en orchestrator.go
+
+### Estado final verificado
+| Tabla | Registros |
+|---|---|
+| `cont_tercero_saiopen` | 1,755 |
+| `cont_shipto_saiopen` | 1,805 |
+| `cont_tributaria_saiopen` | 1,742 |
+| `terceros_tercero` (saiopen_synced=true) | 1,755 |
+
+### Archivos modificados
+**Go:**
+- `agent-go/internal/firebird/client.go` — CustRecord expandido, ShipToRecord, TributariaRecord, queries nuevas, fix "Version"
+- `agent-go/internal/sync/reference_sync.go` — SyncCustIncremental con chunking + lookup maps
+- `agent-go/internal/sync/orchestrator.go` — doCustSync con error logging
+- `agent-go/internal/api/client.go` — CustBatchData con ChunkNum/TotalChunks
+- `agent-go/internal/config/config.go` — LastVersionCust int64
+- `agent-go/cmd/agent/main.go` — version 1.0.4
+- `agent-go/saicloud-agent-v1.0.4.zip` — binario Windows compilado
+
+**Django:**
+- `backend/apps/contabilidad/models.py` — ShipToSaiopen, TributariaSaiopen, TerceroSaiopen expandido
+- `backend/apps/contabilidad/services.py` — _process_cust actualizado, _process_shipto, _process_tributaria
+- `backend/apps/contabilidad/sqs_consumer.py` — cust_batch en TYPE_MAP
+- `backend/apps/terceros/services.py` — TerceroSyncService.upsert_from_saiopen(), fix log key
+
+### Pendientes (fase v2)
+- ⏳ Cuando se crea un `Tercero` en SaiSuite, enviar push a Saiopen vía SQS inversa (escribir en CUST)
+- ⏳ Tests unitarios de TerceroSyncService
+- ⏳ Dirección principal de ShipTo (succliente=0) actualizar `Tercero.direccion`
+
+---
+
+## COMPLETADO (07 Abril 2026) — Sistema IA/RAG Completo
+
+### Sprint 1 — Knowledge Base + Pipeline RAG
+- 5 documentos de conocimiento en `docs/knowledge/`: PUC, NIIF PYMES, IVA/Retención, Obligaciones Tributarias, FAQ General
+- `KnowledgeSource` + `KnowledgeChunk` (pgvector, HNSW index) — modelos + migración
+- `EmbeddingService` (text-embedding-3-small, 1536 dims)
+- `KnowledgeIngestionService` — pipeline hash → convert → chunk (~500 tokens) → embed → store
+- Management command `index_knowledge_base` con flag `--incremental` (dedup por SHA-256)
+- n8n workflow `knowledge-base-watcher.json` — Google Drive Trigger → auto-ingest via webhook
+- `docker-compose.yml` — volumen `./docs:/app/docs` para acceso al command
+- `httpx==0.27.2` pinado en requirements para compatibilidad con openai==1.35.14
+
+### Sprint 2 — AIOrchestrator + BotResponseService + UI Chat
+- `AIOrchestrator` en `apps/ai/services.py`: DataCollector (1500 tok) + RAG (5 chunks, 0.40 threshold) + GPT-4o-mini
+- 5 DataCollectors: DashboardCollector, ProyectosCollector, TercerosCollector, ContabilidadCollector, GeneralCollector
+- `BotResponseService.process_bot_message` refactorizado → usa AIOrchestrator (reemplaza n8n para chat)
+- Historial multi-turno: últimos 6 turnos (12 mensajes) en contexto
+- `AIFeedback` modelo + `AIFeedbackView` endpoint `POST /api/v1/ai/feedback/`
+- Frontend: bot header con avatar + module label + badge IA, suggestion chips, botones feedback (thumbs up/down)
+- `feedbackMap = signal<Map<string, 1|-1>>()` con optimistic update
+- Modelos TS: `AIFeedback`, `AIFeedbackCreate`; servicio: `enviarFeedbackIA()`
+
+### Sprint 3 — Cache Redis + LearningService + Token Optimization
+- `RAGCacheService` con invalidación por versión — TTL 2h, sin dependencias extra (Django built-in Redis cache)
+- `CACHES` configurado en `settings/base.py` usando `UPSTASH_REDIS_URL`
+- `LearningService.process_positive_feedback()` — feedback +1 → `KnowledgeChunk(FAQ_APRENDIDA)`, dedup MD5, min 50 tokens
+- Token optimization dinámico: preguntas cortas → 512 tok, medias → 768, largas → 1024
+- Cache se invalida al ingestar conocimiento nuevo (`KnowledgeIngestionService.ingest`)
+- `AIFeedbackView` llama a `LearningService` tras rating +1, con try/except para no bloquear respuesta
+
+### Admin UI Knowledge Base
+- Componente: `frontend/.../admin/knowledge-base/knowledge-base.component.ts`
+- Servicio: `frontend/.../admin/services/knowledge-base.service.ts`
+- Modelos TS: `KnowledgeSource`, `KnowledgeIngestResult` en `admin.models.ts`
+- Ruta: `/admin/knowledge-base` (lazy loaded)
+- Sidebar: en superadmin con botón "Re-indexar todo"; en company_admin sin re-index
+- Funciones: listar fuentes (tabla responsive), subir archivo (module + category), eliminar con confirm, re-indexar (solo valmen_admin)
+- DEC-050 a DEC-054 registradas en DECISIONS.md
+
+### Archivos creados/modificados esta sesión
+**Backend:**
+- `backend/apps/ai/services.py` — AIOrchestrator, RAGCacheService, LearningService; actualizado RAGService + KnowledgeIngestionService
+- `backend/apps/ai/collectors.py` — 5 DataCollectors (sprint 2)
+- `backend/apps/ai/views.py` — AIFeedbackView + wiring LearningService
+- `backend/apps/ai/models.py` — AIFeedback (sprint 2)
+- `backend/config/settings/base.py` — CACHES config Redis
+- `backend/requirements.txt` — httpx==0.27.2
+- `docs/knowledge/` — 5 documentos markdown indexados
+- `n8n/workflows/knowledge-base-watcher.json` — Google Drive watcher
+
+**Frontend:**
+- `frontend/.../admin/knowledge-base/knowledge-base.component.ts` — NUEVO
+- `frontend/.../admin/services/knowledge-base.service.ts` — NUEVO
+- `frontend/.../admin/models/admin.models.ts` — KnowledgeSource, KnowledgeIngestResult
+- `frontend/.../admin/admin.routes.ts` — ruta knowledge-base
+- `frontend/.../sidebar/sidebar.component.ts` — nav item KB en superadmin y company_admin
+- `frontend/.../chat/components/chat-window/chat-window.component.ts` — bot header, feedback, suggestions
+- `frontend/.../chat/models/chat.models.ts` — AIFeedback, AIFeedbackCreate
+- `frontend/.../chat/services/chat.service.ts` — enviarFeedbackIA()
+
+### Pendientes menores
+- ⏳ Frontend no validado en browser (frontend container no estaba corriendo)
+- ⏳ Tests unitarios del AIOrchestrator y LearningService
+
+---
 
 ---
 

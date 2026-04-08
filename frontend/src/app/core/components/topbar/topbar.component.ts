@@ -71,10 +71,11 @@ export class TopbarComponent {
 
   readonly rolLabel = computed(() => {
     const user = this.currentUser();
-    if (user?.is_superadmin || user?.is_superuser) return 'Super Admin';
-    if (user?.is_staff) return 'Soporte';
     const role = user?.role ?? '';
-    return ROLE_LABELS[role] ?? role;
+    if (role in ROLE_LABELS) return ROLE_LABELS[role];
+    if (user?.is_superadmin) return 'Super Admin';
+    if (user?.is_staff) return 'Soporte';
+    return role;
   });
 
   readonly perfilUrl = computed(() => {
@@ -85,7 +86,8 @@ export class TopbarComponent {
   /** Empresa activa visible en el topbar (para soporte y usuarios de tenant). */
   readonly empresaActiva = computed(() => {
     const user = this.currentUser();
-    if (!user || user.is_superadmin || user.is_superuser) return null;
+    const isValmenAdmin = user?.role === 'valmen_admin' || user?.is_superadmin;
+    if (!user || isValmenAdmin) return null;
     const ec = user.effective_company ?? user.company;
     return ec ? { name: ec.name, isSoporte: !!user.is_staff } : null;
   });

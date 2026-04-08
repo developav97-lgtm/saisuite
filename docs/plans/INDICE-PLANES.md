@@ -1,5 +1,5 @@
 # ÍNDICE DE PLANES — Saicloud
-> Última actualización: 2026-04-01
+> Última actualización: 2026-04-07
 > **Regla:** Este índice se actualiza cada vez que se agrega, inicia o completa un plan.
 
 ---
@@ -8,6 +8,8 @@
 
 | Plan | Módulo | Descripción | Estado | Modelo sugerido |
 |------|--------|-------------|--------|-----------------|
+| [PLAN-IA-CENTRALIZADA.md](PLAN-IA-CENTRALIZADA.md) | IA / Todos | Asistente IA centralizado: RAG + pgvector + DataCollectors + Learning | 🟡 Planificado | Opus → Sonnet |
+| [PROMPT-CLAUDECODE-IA-CENTRALIZADA.md](PROMPT-CLAUDECODE-IA-CENTRALIZADA.md) | IA / Todos | Prompts multi-agente para 3 sprints | 🟡 Planificado | — |
 | [PLAN-SAIDASHBOARD.md](PLAN-SAIDASHBOARD.md) | SaiDashboard | Dashboard BI financiero + Agente Go multi-DB + CFO Virtual IA | 🟡 En cola | Opus |
 | [PROMPT-CLAUDECODE-SAIDASHBOARD.md](PROMPT-CLAUDECODE-SAIDASHBOARD.md) | SaiDashboard | Prompt listo para pegar en Claude Code | 🟡 En cola | — |
 

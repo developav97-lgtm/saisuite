@@ -1,3 +1,102 @@
+## DEC-056: CUST sync atómico — SHIPTO y TRIBUTARIA viajan en el mismo mensaje SQS
+**Fecha:** 2026-04-07
+**Estado:** Decidido
+
+**Contexto:** Al sincronizar un tercero modificado en CUST, Django necesita tanto los datos de contacto (CUST) como las direcciones (SHIPTO) y los datos tributarios (TRIBUTARIA) para poder construir correctamente el modelo `Tercero`. Enviarlos en mensajes separados generaría ventanas de inconsistencia.
+
+**Decisión:** El mensaje SQS `cust_batch` incluye tres arrays: `records` (CUST), `shipto` (solo IDs afectados), `tributaria` (solo IDs afectados). Django procesa los tres en un único `transaction.atomic()`.
+
+**Consecuencias:** Mensajes más grandes → chunking a 150 registros CUST por mensaje para mantenerse bajo 256KB. Sin inconsistencias parciales.
+
+---
+
+## DEC-055: CUST incremental por campo "Version" (no CONTEO)
+**Fecha:** 2026-04-07
+**Estado:** Decidido
+
+**Contexto:** CUST en Firebird 2.5 tiene tanto `CONTEO` como `"Version"` (generado por trigger). GL usa CONTEO como watermark. Para CUST se eligió `Version` porque es el campo que se actualiza en INSERT y UPDATE de terceros.
+
+**Decisión:** Watermark `LastVersionCust` en `SyncConfig`. Query: `WHERE "Version" > lastVersion`. CUST corre en el ticker de GL (cada 5 min), no en el de referencias (24h).
+
+**IMPORTANTE:** `Version` es palabra reservada en Firebird SQL — siempre usar comillas dobles en el SQL: `"Version"`. Sin comillas el driver retorna `Column unknown VERSION` sin lanzar error Go visible, causando hang silencioso.
+
+**Consecuencias:** Terceros nuevos/modificados llegan a Django en máximo 5 minutos.
+
+---
+
+## DEC-054: KB Admin UI solo para company_admin y valmen_admin
+**Fecha:** 2026-04-07
+**Estado:** Decidido
+
+**Contexto:** La pantalla de gestión de la knowledge base (listar/eliminar fuentes, subir archivos) debía ser accesible pero no expuesta a usuarios finales.
+
+**Decisión:** La ruta `/admin/knowledge-base` está disponible para ambos roles: `valmen_admin` (ve además el botón "Re-indexar todo") y `company_admin` (solo upload + delete). Sin guard adicional porque toda la sección `/admin` ya está protegida por el rol correspondiente.
+
+**Consecuencias:** Un `company_admin` puede subir sus propios documentos (normas internas, manuales) y el bot de su empresa los usará inmediatamente.
+
+---
+
+## DEC-053: Redis cache con invalidación por versión para búsquedas RAG
+**Fecha:** 2026-04-07
+**Estado:** Decidido
+
+**Contexto:** Las búsquedas RAG (embedding + pgvector) son costosas (~200ms + tokens OpenAI). Muchas preguntas frecuentes repiten la misma consulta.
+
+**Opciones consideradas:**
+1. Cache simple key→value con TTL (sin invalidación explícita)
+2. Cache con invalidación por patrón (`delete_pattern`) → requiere `django-redis`, no funciona con built-in backend
+3. Cache con versión lógica por (company, module) — incrementar versión = invalidar todos los resultados
+
+**Decisión:** Opción 3. Clave = `rag:{company_id}:{module}:{version}:{query_hash}`. Al ingestar conocimiento nuevo, se incrementa la versión → claves antiguas inaccesibles, expiran por TTL (2h).
+
+**Razón:** No requiere dependencia adicional (Django 4+ tiene backend Redis built-in), es testeable, y el overhead de leer la versión es O(1).
+
+**Consecuencias:** Conocimiento nuevo es buscable inmediatamente tras invalidación. Máximo 2h de datos stale si la invalidación falla.
+
+---
+
+## DEC-052: LearningService — feedback +1 genera FAQ chunk automáticamente
+**Fecha:** 2026-04-07
+**Estado:** Decidido
+
+**Contexto:** El sistema acumula feedback positivo sobre respuestas del bot pero no lo aprovechaba para mejorar el RAG.
+
+**Decisión:** Cuando `AIFeedback.rating = 1`, `LearningService.process_positive_feedback()` crea un `KnowledgeChunk(source_type=FAQ_APRENDIDA)` con el par P&A embebido. Deduplicación via MD5 del contenido. Mínimo 50 tokens para filtrar respuestas triviales.
+
+**Consecuencias:** La knowledge base crece orgánicamente con preguntas reales. Preguntas frecuentes serán respondidas con contexto propio del historial validado por usuarios.
+
+---
+
+## DEC-051: Token optimization dinámico en AIOrchestrator
+**Fecha:** 2026-04-07
+**Estado:** Decidido
+
+**Contexto:** `max_tokens=1024` fijo desperdicia tokens en preguntas cortas (¿Cuál es mi saldo? → respuesta de 80 tokens).
+
+**Decisión:** `completion_tokens` dinámico según longitud de pregunta: ≤50 tok → 512, ≤150 → 768, >150 → 1024.
+
+**Consecuencias:** Reducción estimada del 30-40% en costo por completion para preguntas simples.
+
+---
+
+## DEC-050: AIOrchestrator reemplaza CfoVirtualService+n8n para el bot de chat
+**Fecha:** 2026-04-07
+**Estado:** Decidido
+
+**Contexto:** `BotResponseService` llamaba a `CfoVirtualService` que a su vez llamaba a n8n (workflow externo). Esto añadía latencia (~800ms extra), un punto de fallo adicional y limites de contexto del workflow.
+
+**Opciones consideradas:**
+1. Mantener n8n como orquestador (bajo acoplamiento)
+2. `AIOrchestrator` directo en Django (RAG nativo + DataCollectors + OpenAI SDK)
+
+**Decisión:** Opción 2. `AIOrchestrator` en `apps/ai/services.py` reemplaza el workflow n8n para el bot de chat. n8n se mantiene solo para el endpoint legacy `/api/v1/dashboard/cfo-virtual/`.
+
+**Razón:** Latencia -800ms, RAG nativo con pgvector, DataCollectors multi-módulo (5 collectors), historial multi-turno (6 turnos), control total de tokens.
+
+**Consecuencias:** n8n workflow `cfo-virtual.json` queda deprecated para nuevas interacciones. El endpoint HTTP `/dashboard/cfo-virtual/` sigue funcionando para compatibilidad.
+
+---
+
 ## DEC-049: Asistente IA como bot en el sistema de chat existente
 **Fecha:** 2026-04-03
 **Estado:** Decidido

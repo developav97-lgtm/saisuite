@@ -20,6 +20,7 @@ DJANGO_APPS = [
     'django.contrib.staticfiles',
 ]
 THIRD_PARTY_APPS = [
+    'django.contrib.postgres',
     'rest_framework',
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
@@ -39,6 +40,7 @@ LOCAL_APPS = [
     'apps.chat',
     'apps.contabilidad',
     'apps.dashboard',
+    'apps.ai',
 ]
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 
@@ -128,6 +130,16 @@ CHANNEL_LAYERS = {
     },
 }
 
+# ── Cache Redis (búsquedas RAG + misc) ──────────────────────────
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+        'LOCATION': REDIS_URL,
+        'KEY_PREFIX': 'saisuite',
+        'TIMEOUT': 300,  # 5 min default, overridden per-use en RAGCacheService
+    },
+}
+
 AWS_ACCESS_KEY_ID = env('AWS_ACCESS_KEY_ID', default='')
 AWS_SECRET_ACCESS_KEY = env('AWS_SECRET_ACCESS_KEY', default='')
 AWS_DEFAULT_REGION = env('AWS_DEFAULT_REGION', default='us-east-1')
@@ -145,6 +157,7 @@ SQS_TO_SAI_URL = env('SQS_TO_SAI_URL', default='')
 OPENAI_API_KEY = env('OPENAI_API_KEY', default='')
 N8N_API_KEY = env('N8N_API_KEY', default='')
 N8N_WEBHOOK_BASE = env('N8N_WEBHOOK_BASE', default='http://n8n:5678')
+N8N_WEBHOOK_SECRET = env('N8N_WEBHOOK_SECRET', default='')
 
 EMAIL_BACKEND    = env('EMAIL_BACKEND', default='django.core.mail.backends.console.EmailBackend')
 EMAIL_HOST       = env('EMAIL_HOST', default='')

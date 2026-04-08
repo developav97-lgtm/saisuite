@@ -104,3 +104,24 @@ export interface AgentTokenInfo {
   last_used: string | null;
   created_at: string;
 }
+
+export interface KnowledgeSource {
+  id: string;
+  file_name: string;
+  source_channel: 'drive' | 'upload' | 'cli';
+  original_format: string;
+  module: string;
+  category: string;
+  chunk_count: number;
+  total_tokens: number;
+  last_indexed_at: string;
+  created_at: string;
+}
+
+export interface KnowledgeIngestResult {
+  chunks_created: number;
+  total_tokens: number;
+  file_name: string;
+  status: 'created' | 'updated' | 'unchanged' | 'empty';
+  is_update: boolean;
+}

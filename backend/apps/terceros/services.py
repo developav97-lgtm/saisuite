@@ -333,8 +333,105 @@ class TerceroSyncService:
                     ],
                 )
 
+        # ── Sincronizar direcciones desde ShipTo ─────────────────────────────
+        if shipto_list:
+            TerceroSyncService._sync_shipto_direcciones(company_id, shipto_list)
+
         logger.info('tercero_sync_from_saiopen', extra={
             'company_id': str(company_id),
-            'created': len(to_create),
-            'updated': len(to_update),
+            'created_count': len(to_create),
+            'updated_count': len(to_update),
+        })
+
+    @staticmethod
+    def _sync_shipto_direcciones(company_id, shipto_list: list) -> None:
+        """
+        Upsert de TerceroDireccion a partir de registros ShipToSaiopen.
+        - Cada fila de SHIPTO se mapea a una TerceroDireccion.
+        - saiopen_linea_id = '{id_n}_{succliente}' — clave de dedup.
+        - succliente == 0 → es_principal = True.
+        - Si el Tercero vinculado no existe aún se omite silenciosamente.
+        """
+        from apps.terceros.models import Tercero, TerceroDireccion
+
+        # Obtener todos los Terceros de esta empresa que tienen saiopen_id
+        idn_set = {s.id_n for s in shipto_list}
+        tercero_map: dict = {
+            t.saiopen_id: t
+            for t in Tercero.objects.filter(company_id=company_id, saiopen_id__in=idn_set)
+        }
+
+        # Clave de dedup: saiopen_linea_id = '{id_n}_{succliente}'
+        linea_ids = [f"{s.id_n}_{s.succliente}" for s in shipto_list]
+        existing_dirs: dict = {
+            d.saiopen_linea_id: d
+            for d in TerceroDireccion.objects.filter(
+                company_id=company_id,
+                saiopen_linea_id__in=linea_ids,
+            )
+        }
+
+        to_create_dirs = []
+        to_update_dirs = []
+
+        for s in shipto_list:
+            tercero = tercero_map.get(s.id_n)
+            if not tercero:
+                continue  # Tercero aún no sincronizado, se procesará en el siguiente ciclo
+
+            linea_id = f"{s.id_n}_{s.succliente}"
+            es_principal = (s.succliente == 0)
+
+            nombre_sucursal = s.descripcion.strip() if s.descripcion else (
+                'Principal' if es_principal else f'Sucursal {s.succliente}'
+            )
+
+            existing = existing_dirs.get(linea_id)
+            if existing:
+                existing.nombre_sucursal  = nombre_sucursal
+                existing.direccion_linea1 = s.addr1 or ''
+                existing.direccion_linea2 = s.addr2 or ''
+                existing.ciudad           = s.ciudad or ''
+                existing.departamento     = s.departamento or ''
+                existing.telefono_contacto = s.telefono or ''
+                existing.email_contacto   = s.email or ''
+                existing.es_principal     = es_principal
+                existing.activa           = True
+                to_update_dirs.append(existing)
+            else:
+                to_create_dirs.append(TerceroDireccion(
+                    company_id=company_id,
+                    tercero=tercero,
+                    tipo='principal' if es_principal else 'sucursal',
+                    nombre_sucursal=nombre_sucursal,
+                    pais='Colombia',
+                    departamento=s.departamento or '',
+                    ciudad=s.ciudad or '',
+                    direccion_linea1=s.addr1 or '',
+                    direccion_linea2=s.addr2 or '',
+                    telefono_contacto=s.telefono or '',
+                    email_contacto=s.email or '',
+                    saiopen_linea_id=linea_id,
+                    es_principal=es_principal,
+                    activa=True,
+                ))
+
+        from django.db import transaction
+        with transaction.atomic():
+            if to_create_dirs:
+                TerceroDireccion.objects.bulk_create(to_create_dirs, ignore_conflicts=True)
+            if to_update_dirs:
+                TerceroDireccion.objects.bulk_update(
+                    to_update_dirs,
+                    fields=[
+                        'nombre_sucursal', 'direccion_linea1', 'direccion_linea2',
+                        'ciudad', 'departamento', 'telefono_contacto', 'email_contacto',
+                        'es_principal', 'activa',
+                    ],
+                )
+
+        logger.info('shipto_direcciones_sync', extra={
+            'company_id': str(company_id),
+            'created_count': len(to_create_dirs),
+            'updated_count': len(to_update_dirs),
         })

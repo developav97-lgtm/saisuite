@@ -91,11 +91,14 @@ type ReferenceData struct {
 // CustBatchData is the payload data for cust_batch / cust_full messages.
 // It carries CUST records together with their related SHIPTO and TRIBUTARIA
 // records so Django can upsert all three tables atomically.
+// Large syncs are split into chunks — ChunkNum/TotalChunks track progress.
 type CustBatchData struct {
-	Records    interface{} `json:"records"`
-	ShipTo     interface{} `json:"shipto"`
-	Tributaria interface{} `json:"tributaria"`
-	TotalCount int         `json:"total_count"`
+	Records     interface{} `json:"records"`
+	ShipTo      interface{} `json:"shipto"`
+	Tributaria  interface{} `json:"tributaria"`
+	TotalCount  int         `json:"total_count"`
+	ChunkNum    int         `json:"chunk_num"`
+	TotalChunks int         `json:"total_chunks"`
 }
 
 // APIError represents an error response from the Saicloud API.

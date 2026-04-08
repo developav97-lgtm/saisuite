@@ -1,3 +1,10 @@
+---
+title: Manual de Usuario — Módulo de Chat
+module: general
+category: manual
+source: ValMen Tech — SaiCloud
+---
+
 # 💬 Manual de Usuario — Módulo de Chat
 
 **SaiCloud · ValMen Tech**

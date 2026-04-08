@@ -742,57 +742,119 @@ class ChatService:
 
         return conv
 
+    @staticmethod
+    def limpiar_mensajes_bot(user, company):
+        """
+        Elimina todos los mensajes de la conversación bot del usuario.
+        Solo aplica a conversaciones con bot_context (is_bot).
+        """
+        from apps.chat.models import Conversacion, Mensaje
+        conv = Conversacion.objects.filter(
+            company=company,
+            bot_context__isnull=False,
+        ).filter(
+            Q(participante_1=user) | Q(participante_2=user),
+        ).first()
+
+        if not conv:
+            return 0
+
+        deleted, _ = Mensaje.objects.filter(conversacion=conv).delete()
+
+        # Limpiar último mensaje de la conversación
+        conv.ultimo_mensaje = None
+        conv.ultimo_mensaje_at = None
+        conv.save(update_fields=['ultimo_mensaje', 'ultimo_mensaje_at'])
+
+        logger.info('bot_chat_cleared', extra={
+            'user_id': str(user.id),
+            'company_id': str(company.id),
+            'deleted_count': deleted,
+        })
+        return deleted
+
 
 class BotResponseService:
-    """Procesa mensajes enviados al bot y genera respuestas."""
+    """Procesa mensajes enviados al bot y genera respuestas usando AIOrchestrator."""
+
+    # Número de turnos del historial de la conversación a incluir en el contexto
+    HISTORY_TURNS = 6
 
     @staticmethod
     def process_bot_message(conversacion, user_message_content: str, user):
         """
         Procesa un mensaje enviado al bot y genera una respuesta.
         1. Check AI quota
-        2. Route to appropriate service based on bot_context
-        3. Create bot response message
-        4. Broadcast via WebSocket
+        2. Obtener historial reciente para contexto multi-turno
+        3. Llamar AIOrchestrator (RAG + DataCollector + GPT-4o-mini)
+        4. Registrar uso de tokens
+        5. Crear mensaje bot + broadcast WebSocket
         """
         from apps.users.models import User
         from apps.companies.services import AIUsageService
+        from apps.ai.services import AIOrchestrator
 
         bot_user = User.objects.filter(is_bot=True).first()
         if not bot_user:
             return
 
         company = conversacion.company
-        bot_context = conversacion.bot_context
+        bot_context = conversacion.bot_context or 'general'
 
         # Check quota
         quota = AIUsageService.check_quota(company)
         if not quota['allowed']:
-            # Create error message from bot
             error_msg = (
-                'Has alcanzado el limite de uso de IA este mes. '
+                'Has alcanzado el límite de uso de IA este mes. '
                 'Contacta a tu administrador para ampliar tu paquete.'
             )
             BotResponseService._create_bot_message(conversacion, bot_user, error_msg)
             return
 
-        # Route to appropriate service
+        # Obtener historial reciente (excluyendo el mensaje actual que aún no se guardó)
+        history_qs = (
+            Mensaje.objects.filter(conversacion=conversacion)
+            .select_related('remitente')
+            .order_by('-created_at')[:BotResponseService.HISTORY_TURNS * 2]
+        )
+        conversation_history = []
+        for msg in reversed(list(history_qs)):
+            role = 'assistant' if msg.remitente_id == bot_user.id else 'user'
+            conversation_history.append({'role': role, 'content': msg.contenido})
+
+        # Llamar AIOrchestrator
         try:
-            if bot_context == 'dashboard':
-                from apps.dashboard.services import CfoVirtualService
-                response_text = CfoVirtualService.ask(user_message_content, company, user=user)
-            else:
-                response_text = (
-                    f'El asistente para el modulo "{bot_context}" aun no esta disponible. '
-                    'Por ahora solo el CFO Virtual (modulo Dashboard) esta activo.'
+            result = AIOrchestrator.answer(
+                question=user_message_content,
+                company=company,
+                module=bot_context,
+                user=user,
+                conversation_history=conversation_history,
+            )
+            response_text = result['answer']
+
+            # Registrar uso de tokens
+            if result['prompt_tokens'] > 0:
+                AIUsageService.record_usage(
+                    company=company,
+                    user=user,
+                    request_type='saibot',
+                    module_context=bot_context,
+                    prompt_tokens=result['prompt_tokens'],
+                    completion_tokens=result['completion_tokens'],
+                    model_used=result['model'],
+                    question_preview=user_message_content[:200],
                 )
+
         except Exception as exc:
-            detail = getattr(exc, 'detail', str(exc))
-            response_text = f'Error del asistente: {detail}'
             logger.error('bot_response_error', extra={
                 'conv_id': str(conversacion.id),
                 'error': str(exc),
             })
+            response_text = (
+                'Lo siento, ocurrió un error al procesar tu pregunta. '
+                'Por favor intenta de nuevo.'
+            )
 
         BotResponseService._create_bot_message(conversacion, bot_user, response_text)
 
@@ -800,13 +862,27 @@ class BotResponseService:
     def _create_bot_message(conversacion, bot_user, contenido: str):
         """Crea un mensaje del bot y lo broadcast via WebSocket."""
         import bleach
+        import markdown as md
+
+        # Convert markdown to HTML, then sanitize
+        html_raw = md.markdown(contenido, extensions=['nl2br', 'tables'])
+        contenido_html = bleach.clean(
+            html_raw,
+            tags=[
+                'p', 'br', 'strong', 'em', 'ul', 'ol', 'li',
+                'h1', 'h2', 'h3', 'h4', 'code', 'pre', 'blockquote',
+                'table', 'thead', 'tbody', 'tr', 'th', 'td',
+            ],
+            attributes={},
+            strip=True,
+        )
 
         msg = Mensaje.objects.create(
             company=conversacion.company,
             conversacion=conversacion,
             remitente=bot_user,
             contenido=contenido,
-            contenido_html=bleach.clean(contenido, tags=[], strip=True),
+            contenido_html=contenido_html,
         )
 
         # Update conversation last message

@@ -7,7 +7,7 @@ export const noSuperAdminGuard: CanActivateFn = () => {
   const router = inject(Router);
   const user = auth.currentUser();
   // SuperAdmins should not access module routes — redirect to their area
-  if (user?.is_superadmin || user?.is_superuser) {
+  if (user?.is_superadmin || user?.role === 'valmen_admin') {
     return router.createUrlTree(['/admin/tenants']);
   }
   return true;

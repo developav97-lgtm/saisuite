@@ -4,6 +4,7 @@
 package firebird
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"log/slog"
@@ -430,19 +431,25 @@ func (c *Client) QueryAllAcct() ([]AcctRecord, error) {
 
 // queryCust executes a CUST SELECT with optional WHERE clause and args.
 // Returns records and the max Version seen (0 if empty result).
-func (c *Client) queryCust(where string, args ...interface{}) ([]CustRecord, int64, error) {
-	// ACCT and ACCTP are DOUBLE PRECISION in Firebird — select as numeric, format in Go.
-	// FECHA_CREACION is DATE — scan as NullString to avoid sql.NullTime driver issues.
-	// Do NOT use CAST() on numeric columns — it causes silent hangs with some Firebird drivers.
-	query := `
-		SELECT ID_N, NIT, COMPANY, ADDR1, CITY, DEPARTAMENTO, PHONE1, PHONE2, EMAIL,
-			CLIENTE, PROVEEDOR, EMPLEADO, INACTIVO, Version,
-			ACCT, ACCTP,
-			REGIMEN, FECHA_CREACION, DESCUENTO, CREDITLMT
-		FROM CUST` + where + `
-		ORDER BY Version ASC`
+func (c *Client) queryCust(lastVersion int64) ([]CustRecord, int64, error) {
+	// "Version" must be quoted — it is a reserved word in Firebird SQL.
+	where := ""
+	if lastVersion > 0 {
+		where = fmt.Sprintf(` WHERE "Version" > %d`, lastVersion)
+	}
 
-	rows, err := c.db.Query(query, args...)
+	query := fmt.Sprintf(`
+		SELECT ID_N, NIT, COMPANY, ADDR1, CITY, DEPARTAMENTO, PHONE1, PHONE2, EMAIL,
+			CLIENTE, PROVEEDOR, EMPLEADO, INACTIVO, "Version",
+			ACCT, ACCTP, REGIMEN, FECHA_CREACION, DESCUENTO, CREDITLMT
+		FROM CUST%s`, where)
+
+	c.logger.Info("CUST query executing", "last_version", lastVersion)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+
+	rows, err := c.db.QueryContext(ctx, query)
 	if err != nil {
 		return nil, 0, fmt.Errorf("CUST query failed: %w", err)
 	}
@@ -456,16 +463,14 @@ func (c *Client) queryCust(where string, args ...interface{}) ([]CustRecord, int
 		var cliente, proveedor, empleado, inactivo sql.NullString
 		var version sql.NullInt64
 		var acct, acctp sql.NullFloat64
-		var regimen sql.NullString
-		var fechaCreacion sql.NullString
+		var regimen, fechaCreacion sql.NullString
 		var descuento, creditlmt sql.NullFloat64
 
-		err := rows.Scan(
+		if err := rows.Scan(
 			&idn, &nit, &company, &addr1, &city, &depto, &phone1, &phone2, &email,
 			&cliente, &proveedor, &empleado, &inactivo, &version,
 			&acct, &acctp, &regimen, &fechaCreacion, &descuento, &creditlmt,
-		)
-		if err != nil {
+		); err != nil {
 			return nil, 0, fmt.Errorf("CUST row scan failed: %w", err)
 		}
 
@@ -481,7 +486,6 @@ func (c *Client) queryCust(where string, args ...interface{}) ([]CustRecord, int
 		r.Cliente = trimString(cliente)
 		r.Proveedor = trimString(proveedor)
 		r.Empleado = trimString(empleado)
-		// INACTIVO is CHAR(1): 'S' means inactive
 		r.Activo = trimString(inactivo) != "S"
 		if version.Valid {
 			r.Version = version.Int64
@@ -489,7 +493,6 @@ func (c *Client) queryCust(where string, args ...interface{}) ([]CustRecord, int
 				maxVersion = r.Version
 			}
 		}
-		// Format DOUBLE PRECISION account codes as trimmed strings (e.g. 1.1301e+04 → "11301")
 		if acct.Valid && acct.Float64 != 0 {
 			r.Acct = fmt.Sprintf("%.0f", acct.Float64)
 		}
@@ -520,7 +523,7 @@ func (c *Client) QueryAllCust() ([]CustRecord, int64, error) {
 	if c.db == nil {
 		return nil, 0, fmt.Errorf("database not connected")
 	}
-	records, maxVersion, err := c.queryCust("")
+	records, maxVersion, err := c.queryCust(0)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -534,7 +537,7 @@ func (c *Client) QueryCustSince(lastVersion int64) ([]CustRecord, int64, error) 
 	if c.db == nil {
 		return nil, 0, fmt.Errorf("database not connected")
 	}
-	records, maxVersion, err := c.queryCust(" WHERE Version > ?", lastVersion)
+	records, maxVersion, err := c.queryCust(lastVersion)
 	if err != nil {
 		return nil, 0, err
 	}

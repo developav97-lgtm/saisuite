@@ -80,3 +80,17 @@ export interface ChatReadEvent {
   leido_at: string;
   leido_por: string;
 }
+
+export interface AIFeedback {
+  id: string;
+  rating: 1 | -1;
+  module_context: string;
+  question: string;
+  answer: string;
+  created_at: string;
+}
+
+export interface AIFeedbackCreate {
+  mensaje_id: string;
+  rating: 1 | -1;
+}

@@ -87,7 +87,7 @@ export class ShellComponent implements OnInit, OnDestroy {
   /** Cuando soporte está en un tenant sin licencia válida. */
   readonly soporteNoLicense = computed(() => {
     const user = this.authService.currentUser();
-    if (!user?.is_staff || user.is_superadmin || user.is_superuser) return false;
+    if (!user?.is_staff || user.is_superadmin || user.role === 'valmen_admin') return false;
     const ec = user.effective_company;
     if (!ec) return false;
     const lic = ec.license;

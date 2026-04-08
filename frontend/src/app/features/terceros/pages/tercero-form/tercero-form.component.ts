@@ -109,6 +109,11 @@ export class TerceroFormComponent implements OnInit {
 
   readonly editMode = computed(() => !!this.editId());
 
+  readonly tipoIdentificacionLabel = computed(() => {
+    const val = this.form.get('tipo_identificacion')?.value;
+    return this.tipoIdentificacionOptions.find(o => o.value === val)?.label ?? val ?? '';
+  });
+
   readonly tipoPersonaOptions = [
     { value: 'natural',  label: 'Persona natural'   },
     { value: 'juridica', label: 'Persona jurídica'  },

@@ -149,7 +149,12 @@ export interface CustomCardConfigDialogResult {
                               [displayWith]="displayTercero"
                               (optionSelected)="addTercero($event.option.value)">
               @for (t of terceroOptions(); track t.id) {
-                <mat-option [value]="t">{{ t.nombre }}</mat-option>
+                <mat-option [value]="t">
+                  <span>{{ t.nombre }}</span>
+                  @if (t.identificacion) {
+                    <span class="ccc-option-id"> · {{ t.identificacion }}</span>
+                  }
+                </mat-option>
               }
               @if (terceroOptions().length === 0 && terceroSearch.value && terceroSearch.value.length >= 2) {
                 <mat-option disabled>Sin resultados</mat-option>
@@ -233,6 +238,11 @@ export interface CustomCardConfigDialogResult {
         flex-shrink: 0;
         margin-top: -1rem;
       }
+    }
+
+    .ccc-option-id {
+      font-size: 0.8rem;
+      opacity: 0.6;
     }
 
     .ccc-terceros {

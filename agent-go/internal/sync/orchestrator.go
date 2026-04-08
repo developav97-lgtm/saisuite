@@ -255,7 +255,11 @@ func (o *Orchestrator) doCustSync(conn config.Connection, logger *slog.Logger) e
 
 	sender := o.buildSender(conn, logger)
 	syncer := NewReferenceSync(o.cfg, fbClient, sender, logger)
-	return syncer.SyncCustIncremental(conn)
+	if err := syncer.SyncCustIncremental(conn); err != nil {
+		logger.Error("CUST incremental sync failed", "conn_id", conn.ID, "error", err)
+		return err
+	}
+	return nil
 }
 
 // doReferenceSync runs the full sync for all reference tables.

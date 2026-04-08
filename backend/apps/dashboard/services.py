@@ -14,6 +14,7 @@ from django.utils import timezone
 from rest_framework.exceptions import ValidationError, PermissionDenied, NotFound
 
 from apps.contabilidad.models import MovimientoContable, ConfiguracionContable
+from apps.terceros.models import Tercero
 from apps.dashboard.card_catalog import CARD_CATALOG, get_available_cards, get_categories_with_cards
 from apps.dashboard.models import (
     Dashboard,
@@ -490,23 +491,47 @@ class FilterService:
     @staticmethod
     def get_available_terceros(company_id, query: str = '') -> list[dict]:
         """
-        Retorna terceros unicos disponibles en MovimientoContable.
-        Soporta busqueda por nombre o ID.
+        Retorna terceros disponibles buscando primero en la tabla Tercero
+        (módulo terceros) y complementando con terceros únicos de MovimientoContable.
         """
-        qs = MovimientoContable.objects.filter(
-            company_id=company_id,
-        ).values('tercero_id', 'tercero_nombre').distinct()
-
+        # 1. Buscar en tabla Tercero (fuente principal)
+        qs = Tercero.objects.filter(company_id=company_id)
         if query:
             qs = qs.filter(
-                Q(tercero_nombre__icontains=query)
-                | Q(tercero_id__icontains=query)
+                Q(nombre_completo__icontains=query)
+                | Q(numero_identificacion__icontains=query)
+                | Q(razon_social__icontains=query)
             )
-
-        return [
-            {'id': row['tercero_id'], 'nombre': row['tercero_nombre'] or row['tercero_id']}
-            for row in qs.order_by('tercero_nombre')[:50]
+        terceros = [
+            {
+                'id': str(t.id),
+                'nombre': t.nombre_completo or t.razon_social or t.numero_identificacion,
+                'identificacion': t.numero_identificacion,
+            }
+            for t in qs.order_by('nombre_completo')[:50]
         ]
+
+        # 2. Si no hay suficientes, complementar con MovimientoContable
+        if len(terceros) < 5:
+            mov_qs = MovimientoContable.objects.filter(
+                company_id=company_id,
+            ).exclude(
+                Q(tercero_id__isnull=True) | Q(tercero_id='')
+            ).values('tercero_id', 'tercero_nombre').distinct()
+            if query:
+                mov_qs = mov_qs.filter(
+                    Q(tercero_nombre__icontains=query)
+                    | Q(tercero_id__icontains=query)
+                )
+            existing_ids = {t['id'] for t in terceros}
+            for row in mov_qs.order_by('tercero_nombre')[:50]:
+                if row['tercero_id'] not in existing_ids:
+                    terceros.append({
+                        'id': row['tercero_id'],
+                        'nombre': row['tercero_nombre'] or row['tercero_id'],
+                    })
+
+        return terceros[:50]
 
     @staticmethod
     def get_available_proyectos(company_id) -> list[dict]:

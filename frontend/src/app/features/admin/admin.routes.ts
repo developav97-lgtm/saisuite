@@ -77,6 +77,11 @@ export const ADMIN_ROUTES: Routes = [
         loadComponent: () =>
           import('./packages/package-catalog.component').then(m => m.PackageCatalogComponent),
       },
+      {
+        path: 'knowledge-base',
+        loadComponent: () =>
+          import('./knowledge-base/knowledge-base.component').then(m => m.KnowledgeBaseComponent),
+      },
       { path: '', redirectTo: 'usuarios', pathMatch: 'full' },
     ],
   },

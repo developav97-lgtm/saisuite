@@ -24,7 +24,7 @@ export function permissionGuard(codigo: string): CanActivateFn {
     if (!user) return router.createUrlTree(['/auth/login']);
 
     // Superadmin y soporte siempre pasan
-    if (user.is_superadmin || user.is_superuser || user.is_staff) return true;
+    if (user.is_superadmin || user.role === 'valmen_admin' || user.is_staff) return true;
 
     const permisos = user.rol_granular?.permisos ?? [];
     const tiene    = permisos.some(p => p.codigo === codigo);

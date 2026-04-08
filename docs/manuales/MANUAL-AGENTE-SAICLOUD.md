@@ -1,3 +1,10 @@
+---
+title: Manual de Instalación del Agente Saicloud
+module: general
+category: manual
+source: ValMen Tech — SaiCloud
+---
+
 # Manual de Instalacion del Agente Saicloud
 
 > **Version:** 1.1.0

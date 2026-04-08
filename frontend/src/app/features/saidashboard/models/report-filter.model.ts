@@ -57,6 +57,7 @@ export interface CardDataResponse {
 export interface FilterTercero {
   id: string;
   nombre: string;
+  identificacion?: string;
 }
 
 export interface FilterProyecto {

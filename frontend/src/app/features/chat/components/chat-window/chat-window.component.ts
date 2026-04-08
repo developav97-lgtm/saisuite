@@ -2,14 +2,15 @@ import {
   ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, NgZone,
   inject, input, output, signal, computed, OnInit, ElementRef, viewChild,
 } from '@angular/core';
-import { Router } from '@angular/router';
-import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
+import { Router, NavigationEnd } from '@angular/router';
+import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { filter } from 'rxjs';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatInputModule } from '@angular/material/input';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -21,14 +22,51 @@ import { MessageInputComponent } from '../message-input/message-input.component'
 import { ImageViewerDialogComponent, ImageViewerData } from '../image-viewer-dialog/image-viewer-dialog.component';
 import { compressImage, compressedExtension } from '../../utils/image-compressor';
 import { ChatMessageEditedEvent } from '../../services/chat-socket.service';
+import { MatChipsModule } from '@angular/material/chips';
 
 type UploadStep = 'compressing' | 'uploading' | null;
+
+const MODULE_LABELS: Record<string, string> = {
+  dashboard: 'Dashboard financiero',
+  proyectos: 'Proyectos',
+  terceros: 'Terceros',
+  contabilidad: 'Contabilidad',
+  general: 'Asistente general',
+};
+
+const BOT_SUGGESTIONS: Record<string, string[]> = {
+  dashboard: [
+    '¿Cuáles son mis ingresos del mes?',
+    'Muéstrame el estado de resultados',
+    '¿Cómo está el flujo de caja?',
+  ],
+  proyectos: [
+    '¿Qué proyectos están activos?',
+    '¿Hay tareas vencidas?',
+    'Resumen de avance de proyectos',
+  ],
+  terceros: [
+    '¿Cuántos clientes activos tengo?',
+    'Listar proveedores principales',
+    '¿Qué terceros se crearon este mes?',
+  ],
+  contabilidad: [
+    '¿Cuál es el saldo de la cuenta 1305?',
+    'Muéstrame el balance de prueba',
+    'Explícame la retención en la fuente',
+  ],
+  general: [
+    '¿Qué módulos tengo activos?',
+    '¿Cómo funciona la sincronización?',
+    '¿Cuál es la tarifa del IVA en Colombia?',
+  ],
+};
 
 @Component({
   selector: 'app-chat-window',
   imports: [
     MatIconModule, MatButtonModule, MatProgressBarModule, MatTooltipModule, MatInputModule,
-    DatePipe, FormsModule, MessageInputComponent,
+    MatChipsModule, DatePipe, FormsModule, MessageInputComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
@@ -39,6 +77,29 @@ type UploadStep = 'compressing' | 'uploading' | null;
   template: `
     @if (loadingMessages()) {
       <mat-progress-bar mode="indeterminate" />
+    }
+
+    @if (isBot()) {
+      <div class="chat-window__bot-header">
+        <div class="chat-window__bot-header-info">
+          <div class="chat-window__bot-avatar">
+            <mat-icon>smart_toy</mat-icon>
+          </div>
+          <div>
+            <span class="chat-window__bot-name">SaiBot</span>
+            <span class="chat-window__bot-module">{{ moduleLabel() }}</span>
+          </div>
+        </div>
+        <div class="chat-window__bot-header-actions">
+          <button mat-icon-button
+                  matTooltip="Limpiar conversación"
+                  class="chat-window__clear-btn"
+                  (click)="clearBotChat()">
+            <mat-icon>delete_sweep</mat-icon>
+          </button>
+          <span class="chat-window__bot-badge">IA</span>
+        </div>
+      </div>
     }
 
     <div class="chat-window__messages"
@@ -142,12 +203,45 @@ type UploadStep = 'compressing' | 'uploading' | null;
             </div>
           }
           </div>
+
+          @if (isBot() && msg.remitente !== currentUserId() && editingMessageId() !== msg.id) {
+            <div class="chat-window__feedback-row">
+              <button mat-icon-button
+                      class="chat-window__feedback-btn"
+                      [class.chat-window__feedback-btn--active]="feedbackMap().get(msg.id) === 1"
+                      matTooltip="Útil"
+                      (click)="sendFeedback(msg, 1)">
+                <mat-icon>thumb_up</mat-icon>
+              </button>
+              <button mat-icon-button
+                      class="chat-window__feedback-btn"
+                      [class.chat-window__feedback-btn--active]="feedbackMap().get(msg.id) === -1"
+                      matTooltip="No útil"
+                      (click)="sendFeedback(msg, -1)">
+                <mat-icon>thumb_down</mat-icon>
+              </button>
+            </div>
+          }
         </div>
       } @empty {
         @if (!loadingMessages()) {
           <div class="chat-window__empty">
-            <mat-icon>chat_bubble_outline</mat-icon>
-            <p>Inicia la conversacion</p>
+            @if (isBot()) {
+              <mat-icon>smart_toy</mat-icon>
+              <p>¡Hola! Soy SaiBot. ¿En qué puedo ayudarte?</p>
+              <div class="chat-window__suggestions">
+                @for (s of suggestions(); track s) {
+                  <button mat-stroked-button
+                          class="chat-window__suggestion-chip"
+                          (click)="sendSuggestion(s)">
+                    {{ s }}
+                  </button>
+                }
+              </div>
+            } @else {
+              <mat-icon>chat_bubble_outline</mat-icon>
+              <p>Inicia la conversacion</p>
+            }
           </div>
         }
       }
@@ -844,6 +938,135 @@ type UploadStep = 'compressing' | 'uploading' | null;
       cursor: default;
     }
 
+    /* ── Bot header ─────────────────────────────────────────────── */
+    .chat-window__bot-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 16px;
+      background: var(--sc-primary, #1565c0);
+      color: white;
+      flex-shrink: 0;
+      z-index: 2;
+    }
+
+    .chat-window__bot-header-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .chat-window__bot-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+
+      mat-icon {
+        font-size: 20px;
+        width: 20px;
+        height: 20px;
+      }
+    }
+
+    .chat-window__bot-name {
+      display: block;
+      font-weight: 600;
+      font-size: 0.9rem;
+      line-height: 1.2;
+    }
+
+    .chat-window__bot-module {
+      display: block;
+      font-size: 0.72rem;
+      opacity: 0.8;
+      line-height: 1.2;
+    }
+
+    .chat-window__bot-header-actions {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .chat-window__clear-btn {
+      color: rgba(255,255,255,0.75);
+      width: 32px;
+      height: 32px;
+      line-height: 32px;
+
+      &:hover {
+        color: #fff;
+        background: rgba(255,255,255,0.15);
+      }
+
+      mat-icon { font-size: 20px; width: 20px; height: 20px; }
+    }
+
+    .chat-window__bot-badge {
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 20px;
+      background: rgba(255,255,255,0.25);
+      letter-spacing: 0.05em;
+    }
+
+    /* ── Feedback buttons ─────────────────────────────────────────── */
+    .chat-window__feedback-row {
+      display: flex;
+      gap: 2px;
+      margin-left: 4px;
+      align-self: flex-end;
+      margin-bottom: 4px;
+    }
+
+    .chat-window__feedback-btn {
+      width: 28px !important;
+      height: 28px !important;
+      line-height: 28px !important;
+      opacity: 0.45;
+      transition: opacity 0.15s, color 0.15s;
+
+      mat-icon {
+        font-size: 16px;
+        width: 16px;
+        height: 16px;
+      }
+
+      &:hover { opacity: 0.8; }
+
+      &--active {
+        opacity: 1;
+        color: var(--sc-primary, #1565c0) !important;
+      }
+    }
+
+    /* ── Suggestions (empty state bot) ───────────────────────────── */
+    .chat-window__suggestions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+      margin-top: 16px;
+      padding: 0 16px;
+    }
+
+    .chat-window__suggestion-chip {
+      font-size: 0.8rem;
+      border-radius: 20px !important;
+      white-space: normal;
+      text-align: left;
+      height: auto !important;
+      padding: 6px 12px !important;
+      line-height: 1.3 !important;
+      max-width: 220px;
+    }
+
     /* ── Context menu ───────────────────────────────────────────── */
     .chat-window__ctx-backdrop {
       position: fixed;
@@ -902,6 +1125,7 @@ export class ChatWindowComponent implements OnInit {
   private readonly zone = inject(NgZone);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly dialog = inject(MatDialog);
+  private readonly snackBar = inject(MatSnackBar);
   private readonly router = inject(Router);
   private readonly messagesContainer = viewChild<ElementRef>('messagesContainer');
   private readonly destroyRef = inject(DestroyRef);
@@ -912,6 +1136,39 @@ export class ChatWindowComponent implements OnInit {
   readonly back = output<void>();
 
   readonly isBot = computed(() => !!this.conversacion().bot_context);
+
+  private readonly currentUrl = toSignal(
+    this.router.events.pipe(filter(e => e instanceof NavigationEnd)),
+    { initialValue: null },
+  );
+
+  private readonly currentModule = computed(() => {
+    // Force dependency on navigation events
+    this.currentUrl();
+    const url = this.router.url;
+    if (url.startsWith('/proyectos'))    return 'proyectos';
+    if (url.startsWith('/terceros'))     return 'terceros';
+    if (url.startsWith('/saidashboard')) return 'dashboard';
+    if (url.startsWith('/contabilidad')) return 'contabilidad';
+    // /dashboard es el menú principal → asistente general
+    return 'general';
+  });
+
+  readonly moduleLabel = computed(() => {
+    const ctx = this.currentModule();
+    return MODULE_LABELS[ctx] ?? ctx;
+  });
+
+  readonly suggestions = computed(() => {
+    const ctx = this.currentModule();
+    return BOT_SUGGESTIONS[ctx] ?? BOT_SUGGESTIONS['general'];
+  });
+
+  // Indicador local de que el bot está procesando (mientras espera respuesta HTTP)
+  readonly botThinking = signal(false);
+
+  // Map<mensajeId, rating> para mostrar el estado activo del feedback
+  readonly feedbackMap = signal<Map<string, 1 | -1>>(new Map());
 
   readonly messages = signal<Mensaje[]>([]);
   readonly loadingMessages = signal(false);
@@ -935,6 +1192,45 @@ export class ChatWindowComponent implements OnInit {
     const text = msg.contenido || (msg.imagen_url ? '[Imagen]' : msg.archivo_nombre ?? '');
     return text.length > 80 ? text.substring(0, 80) + '...' : text;
   });
+
+  sendFeedback(msg: Mensaje, rating: 1 | -1): void {
+    // Optimistic update
+    this.feedbackMap.update(map => {
+      const next = new Map(map);
+      next.set(msg.id, rating);
+      return next;
+    });
+    this.chatService.enviarFeedbackIA({ mensaje_id: msg.id, rating }).subscribe({
+      error: () => {
+        // Revert on error
+        this.feedbackMap.update(map => {
+          const next = new Map(map);
+          next.delete(msg.id);
+          return next;
+        });
+        this.snackBar.open('No se pudo guardar el feedback', 'OK', { duration: 3000 });
+      },
+    });
+  }
+
+  sendSuggestion(text: string): void {
+    this.send(text);
+  }
+
+  clearBotChat(): void {
+    this.chatService.limpiarChatBot().subscribe({
+      next: () => {
+        this.messages.set([]);
+        this.snackBar.open('Conversación limpiada', 'OK', {
+          duration: 2500,
+          panelClass: ['snack-success'],
+        });
+      },
+      error: () => {
+        this.snackBar.open('No se pudo limpiar la conversación', 'OK', { duration: 3000 });
+      },
+    });
+  }
 
   toggleAttachMenu(): void {
     this.attachMenuOpen.update(open => !open);
@@ -972,6 +1268,8 @@ export class ChatWindowComponent implements OnInit {
   }
 
   readonly typingIndicator = computed(() => {
+    // Para bots: usar el indicador local (el bot no emite eventos WS de typing)
+    if (this.isBot()) return this.botThinking();
     const evt = this.chatSocket.typingEvent();
     if (!evt) return false;
     return evt.conversacion_id === this.conversacion().id &&
@@ -1001,6 +1299,10 @@ export class ChatWindowComponent implements OnInit {
       if (!this.messages().some(m => m.id === msg.id)) {
         this.messages.update(msgs => [...msgs, msg]);
         this.cdr.markForCheck();
+      }
+      // Si el bot respondió, apagar el indicador de "pensando"
+      if (this.isBot() && msg.remitente !== this.currentUserId()) {
+        this.botThinking.set(false);
       }
       this.scrollToBottom();
       if (msg.remitente !== this.currentUserId()) {
@@ -1110,6 +1412,7 @@ export class ChatWindowComponent implements OnInit {
     } else if (file) {
       this.uploadFile(file, trimmed, responde_a_id);
     } else {
+      if (this.isBot()) this.botThinking.set(true);
       this.chatService.enviarMensaje(this.conversacion().id, {
         contenido: trimmed,
         responde_a_id,

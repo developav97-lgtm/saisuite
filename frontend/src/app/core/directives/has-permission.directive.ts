@@ -34,7 +34,7 @@ export class HasPermissionDirective {
       const user = this.auth.currentUser();
 
       // SuperAdmin y staff tienen todos los permisos
-      if (user?.is_superadmin || user?.is_superuser || user?.is_staff) {
+      if (user?.is_superadmin || user?.role === 'valmen_admin' || user?.is_staff) {
         if (!this.viewContainer.length) {
           this.viewContainer.createEmbeddedView(this.templateRef);
         }
