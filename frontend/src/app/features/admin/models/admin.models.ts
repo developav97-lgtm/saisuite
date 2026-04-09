@@ -25,10 +25,19 @@ export const ROLE_OPTIONS: { value: UserRole; label: string }[] = [
 export type ModuleKey = 'crm' | 'soporte' | 'dashboard' | 'proyectos';
 
 export const MODULE_LABELS: Record<string, string | undefined> = {
-  crm:       'CRM',
-  soporte:   'Soporte',
-  dashboard: 'SaiDashboard',
-  proyectos: 'SaiProyectos',
+  crm:         'CRM',
+  soporte:     'Soporte',
+  dashboard:   'SaiDashboard',
+  saidashboard:'SaiDashboard',
+  proyectos:   'SaiProyectos',
+};
+
+export const MODULE_ICONS: Record<string, string | undefined> = {
+  proyectos:    'work',
+  dashboard:    'home',
+  saidashboard: 'home',
+  crm:          'contacts',
+  soporte:      'support_agent',
 };
 
 export interface RoleSummary {
@@ -67,14 +76,17 @@ export interface CompanyModule {
 
 export interface CompanyLicense {
   id: string;
-  plan: string;
   status: 'trial' | 'active' | 'expired' | 'suspended';
   starts_at: string;
   expires_at: string;
   max_users: number;
+  concurrent_users: number;
+  modules_included: string[];
+  ai_tokens_quota: number;
+  ai_tokens_used: number;
+  messages_used: number;
   days_until_expiry: number;
   is_expired: boolean;
-  modules_included: string[];
 }
 
 export const LICENSE_STATUS_LABELS: Record<string, string> = {

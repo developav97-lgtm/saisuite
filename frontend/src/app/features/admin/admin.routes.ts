@@ -82,6 +82,11 @@ export const ADMIN_ROUTES: Routes = [
         loadComponent: () =>
           import('./knowledge-base/knowledge-base.component').then(m => m.KnowledgeBaseComponent),
       },
+      {
+        path: 'license-requests',
+        loadComponent: () =>
+          import('./license-requests/license-requests.component').then(m => m.LicenseRequestsComponent),
+      },
       { path: '', redirectTo: 'usuarios', pathMatch: 'full' },
     ],
   },

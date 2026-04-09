@@ -39,20 +39,23 @@ import { AutocompleteEntidad, AutocompleteUsuario } from '../../models/chat.mode
       <textarea
         #textArea
         class="msg-input__textarea"
-        placeholder="Escribe un mensaje..."
+        [class.msg-input__textarea--disabled]="disabled()"
+        [placeholder]="disabled() ? 'Cuota de tokens agotada' : 'Escribe un mensaje...'"
+        [attr.disabled]="disabled() ? true : null"
         [ngModel]="text()"
         (ngModelChange)="onTextChange($event)"
         (keydown.enter)="onEnter($event)"
         rows="1">
       </textarea>
       <button mat-icon-button
+              [disabled]="disabled()"
               (click)="toggleEmojiPicker()"
               matTooltip="Emojis">
         <mat-icon>mood</mat-icon>
       </button>
       <button mat-icon-button
               color="primary"
-              [disabled]="!canSend()"
+              [disabled]="!canSend() || disabled()"
               (click)="onSend()"
               matTooltip="Enviar">
         <mat-icon>send</mat-icon>
@@ -102,6 +105,13 @@ import { AutocompleteEntidad, AutocompleteUsuario } from '../../models/chat.mode
       &::placeholder {
         color: var(--sc-text-muted, #718096);
       }
+
+      &--disabled {
+        background: var(--sc-bg, #f5f5f5);
+        color: var(--sc-text-secondary, #9e9e9e);
+        cursor: not-allowed;
+        opacity: 0.6;
+      }
     }
 
     .msg-input__emoji-backdrop {
@@ -128,6 +138,7 @@ export class MessageInputComponent implements AfterViewInit {
 
   readonly conversacionId = input.required<string>();
   readonly hasPendingAttachment = input(false);
+  readonly disabled = input(false);
   readonly sendMessage = output<string>();
   readonly typing = output<void>();
 

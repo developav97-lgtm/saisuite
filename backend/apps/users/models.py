@@ -80,6 +80,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         related_name='usuarios',
         help_text='Rol granular con permisos específicos',
     )
+    invited_at     = models.DateTimeField(null=True, blank=True, help_text='Fecha en que se envió la invitación')
     created_at     = models.DateTimeField(default=timezone.now)
     updated_at     = models.DateTimeField(auto_now=True)
 

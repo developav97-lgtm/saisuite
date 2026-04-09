@@ -39,7 +39,7 @@
   </div>
 
   <!-- Trial banner -->
-  <app-trial-banner [trialStatus]="trialStatus()" (activateTrial)="null" (contactSales)="null" />
+  <app-trial-banner [trialStatus]="trialStatusMapped()" (activateTrial)="null" (contactSales)="null" />
 
   <!-- Filter panel (togglable) -->
   @if (showFilters()) {

@@ -19,15 +19,9 @@ logger = logging.getLogger(__name__)
 class Company(models.Model):
     """Empresa cliente registrada en SaiSuite."""
 
-    class Plan(models.TextChoices):
-        STARTER      = 'starter',      'Starter'
-        PROFESSIONAL = 'professional', 'Professional'
-        ENTERPRISE   = 'enterprise',   'Enterprise'
-
     id               = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name             = models.CharField(max_length=255)
     nit              = models.CharField(max_length=20, unique=True, help_text='NIT sin dígito de verificación')
-    plan             = models.CharField(max_length=20, choices=Plan.choices, default=Plan.STARTER)
     saiopen_enabled  = models.BooleanField(default=False)
     saiopen_db_path  = models.CharField(max_length=500, blank=True, default='')
     logo             = models.ImageField(
@@ -97,14 +91,23 @@ class CompanyLicense(models.Model):
         'annual':    360,
     }
 
+    class RenewalType(models.TextChoices):
+        MANUAL = 'manual', 'Manual'
+        AUTO   = 'auto',   'Automática'
+
     id         = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     company    = models.OneToOneField(
         Company,
         on_delete=models.CASCADE,
         related_name='license',
     )
-    plan       = models.CharField(max_length=20, choices=Company.Plan.choices, default=Company.Plan.STARTER)
     status     = models.CharField(max_length=20, choices=Status.choices, default=Status.TRIAL)
+    renewal_type = models.CharField(
+        max_length=10,
+        choices=RenewalType.choices,
+        default=RenewalType.MANUAL,
+        help_text='Manual: el admin confirma la renovación. Automática: N8N genera la solicitud 5 días antes.',
+    )
     period     = models.CharField(
         max_length=20,
         choices=Period.choices,
@@ -128,9 +131,8 @@ class CompanyLicense(models.Model):
         help_text='Lista de slugs de módulos incluidos. Ej: ["proyectos", "crm"]',
     )
 
-    # Cuota de mensajes IA (por mes)
-    messages_quota  = models.PositiveIntegerField(default=0, help_text='Mensajes IA disponibles por mes')
-    messages_used   = models.PositiveIntegerField(default=0, help_text='Mensajes IA usados en el período actual')
+    # Contador de mensajes IA enviados (sin cuota — solo informativo)
+    messages_used   = models.PositiveIntegerField(default=0, help_text='Mensajes IA enviados en el período actual')
 
     # Cuota de tokens IA (por mes)
     ai_tokens_quota = models.PositiveIntegerField(default=0, help_text='Tokens IA disponibles por mes')
@@ -405,6 +407,46 @@ class AIUsageLog(models.Model):
         return f'{self.user.email} — {self.request_type} ({self.total_tokens} tokens)'
 
 
+class ModuleTrial(models.Model):
+    """
+    Trial de 14 días para un módulo específico por empresa.
+    Solo se puede activar UNA VEZ por empresa/módulo.
+    Lo activa únicamente el company_admin desde configuración de empresa.
+    """
+    id          = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    company     = models.ForeignKey(
+        Company,
+        on_delete=models.CASCADE,
+        related_name='company_module_trials',
+    )
+    module_code = models.CharField(
+        max_length=50,
+        help_text='Código del módulo: dashboard, proyectos, crm, soporte',
+    )
+    iniciado_en = models.DateTimeField(default=timezone.now)
+    expira_en   = models.DateTimeField(
+        help_text='iniciado_en + 14 días',
+    )
+
+    class Meta:
+        verbose_name = 'Trial de módulo'
+        verbose_name_plural = 'Trials de módulo'
+        unique_together = [('company', 'module_code')]
+        ordering = ['-iniciado_en']
+
+    def __str__(self):
+        return f'{self.company.name} — {self.module_code} (expira: {self.expira_en:%Y-%m-%d})'
+
+    @property
+    def esta_activo(self) -> bool:
+        return timezone.now() < self.expira_en
+
+    @property
+    def dias_restantes(self) -> int:
+        delta = self.expira_en - timezone.now()
+        return max(0, delta.days)
+
+
 class AgentToken(models.Model):
     """
     Token estático de larga vida para autenticar el agente Go en los endpoints de sync.
@@ -432,3 +474,55 @@ class AgentToken(models.Model):
 
     def __str__(self):
         return f'{self.company.name} — {self.label or self.id} ({"activo" if self.is_active else "revocado"})'
+
+
+class LicenseRequest(models.Model):
+    """
+    Solicitud de ampliación de licencia iniciada por el company_admin.
+    Tipos:
+      - user_seats : solicita un paquete adicional de usuarios
+      - module     : solicita licenciar un módulo (después del trial)
+      - ai_tokens  : solicita cambiar el paquete de tokens IA (reemplaza el anterior)
+    El superadmin aprueba → el sistema aplica el paquete automáticamente.
+    """
+
+    class RequestType(models.TextChoices):
+        USER_SEATS = 'user_seats', 'Usuarios adicionales'
+        MODULE     = 'module',     'Módulo'
+        AI_TOKENS  = 'ai_tokens',  'Tokens IA'
+
+    class Status(models.TextChoices):
+        PENDING  = 'pending',  'Pendiente'
+        APPROVED = 'approved', 'Aprobado'
+        REJECTED = 'rejected', 'Rechazado'
+
+    id           = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    company      = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='license_requests')
+    request_type = models.CharField(max_length=20, choices=RequestType.choices)
+    package      = models.ForeignKey(
+        LicensePackage,
+        on_delete=models.PROTECT,
+        related_name='license_requests',
+        help_text='Paquete específico que se solicita agregar/reemplazar',
+    )
+    status       = models.CharField(max_length=10, choices=Status.choices, default=Status.PENDING)
+    notes        = models.TextField(blank=True, default='', help_text='Nota opcional del solicitante')
+    review_notes = models.TextField(blank=True, default='', help_text='Nota del admin al aprobar/rechazar')
+    created_by   = models.ForeignKey(
+        'users.User', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='license_requests_created',
+    )
+    reviewed_by  = models.ForeignKey(
+        'users.User', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='license_requests_reviewed',
+    )
+    reviewed_at  = models.DateTimeField(null=True, blank=True)
+    created_at   = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        verbose_name = 'Solicitud de licencia'
+        verbose_name_plural = 'Solicitudes de licencia'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.company.name} — {self.get_request_type_display()} — {self.get_status_display()}'

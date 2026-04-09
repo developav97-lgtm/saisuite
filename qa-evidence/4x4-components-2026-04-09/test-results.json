@@ -1,0 +1,232 @@
+{
+  "scenarios": {
+    "1-desktop-light": {
+      "viewport": "1920x1080",
+      "dark": false,
+      "screenshots": [
+        "/Users/juanandrade/Desktop/saisuite/qa-evidence/4x4-components-2026-04-09/1-desktop-light-trial-banner-full.png",
+        "/Users/juanandrade/Desktop/saisuite/qa-evidence/4x4-components-2026-04-09/1-desktop-light-trial-banner-viewport.png",
+        "/Users/juanandrade/Desktop/saisuite/qa-evidence/4x4-components-2026-04-09/1-desktop-light-bot-chat-opened.png",
+        "/Users/juanandrade/Desktop/saisuite/qa-evidence/4x4-components-2026-04-09/1-desktop-light-bot-quota-ui.png",
+        "/Users/juanandrade/Desktop/saisuite/qa-evidence/4x4-components-2026-04-09/1-desktop-light-module-locked-viewport.png",
+        "/Users/juanandrade/Desktop/saisuite/qa-evidence/4x4-components-2026-04-09/1-desktop-light-module-locked-full.png",
+        "/Users/juanandrade/Desktop/saisuite/qa-evidence/4x4-components-2026-04-09/1-desktop-light-tenants-list.png",
+        "/Users/juanandrade/Desktop/saisuite/qa-evidence/4x4-components-2026-04-09/1-desktop-light-tenant-detail.png",
+        "/Users/juanandrade/Desktop/saisuite/qa-evidence/4x4-components-2026-04-09/1-desktop-light-tenant-licencia-tab.png",
+        "/Users/juanandrade/Desktop/saisuite/qa-evidence/4x4-components-2026-04-09/1-desktop-light-module-cards-grid.png",
+        "/Users/juanandrade/Desktop/saisuite/qa-evidence/4x4-components-2026-04-09/1-desktop-light-module-cards-full.png"
+      ],
+      "issues": [
+        {
+          "component": "Bot Quota UI",
+          "scenario": "1-desktop-light",
+          "severity": "MEDIUM",
+          "issue": "Token quota progress bar not found — may require bot conversation to be open"
+        },
+        {
+          "component": "Tenant Module Cards",
+          "scenario": "1-desktop-light",
+          "severity": "HIGH",
+          "issue": "Module cards grid not found on Licencia tab. Tenant opened: true, Licencia tab found: true"
+        }
+      ],
+      "components": {
+        "trial-banner": true,
+        "bot-quota": false,
+        "module-locked": true,
+        "module-cards": false
+      }
+    },
+    "2-desktop-dark": {
+      "viewport": "1920x1080",
+      "dark": true,
+      "screenshots": [
+        "/Users/juanandrade/Desktop/saisuite/qa-evidence/4x4-components-2026-04-09/2-desktop-dark-trial-banner-full.png",
+        "/Users/juanandrade/Desktop/saisuite/qa-evidence/4x4-components-2026-04-09/2-desktop-dark-trial-banner-viewport.png",
+        "/Users/juanandrade/Desktop/saisuite/qa-evidence/4x4-components-2026-04-09/2-desktop-dark-trial-banner-dark.png",
+        "/Users/juanandrade/Desktop/saisuite/qa-evidence/4x4-components-2026-04-09/2-desktop-dark-bot-chat-opened.png",
+        "/Users/juanandrade/Desktop/saisuite/qa-evidence/4x4-components-2026-04-09/2-desktop-dark-bot-quota-ui.png",
+        "/Users/juanandrade/Desktop/saisuite/qa-evidence/4x4-components-2026-04-09/2-desktop-dark-module-locked-viewport.png",
+        "/Users/juanandrade/Desktop/saisuite/qa-evidence/4x4-components-2026-04-09/2-desktop-dark-module-locked-full.png",
+        "/Users/juanandrade/Desktop/saisuite/qa-evidence/4x4-components-2026-04-09/2-desktop-dark-tenants-list.png",
+        "/Users/juanandrade/Desktop/saisuite/qa-evidence/4x4-components-2026-04-09/2-desktop-dark-tenant-detail.png",
+        "/Users/juanandrade/Desktop/saisuite/qa-evidence/4x4-components-2026-04-09/2-desktop-dark-tenant-licencia-tab.png",
+        "/Users/juanandrade/Desktop/saisuite/qa-evidence/4x4-components-2026-04-09/2-desktop-dark-module-cards-grid.png",
+        "/Users/juanandrade/Desktop/saisuite/qa-evidence/4x4-components-2026-04-09/2-desktop-dark-module-cards-full.png"
+      ],
+      "issues": [
+        {
+          "component": "Bot Quota UI",
+          "scenario": "2-desktop-dark",
+          "severity": "MEDIUM",
+          "issue": "Token quota progress bar not found — may require bot conversation to be open"
+        },
+        {
+          "component": "Tenant Module Cards",
+          "scenario": "2-desktop-dark",
+          "severity": "HIGH",
+          "issue": "Module cards grid not found on Licencia tab. Tenant opened: true, Licencia tab found: true"
+        }
+      ],
+      "components": {
+        "trial-banner": true,
+        "bot-quota": false,
+        "module-locked": true,
+        "module-cards": false
+      }
+    },
+    "3-mobile-light": {
+      "viewport": "375x812",
+      "dark": false,
+      "screenshots": [
+        "/Users/juanandrade/Desktop/saisuite/qa-evidence/4x4-components-2026-04-09/3-mobile-light-trial-banner-full.png",
+        "/Users/juanandrade/Desktop/saisuite/qa-evidence/4x4-components-2026-04-09/3-mobile-light-trial-banner-viewport.png",
+        "/Users/juanandrade/Desktop/saisuite/qa-evidence/4x4-components-2026-04-09/3-mobile-light-bot-chat-opened.png",
+        "/Users/juanandrade/Desktop/saisuite/qa-evidence/4x4-components-2026-04-09/3-mobile-light-bot-quota-ui.png",
+        "/Users/juanandrade/Desktop/saisuite/qa-evidence/4x4-components-2026-04-09/3-mobile-light-module-locked-viewport.png",
+        "/Users/juanandrade/Desktop/saisuite/qa-evidence/4x4-components-2026-04-09/3-mobile-light-module-locked-full.png",
+        "/Users/juanandrade/Desktop/saisuite/qa-evidence/4x4-components-2026-04-09/3-mobile-light-tenants-list.png",
+        "/Users/juanandrade/Desktop/saisuite/qa-evidence/4x4-components-2026-04-09/3-mobile-light-tenant-detail.png",
+        "/Users/juanandrade/Desktop/saisuite/qa-evidence/4x4-components-2026-04-09/3-mobile-light-tenant-licencia-tab.png",
+        "/Users/juanandrade/Desktop/saisuite/qa-evidence/4x4-components-2026-04-09/3-mobile-light-module-cards-grid.png",
+        "/Users/juanandrade/Desktop/saisuite/qa-evidence/4x4-components-2026-04-09/3-mobile-light-module-cards-full.png"
+      ],
+      "issues": [
+        {
+          "component": "Bot Quota UI",
+          "scenario": "3-mobile-light",
+          "severity": "HIGH",
+          "issue": "Chat button touch target too small: undefinedxundefinedpx (minimum 44x44)"
+        },
+        {
+          "component": "Bot Quota UI",
+          "scenario": "3-mobile-light",
+          "severity": "MEDIUM",
+          "issue": "Token quota progress bar not found — may require bot conversation to be open"
+        },
+        {
+          "component": "Tenant Module Cards",
+          "scenario": "3-mobile-light",
+          "severity": "HIGH",
+          "issue": "Module cards grid not found on Licencia tab. Tenant opened: true, Licencia tab found: true"
+        }
+      ],
+      "components": {
+        "trial-banner": true,
+        "bot-quota": false,
+        "module-locked": true,
+        "module-cards": false
+      }
+    },
+    "4-mobile-dark": {
+      "viewport": "375x812",
+      "dark": true,
+      "screenshots": [
+        "/Users/juanandrade/Desktop/saisuite/qa-evidence/4x4-components-2026-04-09/4-mobile-dark-trial-banner-full.png",
+        "/Users/juanandrade/Desktop/saisuite/qa-evidence/4x4-components-2026-04-09/4-mobile-dark-trial-banner-viewport.png",
+        "/Users/juanandrade/Desktop/saisuite/qa-evidence/4x4-components-2026-04-09/4-mobile-dark-trial-banner-dark.png",
+        "/Users/juanandrade/Desktop/saisuite/qa-evidence/4x4-components-2026-04-09/4-mobile-dark-bot-chat-opened.png",
+        "/Users/juanandrade/Desktop/saisuite/qa-evidence/4x4-components-2026-04-09/4-mobile-dark-bot-quota-ui.png",
+        "/Users/juanandrade/Desktop/saisuite/qa-evidence/4x4-components-2026-04-09/4-mobile-dark-module-locked-viewport.png",
+        "/Users/juanandrade/Desktop/saisuite/qa-evidence/4x4-components-2026-04-09/4-mobile-dark-module-locked-full.png",
+        "/Users/juanandrade/Desktop/saisuite/qa-evidence/4x4-components-2026-04-09/4-mobile-dark-tenants-list.png",
+        "/Users/juanandrade/Desktop/saisuite/qa-evidence/4x4-components-2026-04-09/4-mobile-dark-tenant-detail.png",
+        "/Users/juanandrade/Desktop/saisuite/qa-evidence/4x4-components-2026-04-09/4-mobile-dark-tenant-licencia-tab.png",
+        "/Users/juanandrade/Desktop/saisuite/qa-evidence/4x4-components-2026-04-09/4-mobile-dark-module-cards-grid.png",
+        "/Users/juanandrade/Desktop/saisuite/qa-evidence/4x4-components-2026-04-09/4-mobile-dark-module-cards-full.png"
+      ],
+      "issues": [
+        {
+          "component": "Bot Quota UI",
+          "scenario": "4-mobile-dark",
+          "severity": "HIGH",
+          "issue": "Chat button touch target too small: undefinedxundefinedpx (minimum 44x44)"
+        },
+        {
+          "component": "Bot Quota UI",
+          "scenario": "4-mobile-dark",
+          "severity": "MEDIUM",
+          "issue": "Token quota progress bar not found — may require bot conversation to be open"
+        },
+        {
+          "component": "Tenant Module Cards",
+          "scenario": "4-mobile-dark",
+          "severity": "HIGH",
+          "issue": "Module cards grid not found on Licencia tab. Tenant opened: true, Licencia tab found: true"
+        }
+      ],
+      "components": {
+        "trial-banner": true,
+        "bot-quota": false,
+        "module-locked": true,
+        "module-cards": false
+      }
+    }
+  },
+  "summary": {
+    "pass": 0,
+    "fail": 0,
+    "issues": [
+      {
+        "component": "Bot Quota UI",
+        "scenario": "1-desktop-light",
+        "severity": "MEDIUM",
+        "issue": "Token quota progress bar not found — may require bot conversation to be open"
+      },
+      {
+        "component": "Tenant Module Cards",
+        "scenario": "1-desktop-light",
+        "severity": "HIGH",
+        "issue": "Module cards grid not found on Licencia tab. Tenant opened: true, Licencia tab found: true"
+      },
+      {
+        "component": "Bot Quota UI",
+        "scenario": "2-desktop-dark",
+        "severity": "MEDIUM",
+        "issue": "Token quota progress bar not found — may require bot conversation to be open"
+      },
+      {
+        "component": "Tenant Module Cards",
+        "scenario": "2-desktop-dark",
+        "severity": "HIGH",
+        "issue": "Module cards grid not found on Licencia tab. Tenant opened: true, Licencia tab found: true"
+      },
+      {
+        "component": "Bot Quota UI",
+        "scenario": "3-mobile-light",
+        "severity": "HIGH",
+        "issue": "Chat button touch target too small: undefinedxundefinedpx (minimum 44x44)"
+      },
+      {
+        "component": "Bot Quota UI",
+        "scenario": "3-mobile-light",
+        "severity": "MEDIUM",
+        "issue": "Token quota progress bar not found — may require bot conversation to be open"
+      },
+      {
+        "component": "Tenant Module Cards",
+        "scenario": "3-mobile-light",
+        "severity": "HIGH",
+        "issue": "Module cards grid not found on Licencia tab. Tenant opened: true, Licencia tab found: true"
+      },
+      {
+        "component": "Bot Quota UI",
+        "scenario": "4-mobile-dark",
+        "severity": "HIGH",
+        "issue": "Chat button touch target too small: undefinedxundefinedpx (minimum 44x44)"
+      },
+      {
+        "component": "Bot Quota UI",
+        "scenario": "4-mobile-dark",
+        "severity": "MEDIUM",
+        "issue": "Token quota progress bar not found — may require bot conversation to be open"
+      },
+      {
+        "component": "Tenant Module Cards",
+        "scenario": "4-mobile-dark",
+        "severity": "HIGH",
+        "issue": "Module cards grid not found on Licencia tab. Tenant opened: true, Licencia tab found: true"
+      }
+    ]
+  }
+}

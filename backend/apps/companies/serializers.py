@@ -6,7 +6,8 @@ from rest_framework import serializers
 
 from .models import (
     Company, CompanyModule, CompanyLicense, LicensePayment, LicenseHistory,
-    LicenseRenewal, LicensePackage, LicensePackageItem, MonthlyLicenseSnapshot, AIUsageLog,
+    LicenseRenewal, LicensePackage, LicensePackageItem, MonthlyLicenseSnapshot,
+    AIUsageLog, ModuleTrial, LicenseRequest,
 )
 
 
@@ -22,7 +23,7 @@ class CompanyListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Company
-        fields = ['id', 'name', 'nit', 'plan', 'is_active', 'created_at']
+        fields = ['id', 'name', 'nit', 'is_active', 'created_at']
         read_only_fields = fields
 
 
@@ -38,7 +39,6 @@ class CompanyDetailSerializer(serializers.ModelSerializer):
             'id',
             'name',
             'nit',
-            'plan',
             'saiopen_enabled',
             'saiopen_db_path',
             'logo',
@@ -67,10 +67,6 @@ class CompanyCreateSerializer(serializers.Serializer):
 
     name            = serializers.CharField(max_length=255)
     nit             = serializers.CharField(max_length=20)
-    plan            = serializers.ChoiceField(
-        choices=Company.Plan.choices,
-        default=Company.Plan.STARTER,
-    )
     saiopen_enabled = serializers.BooleanField(default=False, required=False)
     saiopen_db_path = serializers.CharField(max_length=500, allow_blank=True, default='', required=False)
 
@@ -92,7 +88,7 @@ class CompanyUpdateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Company
-        fields = ['name', 'plan', 'saiopen_enabled', 'saiopen_db_path', 'nit']
+        fields = ['name', 'saiopen_enabled', 'saiopen_db_path', 'nit']
         read_only_fields = ['nit']
 
     def validate_name(self, value: str) -> str:
@@ -159,11 +155,11 @@ class CompanyLicenseSerializer(serializers.ModelSerializer):
         model = CompanyLicense
         fields = [
             'id', 'company', 'company_name', 'company_nit',
-            'plan', 'status',
+            'status', 'renewal_type',
             'period', 'period_display',
             'starts_at', 'expires_at', 'max_users', 'concurrent_users',
             'modules_included',
-            'messages_quota', 'messages_used',
+            'messages_used',
             'ai_tokens_quota', 'ai_tokens_used',
             'last_reset_date',
             'notes',
@@ -199,7 +195,7 @@ class CompanyLicenseSummarySerializer(serializers.ModelSerializer):
         model = CompanyLicense
         fields = [
             'id', 'company', 'company_name', 'company_nit',
-            'plan', 'status',
+            'status', 'renewal_type',
             'starts_at', 'expires_at', 'max_users', 'concurrent_users',
             'days_until_expiry', 'is_expired', 'is_active_and_valid',
             'updated_at',
@@ -210,9 +206,13 @@ class CompanyLicenseSummarySerializer(serializers.ModelSerializer):
 class CompanyLicenseWriteSerializer(serializers.Serializer):
     """Serializer de escritura para crear/actualizar licencia."""
 
-    plan               = serializers.ChoiceField(choices=Company.Plan.choices, required=False)
     status             = serializers.ChoiceField(choices=CompanyLicense.Status.choices, required=False)
     period             = serializers.ChoiceField(choices=CompanyLicense.Period.choices, required=False)
+    renewal_type       = serializers.ChoiceField(
+        choices=CompanyLicense.RenewalType.choices,
+        default=CompanyLicense.RenewalType.MANUAL,
+        required=False,
+    )
     starts_at          = serializers.DateField()
     expires_at         = serializers.DateField(required=False)  # Optional: calculated from period+starts_at
     max_users          = serializers.IntegerField(min_value=1, default=5, required=False)
@@ -221,7 +221,6 @@ class CompanyLicenseWriteSerializer(serializers.Serializer):
         child=serializers.CharField(), default=list, required=False,
         help_text='Lista de slugs de módulos: ["proyectos", "crm"]',
     )
-    messages_quota     = serializers.IntegerField(min_value=0, default=0, required=False)
     ai_tokens_quota    = serializers.IntegerField(min_value=0, default=0, required=False)
     notes              = serializers.CharField(allow_blank=True, default='', required=False)
 
@@ -232,9 +231,10 @@ class TenantCreateSerializer(serializers.Serializer):
     # Datos empresa
     name             = serializers.CharField(max_length=255)
     nit              = serializers.CharField(max_length=20)
-    email            = serializers.EmailField(required=False, allow_blank=True, default='')
+    email_admin      = serializers.EmailField(
+        help_text='Correo del administrador de la empresa. Se enviará invitación de activación.',
+    )
     telefono         = serializers.CharField(max_length=20, required=False, allow_blank=True, default='')
-    plan             = serializers.ChoiceField(choices=Company.Plan.choices, default=Company.Plan.STARTER)
     saiopen_enabled  = serializers.BooleanField(default=False, required=False)
 
     # Datos licencia inicial
@@ -246,12 +246,16 @@ class TenantCreateSerializer(serializers.Serializer):
         choices=CompanyLicense.Period.choices,
         default=CompanyLicense.Period.TRIAL,
     )
+    renewal_type        = serializers.ChoiceField(
+        choices=CompanyLicense.RenewalType.choices,
+        default=CompanyLicense.RenewalType.MANUAL,
+        required=False,
+    )
     license_starts_at   = serializers.DateField()
     license_expires_at  = serializers.DateField(required=False)  # Optional override
     concurrent_users    = serializers.IntegerField(min_value=1, default=1)
     max_users           = serializers.IntegerField(min_value=1, default=5)
     modules_included    = serializers.ListField(child=serializers.CharField(), default=list, required=False)
-    messages_quota      = serializers.IntegerField(min_value=0, default=0, required=False)
     ai_tokens_quota     = serializers.IntegerField(min_value=0, default=0, required=False)
     license_notes       = serializers.CharField(allow_blank=True, default='', required=False)
 
@@ -277,7 +281,7 @@ class TenantWithLicenseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Company
         fields = [
-            'id', 'name', 'nit', 'plan',
+            'id', 'name', 'nit',
             'is_active', 'created_at',
             'license', 'active_users', 'modules',
         ]
@@ -334,18 +338,15 @@ class LicensePackageWriteSerializer(serializers.Serializer):
 
 
 class LicensePackageItemSerializer(serializers.ModelSerializer):
-    """Paquete asignado a una licencia."""
+    """Paquete asignado a una licencia. Devuelve 'package' como objeto anidado."""
 
-    package_name = serializers.CharField(source='package.name', read_only=True)
-    package_code = serializers.CharField(source='package.code', read_only=True)
-    package_type = serializers.CharField(source='package.package_type', read_only=True)
+    package        = LicensePackageSerializer(read_only=True)
     added_by_email = serializers.CharField(source='added_by.email', read_only=True, default=None)
 
     class Meta:
         model = LicensePackageItem
         fields = [
-            'id', 'package', 'package_name', 'package_code', 'package_type',
-            'quantity', 'added_at', 'added_by', 'added_by_email',
+            'id', 'package', 'quantity', 'added_at', 'added_by', 'added_by_email',
         ]
         read_only_fields = ['id', 'added_at']
 
@@ -378,12 +379,12 @@ class AIUsageLogSerializer(serializers.ModelSerializer):
 
 
 class AIUsageSummarySerializer(serializers.Serializer):
-    messages_quota       = serializers.IntegerField()
-    messages_used        = serializers.IntegerField()
-    ai_tokens_quota      = serializers.IntegerField()
-    ai_tokens_used       = serializers.IntegerField()
-    total_requests       = serializers.IntegerField()
-    total_tokens_all_time = serializers.IntegerField()
+    messages_used  = serializers.IntegerField()
+    tokens_used    = serializers.IntegerField()
+    tokens_quota   = serializers.IntegerField()
+    tokens_pct     = serializers.FloatField()
+    total_requests = serializers.IntegerField()
+    total_tokens   = serializers.IntegerField()
 
 
 class AIUsagePerUserSerializer(serializers.Serializer):
@@ -393,3 +394,85 @@ class AIUsagePerUserSerializer(serializers.Serializer):
     user__last_name  = serializers.CharField()
     requests         = serializers.IntegerField()
     tokens           = serializers.IntegerField()
+
+
+# ── Trials de módulo ──────────────────────────────────────────────────────────
+
+class ModuleTrialSerializer(serializers.ModelSerializer):
+    """Lectura del estado de trial de un módulo para una empresa."""
+
+    esta_activo     = serializers.BooleanField(read_only=True)
+    dias_restantes  = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = ModuleTrial
+        fields = [
+            'id', 'module_code',
+            'iniciado_en', 'expira_en',
+            'esta_activo', 'dias_restantes',
+        ]
+        read_only_fields = fields
+
+
+class ModuleTrialStatusSerializer(serializers.Serializer):
+    """Respuesta del endpoint GET /modules/{code}/trial/status/."""
+
+    tiene_acceso   = serializers.BooleanField()
+    tipo_acceso    = serializers.ChoiceField(choices=['license', 'trial', 'none'])
+    trial_activo   = serializers.BooleanField()
+    trial_usado    = serializers.BooleanField()
+    dias_restantes = serializers.IntegerField(allow_null=True)
+    expira_en      = serializers.DateTimeField(allow_null=True)
+
+
+# ── Cálculo de total de licencia ──────────────────────────────────────────────
+
+class LicenseTotalCalculatorSerializer(serializers.Serializer):
+    """Input para calcular el total de una licencia. Usado en POST /admin/license/calculate-total/."""
+
+    class PackageLineSerializer(serializers.Serializer):
+        package_id = serializers.UUIDField()
+        quantity   = serializers.IntegerField(min_value=1, default=1)
+
+    lines  = PackageLineSerializer(many=True)
+    period = serializers.ChoiceField(
+        choices=['monthly', 'annual'],
+        default='monthly',
+        required=False,
+    )
+
+
+# ── Solicitudes de licencia ───────────────────────────────────────────────────
+
+class LicenseRequestSerializer(serializers.ModelSerializer):
+    """Lectura de una solicitud de licencia."""
+
+    package          = LicensePackageSerializer(read_only=True)
+    company_name     = serializers.CharField(source='company.name', read_only=True)
+    created_by_email = serializers.CharField(source='created_by.email', read_only=True, default=None)
+    reviewed_by_email = serializers.CharField(source='reviewed_by.email', read_only=True, default=None)
+
+    class Meta:
+        model  = LicenseRequest
+        fields = [
+            'id', 'company', 'company_name',
+            'request_type', 'package',
+            'status', 'notes', 'review_notes',
+            'created_by_email', 'reviewed_by_email',
+            'reviewed_at', 'created_at',
+        ]
+        read_only_fields = fields
+
+
+class LicenseRequestWriteSerializer(serializers.Serializer):
+    """Input para crear una solicitud de licencia."""
+
+    package_id   = serializers.UUIDField()
+    request_type = serializers.ChoiceField(choices=LicenseRequest.RequestType.choices)
+    notes        = serializers.CharField(allow_blank=True, default='', required=False)
+
+
+class LicenseRequestReviewSerializer(serializers.Serializer):
+    """Input para aprobar o rechazar una solicitud."""
+
+    review_notes = serializers.CharField(allow_blank=True, default='', required=False)

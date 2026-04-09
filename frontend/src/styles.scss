@@ -55,6 +55,12 @@ body.dark-theme {
   --sc-shadow-md:       0 4px 12px rgba(0,0,0,.08), 0 2px 4px rgba(0,0,0,.04);
   --sc-radius:          10px;
   --sc-radius-sm:       6px;
+  --sc-warning:         #f57c00;
+  --sc-warning-light:   rgba(245, 124, 0, 0.10);
+  --sc-error:           #d32f2f;
+  --sc-error-light:     rgba(211, 47, 47, 0.07);
+  --sc-success:         #2e7d32;
+  --sc-success-light:   rgba(46, 125, 50, 0.10);
 }
 
 body.dark-theme {
@@ -71,6 +77,12 @@ body.dark-theme {
   --sc-primary-dark:    #bbdefb;
   --sc-shadow-sm:       0 1px 3px rgba(0,0,0,.3);
   --sc-shadow-md:       0 4px 12px rgba(0,0,0,.4);
+  --sc-warning:         #ffb74d;
+  --sc-warning-light:   rgba(255, 183, 77, 0.12);
+  --sc-error:           #ef9a9a;
+  --sc-error-light:     rgba(239, 154, 154, 0.10);
+  --sc-success:         #a5d6a7;
+  --sc-success-light:   rgba(165, 214, 167, 0.12);
 }
 
 // ── Reset ─────────────────────────────────────────────────────

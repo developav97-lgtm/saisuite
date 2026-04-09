@@ -7,6 +7,7 @@ import logging
 from django.contrib.auth import authenticate
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
+from django.template.loader import render_to_string
 from django.conf import settings
 from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
@@ -135,7 +136,6 @@ class UserService:
         company = CompanyService.create_company({
             'name': data['company_name'],
             'nit':  data['company_nit'],
-            'plan': data.get('company_plan', 'starter'),
         })
 
         # 2. Activar módulo proyectos por defecto
@@ -353,16 +353,21 @@ class UserService:
         frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:4200')
         reset_url = f'{frontend_url}/auth/reset-password?uid={uid}&token={token}'
 
+        ctx = {
+            'user_name': f' {user.first_name}' if user.first_name else '',
+            'reset_url': reset_url,
+        }
         try:
             send_mail(
                 subject='[SaiSuite] Recuperación de contraseña',
                 message=(
-                    f'Hola {user.first_name or user.email},\n\n'
+                    f'Hola{ctx["user_name"]},\n\n'
                     f'Recibimos una solicitud para restablecer tu contraseña.\n\n'
                     f'Haz clic en el siguiente enlace (válido por 1 hora):\n{reset_url}\n\n'
                     f'Si no solicitaste esto, ignora este mensaje.\n\n'
                     f'— SaiSuite\n'
                 ),
+                html_message=render_to_string('emails/password_reset.html', ctx),
                 from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@saisuite.com'),
                 recipient_list=[email],
                 fail_silently=True,
@@ -386,6 +391,85 @@ class UserService:
         user.set_password(new_password)
         user.save(update_fields=['password'])
         logger.info('password_reset_confirmed', extra={'user_id': str(user.id)})
+
+    @staticmethod
+    @transaction.atomic
+    def invite_company_admin(company, email: str) -> 'User':
+        """
+        Crea el usuario administrador de la empresa con is_active=False y
+        envía un correo de invitación con link de activación (72h).
+        """
+        from django.utils import timezone as tz
+        from apps.companies.models import Company  # evitar import circular
+
+        if not isinstance(company, Company):
+            company = Company.objects.get(pk=company)
+
+        if User.objects.filter(email=email).exists():
+            raise ValidationError({'email': 'Ya existe un usuario con este email.'})
+
+        import secrets
+        temp_password = secrets.token_urlsafe(16)
+
+        user = User.objects.create_user(
+            email=email,
+            password=temp_password,
+            role=User.Role.COMPANY_ADMIN,
+            company=company,
+            is_active=False,
+            invited_at=tz.now(),
+        )
+
+        uid   = urlsafe_base64_encode(force_bytes(user.pk))
+        token = default_token_generator.make_token(user)
+        frontend_url  = getattr(settings, 'FRONTEND_URL', 'http://localhost:4200')
+        activate_url  = f'{frontend_url}/auth/activar?uid={uid}&token={token}'
+
+        ctx = {
+            'company_name': company.name,
+            'activate_url': activate_url,
+        }
+        try:
+            send_mail(
+                subject=f'[SaiSuite] Invitación para administrar {company.name}',
+                message=(
+                    f'Hola,\n\n'
+                    f'Has sido invitado como administrador de {company.name} en SaiSuite.\n\n'
+                    f'Haz clic en el siguiente enlace para activar tu cuenta y elegir tu contraseña '
+                    f'(válido por 72 horas):\n\n{activate_url}\n\n'
+                    f'Si recibiste este correo por error, puedes ignorarlo.\n\n'
+                    f'— Equipo SaiSuite\n'
+                ),
+                html_message=render_to_string('emails/invitation.html', ctx),
+                from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@saisuite.com'),
+                recipient_list=[email],
+                fail_silently=True,
+            )
+        except Exception:
+            pass  # No fallar si hay problemas de correo
+
+        logger.info(
+            'company_admin_invited',
+            extra={'email': email, 'company_id': str(company.id)},
+        )
+        return user
+
+    @staticmethod
+    def activate_account(uid_b64: str, token: str, new_password: str) -> None:
+        """Activa la cuenta de un usuario invitado usando el uid y token del correo."""
+        try:
+            uid  = force_str(urlsafe_base64_decode(uid_b64))
+            user = User.objects.get(pk=uid, is_active=False)
+        except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+            raise ValidationError('El enlace de activación es inválido.')
+
+        if not default_token_generator.check_token(user, token):
+            raise ValidationError('El enlace ha expirado o ya fue usado.')
+
+        user.set_password(new_password)
+        user.is_active = True
+        user.save(update_fields=['password', 'is_active', 'updated_at'])
+        logger.info('account_activated', extra={'user_id': str(user.id)})
 
     @staticmethod
     @transaction.atomic

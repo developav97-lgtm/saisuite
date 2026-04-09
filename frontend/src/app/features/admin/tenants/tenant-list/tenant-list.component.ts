@@ -15,7 +15,7 @@ import { ResponsiveTableDirective } from '../../../../shared/directives';
 import { TenantService } from '../../services/tenant.service';
 import { ToastService } from '../../../../core/services/toast.service';
 import { ConfirmDialogComponent } from '../../../../shared/components/confirm-dialog/confirm-dialog.component';
-import { Tenant, LICENSE_STATUS_LABELS, PLAN_LABELS } from '../../models/tenant.model';
+import { Tenant, LICENSE_STATUS_LABELS } from '../../models/tenant.model';
 
 @Component({
   selector: 'app-tenant-list',
@@ -40,10 +40,9 @@ export class TenantListComponent implements OnInit {
   readonly tenants  = signal<Tenant[]>([]);
   readonly search   = signal('');
 
-  readonly columns = ['name', 'nit', 'plan', 'license', 'vencimiento', 'usuarios', 'acciones'];
+  readonly columns = ['name', 'nit', 'license', 'vencimiento', 'usuarios', 'acciones'];
 
   readonly STATUS_LABELS = LICENSE_STATUS_LABELS;
-  readonly PLAN_LABELS   = PLAN_LABELS;
 
   ngOnInit(): void {
     this.load();

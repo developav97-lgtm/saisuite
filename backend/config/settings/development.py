@@ -8,9 +8,9 @@ CORS_ALLOWED_ORIGINS = env.list('CORS_ALLOWED_ORIGINS', default=['http://localho
 CORS_ALLOW_ALL_ORIGINS = True  # dev only — Vite proxy reescribe Origin
 CORS_ALLOW_CREDENTIALS = True
 
-# Email: en dev imprime en consola
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-DEFAULT_FROM_EMAIL = 'SaiSuite <noreply@saisuite.com>'
+# Email: usa SMTP si EMAIL_HOST_USER está configurado, sino consola
+EMAIL_BACKEND   = env('EMAIL_BACKEND', default='django.core.mail.backends.console.EmailBackend')
+DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='SaiSuite <noreply@saisuite.com>')
 
 # URL del frontend — se usa en emails de recuperación de contraseña
 FRONTEND_URL = env('FRONTEND_URL', default='http://localhost:4200')

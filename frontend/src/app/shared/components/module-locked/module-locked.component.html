@@ -1,0 +1,71 @@
+<div class="ml-page">
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate" />
+  } @else {
+    <div class="ml-container">
+
+      <div class="ml-lock-icon-wrapper">
+        <mat-icon class="ml-lock-icon">lock</mat-icon>
+      </div>
+
+      <h1 class="ml-title">{{ moduleName() }} no está disponible</h1>
+      <p class="ml-desc">Este módulo no está incluido en tu licencia actual.</p>
+
+      @if (trialActivated()) {
+        <div class="ml-success-box">
+          <mat-icon>check_circle</mat-icon>
+          <p>¡Prueba de 14 días activada correctamente!</p>
+          <button mat-raised-button color="primary" (click)="irAlModulo()">
+            <mat-icon>open_in_new</mat-icon>
+            Ir al módulo
+          </button>
+        </div>
+
+      } @else if (trialStatus()?.trial_activo) {
+        <div class="ml-info-box">
+          <mat-icon>timer</mat-icon>
+          <p>Tienes una prueba activa: <strong>{{ trialStatus()?.dias_restantes }} días restantes</strong></p>
+        </div>
+        <button mat-raised-button color="primary" (click)="irAlModulo()">
+          <mat-icon>open_in_new</mat-icon>
+          Ir al módulo
+        </button>
+
+      } @else if (!trialStatus()?.trial_usado && isAdmin()) {
+        <p class="ml-trial-hint">
+          Puedes iniciar una prueba gratuita de 14 días sin costo adicional.
+        </p>
+        <button mat-raised-button color="primary"
+          [disabled]="activating()"
+          (click)="activarTrial()">
+          @if (activating()) {
+            <mat-icon>hourglass_empty</mat-icon>
+          } @else {
+            <mat-icon>play_circle</mat-icon>
+          }
+          Iniciar prueba gratuita de 14 días
+        </button>
+
+      } @else {
+        @if (trialStatus()?.trial_usado) {
+          <p class="ml-trial-expired">Ya utilizaste el período de prueba para este módulo.</p>
+        }
+        @if (!isAdmin()) {
+          <p class="ml-contact-admin">
+            Contacta al administrador de tu empresa para activar este módulo.
+          </p>
+        }
+        <a mat-raised-button color="primary" href="mailto:ventas@valmentech.com">
+          <mat-icon>mail</mat-icon>
+          Contactar ventas
+        </a>
+      }
+
+      <button mat-stroked-button class="ml-back-btn" (click)="volver()">
+        <mat-icon>arrow_back</mat-icon>
+        Volver al inicio
+      </button>
+
+    </div>
+  }
+</div>

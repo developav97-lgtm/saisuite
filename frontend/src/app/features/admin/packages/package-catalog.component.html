@@ -4,12 +4,8 @@
   <div class="pc-header">
     <div>
       <h1 class="pc-title">Catálogo de paquetes</h1>
-      <p class="pc-subtitle">Gestión del catálogo global de paquetes de licencia</p>
+      <p class="pc-subtitle">Precios y módulos disponibles para las licencias de empresa</p>
     </div>
-    <button mat-raised-button color="primary" (click)="openNew()">
-      <mat-icon>add</mat-icon>
-      Nuevo paquete
-    </button>
   </div>
 
   @if (loading()) {
@@ -24,7 +20,6 @@
 
       <form [formGroup]="form" class="pc-form">
 
-        <!-- Código (solo en creación) -->
         <mat-form-field appearance="outline">
           <mat-label>Código único</mat-label>
           <input matInput formControlName="code" placeholder="mod_dashboard" maxlength="50" />
@@ -34,7 +29,6 @@
           }
         </mat-form-field>
 
-        <!-- Nombre -->
         <mat-form-field appearance="outline">
           <mat-label>Nombre del paquete</mat-label>
           <input matInput formControlName="name" maxlength="100" />
@@ -43,7 +37,6 @@
           }
         </mat-form-field>
 
-        <!-- Tipo -->
         <mat-form-field appearance="outline">
           <mat-label>Tipo de paquete</mat-label>
           <mat-select formControlName="package_type">
@@ -53,7 +46,6 @@
           </mat-select>
         </mat-form-field>
 
-        <!-- Módulo (solo si tipo = module) -->
         @if (isModuleType()) {
           <mat-form-field appearance="outline">
             <mat-label>Módulo</mat-label>
@@ -66,7 +58,6 @@
           </mat-form-field>
         }
 
-        <!-- Cantidad (para tokens/mensajes/usuarios) -->
         @if (!isModuleType()) {
           <mat-form-field appearance="outline">
             <mat-label>Cantidad</mat-label>
@@ -75,24 +66,25 @@
           </mat-form-field>
         }
 
-        <!-- Precios -->
         <mat-form-field appearance="outline">
           <mat-label>Precio mensual (COP)</mat-label>
-          <input matInput type="number" formControlName="price_monthly" min="0" />
+          <input matInput inputmode="numeric"
+            [value]="formatMiles(form.get('price_monthly')?.value)"
+            (input)="onMilesInput($event, 'price_monthly')" />
         </mat-form-field>
 
         <mat-form-field appearance="outline">
           <mat-label>Precio anual (COP)</mat-label>
-          <input matInput type="number" formControlName="price_annual" min="0" />
+          <input matInput inputmode="numeric"
+            [value]="formatMiles(form.get('price_annual')?.value)"
+            (input)="onMilesInput($event, 'price_annual')" />
         </mat-form-field>
 
-        <!-- Descripción -->
         <mat-form-field appearance="outline" class="pc-full-width">
           <mat-label>Descripción</mat-label>
           <textarea matInput formControlName="description" rows="2"></textarea>
         </mat-form-field>
 
-        <!-- Activo -->
         <div class="pc-toggle-row">
           <mat-slide-toggle formControlName="is_active" color="primary">
             Paquete activo
@@ -117,92 +109,289 @@
     </div>
   }
 
-  <!-- Tabla de paquetes -->
-  @if (packages().length === 0 && !loading()) {
-    <div class="sc-empty-state">
-      <mat-icon>inventory_2</mat-icon>
-      <p>No hay paquetes creados</p>
-      <button mat-stroked-button color="primary" (click)="openNew()">
-        <mat-icon>add</mat-icon> Crear primer paquete
-      </button>
-    </div>
-  } @else {
-    <div class="table-responsive">
-      <table mat-table [dataSource]="packages()" class="pc-table mat-elevation-z1">
+  <!-- Tabs de catálogo -->
+  <mat-tab-group animationDuration="150ms">
 
-        <ng-container matColumnDef="code">
-          <th mat-header-cell *matHeaderCellDef>Código</th>
-          <td mat-cell *matCellDef="let p">
-            <code class="pc-code">{{ p.code }}</code>
-          </td>
-        </ng-container>
+    <!-- ── Tab 1: Módulos ──────────────────────────────────────────── -->
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <mat-icon class="pc-tab-icon">work</mat-icon>
+        Módulos
+        <span class="pc-tab-count">{{ modulePackages().length }}</span>
+      </ng-template>
 
-        <ng-container matColumnDef="name">
-          <th mat-header-cell *matHeaderCellDef>Nombre</th>
-          <td mat-cell *matCellDef="let p">
-            <div class="pc-name">{{ p.name }}</div>
-            @if (p.description) {
-              <div class="pc-desc">{{ p.description }}</div>
-            }
-          </td>
-        </ng-container>
+      <div class="pc-tab-content">
+        <div class="pc-tab-actions">
+          <p class="pc-tab-hint">Módulos funcionales disponibles para incluir en licencias.</p>
+          <button mat-stroked-button color="primary" (click)="openNewWithType('module')">
+            <mat-icon>add</mat-icon>
+            Nuevo módulo
+          </button>
+        </div>
 
-        <ng-container matColumnDef="type">
-          <th mat-header-cell *matHeaderCellDef>Tipo</th>
-          <td mat-cell *matCellDef="let p">
-            <mat-chip [color]="p.package_type === 'module' ? 'primary' : 'accent'" highlighted>
-              {{ typeLabel(p.package_type) }}
-            </mat-chip>
-            @if (p.module_code) {
-              <span class="pc-module-code">{{ p.module_code }}</span>
-            }
-          </td>
-        </ng-container>
-
-        <ng-container matColumnDef="quantity">
-          <th mat-header-cell *matHeaderCellDef class="pc-num">Cantidad</th>
-          <td mat-cell *matCellDef="let p" class="pc-num">
-            {{ p.quantity || '—' }}
-          </td>
-        </ng-container>
-
-        <ng-container matColumnDef="price_monthly">
-          <th mat-header-cell *matHeaderCellDef class="pc-num">Precio/mes</th>
-          <td mat-cell *matCellDef="let p" class="pc-num">{{ formatCOP(p.price_monthly) }}</td>
-        </ng-container>
-
-        <ng-container matColumnDef="price_annual">
-          <th mat-header-cell *matHeaderCellDef class="pc-num">Precio/año</th>
-          <td mat-cell *matCellDef="let p" class="pc-num">{{ formatCOP(p.price_annual) }}</td>
-        </ng-container>
-
-        <ng-container matColumnDef="is_active">
-          <th mat-header-cell *matHeaderCellDef>Activo</th>
-          <td mat-cell *matCellDef="let p">
-            <mat-slide-toggle
-              [checked]="p.is_active"
-              color="primary"
-              (change)="toggleActive(p)">
-            </mat-slide-toggle>
-          </td>
-        </ng-container>
-
-        <ng-container matColumnDef="actions">
-          <th mat-header-cell *matHeaderCellDef></th>
-          <td mat-cell *matCellDef="let p">
-            <button mat-icon-button matTooltip="Editar" (click)="openEdit(p)">
-              <mat-icon>edit</mat-icon>
+        @if (modulePackages().length === 0 && !loading()) {
+          <div class="sc-empty-state">
+            <mat-icon>work_off</mat-icon>
+            <p>Sin módulos en el catálogo</p>
+            <button mat-stroked-button color="primary" (click)="openNewWithType('module')">
+              <mat-icon>add</mat-icon> Crear módulo
             </button>
-            <button mat-icon-button matTooltip="Eliminar" color="warn" (click)="eliminar(p)">
-              <mat-icon>delete</mat-icon>
-            </button>
-          </td>
-        </ng-container>
+          </div>
+        } @else {
+          <div class="table-responsive">
+            <table mat-table [dataSource]="modulePackages()" class="pc-table mat-elevation-z1">
 
-        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-        <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
-      </table>
-    </div>
-  }
+              <ng-container matColumnDef="module_code">
+                <th mat-header-cell *matHeaderCellDef>Módulo</th>
+                <td mat-cell *matCellDef="let p">
+                  <div class="pc-module-badge">
+                    @switch (p.module_code) {
+                      @case ('proyectos') { <mat-icon>work</mat-icon> }
+                      @case ('dashboard') { <mat-icon>dashboard</mat-icon> }
+                      @case ('crm')       { <mat-icon>contacts</mat-icon> }
+                      @case ('soporte')   { <mat-icon>support_agent</mat-icon> }
+                      @default            { <mat-icon>extension</mat-icon> }
+                    }
+                    <span>{{ p.module_code || '—' }}</span>
+                  </div>
+                </td>
+              </ng-container>
+
+              <ng-container matColumnDef="name">
+                <th mat-header-cell *matHeaderCellDef>Nombre</th>
+                <td mat-cell *matCellDef="let p">
+                  <div class="pc-name">{{ p.name }}</div>
+                  @if (p.description) {
+                    <div class="pc-desc">{{ p.description }}</div>
+                  }
+                </td>
+              </ng-container>
+
+              <ng-container matColumnDef="code">
+                <th mat-header-cell *matHeaderCellDef>Código</th>
+                <td mat-cell *matCellDef="let p"><code class="pc-code">{{ p.code }}</code></td>
+              </ng-container>
+
+              <ng-container matColumnDef="price_monthly">
+                <th mat-header-cell *matHeaderCellDef class="pc-num">Precio/mes</th>
+                <td mat-cell *matCellDef="let p" class="pc-num">{{ formatCOP(p.price_monthly) }}</td>
+              </ng-container>
+
+              <ng-container matColumnDef="price_annual">
+                <th mat-header-cell *matHeaderCellDef class="pc-num">Precio/año</th>
+                <td mat-cell *matCellDef="let p" class="pc-num">{{ formatCOP(p.price_annual) }}</td>
+              </ng-container>
+
+              <ng-container matColumnDef="is_active">
+                <th mat-header-cell *matHeaderCellDef>Activo</th>
+                <td mat-cell *matCellDef="let p">
+                  <mat-slide-toggle [checked]="p.is_active" color="primary" (change)="toggleActive(p)" />
+                </td>
+              </ng-container>
+
+              <ng-container matColumnDef="actions">
+                <th mat-header-cell *matHeaderCellDef></th>
+                <td mat-cell *matCellDef="let p">
+                  <button mat-icon-button matTooltip="Editar" (click)="openEdit(p)">
+                    <mat-icon>edit</mat-icon>
+                  </button>
+                  <button mat-icon-button matTooltip="Eliminar" color="warn" (click)="eliminar(p)">
+                    <mat-icon>delete</mat-icon>
+                  </button>
+                </td>
+              </ng-container>
+
+              <tr mat-header-row *matHeaderRowDef="columnsModules"></tr>
+              <tr mat-row *matRowDef="let row; columns: columnsModules;"></tr>
+            </table>
+          </div>
+        }
+      </div>
+    </mat-tab>
+
+    <!-- ── Tab 2: Usuarios ────────────────────────────────────────── -->
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <mat-icon class="pc-tab-icon">people</mat-icon>
+        Usuarios
+        <span class="pc-tab-count">{{ userPackages().length }}</span>
+      </ng-template>
+
+      <div class="pc-tab-content">
+        <div class="pc-tab-actions">
+          <p class="pc-tab-hint">Paquetes de puestos de usuario (user_seats).</p>
+          <button mat-stroked-button color="primary" (click)="openNewWithType('user_seats')">
+            <mat-icon>add</mat-icon>
+            Nuevo paquete usuarios
+          </button>
+        </div>
+
+        @if (userPackages().length === 0 && !loading()) {
+          <div class="sc-empty-state">
+            <mat-icon>people_outline</mat-icon>
+            <p>Sin paquetes de usuarios</p>
+            <button mat-stroked-button color="primary" (click)="openNewWithType('user_seats')">
+              <mat-icon>add</mat-icon> Crear paquete
+            </button>
+          </div>
+        } @else {
+          <div class="table-responsive">
+            <table mat-table [dataSource]="userPackages()" class="pc-table mat-elevation-z1">
+
+              <ng-container matColumnDef="name">
+                <th mat-header-cell *matHeaderCellDef>Nombre</th>
+                <td mat-cell *matCellDef="let p">
+                  <div class="pc-name">{{ p.name }}</div>
+                  @if (p.description) {
+                    <div class="pc-desc">{{ p.description }}</div>
+                  }
+                </td>
+              </ng-container>
+
+              <ng-container matColumnDef="code">
+                <th mat-header-cell *matHeaderCellDef>Código</th>
+                <td mat-cell *matCellDef="let p"><code class="pc-code">{{ p.code }}</code></td>
+              </ng-container>
+
+              <ng-container matColumnDef="quantity">
+                <th mat-header-cell *matHeaderCellDef class="pc-num">Puestos</th>
+                <td mat-cell *matCellDef="let p" class="pc-num">{{ p.quantity || '—' }}</td>
+              </ng-container>
+
+              <ng-container matColumnDef="price_monthly">
+                <th mat-header-cell *matHeaderCellDef class="pc-num">Precio/mes</th>
+                <td mat-cell *matCellDef="let p" class="pc-num">{{ formatCOP(p.price_monthly) }}</td>
+              </ng-container>
+
+              <ng-container matColumnDef="price_annual">
+                <th mat-header-cell *matHeaderCellDef class="pc-num">Precio/año</th>
+                <td mat-cell *matCellDef="let p" class="pc-num">{{ formatCOP(p.price_annual) }}</td>
+              </ng-container>
+
+              <ng-container matColumnDef="is_active">
+                <th mat-header-cell *matHeaderCellDef>Activo</th>
+                <td mat-cell *matCellDef="let p">
+                  <mat-slide-toggle [checked]="p.is_active" color="primary" (change)="toggleActive(p)" />
+                </td>
+              </ng-container>
+
+              <ng-container matColumnDef="actions">
+                <th mat-header-cell *matHeaderCellDef></th>
+                <td mat-cell *matCellDef="let p">
+                  <button mat-icon-button matTooltip="Editar" (click)="openEdit(p)">
+                    <mat-icon>edit</mat-icon>
+                  </button>
+                  <button mat-icon-button matTooltip="Eliminar" color="warn" (click)="eliminar(p)">
+                    <mat-icon>delete</mat-icon>
+                  </button>
+                </td>
+              </ng-container>
+
+              <tr mat-header-row *matHeaderRowDef="columnsUsers"></tr>
+              <tr mat-row *matRowDef="let row; columns: columnsUsers;"></tr>
+            </table>
+          </div>
+        }
+      </div>
+    </mat-tab>
+
+    <!-- ── Tab 3: Tokens IA ───────────────────────────────────────── -->
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <mat-icon class="pc-tab-icon">auto_awesome</mat-icon>
+        Tokens IA
+        <span class="pc-tab-count">{{ tokenPackages().length }}</span>
+      </ng-template>
+
+      <div class="pc-tab-content">
+        <div class="pc-tab-actions">
+          <p class="pc-tab-hint">Paquetes de tokens y mensajes de IA consumibles por mes.</p>
+          <button mat-stroked-button color="primary" (click)="openNewWithType('ai_tokens')">
+            <mat-icon>add</mat-icon>
+            Nuevo paquete tokens
+          </button>
+        </div>
+
+        @if (tokenPackages().length === 0 && !loading()) {
+          <div class="sc-empty-state">
+            <mat-icon>auto_awesome</mat-icon>
+            <p>Sin paquetes de tokens IA</p>
+            <button mat-stroked-button color="primary" (click)="openNewWithType('ai_tokens')">
+              <mat-icon>add</mat-icon> Crear paquete
+            </button>
+          </div>
+        } @else {
+          <div class="table-responsive">
+            <table mat-table [dataSource]="tokenPackages()" class="pc-table mat-elevation-z1">
+
+              <ng-container matColumnDef="name">
+                <th mat-header-cell *matHeaderCellDef>Nombre</th>
+                <td mat-cell *matCellDef="let p">
+                  <div class="pc-name">{{ p.name }}</div>
+                  @if (p.description) {
+                    <div class="pc-desc">{{ p.description }}</div>
+                  }
+                </td>
+              </ng-container>
+
+              <ng-container matColumnDef="code">
+                <th mat-header-cell *matHeaderCellDef>Código</th>
+                <td mat-cell *matCellDef="let p"><code class="pc-code">{{ p.code }}</code></td>
+              </ng-container>
+
+              <ng-container matColumnDef="type">
+                <th mat-header-cell *matHeaderCellDef>Tipo</th>
+                <td mat-cell *matCellDef="let p">
+                  <mat-chip [color]="p.package_type === 'ai_tokens' ? 'primary' : 'accent'" highlighted>
+                    {{ typeLabel(p.package_type) }}
+                  </mat-chip>
+                </td>
+              </ng-container>
+
+              <ng-container matColumnDef="quantity">
+                <th mat-header-cell *matHeaderCellDef class="pc-num">Cantidad</th>
+                <td mat-cell *matCellDef="let p" class="pc-num">
+                  {{ p.quantity ? (p.quantity | number) : '—' }}
+                </td>
+              </ng-container>
+
+              <ng-container matColumnDef="price_monthly">
+                <th mat-header-cell *matHeaderCellDef class="pc-num">Precio/mes</th>
+                <td mat-cell *matCellDef="let p" class="pc-num">{{ formatCOP(p.price_monthly) }}</td>
+              </ng-container>
+
+              <ng-container matColumnDef="price_annual">
+                <th mat-header-cell *matHeaderCellDef class="pc-num">Precio/año</th>
+                <td mat-cell *matCellDef="let p" class="pc-num">{{ formatCOP(p.price_annual) }}</td>
+              </ng-container>
+
+              <ng-container matColumnDef="is_active">
+                <th mat-header-cell *matHeaderCellDef>Activo</th>
+                <td mat-cell *matCellDef="let p">
+                  <mat-slide-toggle [checked]="p.is_active" color="primary" (change)="toggleActive(p)" />
+                </td>
+              </ng-container>
+
+              <ng-container matColumnDef="actions">
+                <th mat-header-cell *matHeaderCellDef></th>
+                <td mat-cell *matCellDef="let p">
+                  <button mat-icon-button matTooltip="Editar" (click)="openEdit(p)">
+                    <mat-icon>edit</mat-icon>
+                  </button>
+                  <button mat-icon-button matTooltip="Eliminar" color="warn" (click)="eliminar(p)">
+                    <mat-icon>delete</mat-icon>
+                  </button>
+                </td>
+              </ng-container>
+
+              <tr mat-header-row *matHeaderRowDef="columnsTokens"></tr>
+              <tr mat-row *matRowDef="let row; columns: columnsTokens;"></tr>
+            </table>
+          </div>
+        }
+      </div>
+    </mat-tab>
+
+  </mat-tab-group>
 
 </div>

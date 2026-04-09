@@ -12,10 +12,10 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
-import { DatePipe } from '@angular/common';
+import { DatePipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
-import { Conversacion, Mensaje, ChatReadEvent } from '../../models/chat.models';
+import { AIUsageSummary, Conversacion, Mensaje, ChatReadEvent } from '../../models/chat.models';
 import { ChatService } from '../../services/chat.service';
 import { ChatSocketService } from '../../services/chat-socket.service';
 import { MessageInputComponent } from '../message-input/message-input.component';
@@ -66,7 +66,7 @@ const BOT_SUGGESTIONS: Record<string, string[]> = {
   selector: 'app-chat-window',
   imports: [
     MatIconModule, MatButtonModule, MatProgressBarModule, MatTooltipModule, MatInputModule,
-    MatChipsModule, DatePipe, FormsModule, MessageInputComponent,
+    MatChipsModule, DatePipe, DecimalPipe, FormsModule, MessageInputComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
@@ -100,6 +100,20 @@ const BOT_SUGGESTIONS: Record<string, string[]> = {
           <span class="chat-window__bot-badge">IA</span>
         </div>
       </div>
+
+      @if (aiUsage(); as usage) {
+        <div class="chat-window__quota-bar"
+             [class.chat-window__quota-bar--warn]="tokenPct() >= 80"
+             [class.chat-window__quota-bar--danger]="quotaExceeded()">
+          <mat-progress-bar
+            mode="determinate"
+            [value]="tokenPct()"
+            [color]="tokenPct() >= 80 ? 'warn' : 'primary'" />
+          <span class="chat-window__quota-label">
+            {{ usage.ai_tokens_used | number }} / {{ usage.ai_tokens_quota | number }} tokens
+          </span>
+        </div>
+      }
     }
 
     <div class="chat-window__messages"
@@ -281,6 +295,12 @@ const BOT_SUGGESTIONS: Record<string, string[]> = {
     }
 
     <div class="chat-window__input-area">
+      @if (isBot() && quotaExceeded()) {
+        <div class="chat-window__quota-exceeded">
+          <mat-icon>block</mat-icon>
+          <span>Cuota de tokens agotada — tu cuota se renueva al inicio del próximo período de licencia.</span>
+        </div>
+      }
       @if (uploadStep() !== null) {
         <div class="chat-window__upload-progress">
           <mat-progress-bar mode="indeterminate" />
@@ -362,6 +382,7 @@ const BOT_SUGGESTIONS: Record<string, string[]> = {
           class="chat-window__msg-input"
           [conversacionId]="conversacion().id"
           [hasPendingAttachment]="pendingFile() !== null || pendingImage() !== null"
+          [disabled]="isBot() && quotaExceeded()"
           (sendMessage)="send($event)"
           (typing)="onTyping()" />
       </div>
@@ -1016,6 +1037,49 @@ const BOT_SUGGESTIONS: Record<string, string[]> = {
       letter-spacing: 0.05em;
     }
 
+    .chat-window__quota-bar {
+      padding: 4px 16px 2px;
+      background: var(--sc-surface-card, #fff);
+      border-bottom: 1px solid var(--sc-surface-border, #e2e8f0);
+      flex-shrink: 0;
+
+      mat-progress-bar { border-radius: 4px; }
+    }
+
+    .chat-window__quota-label {
+      font-size: 0.7rem;
+      color: var(--sc-text-secondary, #757575);
+      display: block;
+      text-align: right;
+      margin-top: 2px;
+    }
+
+    .chat-window__quota-bar--warn .chat-window__quota-label {
+      color: #f57c00;
+    }
+
+    .chat-window__quota-bar--danger .chat-window__quota-label {
+      color: #d32f2f;
+    }
+
+    .chat-window__quota-exceeded {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      background: var(--sc-error-light);
+      border-top: 1px solid color-mix(in srgb, var(--sc-error) 35%, transparent);
+      font-size: 0.8rem;
+      color: var(--sc-error);
+
+      mat-icon {
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
+        flex-shrink: 0;
+      }
+    }
+
     /* ── Feedback buttons ─────────────────────────────────────────── */
     .chat-window__feedback-row {
       display: flex;
@@ -1167,6 +1231,19 @@ export class ChatWindowComponent implements OnInit {
   // Indicador local de que el bot está procesando (mientras espera respuesta HTTP)
   readonly botThinking = signal(false);
 
+  // Estado de cuota de tokens IA
+  readonly aiUsage = signal<AIUsageSummary | null>(null);
+  readonly quotaExceeded = computed(() => {
+    const usage = this.aiUsage();
+    if (!usage || usage.ai_tokens_quota === 0) return false;
+    return usage.ai_tokens_used >= usage.ai_tokens_quota;
+  });
+  readonly tokenPct = computed(() => {
+    const usage = this.aiUsage();
+    if (!usage || usage.ai_tokens_quota === 0) return 0;
+    return Math.min(100, Math.round((usage.ai_tokens_used / usage.ai_tokens_quota) * 100));
+  });
+
   // Map<mensajeId, rating> para mostrar el estado activo del feedback
   readonly feedbackMap = signal<Map<string, 1 | -1>>(new Map());
 
@@ -1300,9 +1377,10 @@ export class ChatWindowComponent implements OnInit {
         this.messages.update(msgs => [...msgs, msg]);
         this.cdr.markForCheck();
       }
-      // Si el bot respondió, apagar el indicador de "pensando"
+      // Si el bot respondió, apagar el indicador de "pensando" y refrescar uso
       if (this.isBot() && msg.remitente !== this.currentUserId()) {
         this.botThinking.set(false);
+        this.loadAIUsage();
       }
       this.scrollToBottom();
       if (msg.remitente !== this.currentUserId()) {
@@ -1358,6 +1436,15 @@ export class ChatWindowComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadMessages();
+    if (this.isBot()) {
+      this.loadAIUsage();
+    }
+  }
+
+  loadAIUsage(): void {
+    this.chatService.getAIUsage()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({ next: usage => this.aiUsage.set(usage) });
   }
 
   sanitize(html: string): SafeHtml {
@@ -1420,6 +1507,12 @@ export class ChatWindowComponent implements OnInit {
         next: (msg) => {
           this.messages.update(msgs => [...msgs, msg]);
           this.scrollToBottom();
+        },
+        error: (err) => {
+          this.botThinking.set(false);
+          if (this.isBot() && err?.status === 429) {
+            this.loadAIUsage();
+          }
         },
       });
     }

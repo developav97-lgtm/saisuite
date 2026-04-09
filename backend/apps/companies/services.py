@@ -10,7 +10,7 @@ from rest_framework.exceptions import ValidationError, NotFound
 from .models import (Company, CompanyModule, CompanyLicense, LicensePayment,
                       LicenseHistory, LicenseRenewal, LicensePackage,
                       LicensePackageItem, MonthlyLicenseSnapshot, AIUsageLog,
-                      AgentToken)
+                      AgentToken, ModuleTrial, LicenseRequest)
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +43,6 @@ class CompanyService:
         company = Company.objects.create(
             name=data.get('name', '').strip(),
             nit=nit,
-            plan=data.get('plan', Company.Plan.STARTER),
             saiopen_enabled=data.get('saiopen_enabled', False),
             saiopen_db_path=data.get('saiopen_db_path', ''),
             is_active=True,
@@ -63,7 +62,7 @@ class CompanyService:
         Actualiza los campos permitidos de una empresa.
         El NIT no se puede modificar.
         """
-        allowed_fields = ['name', 'plan', 'saiopen_enabled', 'saiopen_db_path']
+        allowed_fields = ['name', 'saiopen_enabled', 'saiopen_db_path']
         for field in allowed_fields:
             if field in data:
                 setattr(company, field, data[field])
@@ -155,7 +154,7 @@ class LicenseService:
 
     @staticmethod
     def update_license(license_obj: CompanyLicense, data: dict) -> CompanyLicense:
-        allowed = ['plan', 'status', 'starts_at', 'expires_at', 'max_users', 'notes']
+        allowed = ['status', 'renewal_type', 'starts_at', 'expires_at', 'max_users', 'notes']
         for field in allowed:
             if field in data:
                 setattr(license_obj, field, data[field])
@@ -209,13 +208,12 @@ class LicenseService:
             license=license_obj,
             change_type=LicenseHistory.ChangeType.CREATED,
             changed_by=created_by,
-            notes=f'Licencia creada. Plan: {license_obj.plan}, Vence: {license_obj.expires_at}',
+            notes=f'Licencia creada. Vence: {license_obj.expires_at}. Módulos: {license_obj.modules_included}',
         )
 
         logger.info('license_created_with_history', extra={
             'license_id': str(license_obj.id),
             'company_id': str(company.id),
-            'plan': license_obj.plan,
         })
         return license_obj
 
@@ -226,7 +224,6 @@ class LicenseService:
         Detecta si es renovación, extensión, modificación o cambio de estado.
         """
         previous_state = {
-            'plan':       license_obj.plan,
             'status':     license_obj.status,
             'starts_at':  str(license_obj.starts_at),
             'expires_at': str(license_obj.expires_at),
@@ -257,9 +254,9 @@ class LicenseService:
             data['starts_at'] = new_starts
 
         allowed = [
-            'plan', 'status', 'starts_at', 'expires_at', 'max_users',
+            'status', 'renewal_type', 'starts_at', 'expires_at', 'max_users',
             'concurrent_users', 'modules_included', 'period',
-            'messages_quota', 'ai_tokens_quota', 'notes',
+            'ai_tokens_quota', 'notes',
         ]
         for field in allowed:
             if field in data:
@@ -512,6 +509,7 @@ class RenewalService:
                 lic.expires_at = renewal.new_expires_at
                 lic.period     = renewal.period
                 lic.status     = CompanyLicense.Status.ACTIVE
+                lic.reset_monthly_usage()
                 lic.save()
 
                 renewal.status       = LicenseRenewal.Status.ACTIVATED
@@ -611,9 +609,8 @@ class PackageService:
         """
         Agrega un paquete a una licencia y actualiza los campos correspondientes.
         - module: agrega module_code a modules_included
-        - user_seats: suma quantity a max_users
+        - user_seats: recalcula concurrent_users y max_users
         - ai_tokens: suma quantity a ai_tokens_quota
-        - ai_messages: suma quantity a messages_quota
         """
         if LicensePackageItem.objects.filter(license=license_obj, package=package).exists():
             raise ValidationError('Este paquete ya esta asignado a la licencia.')
@@ -671,16 +668,11 @@ class PackageService:
                 CompanyService.activate_module(license_obj.company, package.module_code)
 
         elif package.package_type == LicensePackage.PackageType.USER_SEATS:
-            license_obj.max_users += package.quantity * quantity
-            license_obj.save(update_fields=['max_users'])
+            PackageService._recalculate_user_quotas(license_obj)
 
         elif package.package_type == LicensePackage.PackageType.AI_TOKENS:
             license_obj.ai_tokens_quota += package.quantity * quantity
             license_obj.save(update_fields=['ai_tokens_quota'])
-
-        elif package.package_type == LicensePackage.PackageType.AI_MESSAGES:
-            license_obj.messages_quota += package.quantity * quantity
-            license_obj.save(update_fields=['messages_quota'])
 
     @staticmethod
     def _revert_package_from_license(license_obj: CompanyLicense, package: LicensePackage, quantity: int):
@@ -693,16 +685,29 @@ class PackageService:
                 license_obj.save(update_fields=['modules_included'])
 
         elif package.package_type == LicensePackage.PackageType.USER_SEATS:
-            license_obj.max_users = max(1, license_obj.max_users - package.quantity * quantity)
-            license_obj.save(update_fields=['max_users'])
+            PackageService._recalculate_user_quotas(license_obj)
 
         elif package.package_type == LicensePackage.PackageType.AI_TOKENS:
             license_obj.ai_tokens_quota = max(0, license_obj.ai_tokens_quota - package.quantity * quantity)
             license_obj.save(update_fields=['ai_tokens_quota'])
 
-        elif package.package_type == LicensePackage.PackageType.AI_MESSAGES:
-            license_obj.messages_quota = max(0, license_obj.messages_quota - package.quantity * quantity)
-            license_obj.save(update_fields=['messages_quota'])
+    @staticmethod
+    def _recalculate_user_quotas(license_obj: CompanyLicense) -> None:
+        """
+        Recalcula concurrent_users y max_users a partir de los paquetes user_seats asignados.
+        concurrent_users = suma total de quantity en paquetes user_seats.
+        max_users = concurrent_users * 2.
+        """
+        total_seats = (
+            license_obj.package_items
+            .filter(package__package_type=LicensePackage.PackageType.USER_SEATS)
+            .select_related('package')
+            .values_list('package__quantity', 'quantity')
+        )
+        concurrent = sum(pkg_qty * item_qty for pkg_qty, item_qty in total_seats)
+        license_obj.concurrent_users = max(1, concurrent)
+        license_obj.max_users = license_obj.concurrent_users * 2
+        license_obj.save(update_fields=['concurrent_users', 'max_users'])
 
 
 class AIUsageService:
@@ -719,25 +724,19 @@ class AIUsageService:
         except CompanyLicense.DoesNotExist:
             return {'allowed': False, 'remaining_messages': 0, 'remaining_tokens': 0}
 
-        remaining_msgs = max(0, lic.messages_quota - lic.messages_used)
         remaining_tokens = max(0, lic.ai_tokens_quota - lic.ai_tokens_used)
 
-        # Permitido si tiene quota de mensajes O de tokens (al menos uno configurado)
-        has_msg_quota = lic.messages_quota > 0
-        has_token_quota = lic.ai_tokens_quota > 0
-
-        if not has_msg_quota and not has_token_quota:
-            allowed = False  # No tiene ningun paquete IA
-        elif has_msg_quota and remaining_msgs <= 0:
-            allowed = False
-        elif has_token_quota and remaining_tokens <= 0:
-            allowed = False
+        # Permitido solo si tiene cuota de tokens configurada y no agotada
+        if lic.ai_tokens_quota <= 0:
+            allowed = False  # No tiene paquete de tokens IA
+        elif remaining_tokens <= 0:
+            allowed = False  # Cuota agotada
         else:
             allowed = True
 
         return {
             'allowed': allowed,
-            'remaining_messages': remaining_msgs,
+            'remaining_messages': 0,
             'remaining_tokens': remaining_tokens,
         }
 
@@ -792,13 +791,17 @@ class AIUsageService:
             total_completion=Sum('completion_tokens'),
         )
 
+        tokens_used  = lic.ai_tokens_used
+        tokens_quota = lic.ai_tokens_quota
+        tokens_pct   = round(tokens_used / tokens_quota * 100, 1) if tokens_quota > 0 else 0.0
+
         return {
-            'messages_quota': lic.messages_quota,
-            'messages_used': lic.messages_used,
-            'ai_tokens_quota': lic.ai_tokens_quota,
-            'ai_tokens_used': lic.ai_tokens_used,
-            'total_requests': agg['total_requests'] or 0,
-            'total_tokens_all_time': agg['total_tokens'] or 0,
+            'messages_used':        lic.messages_used,
+            'tokens_used':          tokens_used,
+            'tokens_quota':         tokens_quota,
+            'tokens_pct':           tokens_pct,
+            'total_requests':       agg['total_requests'] or 0,
+            'total_tokens':         agg['total_tokens'] or 0,
         }
 
     @staticmethod
@@ -839,7 +842,6 @@ class SnapshotService:
 
             snapshot_data = {
                 'company_name': lic.company.name,
-                'plan': lic.plan,
                 'status': lic.status,
                 'period': lic.period,
                 'starts_at': str(lic.starts_at),
@@ -847,7 +849,6 @@ class SnapshotService:
                 'max_users': lic.max_users,
                 'concurrent_users': lic.concurrent_users,
                 'modules_included': lic.modules_included,
-                'messages_quota': lic.messages_quota,
                 'messages_used': lic.messages_used,
                 'ai_tokens_quota': lic.ai_tokens_quota,
                 'ai_tokens_used': lic.ai_tokens_used,
@@ -863,3 +864,369 @@ class SnapshotService:
 
         logger.info('monthly_snapshots_generated', extra={'count': created, 'month': str(first_of_month)})
         return created
+
+
+class ModuleTrialService:
+    """
+    Gestión de trials de 14 días por módulo por empresa.
+    Solo lo activa el company_admin. Una sola vez por empresa/módulo.
+    """
+
+    TRIAL_DAYS = 14
+
+    VALID_MODULES = ['proyectos', 'dashboard', 'crm', 'soporte']
+
+    @staticmethod
+    def get_status(company: Company, module_code: str) -> dict:
+        """
+        Retorna el estado de acceso de la empresa a un módulo.
+        Orden de verificación:
+          1. ¿Está en la licencia activa? → tiene_acceso=True, tipo='license'
+          2. ¿Tiene trial activo?         → tiene_acceso=True, tipo='trial'
+          3. ¿Tuvo trial (expirado)?      → tiene_acceso=False, tipo='trial_expired'
+          4. Sin acceso                   → tiene_acceso=False, tipo='none'
+        """
+        # 1. Licencia activa incluye el módulo
+        try:
+            lic = CompanyLicense.objects.get(company=company)
+            if lic.is_active_and_valid and module_code in (lic.modules_included or []):
+                return {
+                    'tiene_acceso': True,
+                    'tipo_acceso': 'license',
+                    'trial_activo': False,
+                    'trial_usado': True,
+                    'dias_restantes': None,
+                    'expira_en': None,
+                }
+        except CompanyLicense.DoesNotExist:
+            pass
+
+        # 2 & 3. Buscar trial (activo o expirado)
+        try:
+            trial = ModuleTrial.objects.get(company=company, module_code=module_code)
+            if trial.esta_activo:
+                return {
+                    'tiene_acceso': True,
+                    'tipo_acceso': 'trial',
+                    'trial_activo': True,
+                    'trial_usado': True,
+                    'dias_restantes': trial.dias_restantes,
+                    'expira_en': trial.expira_en,
+                }
+            # Trial expirado
+            return {
+                'tiene_acceso': False,
+                'tipo_acceso': 'trial_expired',
+                'trial_activo': False,
+                'trial_usado': True,
+                'dias_restantes': 0,
+                'expira_en': trial.expira_en,
+            }
+        except ModuleTrial.DoesNotExist:
+            pass
+
+        # 4. Sin acceso, sin trial previo
+        return {
+            'tiene_acceso': False,
+            'tipo_acceso': 'none',
+            'trial_activo': False,
+            'trial_usado': False,
+            'dias_restantes': None,
+            'expira_en': None,
+        }
+
+    @staticmethod
+    def activate_trial(company: Company, module_code: str, activated_by=None) -> ModuleTrial:
+        """
+        Activa un trial de 14 días para el módulo indicado.
+        Raises ValidationError si:
+          - El módulo es inválido
+          - Ya existe un trial previo (activo o expirado)
+          - El módulo ya está en la licencia activa
+        """
+        from django.utils import timezone as tz
+        if module_code not in ModuleTrialService.VALID_MODULES:
+            raise ValidationError(
+                {'module_code': f'Módulo inválido. Opciones: {ModuleTrialService.VALID_MODULES}'}
+            )
+
+        # Verificar si ya está en licencia activa
+        try:
+            lic = CompanyLicense.objects.get(company=company)
+            if lic.is_active_and_valid and module_code in (lic.modules_included or []):
+                raise ValidationError('El módulo ya está incluido en la licencia activa.')
+        except CompanyLicense.DoesNotExist:
+            pass
+
+        # Verificar si ya existe trial previo
+        if ModuleTrial.objects.filter(company=company, module_code=module_code).exists():
+            raise ValidationError(
+                'Ya existe un trial para este módulo. Solo se permite un trial por empresa.'
+            )
+
+        now = tz.now()
+        trial = ModuleTrial.objects.create(
+            company=company,
+            module_code=module_code,
+            iniciado_en=now,
+            expira_en=now + timedelta(days=ModuleTrialService.TRIAL_DAYS),
+        )
+
+        logger.info('module_trial_activated', extra={
+            'company_id': str(company.id),
+            'module_code': module_code,
+            'expira_en': trial.expira_en.isoformat(),
+            'activated_by': str(activated_by.id) if activated_by else None,
+        })
+        return trial
+
+    @staticmethod
+    def is_module_accessible(company: Company, module_code: str) -> bool:
+        """
+        Verifica si la empresa puede acceder a un módulo.
+        True si: licencia activa incluye el módulo, o trial activo.
+        Usado por el bot IA para restringir consultas por módulo.
+        """
+        status = ModuleTrialService.get_status(company, module_code)
+        return status['tiene_acceso']
+
+
+class LicensePriceCalculatorService:
+    """Calcula el precio total de una licencia basado en paquetes seleccionados."""
+
+    @staticmethod
+    def calculate(lines: list[dict], period: str = 'monthly') -> dict:
+        """
+        lines: [{'package_id': UUID, 'quantity': int}, ...]
+        period: 'monthly' | 'annual'
+        Retorna: {items: [...], total: Decimal}
+        """
+        from decimal import Decimal
+        items = []
+        total = Decimal('0.00')
+
+        for line in lines:
+            try:
+                pkg = LicensePackage.objects.get(id=line['package_id'], is_active=True)
+            except LicensePackage.DoesNotExist:
+                raise ValidationError({'package_id': f'Paquete {line["package_id"]} no encontrado.'})
+
+            qty = line.get('quantity', 1)
+            unit_price = pkg.price_annual if period == 'annual' else pkg.price_monthly
+            subtotal = unit_price * qty
+
+            items.append({
+                'package_id': str(pkg.id),
+                'package_code': pkg.code,
+                'package_name': pkg.name,
+                'package_type': pkg.package_type,
+                'quantity': qty,
+                'unit_price': str(unit_price),
+                'subtotal': str(subtotal),
+            })
+            total += subtotal
+
+        return {
+            'period': period,
+            'items': items,
+            'total': str(total),
+        }
+
+
+class LicenseRequestService:
+    """
+    Gestión de solicitudes de ampliación de licencia iniciadas por company_admin.
+    Tipos:
+      user_seats → agrega el paquete a la licencia
+      module     → agrega el paquete de módulo a la licencia
+      ai_tokens  → reemplaza cualquier paquete ai_tokens existente por el nuevo
+    """
+
+    ADMIN_EMAIL = 'juan@valmentech.com'
+
+    @staticmethod
+    def create_request(company: Company, package_id: str, request_type: str,
+                       notes: str, created_by) -> LicenseRequest:
+        package = LicensePackage.objects.filter(id=package_id, is_active=True).first()
+        if not package:
+            raise ValidationError('Paquete no encontrado o inactivo.')
+
+        # Validar tipo coherente
+        type_map = {
+            LicenseRequest.RequestType.USER_SEATS: LicensePackage.PackageType.USER_SEATS,
+            LicenseRequest.RequestType.MODULE:     LicensePackage.PackageType.MODULE,
+            LicenseRequest.RequestType.AI_TOKENS:  LicensePackage.PackageType.AI_TOKENS,
+        }
+        if package.package_type != type_map.get(request_type):
+            raise ValidationError('El tipo de solicitud no coincide con el tipo del paquete.')
+
+        # No duplicar solicitudes pendientes del mismo tipo+paquete
+        if LicenseRequest.objects.filter(
+            company=company, package=package,
+            status=LicenseRequest.Status.PENDING,
+        ).exists():
+            raise ValidationError('Ya existe una solicitud pendiente para este paquete.')
+
+        req = LicenseRequest.objects.create(
+            company=company,
+            package=package,
+            request_type=request_type,
+            notes=notes,
+            created_by=created_by,
+        )
+
+        LicenseRequestService._notify_admin(req)
+        return req
+
+    @staticmethod
+    def approve(req: LicenseRequest, reviewed_by) -> LicenseRequest:
+        from django.utils import timezone as tz
+        from django.core.mail import send_mail
+        from django.conf import settings
+
+        if req.status != LicenseRequest.Status.PENDING:
+            raise ValidationError('Solo se pueden aprobar solicitudes pendientes.')
+
+        license_obj = LicenseService.get_license(req.company)
+
+        # Para ai_tokens: reemplazar el paquete anterior de la misma cuota
+        if req.request_type == LicenseRequest.RequestType.AI_TOKENS:
+            existing = LicensePackageItem.objects.filter(
+                license=license_obj,
+                package__package_type=LicensePackage.PackageType.AI_TOKENS,
+            ).select_related('package')
+            for item in existing:
+                PackageService.remove_package_from_license(item, removed_by=reviewed_by)
+
+        PackageService.add_package_to_license(license_obj, req.package, quantity=1, added_by=reviewed_by)
+
+        req.status      = LicenseRequest.Status.APPROVED
+        req.reviewed_by = reviewed_by
+        req.reviewed_at = tz.now()
+        req.save(update_fields=['status', 'reviewed_by', 'reviewed_at'])
+
+        # Notificar al company_admin
+        try:
+            admin_user = req.created_by or req.company.users.filter(
+                role='company_admin', is_active=True
+            ).first()
+            if admin_user:
+                from django.template.loader import render_to_string
+                ctx = {
+                    'company_name': req.company.name,
+                    'package_name': req.package.name,
+                    'request_type': req.get_request_type_display(),
+                }
+                send_mail(
+                    subject=f'[SaiCloud] Tu solicitud fue aprobada — {req.package.name}',
+                    message=(
+                        f'Hola,\n\nTu solicitud de {req.get_request_type_display()} '
+                        f'para el paquete "{req.package.name}" ha sido aprobada y ya está activa en tu licencia.\n\n'
+                        f'— Equipo SaiCloud'
+                    ),
+                    html_message=render_to_string('emails/license_request_approved.html', ctx),
+                    from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@valmentech.com'),
+                    recipient_list=[admin_user.email],
+                    fail_silently=True,
+                )
+        except Exception:
+            pass
+
+        logger.info('license_request_approved', extra={
+            'request_id': str(req.id), 'company': req.company.name,
+            'package': req.package.code, 'reviewed_by': str(reviewed_by.id),
+        })
+        return req
+
+    @staticmethod
+    def reject(req: LicenseRequest, reviewed_by, review_notes: str = '') -> LicenseRequest:
+        from django.utils import timezone as tz
+        from django.core.mail import send_mail
+        from django.conf import settings
+
+        if req.status != LicenseRequest.Status.PENDING:
+            raise ValidationError('Solo se pueden rechazar solicitudes pendientes.')
+
+        req.status       = LicenseRequest.Status.REJECTED
+        req.reviewed_by  = reviewed_by
+        req.reviewed_at  = tz.now()
+        req.review_notes = review_notes
+        req.save(update_fields=['status', 'reviewed_by', 'reviewed_at', 'review_notes'])
+
+        try:
+            admin_user = req.created_by or req.company.users.filter(
+                role='company_admin', is_active=True
+            ).first()
+            if admin_user:
+                send_mail(
+                    subject=f'[SaiCloud] Solicitud no aprobada — {req.package.name}',
+                    message=(
+                        f'Hola,\n\nTu solicitud de {req.get_request_type_display()} '
+                        f'para el paquete "{req.package.name}" no pudo ser aprobada en este momento.\n\n'
+                        f'{"Motivo: " + review_notes if review_notes else ""}\n\n'
+                        f'Contáctanos a ventas@valmentech.com para más información.\n\n'
+                        f'— Equipo SaiCloud'
+                    ),
+                    from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@valmentech.com'),
+                    recipient_list=[admin_user.email],
+                    fail_silently=True,
+                )
+        except Exception:
+            pass
+
+        logger.info('license_request_rejected', extra={
+            'request_id': str(req.id), 'company': req.company.name,
+        })
+        return req
+
+    @staticmethod
+    def list_for_company(company: Company):
+        return (
+            LicenseRequest.objects
+            .filter(company=company)
+            .select_related('package', 'created_by', 'reviewed_by')
+            .order_by('-created_at')
+        )
+
+    @staticmethod
+    def list_all(status_filter: str | None = None):
+        qs = LicenseRequest.objects.select_related('company', 'package', 'created_by', 'reviewed_by')
+        if status_filter:
+            qs = qs.filter(status=status_filter)
+        return qs.order_by('-created_at')
+
+    @staticmethod
+    def _notify_admin(req: LicenseRequest) -> None:
+        from django.core.mail import send_mail
+        from django.conf import settings
+        from django.template.loader import render_to_string
+
+        ctx = {
+            'company_name':  req.company.name,
+            'company_nit':   req.company.nit,
+            'package_name':  req.package.name,
+            'package_code':  req.package.code,
+            'request_type':  req.get_request_type_display(),
+            'quantity':      req.package.quantity,
+            'price_monthly': req.package.price_monthly,
+            'notes':         req.notes,
+            'requester':     req.created_by.email if req.created_by else '—',
+        }
+        try:
+            send_mail(
+                subject=f'[SaiCloud] Nueva solicitud de licencia — {req.company.name}',
+                message=(
+                    f'Nueva solicitud de {req.get_request_type_display()} de {req.company.name} '
+                    f'(NIT {req.company.nit}).\n\n'
+                    f'Paquete solicitado: {req.package.name} ({req.package.code})\n'
+                    f'Precio mensual: ${req.package.price_monthly:,.0f} COP\n\n'
+                    f'Nota del cliente: {req.notes or "—"}\n\n'
+                    f'Ingresa al panel de administración para aprobar o rechazar esta solicitud.'
+                ),
+                html_message=render_to_string('emails/license_request_admin.html', ctx),
+                from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@valmentech.com'),
+                recipient_list=[LicenseRequestService.ADMIN_EMAIL],
+                fail_silently=True,
+            )
+        except Exception:
+            pass

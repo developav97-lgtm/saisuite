@@ -7,15 +7,13 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatTabsModule } from '@angular/material/tabs';
+import { MatDialog } from '@angular/material/dialog';
+import { MatChipsModule } from '@angular/material/chips';
 import { AdminService } from '../services/admin.service';
-import { AgentTokenInfo, CompanyLicense, CompanySettings, LICENSE_STATUS_LABELS, MODULE_LABELS } from '../models/admin.models';
+import { AgentTokenInfo, CompanyLicense, CompanySettings, LICENSE_STATUS_LABELS, MODULE_ICONS, MODULE_LABELS } from '../models/admin.models';
+import { LicensePackage, LicenseRequest, LICENSE_REQUEST_TYPE_LABELS, LICENSE_REQUEST_STATUS_LABELS } from '../models/tenant.model';
 import { ToastService } from '../../../core/services/toast.service';
-
-const PLAN_LABELS: Record<string, string | undefined> = {
-  starter:      'Starter',
-  professional: 'Professional',
-  enterprise:   'Enterprise',
-};
+import { LicenseRequestDialogComponent } from './license-request-dialog/license-request-dialog.component';
 
 const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
 const MAX_SIZE_MB = 2;
@@ -32,25 +30,34 @@ const MAX_SIZE_MB = 2;
     MatButtonModule,
     MatTooltipModule,
     MatTabsModule,
+    MatChipsModule,
   ],
 })
 export class CompanySettingsComponent implements OnInit {
   private readonly adminService = inject(AdminService);
   private readonly toast        = inject(ToastService);
+  private readonly dialog       = inject(MatDialog);
 
   @ViewChild('fileInput') fileInput!: ElementRef<HTMLInputElement>;
 
-  readonly company      = signal<CompanySettings | null>(null);
-  readonly license      = signal<CompanyLicense | null>(null);
-  readonly loading      = signal(false);
-  readonly uploading    = signal(false);
-  readonly logoPreview  = signal<string | null>(null);
-  readonly agentTokens  = signal<AgentTokenInfo[]>([]);
-  readonly loadingTokens = signal(false);
+  readonly company            = signal<CompanySettings | null>(null);
+  readonly license            = signal<CompanyLicense | null>(null);
+  readonly aiUsage            = signal<{ messages_used: number; tokens_used: number; tokens_quota: number; tokens_pct: number; total_requests: number } | null>(null);
+  readonly loading            = signal(false);
+  readonly uploading          = signal(false);
+  readonly logoPreview        = signal<string | null>(null);
+  readonly agentTokens        = signal<AgentTokenInfo[]>([]);
+  readonly loadingTokens      = signal(false);
+  readonly myRequests         = signal<LicenseRequest[]>([]);
+  readonly loadingRequests    = signal(false);
+  readonly availablePackages  = signal<LicensePackage[]>([]);
+  readonly submittingRequest  = signal(false);
 
-  readonly planLabels          = PLAN_LABELS;
-  readonly moduleLabels        = MODULE_LABELS;
-  readonly licenseStatusLabels = LICENSE_STATUS_LABELS;
+  readonly moduleLabels            = MODULE_LABELS;
+  readonly moduleIcons             = MODULE_ICONS;
+  readonly licenseStatusLabels     = LICENSE_STATUS_LABELS;
+  readonly requestTypeLabels       = LICENSE_REQUEST_TYPE_LABELS;
+  readonly requestStatusLabels     = LICENSE_REQUEST_STATUS_LABELS;
 
   ngOnInit(): void {
     this.loading.set(true);
@@ -60,9 +67,15 @@ export class CompanySettingsComponent implements OnInit {
     });
     this.adminService.getMyLicense().subscribe({
       next: (lic) => this.license.set(lic),
-      error: () => { /* silencioso si no tiene licencia configurada */ },
+      error: () => {},
+    });
+    this.adminService.getMyAIUsage().subscribe({
+      next: (usage) => this.aiUsage.set(usage),
+      error: () => {},
     });
     this.loadIntegrationTokens();
+    this.loadMyRequests();
+    this.loadAvailablePackages();
   }
 
   loadIntegrationTokens(): void {
@@ -70,6 +83,55 @@ export class CompanySettingsComponent implements OnInit {
     this.adminService.getMyAgentTokens().subscribe({
       next: (tokens) => { this.agentTokens.set(tokens); this.loadingTokens.set(false); },
       error: ()       => { this.loadingTokens.set(false); },
+    });
+  }
+
+  loadMyRequests(): void {
+    this.loadingRequests.set(true);
+    this.adminService.getMyLicenseRequests().subscribe({
+      next: (reqs) => { this.myRequests.set(reqs); this.loadingRequests.set(false); },
+      error: ()     => { this.loadingRequests.set(false); },
+    });
+  }
+
+  loadAvailablePackages(): void {
+    this.adminService.getAvailablePackages().subscribe({
+      next: (pkgs) => this.availablePackages.set(pkgs),
+      error: () => {},
+    });
+  }
+
+  openRequestDialog(requestType: 'user_seats' | 'module' | 'ai_tokens'): void {
+    const packages = this.availablePackages().filter(p => p.package_type === requestType);
+    if (packages.length === 0) {
+      this.toast.error('No hay paquetes disponibles para este tipo de solicitud.');
+      return;
+    }
+
+    const ref = this.dialog.open(LicenseRequestDialogComponent, {
+      width: '480px',
+      data: { requestType, packages },
+    });
+
+    ref.afterClosed().subscribe((result: { packageId: string; notes: string } | undefined) => {
+      if (!result) return;
+      this.submittingRequest.set(true);
+      this.adminService.createLicenseRequest({
+        package_id:   result.packageId,
+        request_type: requestType,
+        notes:        result.notes,
+      }).subscribe({
+        next: (req) => {
+          this.myRequests.update(reqs => [req, ...reqs]);
+          this.submittingRequest.set(false);
+          this.toast.success('Solicitud enviada. El equipo de ValMen Tech la revisará pronto.');
+        },
+        error: (err) => {
+          const msg = err?.error?.detail ?? err?.error?.[0] ?? 'No se pudo enviar la solicitud.';
+          this.toast.error(msg);
+          this.submittingRequest.set(false);
+        },
+      });
     });
   }
 
@@ -97,7 +159,6 @@ export class CompanySettingsComponent implements OnInit {
       return;
     }
 
-    // Mostrar preview local inmediato
     const reader = new FileReader();
     reader.onload = (e) => this.logoPreview.set(e.target?.result as string);
     reader.readAsDataURL(file);
@@ -108,7 +169,6 @@ export class CompanySettingsComponent implements OnInit {
         this.company.set(updated);
         this.uploading.set(false);
         this.toast.success('Logo actualizado correctamente.');
-        // Limpiar input para permitir re-subir mismo archivo
         input.value = '';
       },
       error: () => {

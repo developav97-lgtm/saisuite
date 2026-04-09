@@ -94,3 +94,12 @@ export interface AIFeedbackCreate {
   mensaje_id: string;
   rating: 1 | -1;
 }
+
+export interface AIUsageSummary {
+  messages_quota: number;
+  messages_used: number;
+  ai_tokens_quota: number;
+  ai_tokens_used: number;
+  total_requests: number;
+  total_tokens_all_time: number;
+}

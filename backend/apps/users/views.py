@@ -483,3 +483,24 @@ class PasswordResetConfirmView(APIView):
             new_password=serializer.validated_data['password'],
         )
         return Response({'detail': 'Contraseña restablecida correctamente.'}, status=status.HTTP_200_OK)
+
+
+class AccountActivateView(APIView):
+    """POST /api/v1/auth/activate/ — activa cuenta de usuario invitado."""
+
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        uid      = request.data.get('uid', '')
+        token    = request.data.get('token', '')
+        password = request.data.get('password', '')
+        if not uid or not token or not password:
+            return Response(
+                {'detail': 'uid, token y password son requeridos.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            UserService.activate_account(uid, token, password)
+        except Exception as exc:
+            return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'detail': 'Cuenta activada correctamente.'}, status=status.HTTP_200_OK)

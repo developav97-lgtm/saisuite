@@ -38,14 +38,19 @@
             }
           </mat-form-field>
 
-          <mat-form-field appearance="outline">
-            <mat-label>Plan</mat-label>
-            <mat-select formControlName="plan">
-              @for (entry of PLAN_LABELS | keyvalue; track entry.key) {
-                <mat-option [value]="entry.key">{{ entry.value }}</mat-option>
+          @if (!isEdit()) {
+            <mat-form-field appearance="outline">
+              <mat-label>Email del administrador</mat-label>
+              <input matInput formControlName="email_admin" type="email" placeholder="admin@empresa.com" />
+              <mat-hint>Se enviará una invitación de activación a este correo</mat-hint>
+              @if (empresaForm.get('email_admin')?.hasError('required') && empresaForm.get('email_admin')?.touched) {
+                <mat-error>El email es requerido</mat-error>
               }
-            </mat-select>
-          </mat-form-field>
+              @if (empresaForm.get('email_admin')?.hasError('email') && empresaForm.get('email_admin')?.touched) {
+                <mat-error>Email inválido</mat-error>
+              }
+            </mat-form-field>
+          }
         </form>
       </div>
     </mat-tab>
@@ -95,12 +100,12 @@
                 <span class="lm-stat-value">{{ license()!.max_users }} ({{ license()!.concurrent_users }} simultáneos)</span>
               </div>
               <div class="lm-stat">
-                <span class="lm-stat-label">Mensajes IA</span>
-                <span class="lm-stat-value">{{ license()!.messages_used | number }}/{{ license()!.messages_quota | number }}</span>
-              </div>
-              <div class="lm-stat">
                 <span class="lm-stat-label">Tokens IA</span>
                 <span class="lm-stat-value">{{ license()!.ai_tokens_used | number }}/{{ license()!.ai_tokens_quota | number }}</span>
+              </div>
+              <div class="lm-stat">
+                <span class="lm-stat-label">Mensajes enviados</span>
+                <span class="lm-stat-value">{{ license()!.messages_used | number }}</span>
               </div>
             </div>
 
@@ -206,7 +211,7 @@
                   @for (p of PERIODS; track p) {
                     <mat-chip-option
                       [selected]="licenciaForm.get('period')?.value === p"
-                      (click)="licenciaForm.get('period')?.setValue(p)">
+                      (click)="setLicensePeriod(p)">
                       {{ PERIOD_LABELS[p] }}
                     </mat-chip-option>
                   }
@@ -237,47 +242,196 @@
                 </mat-select>
               </mat-form-field>
 
-              <!-- Usuarios -->
-              <mat-form-field appearance="outline">
-                <mat-label>Usuarios concurrentes</mat-label>
-                <input matInput type="number" formControlName="concurrent_users" min="1" max="9999" />
-                <mat-hint>Sesiones simultáneas permitidas</mat-hint>
-              </mat-form-field>
-
-              <mat-form-field appearance="outline">
-                <mat-label>Máx. usuarios totales</mat-label>
-                <input matInput type="number" formControlName="max_users" min="1" max="9999" />
-              </mat-form-field>
-
-              <!-- Módulos -->
-              <div class="tf-modules">
-                <p class="tf-modules-label">Módulos incluidos:</p>
-                <div class="tf-modules-grid">
-                  @for (mod of modules; track mod) {
-                    <mat-checkbox [formControlName]="'modules_' + mod">
-                      {{ MODULE_LABELS[mod] }}
-                    </mat-checkbox>
+              <!-- Tipo de renovación -->
+              <div class="lm-period-field">
+                <p class="lm-field-label">Tipo de renovación *</p>
+                <div class="lm-period-chips">
+                  @for (rt of RENEWAL_TYPES; track rt) {
+                    <mat-chip-option
+                      [selected]="licenciaForm.get('renewal_type')?.value === rt"
+                      (click)="licenciaForm.get('renewal_type')?.setValue(rt)">
+                      {{ RENEWAL_TYPE_LABELS[rt] }}
+                    </mat-chip-option>
                   }
                 </div>
               </div>
 
-              <!-- Cuota IA -->
+              <!-- ── Módulos incluidos (desde catálogo de paquetes) ───────── -->
+              <div class="tf-modules-section">
+                <p class="lm-field-label">Módulos incluidos:</p>
+                @if (modulePackages().length === 0) {
+                  <p class="tf-pkg-empty">
+                    <mat-icon>info</mat-icon>
+                    Sin módulos configurados. Ejecuta las migraciones para sembrarlos.
+                  </p>
+                } @else {
+                  <div class="tf-module-cards">
+                    @for (mod of modulePackages(); track mod.id) {
+                      <div class="tf-module-card" [class.tf-module-card--active]="isModuleSelected(mod.module_code)">
+                        <div class="tf-module-card-header">
+                          <mat-icon class="tf-module-icon">{{ MODULE_ICONS[mod.module_code] ?? 'extension' }}</mat-icon>
+                          <span class="tf-module-name">{{ mod.name }}</span>
+                          @if (isModuleSelected(mod.module_code)) {
+                            <mat-chip color="primary" highlighted>Activo</mat-chip>
+                          } @else if (getModuleTrialStatus(mod.module_code)?.trial_activo) {
+                            <mat-chip color="accent" highlighted>Prueba</mat-chip>
+                          } @else if (getModuleTrialStatus(mod.module_code)?.trial_usado) {
+                            <mat-chip>Prueba expirada</mat-chip>
+                          } @else {
+                            <mat-chip>Inactivo</mat-chip>
+                          }
+                        </div>
+                        @if (+mod.price_monthly > 0) {
+                          <p class="tf-module-trial-note">
+                            <mat-icon>sell</mat-icon>
+                            {{ mod.price_monthly | number:'1.0-0' }} COP/mes
+                          </p>
+                        }
+                        @if (getModuleTrialStatus(mod.module_code)?.trial_activo) {
+                          <p class="tf-module-trial-note">
+                            <mat-icon>timer</mat-icon>
+                            {{ getModuleTrialStatus(mod.module_code)?.dias_restantes }} días de prueba restantes
+                          </p>
+                        }
+                        <div class="tf-module-card-actions">
+                          <button mat-stroked-button
+                            [color]="isModuleSelected(mod.module_code) ? 'warn' : 'primary'"
+                            [disabled]="addingPkgId() === mod.id"
+                            (click)="toggleCatalogPkg(mod)">
+                            @if (addingPkgId() === mod.id) {
+                              <mat-icon>hourglass_empty</mat-icon>
+                            } @else {
+                              <mat-icon>{{ isModuleSelected(mod.module_code) ? 'remove' : 'add' }}</mat-icon>
+                            }
+                            {{ isModuleSelected(mod.module_code) ? 'Quitar' : 'Agregar' }}
+                          </button>
+                          @if (!isModuleSelected(mod.module_code) && isEdit() && !getModuleTrialStatus(mod.module_code)?.trial_activo && !getModuleTrialStatus(mod.module_code)?.trial_usado) {
+                            <button mat-stroked-button
+                              [disabled]="activatingTrial() === mod.module_code"
+                              (click)="activarTrial(mod.module_code, mod.name)">
+                              @if (activatingTrial() === mod.module_code) {
+                                <mat-icon>hourglass_empty</mat-icon>
+                              } @else {
+                                <mat-icon>play_circle</mat-icon>
+                              }
+                              Trial 14 días
+                            </button>
+                          }
+                        </div>
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+
+              <!-- ── Paquetes de usuarios ─────────────────────────────────── -->
               <mat-divider class="tf-divider" />
-              <p class="tf-section-label">Cuota mensual IA</p>
+              <div class="tf-modules-section">
+                <p class="lm-field-label">Paquetes de usuarios:</p>
+                @if (userPackages().length === 0) {
+                  <p class="tf-pkg-empty">
+                    <mat-icon>info</mat-icon>
+                    Sin paquetes de usuarios. Crea uno en el
+                    <a routerLink="/admin/packages">Catálogo de Paquetes</a>.
+                  </p>
+                } @else {
+                  <div class="tf-module-cards">
+                    @for (pkg of userPackages(); track pkg.id) {
+                      <div class="tf-module-card" [class.tf-module-card--active]="isPkgAssigned(pkg.id)">
+                        <div class="tf-module-card-header">
+                          <mat-icon class="tf-module-icon">group</mat-icon>
+                          <span class="tf-module-name">{{ pkg.name }}</span>
+                          @if (isPkgAssigned(pkg.id)) {
+                            <mat-chip color="primary" highlighted>Activo</mat-chip>
+                          } @else {
+                            <mat-chip>Inactivo</mat-chip>
+                          }
+                        </div>
+                        <p class="tf-module-trial-note">
+                          <mat-icon>people</mat-icon>
+                          {{ pkg.quantity }} usuarios
+                          @if (+pkg.price_monthly > 0) {
+                            — {{ pkg.price_monthly | number:'1.0-0' }} COP/mes
+                          }
+                        </p>
+                        <div class="tf-module-card-actions">
+                          <button mat-stroked-button
+                            [color]="isPkgAssigned(pkg.id) ? 'warn' : 'primary'"
+                            [disabled]="addingPkgId() === pkg.id"
+                            (click)="toggleCatalogPkg(pkg)">
+                            @if (addingPkgId() === pkg.id) {
+                              <mat-icon>hourglass_empty</mat-icon>
+                            } @else {
+                              <mat-icon>{{ isPkgAssigned(pkg.id) ? 'remove' : 'add' }}</mat-icon>
+                            }
+                            {{ isPkgAssigned(pkg.id) ? 'Quitar' : 'Agregar' }}
+                          </button>
+                        </div>
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
 
-              <mat-form-field appearance="outline">
-                <mat-label>Mensajes IA / mes</mat-label>
-                <input matInput inputmode="numeric"
-                  [value]="formatMiles(licenciaForm.get('messages_quota')?.value)"
-                  (input)="onMilesInput($event, 'messages_quota')" />
-              </mat-form-field>
+              <!-- ── Paquetes de IA ───────────────────────────────────────── -->
+              <mat-divider class="tf-divider" />
+              <div class="tf-modules-section">
+                <p class="lm-field-label">Paquetes de IA:</p>
+                @if (aiPackages().length === 0) {
+                  <p class="tf-pkg-empty">
+                    <mat-icon>info</mat-icon>
+                    Sin paquetes de IA. Crea uno en el
+                    <a routerLink="/admin/packages">Catálogo de Paquetes</a>.
+                  </p>
+                } @else {
+                  <div class="tf-module-cards">
+                    @for (pkg of aiPackages(); track pkg.id) {
+                      <div class="tf-module-card" [class.tf-module-card--active]="isPkgAssigned(pkg.id)">
+                        <div class="tf-module-card-header">
+                          <mat-icon class="tf-module-icon">smart_toy</mat-icon>
+                          <span class="tf-module-name">{{ pkg.name }}</span>
+                          @if (isPkgAssigned(pkg.id)) {
+                            <mat-chip color="primary" highlighted>Activo</mat-chip>
+                          } @else {
+                            <mat-chip>Inactivo</mat-chip>
+                          }
+                        </div>
+                        <p class="tf-module-trial-note">
+                          <mat-icon>token</mat-icon>
+                          {{ pkg.quantity | number:'1.0-0' }} tokens
+                          @if (+pkg.price_monthly > 0) {
+                            — {{ pkg.price_monthly | number:'1.0-0' }} COP/mes
+                          }
+                        </p>
+                        <div class="tf-module-card-actions">
+                          <button mat-stroked-button
+                            [color]="isPkgAssigned(pkg.id) ? 'warn' : 'primary'"
+                            [disabled]="addingPkgId() === pkg.id"
+                            (click)="toggleCatalogPkg(pkg)">
+                            @if (addingPkgId() === pkg.id) {
+                              <mat-icon>hourglass_empty</mat-icon>
+                            } @else {
+                              <mat-icon>{{ isPkgAssigned(pkg.id) ? 'remove' : 'add' }}</mat-icon>
+                            }
+                            {{ isPkgAssigned(pkg.id) ? 'Quitar' : 'Agregar' }}
+                          </button>
+                        </div>
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
 
-              <mat-form-field appearance="outline">
-                <mat-label>Tokens IA / mes</mat-label>
-                <input matInput inputmode="numeric"
-                  [value]="formatMiles(licenciaForm.get('ai_tokens_quota')?.value)"
-                  (input)="onMilesInput($event, 'ai_tokens_quota')" />
-              </mat-form-field>
+              <!-- ── Total de licencia ────────────────────────────────────── -->
+              @if (licenseTotal() > 0) {
+                <div class="lm-license-total tf-full-width">
+                  <span class="lm-total-label">Total licencia</span>
+                  <strong class="lm-total-value">
+                    {{ licenseTotal() | number:'1.0-0' }} COP /
+                    {{ currentPeriod() === 'annual' ? 'año' : 'mes' }}
+                  </strong>
+                </div>
+              }
 
               <mat-form-field appearance="outline" class="tf-full-width">
                 <mat-label>Notas internas</mat-label>
@@ -386,11 +540,6 @@
                     <td mat-cell *matCellDef="let s" class="tf-snap-month">{{ snapshotMonth(s) }}</td>
                   </ng-container>
 
-                  <ng-container matColumnDef="plan">
-                    <th mat-header-cell *matHeaderCellDef>Plan</th>
-                    <td mat-cell *matCellDef="let s">{{ s.snapshot['plan'] ?? '—' }}</td>
-                  </ng-container>
-
                   <ng-container matColumnDef="status">
                     <th mat-header-cell *matHeaderCellDef>Estado</th>
                     <td mat-cell *matCellDef="let s">{{ STATUS_LABELS[s.snapshot['status']] ?? s.snapshot['status'] }}</td>
@@ -430,43 +579,36 @@
             }
 
             @if (aiUsage()) {
-              <!-- Resumen de cuotas -->
+              <!-- Resumen de uso IA -->
               <div class="tf-ai-grid">
 
-                <div class="tf-ai-card">
-                  <p class="tf-ai-label">Mensajes IA del mes</p>
+                <!-- Tokens: barra de consumo vs cuota -->
+                <div class="tf-ai-card tf-ai-card--wide">
+                  <p class="tf-ai-label">Tokens IA consumidos este mes</p>
                   <p class="tf-ai-value">
-                    {{ aiUsage()!.messages_used | number }} / {{ aiUsage()!.messages_quota | number }}
-                  </p>
-                  <mat-progress-bar
-                    [mode]="'determinate'"
-                    [value]="aiUsage()!.messages_pct"
-                    [color]="pctColor(aiUsage()!.messages_pct)">
-                  </mat-progress-bar>
-                  <p class="tf-ai-pct">{{ aiUsage()!.messages_pct | number:'1.0-0' }}% usado</p>
-                </div>
-
-                <div class="tf-ai-card">
-                  <p class="tf-ai-label">Tokens IA del mes</p>
-                  <p class="tf-ai-value">
-                    {{ aiUsage()!.tokens_used | number }} / {{ aiUsage()!.tokens_quota | number }}
+                    {{ aiUsage()!.tokens_used | number:'1.0-0' }}
+                    <span class="tf-ai-quota">/ {{ aiUsage()!.tokens_quota | number:'1.0-0' }}</span>
                   </p>
                   <mat-progress-bar
                     [mode]="'determinate'"
                     [value]="aiUsage()!.tokens_pct"
                     [color]="pctColor(aiUsage()!.tokens_pct)">
                   </mat-progress-bar>
-                  <p class="tf-ai-pct">{{ aiUsage()!.tokens_pct | number:'1.0-0' }}% usado</p>
+                  <p class="tf-ai-pct">{{ aiUsage()!.tokens_pct | number:'1.0-0' }}% de la cuota utilizado</p>
                 </div>
 
+                <!-- Mensajes: solo contador informativo -->
                 <div class="tf-ai-card">
-                  <p class="tf-ai-label">Total solicitudes</p>
-                  <p class="tf-ai-value">{{ aiUsage()!.total_requests | number }}</p>
+                  <p class="tf-ai-label">Mensajes enviados este mes</p>
+                  <p class="tf-ai-value">{{ aiUsage()!.messages_used | number:'1.0-0' }}</p>
+                  <p class="tf-ai-pct">Conversaciones iniciadas al bot</p>
                 </div>
 
+                <!-- Solicitudes totales -->
                 <div class="tf-ai-card">
-                  <p class="tf-ai-label">Total tokens</p>
-                  <p class="tf-ai-value">{{ aiUsage()!.total_tokens | number }}</p>
+                  <p class="tf-ai-label">Solicitudes al bot</p>
+                  <p class="tf-ai-value">{{ aiUsage()!.total_requests | number:'1.0-0' }}</p>
+                  <p class="tf-ai-pct">Peticiones procesadas este mes</p>
                 </div>
 
               </div>

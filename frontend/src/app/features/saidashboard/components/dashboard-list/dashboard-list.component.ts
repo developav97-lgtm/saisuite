@@ -25,7 +25,8 @@ import { DashboardService } from '../../services/dashboard.service';
 import { TrialService } from '../../services/trial.service';
 import { DashboardListItem } from '../../models/dashboard.model';
 import { TrialStatus } from '../../models/trial.model';
-import { TrialBannerComponent } from '../trial-banner/trial-banner.component';
+import { TrialBannerComponent } from '../../../../shared/components/trial-banner/trial-banner.component';
+import { ModuleTrialStatus } from '../../../admin/models/tenant.model';
 import { ConfirmDialogComponent } from '../../../../shared/components/confirm-dialog/confirm-dialog.component';
 import { ToastService } from '../../../../core/services/toast.service';
 
@@ -64,6 +65,20 @@ export class DashboardListComponent implements OnInit {
   readonly dashboards = signal<DashboardListItem[]>([]);
   readonly sharedDashboards = signal<DashboardListItem[]>([]);
   readonly trialStatus = signal<TrialStatus | null>(null);
+
+  /** Mapea TrialStatus → ModuleTrialStatus para el banner compartido */
+  readonly trialStatusMapped = computed<ModuleTrialStatus | null>(() => {
+    const s = this.trialStatus();
+    if (!s) return null;
+    return {
+      tiene_acceso: s.tiene_acceso,
+      tipo_acceso:  s.tipo_acceso === 'licensed' ? 'license' : s.tipo_acceso,
+      trial_activo: s.tipo_acceso === 'trial',
+      trial_usado:  false,
+      dias_restantes: s.dias_restantes,
+      expira_en:    s.expira_en,
+    } satisfies ModuleTrialStatus;
+  });
   readonly searchText = signal('');
 
   readonly viewMode = signal<'list' | 'cards'>(

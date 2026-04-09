@@ -206,6 +206,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
           items: [
             { label: 'Tenants',           icon: 'domain',               route: '/admin/tenants' },
             { label: 'Paquetes',          icon: 'inventory_2',          route: '/admin/packages' },
+            { label: 'Solicitudes',       icon: 'mark_email_unread',    route: '/admin/license-requests' },
             { label: 'Usuarios internos', icon: 'supervised_user_circle', route: '/admin/usuarios-internos' },
             { label: 'Base de Conocimiento IA', icon: 'auto_awesome',   route: '/admin/knowledge-base' },
           ],

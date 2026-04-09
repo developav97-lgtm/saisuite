@@ -11,7 +11,7 @@ from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
 
 from .models import Company, CompanyLicense, LicensePackage, LicensePackageItem, AgentToken
-from .permissions import IsSuperAdmin
+from .permissions import IsSuperAdmin, IsCompanyAdmin
 from .serializers import (
     CompanyListSerializer,
     CompanyDetailSerializer,
@@ -33,8 +33,16 @@ from .serializers import (
     AIUsageSummarySerializer,
     AIUsagePerUserSerializer,
     AIUsageLogSerializer,
+    ModuleTrialSerializer,
+    ModuleTrialStatusSerializer,
+    LicenseTotalCalculatorSerializer,
+    LicenseRequestSerializer,
+    LicenseRequestWriteSerializer,
+    LicenseRequestReviewSerializer,
 )
-from .services import CompanyService, LicenseService, RenewalService, PackageService, AIUsageService
+from .services import (CompanyService, LicenseService, RenewalService, PackageService,
+                        AIUsageService, ModuleTrialService, LicensePriceCalculatorService,
+                        LicenseRequestService)
 
 logger = logging.getLogger(__name__)
 
@@ -256,35 +264,46 @@ class AdminTenantListView(APIView):
         return Response(TenantWithLicenseSerializer(companies, many=True).data)
 
     def post(self, request):
+        from apps.users.services import UserService as _UserService
+
         serializer = TenantCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         d = serializer.validated_data
 
         company = CompanyService.create_company({
-            'name': d['name'],
-            'nit':  d['nit'],
-            'plan': d['plan'],
+            'name':            d['name'],
+            'nit':             d['nit'],
             'saiopen_enabled': d.get('saiopen_enabled', False),
         })
 
         license_data = {
             'company':          company,
-            'plan':             d['plan'],
             'status':           d['license_status'],
+            'renewal_type':     d.get('renewal_type', 'manual'),
             'starts_at':        d['license_starts_at'],
             'period':           d.get('license_period', 'trial'),
             'concurrent_users': d.get('concurrent_users', 1),
             'max_users':        d.get('max_users', 5),
             'modules_included': d.get('modules_included', []),
-            'messages_quota':   d.get('messages_quota', 0),
             'ai_tokens_quota':  d.get('ai_tokens_quota', 0),
             'notes':            d.get('license_notes', ''),
         }
-        # expires_at is optional override; if provided, use it; otherwise calculated from period
         if d.get('license_expires_at'):
             license_data['expires_at'] = d['license_expires_at']
 
         LicenseService.create_license_with_history(license_data, created_by=request.user)
+
+        # Crear usuario admin e invitar por correo
+        email_admin = d.get('email_admin', '')
+        if email_admin:
+            try:
+                _UserService.invite_company_admin(company, email_admin)
+            except Exception as exc:
+                import logging as _logging
+                _logging.getLogger(__name__).warning(
+                    'invite_admin_failed',
+                    extra={'email': email_admin, 'error': str(exc)},
+                )
 
         out = TenantWithLicenseSerializer(
             Company.objects.prefetch_related('license', 'modules').get(id=company.id)
@@ -688,3 +707,210 @@ class MyAgentTokensView(APIView):
             for t in tokens
         ]
         return Response(data)
+
+
+# ── Trials de módulo (genérico) ───────────────────────────────────────────────
+
+class ModuleTrialStatusView(APIView):
+    """
+    GET /api/v1/companies/modules/{module_code}/trial/status/
+    Retorna el estado de acceso de la empresa del usuario al módulo indicado.
+    Solo company_admin puede consultar.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, module_code: str):
+        company = getattr(request.user, 'effective_company', None)
+        if not company:
+            return Response({'detail': 'Sin empresa asignada.'}, status=status.HTTP_404_NOT_FOUND)
+
+        result = ModuleTrialService.get_status(company, module_code)
+        return Response(ModuleTrialStatusSerializer(result).data)
+
+
+class ModuleTrialActivateView(APIView):
+    """
+    POST /api/v1/companies/modules/{module_code}/trial/activate/
+    Activa un trial de 14 días para el módulo indicado.
+    Solo company_admin puede activar.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, module_code: str):
+        from apps.users.models import User
+        user = request.user
+
+        # Verificar rol company_admin
+        if getattr(user, 'role', None) not in ('company_admin', None) and not getattr(user, 'is_superuser', False):
+            # Permitir también superadmins y company_admin
+            if getattr(user, 'role', None) != 'company_admin' and not user.is_superuser:
+                return Response(
+                    {'detail': 'Solo el administrador de la empresa puede activar trials.'},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
+        company = getattr(user, 'effective_company', None)
+        if not company:
+            return Response({'detail': 'Sin empresa asignada.'}, status=status.HTTP_404_NOT_FOUND)
+
+        trial = ModuleTrialService.activate_trial(company, module_code, activated_by=user)
+        return Response(ModuleTrialSerializer(trial).data, status=status.HTTP_201_CREATED)
+
+
+class AdminModuleTrialActivateView(APIView):
+    """
+    POST /api/v1/admin/tenants/{pk}/modules/{module_code}/trial/activate/
+    Activa trial desde el panel superadmin para una empresa específica.
+    """
+    permission_classes = [IsSuperAdmin]
+
+    def post(self, request, pk, module_code: str):
+        company = CompanyService.get_company(str(pk))
+        trial = ModuleTrialService.activate_trial(company, module_code, activated_by=request.user)
+        return Response(ModuleTrialSerializer(trial).data, status=status.HTTP_201_CREATED)
+
+
+class AdminModuleTrialStatusView(APIView):
+    """
+    GET /api/v1/admin/tenants/{pk}/modules/{module_code}/trial/status/
+    Estado de trial de un módulo para un tenant desde el panel superadmin.
+    """
+    permission_classes = [IsSuperAdmin]
+
+    def get(self, request, pk, module_code: str):
+        company = CompanyService.get_company(str(pk))
+        result = ModuleTrialService.get_status(company, module_code)
+        return Response(ModuleTrialStatusSerializer(result).data)
+
+
+# ── Calculadora de precio de licencia ────────────────────────────────────────
+
+class AdminLicensePriceCalculatorView(APIView):
+    """
+    POST /api/v1/admin/license/calculate-total/
+    Calcula el precio total de una licencia según paquetes seleccionados.
+    """
+    permission_classes = [IsSuperAdmin]
+
+    def post(self, request):
+        serializer = LicenseTotalCalculatorSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        result = LicensePriceCalculatorService.calculate(
+            lines=data['lines'],
+            period=data.get('period', 'monthly'),
+        )
+        return Response(result)
+
+
+class AdminExpiringLicensesView(APIView):
+    """
+    GET /api/v1/admin/licenses/expiring-soon/?days=5
+    Retorna licencias que vencen en los próximos N días.
+    Usado por N8N para auto-renovación programada.
+    Solo superadmin.
+    """
+
+    permission_classes = [IsSuperAdmin]
+
+    def get(self, request):
+        days = int(request.query_params.get('days', 5))
+        expiring = LicenseService.get_expiring_soon(days=days)
+        data = [
+            {
+                'tenant_id':    str(lic.company.id),
+                'tenant_name':  lic.company.name,
+                'license_id':   str(lic.id),
+                'expires_at':   lic.expires_at.isoformat() if lic.expires_at else None,
+                'renewal_type': lic.renewal_type,
+                'status':       lic.status,
+                'period':       lic.period,
+            }
+            for lic in expiring
+        ]
+        return Response(data)
+
+
+# ── Solicitudes de licencia (company_admin) ───────────────────────────────────
+
+class LicenseRequestListCreateView(APIView):
+    """
+    GET  /api/v1/companies/license-requests/   — lista las solicitudes de la empresa
+    POST /api/v1/companies/license-requests/   — crea una solicitud nueva
+    Solo company_admin.
+    """
+
+    permission_classes = [IsCompanyAdmin]
+
+    def get(self, request):
+        qs = LicenseRequestService.list_for_company(request.user.company)
+        return Response(LicenseRequestSerializer(qs, many=True).data)
+
+    def post(self, request):
+        serializer = LicenseRequestWriteSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        obj = LicenseRequestService.create_request(
+            company=request.user.company,
+            created_by=request.user,
+            **serializer.validated_data,
+        )
+        return Response(LicenseRequestSerializer(obj).data, status=201)
+
+
+# ── Solicitudes de licencia (superadmin) ─────────────────────────────────────
+
+class AdminLicenseRequestListView(APIView):
+    """
+    GET /api/v1/admin/license-requests/?status=pending
+    Lista todas las solicitudes. Solo superadmin.
+    """
+
+    permission_classes = [IsSuperAdmin]
+
+    def get(self, request):
+        status_filter = request.query_params.get('status')
+        qs = LicenseRequestService.list_all(status_filter=status_filter)
+        return Response(LicenseRequestSerializer(qs, many=True).data)
+
+
+class AdminLicenseRequestApproveView(APIView):
+    """
+    POST /api/v1/admin/license-requests/{id}/approve/
+    Aprueba la solicitud y aplica el paquete. Solo superadmin.
+    """
+
+    permission_classes = [IsSuperAdmin]
+
+    def post(self, request, pk):
+        from .models import LicenseRequest as LR
+        from django.shortcuts import get_object_or_404
+        req = get_object_or_404(LR, id=pk)
+        serializer = LicenseRequestReviewSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        obj = LicenseRequestService.approve(
+            req=req,
+            reviewed_by=request.user,
+        )
+        return Response(LicenseRequestSerializer(obj).data)
+
+
+class AdminLicenseRequestRejectView(APIView):
+    """
+    POST /api/v1/admin/license-requests/{id}/reject/
+    Rechaza la solicitud. Solo superadmin.
+    """
+
+    permission_classes = [IsSuperAdmin]
+
+    def post(self, request, pk):
+        from .models import LicenseRequest as LR
+        from django.shortcuts import get_object_or_404
+        req = get_object_or_404(LR, id=pk)
+        serializer = LicenseRequestReviewSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        obj = LicenseRequestService.reject(
+            req=req,
+            reviewed_by=request.user,
+            review_notes=serializer.validated_data.get('review_notes', ''),
+        )
+        return Response(LicenseRequestSerializer(obj).data)

@@ -1,0 +1,312 @@
+{
+  "name": "SaiSuite \u2014 Auto-renovaci\u00f3n licencias (5 d\u00edas antes)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 6 * * *"
+            }
+          ]
+        }
+      },
+      "id": "cron-trigger",
+      "name": "Cron \u2014 6 AM diario",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.SAISUITE_API_URL }}/api/v1/admin/tenants/licenses/expiring-soon/",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "days",
+              "value": "5"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "get-expiring",
+      "name": "Obtener licencias por vencer",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        460,
+        300
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "saisuite-api-key",
+          "name": "SaiSuite API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "=",
+        "include": "allOtherFields"
+      },
+      "id": "split-items",
+      "name": "Iterar por licencia",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        680,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-auto",
+              "leftValue": "={{ $json.renewal_type }}",
+              "rightValue": "auto",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-renewal-type",
+      "name": "\u00bfRenovaci\u00f3n autom\u00e1tica?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        900,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.SAISUITE_API_URL }}/api/v1/admin/tenants/{{ $json.tenant_id }}/license/renewal/",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "method": "POST",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "period",
+              "value": "={{ $json.period }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "create-renewal-auto",
+      "name": "Crear LicenseRenewal (auto)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1120,
+        200
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "saisuite-api-key",
+          "name": "SaiSuite API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.SAISUITE_API_URL }}/api/v1/admin/tenants/{{ $json.tenant_id }}/license/renewal/",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "method": "POST",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "period",
+              "value": "={{ $json.period }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "create-renewal-manual",
+      "name": "Crear LicenseRenewal (manual \u2014 solo notifica)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1120,
+        400
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "saisuite-api-key",
+          "name": "SaiSuite API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.SAISUITE_EMAIL_WEBHOOK_URL }}",
+        "method": "POST",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "tipo",
+              "value": "licencia_por_vencer"
+            },
+            {
+              "name": "tenant_id",
+              "value": "={{ $json.tenant_id }}"
+            },
+            {
+              "name": "tenant_name",
+              "value": "={{ $json.tenant_name }}"
+            },
+            {
+              "name": "expires_at",
+              "value": "={{ $json.expires_at }}"
+            },
+            {
+              "name": "renewal_type",
+              "value": "={{ $json.renewal_type }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "notify-manual",
+      "name": "Notificar administrador (manual)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1340,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "status",
+              "value": "renewal_created_auto"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "log-auto",
+      "name": "Log auto-renovaci\u00f3n creada",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [
+        1340,
+        200
+      ]
+    }
+  ],
+  "connections": {
+    "Cron \u2014 6 AM diario": {
+      "main": [
+        [
+          {
+            "node": "Obtener licencias por vencer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Obtener licencias por vencer": {
+      "main": [
+        [
+          {
+            "node": "Iterar por licencia",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Iterar por licencia": {
+      "main": [
+        [
+          {
+            "node": "\u00bfRenovaci\u00f3n autom\u00e1tica?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "\u00bfRenovaci\u00f3n autom\u00e1tica?": {
+      "main": [
+        [
+          {
+            "node": "Crear LicenseRenewal (auto)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Crear LicenseRenewal (manual \u2014 solo notifica)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Crear LicenseRenewal (auto)": {
+      "main": [
+        [
+          {
+            "node": "Log auto-renovaci\u00f3n creada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Crear LicenseRenewal (manual \u2014 solo notifica)": {
+      "main": [
+        [
+          {
+            "node": "Notificar administrador (manual)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "description": "Revisa diariamente (6 AM) las licencias que vencen en 5 d\u00edas. Si renewal_type=auto crea LicenseRenewal autom\u00e1ticamente. Si es manual, solo notifica al administrador de la empresa. El admin debe confirmar el pago desde el panel."
+  },
+  "pinData": {},
+  "id": "810333fd"
+}

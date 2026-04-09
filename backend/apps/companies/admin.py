@@ -3,16 +3,16 @@ from django.contrib import admin
 from .models import (
     Company, CompanyModule, CompanyLicense, LicenseHistory,
     LicensePayment, LicenseRenewal, LicensePackage,
-    LicensePackageItem, MonthlyLicenseSnapshot, AIUsageLog, AgentToken,
+    LicensePackageItem, MonthlyLicenseSnapshot, AIUsageLog, AgentToken, ModuleTrial,
 )
 
 
 @admin.register(Company)
 class CompanyAdmin(admin.ModelAdmin):
-    list_display  = ['name', 'nit', 'plan', 'is_active', 'created_at']
-    list_filter   = ['plan', 'is_active']
+    list_display  = ['name', 'nit', 'is_active', 'created_at']
+    list_filter   = ['is_active']
     search_fields = ['name', 'nit']
-    fields        = ['name', 'nit', 'plan', 'logo', 'saiopen_enabled', 'saiopen_db_path', 'is_active']
+    fields        = ['name', 'nit', 'logo', 'saiopen_enabled', 'saiopen_db_path', 'is_active']
 
 
 @admin.register(CompanyModule)
@@ -59,3 +59,11 @@ class AgentTokenAdmin(admin.ModelAdmin):
     list_filter    = ['is_active', 'company']
     search_fields  = ['company__name', 'label']
     readonly_fields = ['id', 'token', 'created_at', 'last_used']
+
+
+@admin.register(ModuleTrial)
+class ModuleTrialAdmin(admin.ModelAdmin):
+    list_display   = ['company', 'module_code', 'esta_activo', 'dias_restantes', 'expira_en', 'iniciado_en']
+    list_filter    = ['module_code']
+    search_fields  = ['company__name', 'module_code']
+    readonly_fields = ['id', 'iniciado_en']

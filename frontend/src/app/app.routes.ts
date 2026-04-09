@@ -88,6 +88,14 @@ export const routes: Routes = [
                 loadChildren: () =>
                     import('./features/admin/admin.routes').then(m => m.ADMIN_ROUTES),
             },
+                    // Módulo bloqueado (sin licencia / sin trial)
+            {
+                path: 'acceso-modulo',
+                loadComponent: () =>
+                    import('./shared/components/module-locked/module-locked.component').then(
+                        m => m.ModuleLockedComponent
+                    ),
+            },
             // Redirect por defecto al dashboard
             { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
         ],

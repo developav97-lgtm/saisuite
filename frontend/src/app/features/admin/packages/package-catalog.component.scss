@@ -119,6 +119,65 @@
   text-align: right !important;
 }
 
+// ── Tabs ──────────────────────────────────────────────────────────────────
+
+.pc-tab-icon {
+  font-size: 1.1rem;
+  width: 1.1rem;
+  height: 1.1rem;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.pc-tab-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 10px;
+  background: var(--mat-sys-surface-container, #e0e0e0);
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0 6px;
+  margin-left: 8px;
+}
+
+.pc-tab-content {
+  padding: 20px 0;
+}
+
+.pc-tab-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.pc-tab-hint {
+  font-size: 0.875rem;
+  color: var(--sc-text-secondary);
+  margin: 0;
+}
+
+.pc-module-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--mat-sys-on-surface-variant);
+
+  mat-icon {
+    font-size: 1.1rem;
+    width: 1.1rem;
+    height: 1.1rem;
+  }
+}
+
 // ── Mobile ────────────────────────────────────────────────────────────────
 
 @media (max-width: 768px) {
@@ -129,14 +188,24 @@
   .pc-header {
     flex-direction: column;
     align-items: stretch;
+  }
 
-    button {
-      width: 100%;
-    }
+  .pc-tab-actions {
+    flex-direction: column;
+    align-items: stretch;
+
+    button { width: 100%; }
   }
 
   button.mat-icon-button {
     min-width: 44px;
     min-height: 44px;
+  }
+
+  // Tabs con scroll horizontal en mobile
+  ::ng-deep .mat-mdc-tab-labels {
+    overflow-x: auto !important;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
   }
 }

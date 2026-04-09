@@ -130,14 +130,7 @@ describe('CompanySettingsComponent', () => {
 
   // ── Labels y estados ──────────────────────────────────────────────────────
 
-  it('planLabels contiene las traducciones correctas', async () => {
-    await setup();
-    expect(component.planLabels['starter']).toBe('Starter');
-    expect(component.planLabels['professional']).toBe('Professional');
-    expect(component.planLabels['enterprise']).toBe('Enterprise');
-  });
-
-  it('licenseStatusLabels contiene todos los estados', async () => {
+it('licenseStatusLabels contiene todos los estados', async () => {
     await setup();
     expect(component.licenseStatusLabels['active']).toBe('Activa');
     expect(component.licenseStatusLabels['expired']).toBe('Expirada');

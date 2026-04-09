@@ -1,5 +1,5 @@
 {
-  "name": "CFO Virtual — SaiDashboard",
+  "name": "CFO Virtual \u2014 SaiDashboard",
   "nodes": [
     {
       "parameters": {
@@ -12,7 +12,10 @@
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [240, 300],
+      "position": [
+        240,
+        300
+      ],
       "webhookId": "cfo-virtual"
     },
     {
@@ -22,20 +25,29 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "=Bearer {{ $env.OPENAI_API_KEY }}" },
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.OPENAI_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"model\": \"gpt-4o-mini\",\n  \"max_tokens\": 1024,\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"Eres el CFO Virtual de {{ $json.body.company_name }}, un asistente financiero experto en contabilidad colombiana (PUC) y análisis de PyMEs. Responde en español, de forma concisa y práctica. Usa los datos financieros del contexto para dar respuestas basadas en datos reales. Si no hay datos suficientes, indícalo claramente.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"{{ $json.body.context_str }}\\n\\nPregunta: {{ $json.body.question }}\"\n    }\n  ]\n}",
+        "jsonBody": "={\n  \"model\": \"gpt-4o-mini\",\n  \"max_tokens\": 1024,\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"Eres el CFO Virtual de {{ $json.body.company_name }}, un asistente financiero experto en contabilidad colombiana (PUC) y an\u00e1lisis de PyMEs. Responde en espa\u00f1ol, de forma concisa y pr\u00e1ctica. Usa los datos financieros del contexto para dar respuestas basadas en datos reales. Si no hay datos suficientes, ind\u00edcalo claramente.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"{{ $json.body.context_str }}\\n\\nPregunta: {{ $json.body.question }}\"\n    }\n  ]\n}",
         "options": {}
       },
       "id": "openai-api",
       "name": "OpenAI API",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [480, 300]
+      "position": [
+        480,
+        300
+      ]
     },
     {
       "parameters": {
@@ -47,12 +59,15 @@
       "name": "Respond to Webhook",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [720, 300]
+      "position": [
+        720,
+        300
+      ]
     },
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ JSON.stringify({ response: 'Lo siento, ocurrió un error procesando tu consulta. Intenta de nuevo.' }) }}",
+        "responseBody": "={{ JSON.stringify({ response: 'Lo siento, ocurri\u00f3 un error procesando tu consulta. Intenta de nuevo.' }) }}",
         "options": {
           "responseCode": 200
         }
@@ -61,21 +76,42 @@
       "name": "Respond Error",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [720, 480]
+      "position": [
+        720,
+        480
+      ]
     }
   ],
   "connections": {
     "Webhook": {
       "main": [
-        [{ "node": "OpenAI API", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "OpenAI API",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "OpenAI API": {
       "main": [
-        [{ "node": "Respond to Webhook", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ],
       "error": [
-        [{ "node": "Respond Error", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Respond Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     }
   },
@@ -83,5 +119,5 @@
   "settings": {
     "executionOrder": "v1"
   },
-  "tags": ["saidashboard", "cfo-virtual", "ai", "openai"]
+  "id": "4752f503"
 }

@@ -107,8 +107,11 @@ class CompanySummarySerializer(serializers.Serializer):
     id      = serializers.UUIDField(read_only=True)
     name    = serializers.CharField(read_only=True)
     nit     = serializers.CharField(read_only=True)
-    plan    = serializers.CharField(read_only=True)
+    plan    = serializers.SerializerMethodField()
     license = serializers.SerializerMethodField()
+
+    def get_plan(self, obj) -> str | None:
+        return None
 
     def get_license(self, obj) -> dict | None:
         try:
@@ -150,7 +153,7 @@ class UserMeSerializer(serializers.ModelSerializer):
         ec = obj.effective_company
         if not ec:
             return None
-        result = {'id': str(ec.id), 'name': ec.name, 'nit': ec.nit, 'plan': ec.plan}
+        result = {'id': str(ec.id), 'name': ec.name, 'nit': ec.nit, 'plan': None}
         try:
             lic = ec.license
             result['license'] = {
@@ -185,8 +188,11 @@ class UserCompanySummarySerializer(serializers.Serializer):
     id   = serializers.UUIDField(source='company.id', read_only=True)
     name = serializers.CharField(source='company.name', read_only=True)
     nit  = serializers.CharField(source='company.nit', read_only=True)
-    plan = serializers.CharField(source='company.plan', read_only=True)
+    plan = serializers.SerializerMethodField()
     role = serializers.CharField(read_only=True)
+
+    def get_plan(self, obj) -> str | None:
+        return None
 
 
 # ---------------------------------------------------------------------------
@@ -199,10 +205,6 @@ class RegisterSerializer(serializers.Serializer):
     # Datos empresa
     company_name = serializers.CharField(max_length=255)
     company_nit  = serializers.CharField(max_length=20)
-    company_plan = serializers.ChoiceField(
-        choices=['starter', 'professional', 'enterprise'],
-        default='starter',
-    )
 
     # Datos usuario
     email      = serializers.EmailField()

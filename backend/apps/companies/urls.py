@@ -33,6 +33,18 @@ from .views import (
     AdminAIUsageView,
     # Tokens del agente (company_admin)
     MyAgentTokensView,
+    # Trials de módulo
+    ModuleTrialStatusView,
+    ModuleTrialActivateView,
+    AdminModuleTrialActivateView,
+    AdminModuleTrialStatusView,
+    # Calculadora de precio
+    AdminLicensePriceCalculatorView,
+    # Solicitudes de licencia
+    LicenseRequestListCreateView,
+    AdminLicenseRequestListView,
+    AdminLicenseRequestApproveView,
+    AdminLicenseRequestRejectView,
 )
 
 router = DefaultRouter()
@@ -49,6 +61,11 @@ urlpatterns = [
     path('licenses/me/ai-usage/',           AIUsageMeView.as_view(),           name='ai-usage-me'),
     path('licenses/me/ai-usage/by-user/',   AIUsageByUserView.as_view(),       name='ai-usage-by-user'),
     path('agent-tokens/me/',               MyAgentTokensView.as_view(),       name='agent-tokens-me'),
+    # Trials de módulo (genérico — para company_admin)
+    path('modules/<str:module_code>/trial/status/',   ModuleTrialStatusView.as_view(),   name='module-trial-status'),
+    path('modules/<str:module_code>/trial/activate/', ModuleTrialActivateView.as_view(), name='module-trial-activate'),
+    # Solicitudes de licencia (company_admin)
+    path('license-requests/', LicenseRequestListCreateView.as_view(), name='license-requests'),
     path('licenses/<uuid:pk>/',             LicenseDetailView.as_view(),       name='license-detail'),
     path('licenses/<uuid:pk>/payments/',    LicensePaymentCreateView.as_view(), name='license-payment-create'),
     path('', include(router.urls)),
@@ -69,10 +86,18 @@ admin_tenant_urlpatterns = [
     path('<uuid:pk>/license/packages/<uuid:item_pk>/', AdminLicensePackageRemoveView.as_view(), name='admin-license-package-remove'),
     path('<uuid:pk>/license/snapshots/',       AdminLicenseSnapshotsView.as_view(), name='admin-license-snapshots'),
     path('<uuid:pk>/license/ai-usage/',        AdminAIUsageView.as_view(), name='admin-ai-usage'),
+    # Trials de módulo (superadmin)
+    path('<uuid:pk>/modules/<str:module_code>/trial/status/',   AdminModuleTrialStatusView.as_view(),   name='admin-module-trial-status'),
+    path('<uuid:pk>/modules/<str:module_code>/trial/activate/', AdminModuleTrialActivateView.as_view(), name='admin-module-trial-activate'),
 ]
 
 # Paquetes globales (bajo /api/v1/admin/packages/)
 admin_package_urlpatterns = [
     path('',            AdminPackageListView.as_view(),   name='admin-package-list'),
     path('<uuid:pk>/',  AdminPackageDetailView.as_view(), name='admin-package-detail'),
+]
+
+# Calculadora de licencia (bajo /api/v1/admin/license/)
+admin_license_urlpatterns = [
+    path('calculate-total/', AdminLicensePriceCalculatorView.as_view(), name='admin-license-calculate-total'),
 ]

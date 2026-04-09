@@ -29,10 +29,11 @@ import {
 } from '../../models/dashboard.model';
 import { CardDataResponse, ReportFilter } from '../../models/report-filter.model';
 import { TrialStatus } from '../../models/trial.model';
+import { ModuleTrialStatus } from '../../../admin/models/tenant.model';
 import { ChartCardComponent } from '../chart-card/chart-card.component';
 import { KpiCardComponent } from '../kpi-card/kpi-card.component';
 import { FilterPanelComponent } from '../filter-panel/filter-panel.component';
-import { TrialBannerComponent } from '../trial-banner/trial-banner.component';
+import { TrialBannerComponent } from '../../../../shared/components/trial-banner/trial-banner.component';
 import { ShareDialogComponent, ShareDialogData } from '../share-dialog/share-dialog.component';
 import { ToastService } from '../../../../core/services/toast.service';
 import { ChatStateService } from '../../../../core/services/chat-state.service';
@@ -81,6 +82,20 @@ export class DashboardViewerComponent implements OnInit {
   readonly cardsWithData = signal<CardWithData[]>([]);
   readonly trialStatus = signal<TrialStatus | null>(null);
   readonly showFilters = signal(false);
+
+  /** Mapea TrialStatus → ModuleTrialStatus para el banner compartido */
+  readonly trialStatusMapped = computed<ModuleTrialStatus | null>(() => {
+    const s = this.trialStatus();
+    if (!s) return null;
+    return {
+      tiene_acceso: s.tiene_acceso,
+      tipo_acceso:  s.tipo_acceso === 'licensed' ? 'license' : s.tipo_acceso,
+      trial_activo: s.tipo_acceso === 'trial',
+      trial_usado:  false,
+      dias_restantes: s.dias_restantes,
+      expira_en:    s.expira_en,
+    } satisfies ModuleTrialStatus;
+  });
   readonly exporting = signal(false);
 
   readonly currentFilter = signal<ReportFilter>({

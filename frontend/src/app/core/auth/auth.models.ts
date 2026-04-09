@@ -1,5 +1,6 @@
 export interface LicenseSummary {
   status: 'trial' | 'active' | 'expired' | 'suspended';
+  renewal_type: 'manual' | 'auto';
   expires_at: string;
   days_until_expiry: number;
   is_active_and_valid: boolean;
@@ -11,7 +12,6 @@ export interface CompanySummary {
   id: string;
   name: string;
   nit: string;
-  plan?: string;
   license?: LicenseSummary | null;
 }
 
@@ -65,7 +65,6 @@ export interface TokenRefreshResponse {
 export interface RegisterRequest {
   company_name: string;
   company_nit: string;
-  company_plan: 'starter' | 'professional' | 'enterprise';
   email: string;
   password: string;
   first_name: string;
@@ -83,7 +82,6 @@ export interface CompanyDetail {
   id: string;
   name: string;
   nit: string;
-  plan: string;
   saiopen_enabled: boolean;
   saiopen_db_path: string;
   is_active: boolean;
@@ -95,6 +93,5 @@ export interface UserCompanyInfo {
   id: string;
   name: string;
   nit: string;
-  plan: string;
   role: string;
 }

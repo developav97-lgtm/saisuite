@@ -55,12 +55,6 @@
         <td mat-cell *matCellDef="let t">{{ t.nit }}</td>
       </ng-container>
 
-      <!-- Plan -->
-      <ng-container matColumnDef="plan">
-        <th mat-header-cell *matHeaderCellDef>Plan</th>
-        <td mat-cell *matCellDef="let t">{{ PLAN_LABELS[t.plan] ?? t.plan }}</td>
-      </ng-container>
-
       <!-- Licencia -->
       <ng-container matColumnDef="license">
         <th mat-header-cell *matHeaderCellDef>Licencia</th>

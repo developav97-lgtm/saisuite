@@ -17,6 +17,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatDividerModule } from '@angular/material/divider';
+import { MatTabsModule } from '@angular/material/tabs';
 import { PackageService } from '../services/package.service';
 import { ToastService } from '../../../core/services/toast.service';
 import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
@@ -36,7 +37,7 @@ import {
     MatFormFieldModule, MatSelectModule, MatCheckboxModule,
     MatTableModule, MatChipsModule, MatTooltipModule,
     MatProgressBarModule, MatDialogModule, MatSlideToggleModule,
-    MatDividerModule,
+    MatDividerModule, MatTabsModule,
   ],
 })
 export class PackageCatalogComponent implements OnInit {
@@ -52,10 +53,19 @@ export class PackageCatalogComponent implements OnInit {
   readonly showForm = signal(false);
 
   readonly TYPE_LABELS = PACKAGE_TYPE_LABELS;
-  readonly TYPES: PackageType[] = ['module', 'user_seats', 'ai_tokens', 'ai_messages'];
+  readonly TYPES: PackageType[] = ['module', 'user_seats', 'ai_tokens'];
   readonly MODULE_CODES = ['proyectos', 'crm', 'soporte', 'dashboard'];
 
+  readonly columnsModules  = ['module_code', 'name', 'code', 'price_monthly', 'price_annual', 'is_active', 'actions'];
+  readonly columnsUsers    = ['name', 'code', 'quantity', 'price_monthly', 'price_annual', 'is_active', 'actions'];
+  readonly columnsTokens   = ['name', 'code', 'type', 'quantity', 'price_monthly', 'price_annual', 'is_active', 'actions'];
+
+  // Kept for legacy reference — not used in template anymore
   readonly displayedColumns = ['code', 'name', 'type', 'quantity', 'price_monthly', 'price_annual', 'is_active', 'actions'];
+
+  readonly modulePackages = computed(() => this.packages().filter(p => p.package_type === 'module'));
+  readonly userPackages   = computed(() => this.packages().filter(p => p.package_type === 'user_seats'));
+  readonly tokenPackages  = computed(() => this.packages().filter(p => p.package_type === 'ai_tokens' || p.package_type === 'ai_messages'));
 
   readonly form = this.fb.group({
     code:          ['', [Validators.required, Validators.maxLength(50)]],
@@ -86,14 +96,20 @@ export class PackageCatalogComponent implements OnInit {
   }
 
   openNew(): void {
+    this.openNewWithType('module');
+  }
+
+  openNewWithType(type: PackageType): void {
     this.editing.set(null);
     this.form.reset({
       code: '', name: '', description: '',
-      package_type: 'module', module_code: '',
+      package_type: type, module_code: '',
       quantity: 0, price_monthly: 0, price_annual: 0, is_active: true,
     });
     this.form.get('code')?.enable();
     this.showForm.set(true);
+    // Scroll al formulario
+    setTimeout(() => document.querySelector('.pc-form-card')?.scrollIntoView({ behavior: 'smooth' }), 50);
   }
 
   openEdit(pkg: LicensePackage): void {
@@ -188,5 +204,18 @@ export class PackageCatalogComponent implements OnInit {
     const n = typeof value === 'string' ? parseFloat(value) : value;
     if (!n) return '$0';
     return '$' + n.toLocaleString('es-CO', { minimumFractionDigits: 0 });
+  }
+
+  formatMiles(value: number | null | undefined): string {
+    if (value == null || value === 0) return '0';
+    return value.toLocaleString('es-CO');
+  }
+
+  onMilesInput(event: Event, controlName: string): void {
+    const input = event.target as HTMLInputElement;
+    const raw = input.value.replace(/\D/g, '');
+    const num = raw ? parseInt(raw, 10) : 0;
+    this.form.get(controlName)?.setValue(num, { emitEvent: false });
+    input.value = num ? num.toLocaleString('es-CO') : '0';
   }
 }

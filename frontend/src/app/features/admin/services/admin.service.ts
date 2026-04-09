@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { AdminUser, AgentTokenInfo, CompanyLicense, CompanySettings, CreateUserDto, UserRole } from '../models/admin.models';
+import { LicensePackage, LicenseRequest } from '../models/tenant.model';
 
 export interface ListUsersParams {
   search?: string;
@@ -72,6 +73,10 @@ export class AdminService {
     return this.http.get<CompanyLicense>('/api/v1/companies/licenses/me/');
   }
 
+  getMyAIUsage(): Observable<{ messages_used: number; tokens_used: number; tokens_quota: number; tokens_pct: number; total_requests: number }> {
+    return this.http.get<{ messages_used: number; tokens_used: number; tokens_quota: number; tokens_pct: number; total_requests: number }>('/api/v1/companies/licenses/me/ai-usage/');
+  }
+
   uploadLogo(file: File): Observable<CompanySettings> {
     const formData = new FormData();
     formData.append('logo', file);
@@ -86,5 +91,40 @@ export class AdminService {
 
   getMyAgentTokens(): Observable<AgentTokenInfo[]> {
     return this.http.get<AgentTokenInfo[]>('/api/v1/companies/agent-tokens/me/');
+  }
+
+  // ── Catálogo de paquetes (para company-settings) ──────────────────────────
+
+  getAvailablePackages(packageType?: string): Observable<LicensePackage[]> {
+    let url = '/api/v1/admin/packages/?is_active=true';
+    if (packageType) url += `&type=${packageType}`;
+    return this.http.get<LicensePackage[]>(url);
+  }
+
+  // ── Solicitudes de licencia (company_admin) ───────────────────────────────
+
+  getMyLicenseRequests(): Observable<LicenseRequest[]> {
+    return this.http.get<LicenseRequest[]>('/api/v1/companies/license-requests/');
+  }
+
+  createLicenseRequest(body: { package_id: string; request_type: string; notes?: string }): Observable<LicenseRequest> {
+    return this.http.post<LicenseRequest>('/api/v1/companies/license-requests/', body);
+  }
+
+  // ── Solicitudes de licencia (superadmin) ─────────────────────────────────
+
+  getAdminLicenseRequests(status?: string): Observable<LicenseRequest[]> {
+    const url = status
+      ? `/api/v1/admin/tenants/license-requests/?status=${status}`
+      : '/api/v1/admin/tenants/license-requests/';
+    return this.http.get<LicenseRequest[]>(url);
+  }
+
+  approveLicenseRequest(id: string, reviewNotes?: string): Observable<LicenseRequest> {
+    return this.http.post<LicenseRequest>(`/api/v1/admin/tenants/license-requests/${id}/approve/`, { review_notes: reviewNotes ?? '' });
+  }
+
+  rejectLicenseRequest(id: string, reviewNotes?: string): Observable<LicenseRequest> {
+    return this.http.post<LicenseRequest>(`/api/v1/admin/tenants/license-requests/${id}/reject/`, { review_notes: reviewNotes ?? '' });
   }
 }

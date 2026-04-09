@@ -13,12 +13,12 @@
   font-size: 1.4rem;
   font-weight: 700;
   margin: 0 0 0.2rem;
-  color: var(--mat-sys-on-surface);
+  color: var(--sc-text-color);
 }
 
 .tf-subtitle {
   font-size: 0.875rem;
-  color: var(--mat-sys-on-surface-variant);
+  color: var(--sc-text-muted);
   margin: 0;
 }
 
@@ -36,20 +36,88 @@
   grid-column: 1 / -1;
 }
 
-.tf-modules {
+// ── Module cards (license builder) ───────────────────────────────────────
+
+.tf-modules-section {
   grid-column: 1 / -1;
+}
 
-  .tf-modules-label {
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: var(--mat-sys-on-surface-variant);
-    margin: 0 0 0.5rem;
+.tf-module-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
   }
+}
 
-  .tf-modules-grid {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem 1.5rem;
+.tf-module-card {
+  border: 1px solid var(--sc-surface-border);
+  border-radius: 8px;
+  padding: 1rem;
+  background: var(--sc-surface-card);
+  transition: border-color 0.15s ease;
+
+  &--active {
+    border-color: var(--sc-primary);
+    border-left: 3px solid var(--sc-primary);
+    background: var(--sc-primary-light);
+  }
+}
+
+.tf-module-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.tf-module-icon {
+  color: var(--sc-text-muted);
+  font-size: 1.2rem;
+  height: 1.2rem;
+  width: 1.2rem;
+  flex-shrink: 0;
+}
+
+.tf-module-name {
+  font-weight: 500;
+  font-size: 0.9rem;
+  flex: 1;
+  color: var(--sc-text-color);
+}
+
+.tf-module-trial-note {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.75rem;
+  color: var(--sc-text-muted);
+  margin: 0 0 0.5rem;
+
+  mat-icon {
+    font-size: 0.9rem;
+    height: 0.9rem;
+    width: 0.9rem;
+    color: var(--sc-warning);
+  }
+}
+
+.tf-module-card-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+
+  button {
+    font-size: 0.8rem;
+    min-height: 32px;
+    line-height: 1;
+
+    @media (max-width: 768px) {
+      min-height: 44px;
+    }
   }
 }
 
@@ -57,7 +125,7 @@
   grid-column: 1 / -1;
   font-size: 0.875rem;
   font-weight: 600;
-  color: var(--mat-sys-on-surface-variant);
+  color: var(--sc-text-muted);
   margin: 0.5rem 0 0;
 }
 
@@ -67,7 +135,7 @@
 }
 
 .tf-license-current {
-  background: var(--sc-surface-ground, #f5f5f5);
+  background: var(--sc-surface-ground);
   border-radius: 8px;
   padding: 1rem 1.25rem;
   margin-bottom: 1rem;
@@ -86,15 +154,15 @@
   display: flex;
   gap: 1.5rem;
   font-size: 0.85rem;
-  color: var(--mat-sys-on-surface-variant);
+  color: var(--sc-text-muted);
 }
 
 .tf-days {
   font-size: 0.875rem;
-  color: var(--mat-sys-on-surface-variant);
+  color: var(--sc-text-muted);
 
   &--expired {
-    color: var(--mat-sys-error);
+    color: var(--sc-error);
     font-weight: 600;
   }
 }
@@ -116,7 +184,7 @@
   gap: 1rem;
   margin-top: 2rem;
   padding-top: 1rem;
-  border-top: 1px solid var(--mat-sys-outline-variant);
+  border-top: 1px solid var(--sc-surface-border);
 }
 
 .sc-empty-state {
@@ -125,7 +193,7 @@
   align-items: center;
   gap: 1rem;
   padding: 2rem 0;
-  color: var(--mat-sys-on-surface-variant);
+  color: var(--sc-text-muted);
 
   mat-icon {
     font-size: 2.5rem;
@@ -139,27 +207,27 @@
 
 // ── License Management Cards ──────────────────────────────────────────────
 .lm-card {
-  border: 1px solid var(--mat-sys-outline-variant, #ccc);
+  border: 1px solid var(--sc-surface-border);
   border-radius: 8px;
   padding: 1.25rem;
   margin-bottom: 1.25rem;
-  background: var(--mat-sys-surface-container-lowest, #fff);
+  background: var(--sc-surface-card);
 
   &--current {
-    border-color: var(--mat-sys-primary, #1976d2);
-    border-left: 4px solid var(--mat-sys-primary, #1976d2);
+    border-color: var(--sc-primary);
+    border-left: 4px solid var(--sc-primary);
   }
 
   &--renewal-pending {
-    border-color: var(--mat-sys-tertiary, #f9a825);
-    border-left: 4px solid var(--mat-sys-tertiary, #f9a825);
-    background: var(--mat-sys-tertiary-container, #fff8e1);
+    border-color: var(--sc-warning);
+    border-left: 4px solid var(--sc-warning);
+    background: color-mix(in srgb, var(--sc-surface-card) 90%, var(--sc-warning) 10%);
   }
 
   &--renewal-confirmed {
-    border-color: var(--mat-sys-primary, #1976d2);
-    border-left: 4px solid var(--mat-sys-primary, #1976d2);
-    background: var(--mat-sys-primary-container, #e3f2fd);
+    border-color: var(--sc-primary);
+    border-left: 4px solid var(--sc-primary);
+    background: var(--sc-primary-light);
   }
 }
 
@@ -177,6 +245,7 @@
   margin: 0;
   font-size: 1rem;
   font-weight: 500;
+  color: var(--sc-text-color);
 }
 
 .lm-title-icon {
@@ -205,7 +274,7 @@
 
 .lm-stat-label {
   font-size: 0.72rem;
-  color: var(--mat-sys-on-surface-variant, #666);
+  color: var(--sc-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
@@ -213,12 +282,13 @@
 .lm-stat-value {
   font-size: 0.9rem;
   font-weight: 500;
+  color: var(--sc-text-color);
   display: flex;
   align-items: center;
   gap: 0.4rem;
 
   &--danger {
-    color: var(--mat-sys-error, #d32f2f);
+    color: var(--sc-error);
   }
 }
 
@@ -229,18 +299,18 @@
   border-radius: 10px;
 
   &--ok {
-    background: #e8f5e9;
-    color: #2e7d32;
+    background: var(--sc-success-light);
+    color: var(--sc-success);
   }
 
   &--warn {
-    background: #fff3e0;
-    color: #e65100;
+    background: var(--sc-warning-light);
+    color: var(--sc-warning);
   }
 
   &--expired {
-    background: #fce4ec;
-    color: #c62828;
+    background: var(--sc-error-light);
+    color: var(--sc-error);
   }
 }
 
@@ -250,7 +320,7 @@
   flex-wrap: wrap;
   margin-top: 1rem;
   padding-top: 0.75rem;
-  border-top: 1px solid var(--mat-sys-outline-variant, #eee);
+  border-top: 1px solid var(--sc-surface-border);
 }
 
 .lm-auto-badge {
@@ -258,7 +328,7 @@
   align-items: center;
   gap: 0.3rem;
   font-size: 0.78rem;
-  color: var(--mat-sys-on-surface-variant, #666);
+  color: var(--sc-text-muted);
 
   mat-icon {
     font-size: 1rem;
@@ -272,14 +342,14 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.75rem;
-  background: var(--mat-sys-primary-container, #e3f2fd);
+  background: var(--sc-primary-light);
   border-radius: 6px;
   font-size: 0.85rem;
-  color: var(--mat-sys-on-primary-container, #0d47a1);
+  color: var(--sc-primary-dark);
   margin-bottom: 0.75rem;
 
   mat-icon {
-    color: var(--mat-sys-primary, #1976d2);
+    color: var(--sc-primary);
     font-size: 1.1rem;
     height: 1.1rem;
     width: 1.1rem;
@@ -294,7 +364,7 @@
   font-size: 0.9rem;
   font-weight: 500;
   margin: 1rem 0 0.5rem;
-  color: var(--mat-sys-on-surface-variant, #555);
+  color: var(--sc-text-muted);
 }
 
 .lm-period-field {
@@ -304,7 +374,7 @@
 
 .lm-field-label {
   font-size: 0.8rem;
-  color: var(--mat-sys-on-surface-variant, #666);
+  color: var(--sc-text-muted);
   margin: 0 0 0.5rem;
 }
 
@@ -341,12 +411,12 @@
 
 .tf-pkg-name {
   font-weight: 500;
-  color: var(--sc-text-primary);
+  color: var(--sc-text-color);
 }
 
 .tf-pkg-code {
   font-size: 0.75rem;
-  color: var(--sc-text-secondary);
+  color: var(--sc-text-muted);
   font-family: monospace;
 }
 
@@ -354,7 +424,7 @@
   font-size: 0.9rem;
   font-weight: 600;
   margin: 16px 0 8px;
-  color: var(--sc-text-secondary);
+  color: var(--sc-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -381,15 +451,19 @@
 }
 
 .tf-ai-card {
-  background: var(--sc-surface);
-  border: 1px solid var(--sc-border);
+  background: var(--sc-surface-card);
+  border: 1px solid var(--sc-surface-border);
   border-radius: 8px;
   padding: 16px;
+
+  &--wide {
+    grid-column: 1 / -1;
+  }
 }
 
 .tf-ai-label {
   font-size: 0.78rem;
-  color: var(--sc-text-secondary);
+  color: var(--sc-text-muted);
   margin: 0 0 4px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -398,19 +472,28 @@
 .tf-ai-value {
   font-size: 1.2rem;
   font-weight: 700;
-  color: var(--sc-text-primary);
+  color: var(--sc-text-color);
   margin: 0 0 8px;
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+}
+
+.tf-ai-quota {
+  font-size: 0.85rem;
+  font-weight: 400;
+  color: var(--sc-text-muted);
 }
 
 .tf-ai-pct {
   font-size: 0.75rem;
-  color: var(--sc-text-secondary);
+  color: var(--sc-text-muted);
   margin: 4px 0 0;
 }
 
 .tf-ai-email {
   font-size: 0.78rem;
-  color: var(--sc-text-secondary);
+  color: var(--sc-text-muted);
 }
 
 // ── Table responsive ──────────────────────────────────────────────────────
@@ -421,6 +504,54 @@
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   margin-bottom: 16px;
+}
+
+// ── Empty state para secciones de paquetes ────────────────────────────────
+.tf-pkg-empty {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  color: var(--sc-text-muted);
+  margin: 0.25rem 0 0.5rem;
+
+  mat-icon {
+    font-size: 1rem;
+    width: 1rem;
+    height: 1rem;
+    opacity: 0.6;
+  }
+
+  a {
+    color: var(--sc-primary);
+    text-decoration: none;
+
+    &:hover { text-decoration: underline; }
+  }
+}
+
+// ── Total de licencia ─────────────────────────────────────────────────────
+.lm-license-total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  border-radius: var(--sc-radius-sm);
+  background: var(--sc-primary-light);
+  border: 1px solid color-mix(in srgb, var(--sc-primary) 30%, transparent);
+  gap: 1rem;
+}
+
+.lm-total-label {
+  font-size: 0.875rem;
+  color: var(--sc-text-muted);
+  font-weight: 500;
+}
+
+.lm-total-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--sc-primary);
 }
 
 // ── Tokens del agente ──────────────────────────────────────────
@@ -445,7 +576,7 @@
   font-family: 'JetBrains Mono', 'Fira Code', monospace;
   font-size: 0.75rem;
   letter-spacing: 0.02em;
-  color: var(--sc-primary, #1976d2);
+  color: var(--sc-primary);
   word-break: break-all;
   margin-right: 4px;
 }

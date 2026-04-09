@@ -23,6 +23,13 @@ from .views import (
     AdminAIUsageView,
     AdminAgentTokenListView,
     AdminAgentTokenRevokeView,
+    AdminModuleTrialActivateView,
+    AdminModuleTrialStatusView,
+    AdminLicensePriceCalculatorView,
+    AdminExpiringLicensesView,
+    AdminLicenseRequestListView,
+    AdminLicenseRequestApproveView,
+    AdminLicenseRequestRejectView,
 )
 
 urlpatterns = [
@@ -41,4 +48,15 @@ urlpatterns = [
     path('<uuid:pk>/license/ai-usage/',                    AdminAIUsageView.as_view(),               name='admin-ai-usage'),
     path('<uuid:pk>/agent-tokens/',                        AdminAgentTokenListView.as_view(),         name='admin-agent-tokens'),
     path('<uuid:pk>/agent-tokens/<uuid:token_pk>/revoke/', AdminAgentTokenRevokeView.as_view(),       name='admin-agent-token-revoke'),
+    # Trials de módulo por tenant
+    path('<uuid:pk>/modules/<str:module_code>/trial/status/',   AdminModuleTrialStatusView.as_view(),   name='admin-module-trial-status'),
+    path('<uuid:pk>/modules/<str:module_code>/trial/activate/', AdminModuleTrialActivateView.as_view(), name='admin-module-trial-activate'),
+    # Calculadora de precio de licencia
+    path('license/calculate-total/', AdminLicensePriceCalculatorView.as_view(), name='admin-license-calculate-total'),
+    # Licencias próximas a vencer (para N8N auto-renovación)
+    path('licenses/expiring-soon/', AdminExpiringLicensesView.as_view(), name='admin-licenses-expiring-soon'),
+    # Solicitudes de licencia
+    path('license-requests/',                         AdminLicenseRequestListView.as_view(),    name='admin-license-requests'),
+    path('license-requests/<uuid:pk>/approve/',       AdminLicenseRequestApproveView.as_view(), name='admin-license-request-approve'),
+    path('license-requests/<uuid:pk>/reject/',        AdminLicenseRequestRejectView.as_view(),  name='admin-license-request-reject'),
 ]

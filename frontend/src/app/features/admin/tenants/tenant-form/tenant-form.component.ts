@@ -1,7 +1,8 @@
 import {
   ChangeDetectionStrategy, Component, OnInit, inject, signal, computed,
 } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
+import { from, of, switchMap, concatMap, toArray, map } from 'rxjs';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { CommonModule, DatePipe } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators, FormGroup } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -27,13 +28,20 @@ import { NavigationHistoryService } from '../../../../core/services/navigation-h
 import { ConfirmDialogComponent } from '../../../../shared/components/confirm-dialog/confirm-dialog.component';
 import {
   Tenant, TenantLicense, LicenseHistory, LicenseRenewal,
-  LICENSE_STATUS_LABELS, PLAN_LABELS, MODULE_LABELS,
+  LICENSE_STATUS_LABELS, MODULE_LABELS, RENEWAL_TYPE_LABELS, RenewalType,
   LICENSE_PERIOD_LABELS, LICENSE_PERIOD_DAYS, LicensePeriod,
   LicensePackage, LicensePackageItem, MonthlyLicenseSnapshot,
   AIUsageSummary, AIUsagePerUser, PACKAGE_TYPE_LABELS, AgentTokenInfo,
+  ModuleTrialStatus, LicensePriceResult, LicensePriceCalculatorLine,
 } from '../../models/tenant.model';
 
-const AVAILABLE_MODULES = ['proyectos', 'crm', 'soporte', 'dashboard'];
+/** Icon map for module packages */
+const MODULE_ICONS: Record<string, string> = {
+  proyectos: 'work',
+  dashboard: 'dashboard',
+  crm:       'contacts',
+  soporte:   'support_agent',
+};
 
 /** Convierte 'YYYY-MM-DD' a Date local (sin desfase de zona horaria). */
 function strToDate(s: string): Date | null {
@@ -57,7 +65,7 @@ function dateToStr(d: Date | null): string {
   styleUrl: './tenant-form.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    CommonModule, ReactiveFormsModule, DatePipe,
+    CommonModule, ReactiveFormsModule, RouterModule, DatePipe,
     MatButtonModule, MatIconModule, MatInputModule,
     MatFormFieldModule, MatSelectModule, MatCheckboxModule,
     MatProgressBarModule, MatTabsModule, MatTableModule,
@@ -89,12 +97,20 @@ export class TenantFormComponent implements OnInit {
   readonly cancellingRenewal   = signal(false);
 
   // ── Paquetes ──────────────────────────────────────────────────────────────
-  readonly licensePackages      = signal<LicensePackageItem[]>([]);
-  readonly allPackages          = signal<LicensePackage[]>([]);
-  readonly loadingPackages      = signal(false);
-  readonly addingPackage        = signal(false);
-  readonly selectedPackageId    = signal<string>('');
-  readonly snapshots            = signal<MonthlyLicenseSnapshot[]>([]);
+  readonly licensePackages          = signal<LicensePackageItem[]>([]);
+  readonly allPackages              = signal<LicensePackage[]>([]);
+  readonly loadingPackages          = signal(false);
+  readonly addingPackage            = signal(false);
+  readonly addingPkgId              = signal<string | null>(null);
+  readonly selectedPackageId        = signal<string>('');
+  readonly snapshots                = signal<MonthlyLicenseSnapshot[]>([]);
+
+  // ── Catálogo de paquetes (license builder) ────────────────────────────────
+  readonly modulePackages           = signal<LicensePackage[]>([]);
+  readonly userPackages             = signal<LicensePackage[]>([]);
+  readonly aiPackages               = signal<LicensePackage[]>([]);
+  readonly selectedCreatePackageIds = signal<string[]>([]);
+  readonly currentPeriod            = signal<LicensePeriod>('trial');
 
   // ── Uso IA ────────────────────────────────────────────────────────────────
   readonly aiUsage              = signal<AIUsageSummary | null>(null);
@@ -109,45 +125,51 @@ export class TenantFormComponent implements OnInit {
   readonly PACKAGE_TYPE_LABELS = PACKAGE_TYPE_LABELS;
   readonly packageColumns      = ['name', 'type', 'quantity', 'added_at', 'actions'];
   readonly aiUserColumns       = ['email', 'requests', 'tokens'];
-  readonly snapshotColumns     = ['month', 'plan', 'status', 'users'];
+  readonly snapshotColumns     = ['month', 'status', 'users'];
   readonly tokenColumns        = ['label', 'token', 'last_used', 'actions'];
+  readonly moduleColumns       = ['module', 'status', 'trial', 'actions'];
 
   readonly isEdit    = computed(() => !!this.tenantId());
   readonly pageTitle = computed(() => this.isEdit() ? 'Editar empresa' : 'Nueva empresa');
 
-  readonly STATUS_LABELS = LICENSE_STATUS_LABELS;
-  readonly PLAN_LABELS   = PLAN_LABELS;
-  readonly MODULE_LABELS = MODULE_LABELS;
-  readonly modules       = AVAILABLE_MODULES;
+  readonly STATUS_LABELS       = LICENSE_STATUS_LABELS;
+  readonly MODULE_LABELS       = MODULE_LABELS;
+  readonly RENEWAL_TYPE_LABELS = RENEWAL_TYPE_LABELS;
+  readonly MODULE_ICONS        = MODULE_ICONS;
 
   readonly PERIOD_LABELS = LICENSE_PERIOD_LABELS;
   readonly PERIOD_DAYS   = LICENSE_PERIOD_DAYS;
   readonly PERIODS       = Object.keys(LICENSE_PERIOD_LABELS) as LicensePeriod[];
+  readonly RENEWAL_TYPES: RenewalType[] = ['manual', 'auto'];
 
   readonly historyColumns = ['date', 'change_type', 'by', 'notes'];
+
+  // ── Módulos seleccionados (license builder) ───────────────────────────────
+  readonly modulesIncluded = signal<string[]>([]);
+
+  // ── Trial status por módulo ───────────────────────────────────────────────
+  readonly moduleTrialStatuses = signal<Record<string, ModuleTrialStatus>>({});
+  readonly activatingTrial     = signal<string | null>(null);
+
+  // ── Calculadora de precio ─────────────────────────────────────────────────
+  readonly priceResult       = signal<LicensePriceResult | null>(null);
+  readonly calculatingPrice  = signal(false);
 
   // ── Formulario empresa ────────────────────────────────────────────────────
   readonly empresaForm: FormGroup = this.fb.group({
     name:            ['', [Validators.required, Validators.maxLength(255)]],
     nit:             ['', [Validators.required, Validators.maxLength(20)]],
-    plan:            ['starter', Validators.required],
+    email_admin:     ['', [Validators.required, Validators.email]],
     saiopen_enabled: [false],
   });
 
   // ── Formulario licencia ───────────────────────────────────────────────────
   readonly licenciaForm: FormGroup = this.fb.group({
-    status:            ['trial', Validators.required],
-    starts_at:         [null, Validators.required],
-    period:            ['trial' as LicensePeriod, Validators.required],
-    concurrent_users:  [1, [Validators.required, Validators.min(1)]],
-    max_users:         [5, [Validators.required, Validators.min(1)]],
-    modules_proyectos: [false],
-    modules_crm:       [false],
-    modules_soporte:   [false],
-    modules_dashboard: [false],
-    messages_quota:    [0, [Validators.min(0)]],
-    ai_tokens_quota:   [0, [Validators.min(0)]],
-    notes:             [''],
+    status:       ['trial', Validators.required],
+    renewal_type: ['manual' as RenewalType, Validators.required],
+    starts_at:    [null, Validators.required],
+    period:       ['trial' as LicensePeriod, Validators.required],
+    notes:        [''],
   });
 
   readonly expiryPreview = computed(() => {
@@ -162,17 +184,34 @@ export class TenantFormComponent implements OnInit {
     return end;
   });
 
+  readonly licenseTotal = computed<number>(() => {
+    const period  = this.currentPeriod();
+    const catalog = [...this.modulePackages(), ...this.userPackages(), ...this.aiPackages()];
+    if (this.isEdit()) {
+      return this.licensePackages().reduce((sum, item) => {
+        const price = period === 'annual'
+          ? Number(item.package.price_annual)
+          : Number(item.package.price_monthly);
+        return sum + price * item.quantity;
+      }, 0);
+    }
+    return this.selectedCreatePackageIds().reduce((sum, id) => {
+      const pkg = catalog.find(p => p.id === id);
+      if (!pkg) return sum;
+      const price = period === 'annual' ? Number(pkg.price_annual) : Number(pkg.price_monthly);
+      return sum + price;
+    }, 0);
+  });
+
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');
+    this.loadCatalogPackages();
     if (id) {
       this.tenantId.set(id);
       this.loadTenant(id);
     } else {
       const today = new Date();
-      this.licenciaForm.patchValue({
-        starts_at: today,
-        period:    'trial',
-      });
+      this.licenciaForm.patchValue({ starts_at: today, period: 'trial' });
     }
   }
 
@@ -184,10 +223,11 @@ export class TenantFormComponent implements OnInit {
         this.empresaForm.patchValue({
           name:            t.name,
           nit:             t.nit,
-          plan:            t.plan,
           saiopen_enabled: false,
         });
+        // email_admin solo aplica en creación — deshabilitar en edición
         this.empresaForm.get('nit')?.disable();
+        this.empresaForm.get('email_admin')?.disable();
         this.loadLicense(id);
       },
       error: () => {
@@ -202,22 +242,19 @@ export class TenantFormComponent implements OnInit {
       next: lic => {
         this.license.set(lic);
         this.pendingRenewal.set(lic.pending_renewal ?? null);
-        const modules = lic.modules_included ?? [];
+        this.modulesIncluded.set(lic.modules_included ?? []);
+        const period = (lic.period ?? 'monthly') as LicensePeriod;
+        this.currentPeriod.set(period);
         this.licenciaForm.patchValue({
-          status:            lic.status,
-          starts_at:         strToDate(lic.starts_at),
-          period:            lic.period ?? 'monthly',
-          concurrent_users:  lic.concurrent_users,
-          max_users:         lic.max_users,
-          modules_proyectos: modules.includes('proyectos'),
-          modules_crm:       modules.includes('crm'),
-          modules_soporte:   modules.includes('soporte'),
-          modules_dashboard: modules.includes('dashboard'),
-          messages_quota:    lic.messages_quota,
-          ai_tokens_quota:   lic.ai_tokens_quota,
-          notes:             lic.notes,
+          status:       lic.status,
+          renewal_type: lic.renewal_type ?? 'manual',
+          starts_at:    strToDate(lic.starts_at),
+          period,
+          notes:        lic.notes,
         });
         this.loadHistory(id);
+        this.loadModuleTrialStatuses(id);
+        this.loadLicensePackages(id);
         this.loading.set(false);
       },
       error: () => {
@@ -228,6 +265,17 @@ export class TenantFormComponent implements OnInit {
     });
   }
 
+  private loadModuleTrialStatuses(tenantId: string): void {
+    this.modulePackages().forEach(m => {
+      this.tenantService.getModuleTrialStatus(tenantId, m.module_code).subscribe({
+        next: status => {
+          this.moduleTrialStatuses.update(all => ({ ...all, [m.module_code]: status }));
+        },
+        error: () => {},
+      });
+    });
+  }
+
   private loadHistory(id: string): void {
     this.tenantService.getLicenseHistory(id).subscribe({
       next: h => this.history.set(h),
@@ -235,14 +283,128 @@ export class TenantFormComponent implements OnInit {
     });
   }
 
-  private getModulesSelected(): string[] {
-    const v = this.licenciaForm.value;
-    const mods: string[] = [];
-    if (v.modules_proyectos) mods.push('proyectos');
-    if (v.modules_crm)       mods.push('crm');
-    if (v.modules_soporte)   mods.push('soporte');
-    if (v.modules_dashboard) mods.push('dashboard');
-    return mods;
+  // ── Catálogo de paquetes ──────────────────────────────────────────────────
+
+  private loadCatalogPackages(): void {
+    this.packageService.listPackages().subscribe({
+      next: pkgs => {
+        const active = pkgs.filter(p => p.is_active);
+        this.modulePackages.set(active.filter(p => p.package_type === 'module'));
+        this.userPackages.set(active.filter(p => p.package_type === 'user_seats'));
+        this.aiPackages.set(active.filter(p => p.package_type === 'ai_tokens'));
+        this.allPackages.set(active);
+      },
+      error: () => {},
+    });
+  }
+
+  private loadLicensePackages(id: string): void {
+    this.tenantService.getLicensePackages(id).subscribe({
+      next: items => this.licensePackages.set(items),
+      error: () => {},
+    });
+  }
+
+  // ── License builder: módulos ──────────────────────────────────────────────
+
+  isModuleSelected(moduleCode: string): boolean {
+    if (this.isEdit()) {
+      return this.licensePackages().some(
+        i => i.package.package_type === 'module' && i.package.module_code === moduleCode
+      );
+    }
+    return this.selectedCreatePackageIds().some(id => {
+      const pkg = this.modulePackages().find(p => p.id === id);
+      return pkg?.module_code === moduleCode;
+    });
+  }
+
+  isPkgAssigned(pkgId: string): boolean {
+    if (this.isEdit()) {
+      return this.licensePackages().some(i => i.package.id === pkgId);
+    }
+    return this.selectedCreatePackageIds().includes(pkgId);
+  }
+
+  getAssignedItem(pkgId: string): LicensePackageItem | undefined {
+    return this.licensePackages().find(i => i.package.id === pkgId);
+  }
+
+  setLicensePeriod(p: LicensePeriod): void {
+    this.licenciaForm.get('period')?.setValue(p);
+    this.currentPeriod.set(p);
+  }
+
+  toggleCatalogPkg(pkg: LicensePackage): void {
+    if (this.isEdit()) {
+      const item = this.getAssignedItem(pkg.id);
+      if (item) {
+        this.quitarPaquete(item);
+      } else {
+        this.agregarPaqueteDirecto(pkg.id);
+      }
+    } else {
+      this.selectedCreatePackageIds.update(ids =>
+        ids.includes(pkg.id) ? ids.filter(id => id !== pkg.id) : [...ids, pkg.id]
+      );
+    }
+  }
+
+  agregarPaqueteDirecto(pkgId: string): void {
+    const id = this.tenantId();
+    if (!id) return;
+    this.addingPkgId.set(pkgId);
+    this.tenantService.addLicensePackage(id, pkgId).subscribe({
+      next: () => {
+        this.toast.success('Paquete agregado a la licencia');
+        this.addingPkgId.set(null);
+        this.loadLicensePackages(id);
+        this.loadLicense(id);
+      },
+      error: () => {
+        this.toast.error('Error al agregar paquete');
+        this.addingPkgId.set(null);
+      },
+    });
+  }
+
+  getModuleTrialStatus(code: string): ModuleTrialStatus | null {
+    return this.moduleTrialStatuses()[code] ?? null;
+  }
+
+  activarTrial(moduleCode: string, moduleName?: string): void {
+    const id = this.tenantId();
+    if (!id) return;
+    this.activatingTrial.set(moduleCode);
+    this.tenantService.activateModuleTrial(id, moduleCode).subscribe({
+      next: () => {
+        this.toast.success(`Trial de 14 días activado para ${moduleName ?? MODULE_LABELS[moduleCode] ?? moduleCode}`);
+        this.activatingTrial.set(null);
+        this.loadModuleTrialStatuses(id);
+      },
+      error: (err: { error?: { detail?: string } }) => {
+        this.toast.error(err?.error?.detail ?? 'Error al activar trial');
+        this.activatingTrial.set(null);
+      },
+    });
+  }
+
+  calcularPrecio(): void {
+    const packages = this.licensePackages();
+    if (!packages.length) return;
+    const period = this.licenciaForm.get('period')?.value === 'annual' ? 'annual' : 'monthly';
+    const lines: LicensePriceCalculatorLine[] = packages.map(i => ({
+      package_id: i.package.id,
+      quantity: i.quantity,
+    }));
+    this.calculatingPrice.set(true);
+    this.tenantService.calculateLicensePrice(lines, period).subscribe({
+      next: result => {
+        this.priceResult.set(result);
+        this.calculatingPrice.set(false);
+      },
+      error: () => { this.calculatingPrice.set(false); },
+    });
   }
 
   guardar(): void {
@@ -265,49 +427,56 @@ export class TenantFormComponent implements OnInit {
     lv.expires_at = dateToStr(expiresDate);
 
     if (!this.isEdit()) {
-      // Crear empresa + licencia
+      // Crear empresa + licencia, luego agregar paquetes seleccionados
+      const pkgIds = this.selectedCreatePackageIds();
       this.tenantService.createTenant({
         name:            ev.name,
         nit:             ev.nit,
-        plan:            ev.plan,
+        email_admin:     ev.email_admin,
         saiopen_enabled: ev.saiopen_enabled,
-        license_status:      lv.status,
-        license_starts_at:   lv.starts_at,
-        license_expires_at:  lv.expires_at,
-        concurrent_users:    lv.concurrent_users,
-        max_users:           lv.max_users,
-        modules_included:    this.getModulesSelected(),
-        messages_quota:      lv.messages_quota,
-        ai_tokens_quota:     lv.ai_tokens_quota,
-        license_notes:       lv.notes,
-      }).subscribe({
+        license_status:     lv.status,
+        license_period:     lv.period,
+        renewal_type:       lv.renewal_type,
+        license_starts_at:  lv.starts_at,
+        license_expires_at: lv.expires_at,
+        max_users:          0,
+        modules_included:   [],
+        messages_quota:     0,
+        ai_tokens_quota:    0,
+        license_notes:      lv.notes,
+      }).pipe(
+        switchMap(newTenant =>
+          pkgIds.length === 0 ? of(newTenant)
+          : from(pkgIds).pipe(
+              concatMap(pkgId => this.tenantService.addLicensePackage(newTenant.id, pkgId)),
+              toArray(),
+              map(() => newTenant),
+            )
+        ),
+      ).subscribe({
         next: () => {
-          this.toast.success('Empresa creada correctamente');
+          this.toast.success('Empresa creada. Se envió invitación al administrador.');
           this.router.navigate(['/admin/tenants']);
         },
-        error: (err: { error?: { nit?: string[] } }) => {
-          this.toast.error(err?.error?.nit?.[0] ?? 'Error al crear empresa');
+        error: (err: { error?: { nit?: string[]; email_admin?: string[] } }) => {
+          const msg = err?.error?.nit?.[0] ?? err?.error?.email_admin?.[0] ?? 'Error al crear empresa';
+          this.toast.error(msg);
           this.saving.set(false);
         },
       });
     } else {
       const id = this.tenantId()!;
       // Actualizar empresa
-      this.tenantService.updateTenant(id, { name: ev.name, plan: ev.plan }).subscribe({
+      this.tenantService.updateTenant(id, { name: ev.name }).subscribe({
         next: () => {
-          // Actualizar licencia
+          // Actualizar licencia (sin max_users/cuotas — se gestionan por paquetes)
           const licenseData = {
-            plan:             ev.plan,
-            status:           lv.status,
-            starts_at:        lv.starts_at,
-            expires_at:       lv.expires_at,
-            period:           lv.period,
-            concurrent_users: lv.concurrent_users,
-            max_users:        lv.max_users,
-            modules_included: this.getModulesSelected(),
-            messages_quota:   lv.messages_quota,
-            ai_tokens_quota:  lv.ai_tokens_quota,
-            notes:            lv.notes,
+            status:       lv.status,
+            renewal_type: lv.renewal_type,
+            starts_at:    lv.starts_at,
+            expires_at:   lv.expires_at,
+            period:       lv.period,
+            notes:        lv.notes,
           };
           const obs$ = this.license()
             ? this.tenantService.updateLicense(id, licenseData)
@@ -469,10 +638,6 @@ export class TenantFormComponent implements OnInit {
         this.loadingPackages.set(false);
       },
       error: () => { this.toast.error('Error al cargar paquetes'); this.loadingPackages.set(false); },
-    });
-    this.packageService.listPackages().subscribe({
-      next: pkgs => this.allPackages.set(pkgs.filter(p => p.is_active)),
-      error: ()   => {},
     });
     this.tenantService.getLicenseSnapshots(id).subscribe({
       next: snaps => this.snapshots.set(snaps),

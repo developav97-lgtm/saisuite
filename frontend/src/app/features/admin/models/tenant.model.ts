@@ -61,13 +61,48 @@ export interface LicensePayment {
   created_at: string;
 }
 
+export type RenewalType = 'manual' | 'auto';
+
+export const RENEWAL_TYPE_LABELS: Record<RenewalType, string> = {
+  manual: 'Manual',
+  auto:   'Automática',
+};
+
+export type ModuleStatus = 'active' | 'trial' | 'trial_expired' | 'inactive';
+
+export interface ModuleLicenseItem {
+  module_code: string;
+  module_name: string;
+  status: ModuleStatus;
+  trial_expires_at?: string;
+  trial_used: boolean;
+}
+
+export interface ModuleTrialStatus {
+  tiene_acceso: boolean;
+  tipo_acceso: 'license' | 'trial' | 'trial_expired' | 'none';
+  trial_activo: boolean;
+  trial_usado: boolean;
+  dias_restantes: number | null;
+  expira_en: string | null;
+}
+
+export interface ModuleTrial {
+  id: string;
+  module_code: string;
+  iniciado_en: string;
+  expira_en: string;
+  esta_activo: boolean;
+  dias_restantes: number;
+}
+
 export interface TenantLicense {
   id: string;
   company: string;
   company_name: string;
   company_nit: string;
-  plan: 'starter' | 'professional' | 'enterprise';
   status: 'trial' | 'active' | 'expired' | 'suspended';
+  renewal_type: RenewalType;
   period: LicensePeriod;
   starts_at: string;
   expires_at: string;
@@ -75,7 +110,6 @@ export interface TenantLicense {
   max_users: number;
   concurrent_users: number;
   modules_included: string[];
-  messages_quota: number;
   messages_used: number;
   ai_tokens_quota: number;
   ai_tokens_used: number;
@@ -97,8 +131,8 @@ export interface TenantLicenseSummary {
   company: string;
   company_name: string;
   company_nit: string;
-  plan: string;
   status: string;
+  renewal_type: RenewalType;
   starts_at: string;
   expires_at: string;
   max_users: number;
@@ -113,7 +147,6 @@ export interface Tenant {
   id: string;
   name: string;
   nit: string;
-  plan: 'starter' | 'professional' | 'enterprise';
   is_active: boolean;
   created_at: string;
   license: TenantLicenseSummary | null;
@@ -125,14 +158,16 @@ export interface TenantCreateRequest {
   // Empresa
   name: string;
   nit: string;
-  plan: 'starter' | 'professional' | 'enterprise';
+  email_admin: string;
   saiopen_enabled?: boolean;
   // Licencia
   license_status: 'trial' | 'active';
+  license_period?: LicensePeriod;
+  renewal_type?: RenewalType;
   license_starts_at: string;
-  license_expires_at: string;
-  concurrent_users: number;
-  max_users: number;
+  license_expires_at?: string;
+  concurrent_users?: number;
+  max_users?: number;
   modules_included: string[];
   messages_quota?: number;
   ai_tokens_quota?: number;
@@ -140,16 +175,39 @@ export interface TenantCreateRequest {
 }
 
 export interface LicenseWriteRequest {
-  plan?: string;
   status?: string;
+  renewal_type?: RenewalType;
   starts_at: string;
-  expires_at: string;
+  expires_at?: string;
+  period?: LicensePeriod;
   max_users?: number;
   concurrent_users?: number;
   modules_included?: string[];
   messages_quota?: number;
   ai_tokens_quota?: number;
   notes?: string;
+}
+
+// ── Calculadora de precio ─────────────────────────────────────────────────
+export interface LicensePriceCalculatorLine {
+  package_id: string;
+  quantity: number;
+}
+
+export interface LicensePriceResultItem {
+  package_id: string;
+  package_code: string;
+  package_name: string;
+  package_type: PackageType;
+  quantity: number;
+  unit_price: string;
+  subtotal: string;
+}
+
+export interface LicensePriceResult {
+  period: 'monthly' | 'annual';
+  items: LicensePriceResultItem[];
+  total: string;
 }
 
 export interface LicensePaymentRequest {
@@ -172,12 +230,6 @@ export const LICENSE_STATUS_COLOR: Record<string, 'primary' | 'accent' | 'warn'>
   active:    'primary',
   expired:   'warn',
   suspended: 'warn',
-};
-
-export const PLAN_LABELS: Record<string, string> = {
-  starter:      'Starter',
-  professional: 'Professional',
-  enterprise:   'Enterprise',
 };
 
 export const MODULE_LABELS: Record<string, string> = {
@@ -245,11 +297,9 @@ export interface MonthlyLicenseSnapshot {
 export interface AIUsageSummary {
   total_requests: number;
   total_tokens: number;
-  messages_quota: number;
   messages_used: number;
   tokens_quota: number;
   tokens_used: number;
-  messages_pct: number;
   tokens_pct: number;
 }
 
@@ -269,3 +319,34 @@ export interface AgentTokenInfo {
   last_used: string | null;
   created_at: string;
 }
+
+// ── Solicitudes de licencia ───────────────────────────────────────────────
+export type LicenseRequestType = 'user_seats' | 'module' | 'ai_tokens';
+export type LicenseRequestStatus = 'pending' | 'approved' | 'rejected';
+
+export interface LicenseRequest {
+  id: string;
+  company: string;
+  company_name: string;
+  request_type: LicenseRequestType;
+  package: LicensePackage;
+  status: LicenseRequestStatus;
+  notes: string;
+  review_notes: string;
+  created_by_email: string | null;
+  reviewed_by_email: string | null;
+  reviewed_at: string | null;
+  created_at: string;
+}
+
+export const LICENSE_REQUEST_TYPE_LABELS: Record<LicenseRequestType, string> = {
+  user_seats: 'Usuarios adicionales',
+  module:     'Módulo',
+  ai_tokens:  'Tokens IA',
+};
+
+export const LICENSE_REQUEST_STATUS_LABELS: Record<LicenseRequestStatus, string> = {
+  pending:  'Pendiente',
+  approved: 'Aprobado',
+  rejected: 'Rechazado',
+};

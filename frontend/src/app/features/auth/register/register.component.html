@@ -31,16 +31,6 @@
             }
           </mat-form-field>
 
-          <mat-form-field appearance="outline" class="sc-form-field-full">
-            <mat-label>Plan</mat-label>
-            <mat-select formControlName="company_plan">
-              @for (p of planOptions; track p.value) {
-                <mat-option [value]="p.value">{{ p.label }}</mat-option>
-              }
-            </mat-select>
-            <mat-icon matPrefix>workspace_premium</mat-icon>
-          </mat-form-field>
-
           <div class="sc-register-actions">
             <button mat-raised-button color="primary" matStepperNext
               [disabled]="empresaForm.invalid" class="sc-register-btn">

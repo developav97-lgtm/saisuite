@@ -86,11 +86,6 @@
                   </div>
 
                   <div class="cs-field">
-                    <span class="cs-field__label">Plan</span>
-                    <span class="cs-plan cs-plan--{{ c.plan }}">{{ planLabels[c.plan] ?? c.plan }}</span>
-                  </div>
-
-                  <div class="cs-field">
                     <span class="cs-field__label">Estado</span>
                     @if (c.is_active) {
                       <span class="cs-status cs-status--active">
@@ -137,11 +132,7 @@
                     @for (mod of lic.modules_included; track mod) {
                       <div class="cs-module cs-module--active">
                         <div class="cs-module__icon-wrap">
-                          <mat-icon>
-                            {{ mod === 'ventas' ? 'shopping_cart' :
-                               mod === 'cobros' ? 'account_balance_wallet' :
-                               mod === 'dashboard' ? 'home' : 'work' }}
-                          </mat-icon>
+                          <mat-icon>{{ moduleIcons[mod] ?? 'extension' }}</mat-icon>
                         </div>
                         <span class="cs-module__name">{{ moduleLabels[mod] ?? mod }}</span>
                         <mat-icon class="cs-module__status-icon">check_circle</mat-icon>
@@ -194,10 +185,34 @@
                       </span>
                     </div>
                     <div class="cs-field">
-                      <span class="cs-field__label">Usuarios máximos</span>
+                      <span class="cs-field__label">Usuarios simultáneos</span>
+                      <span class="cs-field__value cs-field__value--highlight">{{ lic.concurrent_users }}</span>
+                    </div>
+                    <div class="cs-field">
+                      <span class="cs-field__label">Usuarios totales (cuentas)</span>
                       <span class="cs-field__value">{{ lic.max_users }}</span>
                     </div>
                   </div>
+
+                  @if (aiUsage(); as ai) {
+                    <div class="cs-ai-section">
+                      <span class="cs-field__label">Tokens IA este mes</span>
+                      <div class="cs-ai-counts">
+                        <span class="cs-ai-used">{{ ai.tokens_used | number:'1.0-0' }}</span>
+                        <span class="cs-ai-quota">/ {{ ai.tokens_quota | number:'1.0-0' }}</span>
+                      </div>
+                      <mat-progress-bar
+                        mode="determinate"
+                        [value]="ai.tokens_pct"
+                        [color]="ai.tokens_pct >= 90 ? 'warn' : 'primary'">
+                      </mat-progress-bar>
+                      <div class="cs-ai-footer">
+                        <span>{{ ai.tokens_pct | number:'1.0-0' }}% utilizado</span>
+                        <span>{{ ai.messages_used | number }} mensajes enviados</span>
+                      </div>
+                    </div>
+                  }
+
 
                 </div>
               </div>
@@ -216,6 +231,93 @@
               </div>
             }
 
+          </div>
+
+        </div>
+      </mat-tab>
+
+      <!-- ── Tab: Solicitudes ──────────────────────────────────── -->
+      <mat-tab>
+        <ng-template mat-tab-label>
+          <mat-icon class="cs-tab-icon">send</mat-icon>
+          Solicitudes
+        </ng-template>
+        <div class="cs-tab-content">
+
+          <!-- Botones de solicitud -->
+          <div class="sc-card cs-request-card">
+            <div class="sc-card__header">
+              <mat-icon>add_circle</mat-icon>
+              <span class="sc-card__title">Ampliar licencia</span>
+            </div>
+            <div class="sc-card__body">
+              <p class="cs-request-hint">
+                Solicita la adición de usuarios, módulos o tokens de IA a tu licencia.
+                El equipo de ValMen Tech revisará tu solicitud y la aplicará a tu licencia.
+              </p>
+              <div class="cs-request-actions">
+                <button mat-stroked-button color="primary"
+                        [disabled]="submittingRequest()"
+                        (click)="openRequestDialog('user_seats')">
+                  <mat-icon>group_add</mat-icon>
+                  Solicitar más usuarios
+                </button>
+                <button mat-stroked-button color="primary"
+                        [disabled]="submittingRequest()"
+                        (click)="openRequestDialog('module')">
+                  <mat-icon>apps</mat-icon>
+                  Solicitar módulo
+                </button>
+                <button mat-stroked-button color="primary"
+                        [disabled]="submittingRequest()"
+                        (click)="openRequestDialog('ai_tokens')">
+                  <mat-icon>psychology</mat-icon>
+                  Solicitar tokens IA
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Historial de solicitudes -->
+          <div class="sc-card">
+            <div class="sc-card__header">
+              <mat-icon>history</mat-icon>
+              <span class="sc-card__title">Historial de solicitudes</span>
+            </div>
+            <div class="sc-card__body">
+              @if (loadingRequests()) {
+                <mat-progress-bar mode="indeterminate" />
+              }
+
+              @if (!loadingRequests() && myRequests().length === 0) {
+                <div class="cs-empty-requests">
+                  <mat-icon>inbox</mat-icon>
+                  <p>No tienes solicitudes enviadas aún.</p>
+                </div>
+              }
+
+              @for (req of myRequests(); track req.id) {
+                <div class="cs-request-item">
+                  <div class="cs-request-item__info">
+                    <span class="cs-request-item__type">{{ requestTypeLabels[req.request_type] }}</span>
+                    <span class="cs-request-item__pkg">{{ req.package?.name }}</span>
+                    @if (req.notes) {
+                      <span class="cs-request-item__notes">{{ req.notes }}</span>
+                    }
+                    @if (req.review_notes) {
+                      <span class="cs-request-item__review-notes">
+                        <mat-icon style="font-size:14px;height:14px;width:14px">comment</mat-icon>
+                        {{ req.review_notes }}
+                      </span>
+                    }
+                    <span class="cs-request-item__date">{{ req.created_at | date:'dd/MM/yyyy HH:mm' }}</span>
+                  </div>
+                  <span class="cs-request-status cs-request-status--{{ req.status }}">
+                    {{ requestStatusLabels[req.status] }}
+                  </span>
+                </div>
+              }
+            </div>
           </div>
 
         </div>

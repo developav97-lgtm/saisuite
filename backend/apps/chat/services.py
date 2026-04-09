@@ -811,6 +811,24 @@ class BotResponseService:
             BotResponseService._create_bot_message(conversacion, bot_user, error_msg)
             return
 
+        # Check module access — no consumir tokens si el módulo no está licenciado
+        if bot_context and bot_context != 'general':
+            from apps.companies.services import ModuleTrialService
+            if not ModuleTrialService.is_module_accessible(company, bot_context):
+                module_names = {
+                    'proyectos': 'SaiProyectos',
+                    'dashboard': 'SaiDashboard',
+                    'crm':       'CRM',
+                    'soporte':   'Soporte',
+                }
+                module_display = module_names.get(bot_context, bot_context)
+                error_msg = (
+                    f'No tienes acceso al módulo de {module_display}. '
+                    f'Puedes solicitar una prueba gratuita de 14 días o contactar a ventas@valmentech.com.'
+                )
+                BotResponseService._create_bot_message(conversacion, bot_user, error_msg)
+                return
+
         # Obtener historial reciente (excluyendo el mensaje actual que aún no se guardó)
         history_qs = (
             Mensaje.objects.filter(conversacion=conversacion)

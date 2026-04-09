@@ -1,0 +1,65 @@
+<div class="sc-login-page">
+  <div class="sc-login-card">
+
+    <div class="sc-login-logo">
+      <mat-icon>how_to_reg</mat-icon>
+    </div>
+    <h1 class="sc-login-brand">Saicloud</h1>
+    <h2 class="sc-login-title">Activar cuenta</h2>
+
+    @if (done()) {
+      <div class="fp-success">
+        <mat-icon class="fp-success__icon">check_circle</mat-icon>
+        <p>¡Tu cuenta ha sido activada correctamente! Ya puedes iniciar sesión.</p>
+      </div>
+      <a mat-raised-button color="primary" routerLink="/auth/login" class="fp-back-btn">
+        Ir al inicio de sesión
+      </a>
+    } @else {
+      <p class="fp-subtitle">Elige una contraseña segura para tu cuenta.</p>
+
+      <form [formGroup]="form" (ngSubmit)="onSubmit()" class="sc-login-form">
+
+        <mat-form-field appearance="outline" class="sc-form-field-full">
+          <mat-label>Nueva contraseña</mat-label>
+          <input matInput
+            [type]="hidePassword() ? 'password' : 'text'"
+            formControlName="password"
+            autocomplete="new-password" />
+          <mat-icon matPrefix>lock</mat-icon>
+          <button type="button" mat-icon-button matSuffix (click)="hidePassword.set(!hidePassword())">
+            <mat-icon>{{ hidePassword() ? 'visibility' : 'visibility_off' }}</mat-icon>
+          </button>
+          @if (form.controls.password.hasError('required') && form.controls.password.touched) {
+            <mat-error>La contraseña es requerida.</mat-error>
+          }
+          @if (form.controls.password.hasError('minlength') && form.controls.password.touched) {
+            <mat-error>Mínimo 8 caracteres.</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="sc-form-field-full">
+          <mat-label>Confirmar contraseña</mat-label>
+          <input matInput
+            [type]="hidePassword() ? 'password' : 'text'"
+            formControlName="password2"
+            autocomplete="new-password" />
+          <mat-icon matPrefix>lock_outline</mat-icon>
+          @if (form.controls.password2.hasError('required') && form.controls.password2.touched) {
+            <mat-error>Confirma tu contraseña.</mat-error>
+          }
+        </mat-form-field>
+
+        <button mat-raised-button color="primary" type="submit" class="sc-login-btn" [disabled]="loading()">
+          @if (loading()) {
+            <mat-spinner diameter="20" />
+          } @else {
+            Activar cuenta
+          }
+        </button>
+
+      </form>
+    }
+
+  </div>
+</div>

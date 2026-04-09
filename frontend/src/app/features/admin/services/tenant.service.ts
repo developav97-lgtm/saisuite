@@ -15,6 +15,10 @@ import {
   AIUsageSummary,
   AIUsagePerUser,
   AgentTokenInfo,
+  ModuleTrial,
+  ModuleTrialStatus,
+  LicensePriceCalculatorLine,
+  LicensePriceResult,
 } from '../models/tenant.model';
 
 const BASE = '/api/v1/admin/tenants';
@@ -37,7 +41,7 @@ export class TenantService {
     return this.http.post<Tenant>(`${BASE}/`, data);
   }
 
-  updateTenant(id: string, data: Partial<{ name: string; plan: string; saiopen_enabled: boolean }>): Observable<Tenant> {
+  updateTenant(id: string, data: Partial<{ name: string; saiopen_enabled: boolean }>): Observable<Tenant> {
     return this.http.patch<Tenant>(`${BASE}/${id}/`, data);
   }
 
@@ -136,5 +140,27 @@ export class TenantService {
 
   revokeAgentToken(tenantId: string, tokenId: string): Observable<void> {
     return this.http.post<void>(`${BASE}/${tenantId}/agent-tokens/${tokenId}/revoke/`, {});
+  }
+
+  // ── Trials de módulo (superadmin) ─────────────────────────────────────────
+
+  getModuleTrialStatus(tenantId: string, moduleCode: string): Observable<ModuleTrialStatus> {
+    return this.http.get<ModuleTrialStatus>(`${BASE}/${tenantId}/modules/${moduleCode}/trial/status/`);
+  }
+
+  activateModuleTrial(tenantId: string, moduleCode: string): Observable<ModuleTrial> {
+    return this.http.post<ModuleTrial>(`${BASE}/${tenantId}/modules/${moduleCode}/trial/activate/`, {});
+  }
+
+  // ── Calculadora de precio de licencia ─────────────────────────────────────
+
+  calculateLicensePrice(
+    lines: LicensePriceCalculatorLine[],
+    period: 'monthly' | 'annual' = 'monthly'
+  ): Observable<LicensePriceResult> {
+    return this.http.post<LicensePriceResult>(
+      `/api/v1/admin/tenants/license/calculate-total/`,
+      { lines, period }
+    );
   }
 }

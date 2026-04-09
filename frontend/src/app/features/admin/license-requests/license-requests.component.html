@@ -1,0 +1,150 @@
+<div class="sc-page">
+
+  <div class="sc-page-header">
+    <h1 class="sc-page-header__title">Solicitudes de licencia</h1>
+    <button mat-stroked-button (click)="load()" [disabled]="loading()">
+      <mat-icon>refresh</mat-icon>Actualizar
+    </button>
+  </div>
+
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate" />
+  }
+
+  <mat-tab-group animationDuration="150ms">
+
+    <!-- Pendientes -->
+    <mat-tab>
+      <ng-template mat-tab-label>
+        Pendientes
+        @if (pending().length > 0) {
+          <span class="lr-tab-badge">{{ pending().length }}</span>
+        }
+      </ng-template>
+
+      <div class="lr-tab-content">
+        @if (!loading() && pending().length === 0) {
+          <div class="sc-empty-state">
+            <mat-icon>check_circle</mat-icon>
+            <p>No hay solicitudes pendientes</p>
+          </div>
+        }
+
+        @for (req of pending(); track req.id) {
+          <div class="sc-card lr-request-card">
+            <div class="lr-request-header">
+              <div class="lr-request-meta">
+                <span class="lr-company">{{ req.company_name }}</span>
+                <span class="lr-type">{{ typeLabels[req.request_type] }}</span>
+              </div>
+              <span class="lr-status lr-status--{{ req.status }}">
+                {{ statusLabels[req.status] }}
+              </span>
+            </div>
+
+            <div class="lr-request-body">
+              <div class="lr-field">
+                <span class="lr-field__label">Paquete</span>
+                <span class="lr-field__value">{{ req.package?.name }}</span>
+              </div>
+              @if (req.package?.quantity) {
+                <div class="lr-field">
+                  <span class="lr-field__label">Cantidad</span>
+                  <span class="lr-field__value">{{ req.package.quantity | number }}</span>
+                </div>
+              }
+              @if (req.package?.price_monthly && +req.package.price_monthly > 0) {
+                <div class="lr-field">
+                  <span class="lr-field__label">Precio mensual</span>
+                  <span class="lr-field__value">${{ +req.package.price_monthly | number:'1.0-0' }} COP</span>
+                </div>
+              }
+              @if (req.notes) {
+                <div class="lr-field lr-field--full">
+                  <span class="lr-field__label">Nota del cliente</span>
+                  <span class="lr-field__value">{{ req.notes }}</span>
+                </div>
+              }
+              <div class="lr-field">
+                <span class="lr-field__label">Solicitado por</span>
+                <span class="lr-field__value">{{ req.created_by_email }}</span>
+              </div>
+              <div class="lr-field">
+                <span class="lr-field__label">Fecha</span>
+                <span class="lr-field__value">{{ req.created_at | date:'dd/MM/yyyy HH:mm' }}</span>
+              </div>
+            </div>
+
+            <div class="lr-request-actions">
+              <button mat-raised-button color="primary"
+                      [disabled]="processingId() === req.id"
+                      (click)="approve(req)">
+                <mat-icon>check</mat-icon> Aprobar
+              </button>
+              <button mat-stroked-button color="warn"
+                      [disabled]="processingId() === req.id"
+                      (click)="reject(req)">
+                <mat-icon>close</mat-icon> Rechazar
+              </button>
+            </div>
+          </div>
+        }
+      </div>
+    </mat-tab>
+
+    <!-- Historial -->
+    <mat-tab label="Historial">
+      <div class="lr-tab-content">
+        @if (!loading() && resolved().length === 0) {
+          <div class="sc-empty-state">
+            <mat-icon>history</mat-icon>
+            <p>No hay solicitudes procesadas aún</p>
+          </div>
+        }
+
+        @for (req of resolved(); track req.id) {
+          <div class="sc-card lr-request-card lr-request-card--resolved">
+            <div class="lr-request-header">
+              <div class="lr-request-meta">
+                <span class="lr-company">{{ req.company_name }}</span>
+                <span class="lr-type">{{ typeLabels[req.request_type] }}</span>
+              </div>
+              <span class="lr-status lr-status--{{ req.status }}">
+                {{ statusLabels[req.status] }}
+              </span>
+            </div>
+
+            <div class="lr-request-body">
+              <div class="lr-field">
+                <span class="lr-field__label">Paquete</span>
+                <span class="lr-field__value">{{ req.package?.name }}</span>
+              </div>
+              @if (req.notes) {
+                <div class="lr-field lr-field--full">
+                  <span class="lr-field__label">Nota del cliente</span>
+                  <span class="lr-field__value">{{ req.notes }}</span>
+                </div>
+              }
+              @if (req.review_notes) {
+                <div class="lr-field lr-field--full">
+                  <span class="lr-field__label">Nota de revisión</span>
+                  <span class="lr-field__value">{{ req.review_notes }}</span>
+                </div>
+              }
+              <div class="lr-field">
+                <span class="lr-field__label">Revisado por</span>
+                <span class="lr-field__value">{{ req.reviewed_by_email ?? '—' }}</span>
+              </div>
+              <div class="lr-field">
+                <span class="lr-field__label">Fecha</span>
+                <span class="lr-field__value">{{ req.reviewed_at | date:'dd/MM/yyyy HH:mm' }}</span>
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+    </mat-tab>
+
+  </mat-tab-group>
+
+</div>
