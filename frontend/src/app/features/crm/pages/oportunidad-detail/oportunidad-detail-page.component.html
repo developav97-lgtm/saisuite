@@ -1,0 +1,156 @@
+<div class="op-detail-page">
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+  }
+
+  @if (oportunidad(); as op) {
+    <header class="op-header">
+      <button mat-icon-button (click)="goBack()" matTooltip="Volver al Kanban">
+        <mat-icon>arrow_back</mat-icon>
+      </button>
+      <div class="op-title-block">
+        <h1 class="op-titulo">{{ op.titulo }}</h1>
+        <div class="op-meta">
+          <mat-chip [style.background-color]="op.etapa_color">{{ op.etapa_nombre }}</mat-chip>
+          @if (op.contacto_nombre) {
+            <span class="meta-item">
+              <mat-icon class="mini-icon">person</mat-icon>
+              {{ op.contacto_nombre }}
+            </span>
+          }
+          @if (op.asignado_a_nombre) {
+            <span class="meta-item">
+              <mat-icon class="mini-icon">account_circle</mat-icon>
+              {{ op.asignado_a_nombre }}
+            </span>
+          }
+          <span class="op-valor">{{ formatMoney(op.valor_esperado) }}</span>
+        </div>
+      </div>
+      <div class="op-actions">
+        @if (!op.ganada_en && !op.perdida_en) {
+          <button mat-flat-button color="primary" (click)="ganar()">
+            <mat-icon>emoji_events</mat-icon> Ganar
+          </button>
+          <button mat-stroked-button color="warn" (click)="perder()">
+            <mat-icon>close</mat-icon> Perder
+          </button>
+        } @else if (op.ganada_en) {
+          <mat-chip class="ganada-chip">
+            <mat-icon>emoji_events</mat-icon> Ganada
+          </mat-chip>
+        } @else {
+          <mat-chip class="perdida-chip">
+            <mat-icon>close</mat-icon> Perdida
+          </mat-chip>
+        }
+      </div>
+    </header>
+
+    <mat-tab-group class="op-tabs">
+
+      <!-- TAB: Timeline -->
+      <mat-tab label="Timeline">
+        <div class="tab-content">
+          <div class="nota-form">
+            <form [formGroup]="notaForm" (ngSubmit)="agregarNota()">
+              <mat-form-field appearance="outline" class="nota-field">
+                <mat-label>Agregar nota...</mat-label>
+                <textarea matInput formControlName="descripcion" rows="2"></textarea>
+              </mat-form-field>
+              <button mat-flat-button color="primary" type="submit"
+                [disabled]="notaForm.invalid || addingNota()">
+                <mat-icon>send</mat-icon>
+              </button>
+            </form>
+          </div>
+
+          <div class="timeline-list">
+            @for (evento of timeline(); track evento.id) {
+              <div class="timeline-item">
+                <div class="timeline-icon">
+                  <mat-icon>{{ tipoIconMap[evento.tipo] ?? 'circle' }}</mat-icon>
+                </div>
+                <div class="timeline-body">
+                  <p class="timeline-desc">{{ evento.descripcion }}</p>
+                  <span class="timeline-meta">
+                    {{ evento.usuario_nombre ?? 'Sistema' }} ·
+                    {{ evento.created_at | date:'dd/MM/yyyy HH:mm' }}
+                  </span>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      </mat-tab>
+
+      <!-- TAB: Actividades -->
+      <mat-tab [label]="'Actividades (' + actividades().length + ')'">
+        <div class="tab-content">
+          <div class="tab-header-bar">
+            <button mat-flat-button color="primary" (click)="openActividadDialog()">
+              <mat-icon>add</mat-icon> Nueva Actividad
+            </button>
+          </div>
+          @for (act of actividades(); track act.id) {
+            <div class="actividad-item" [class.completada]="act.completada">
+              <div class="act-icon">
+                <mat-icon>{{ act.tipo === 'llamada' ? 'phone' : act.tipo === 'reunion' ? 'groups' : 'task' }}</mat-icon>
+              </div>
+              <div class="act-body">
+                <p class="act-titulo">{{ act.titulo }}</p>
+                <span class="act-meta">
+                  {{ act.tipo }} · {{ act.fecha_programada | date:'dd/MM/yyyy' }}
+                  @if (act.asignado_a_nombre) { · {{ act.asignado_a_nombre }} }
+                </span>
+                @if (act.resultado) {
+                  <p class="act-resultado">{{ act.resultado }}</p>
+                }
+              </div>
+              @if (!act.completada) {
+                <button mat-icon-button color="primary" matTooltip="Completar"
+                  (click)="completarActividad(act)">
+                  <mat-icon>check_circle_outline</mat-icon>
+                </button>
+              } @else {
+                <mat-icon class="done-icon" color="primary">check_circle</mat-icon>
+              }
+            </div>
+          }
+          @if (actividades().length === 0) {
+            <p class="empty-tab">Sin actividades registradas</p>
+          }
+        </div>
+      </mat-tab>
+
+      <!-- TAB: Cotizaciones -->
+      <mat-tab [label]="'Cotizaciones (' + cotizaciones().length + ')'">
+        <div class="tab-content">
+          <div class="tab-header-bar">
+            <button mat-flat-button color="primary" (click)="createCotizacion()">
+              <mat-icon>add</mat-icon> Nueva Cotización
+            </button>
+          </div>
+          @for (cot of cotizaciones(); track cot.id) {
+            <div class="cotizacion-item" [routerLink]="['/crm/cotizaciones', cot.id]">
+              <div class="cot-info">
+                <span class="cot-numero">{{ cot.numero_interno }}</span>
+                <span class="cot-titulo">{{ cot.titulo }}</span>
+              </div>
+              <div class="cot-meta">
+                <mat-chip class="estado-chip" [class]="'estado-' + cot.estado">
+                  {{ cot.estado }}
+                </mat-chip>
+                <span class="cot-total">{{ formatMoney(cot.total) }}</span>
+              </div>
+            </div>
+          }
+          @if (cotizaciones().length === 0) {
+            <p class="empty-tab">Sin cotizaciones. Crea la primera.</p>
+          }
+        </div>
+      </mat-tab>
+
+    </mat-tab-group>
+  }
+</div>

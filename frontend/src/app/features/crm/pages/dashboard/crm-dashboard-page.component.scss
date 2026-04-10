@@ -1,0 +1,165 @@
+.crm-dashboard {
+  padding: 16px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.page-header .page-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.kpi-card {
+  mat-card-content {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    padding: 20px 20px 16px !important;
+  }
+
+  .kpi-icon {
+    font-size: 28px;
+    height: 28px;
+    width: 28px;
+    margin-bottom: 8px;
+
+    &.primary { color: var(--sc-primary, #1976d2); }
+    &.accent   { color: var(--sc-accent, #f57c00); }
+    &.success  { color: var(--sc-success, #2e7d32); }
+    &.warning  { color: var(--sc-warning, #ff6f00); }
+  }
+
+  .kpi-value {
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--sc-text-primary);
+  }
+
+  .kpi-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--sc-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .kpi-sub {
+    font-size: 0.8rem;
+    color: var(--sc-text-disabled);
+  }
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+// Funnel
+.funnel-card {
+  .funnel-item {
+    display: grid;
+    grid-template-columns: 160px 1fr auto;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--sc-border, #f0f0f0);
+
+    &:last-child { border-bottom: none; }
+  }
+
+  .funnel-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    font-weight: 500;
+  }
+
+  .etapa-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .funnel-bar-container {
+    height: 8px;
+    background: var(--sc-surface-2, #eeeeee);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .funnel-bar {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 600ms ease;
+  }
+
+  .funnel-stats {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    white-space: nowrap;
+  }
+
+  .count-badge {
+    font-weight: 700;
+    font-size: 0.85rem;
+    min-width: 24px;
+    text-align: right;
+  }
+
+  .valor-badge {
+    font-size: 0.8rem;
+    color: var(--sc-text-secondary);
+    min-width: 80px;
+    text-align: right;
+  }
+}
+
+// Vendedores
+.vendedores-table {
+  width: 100%;
+
+  .money-col { text-align: right !important; }
+}
+
+// Forecast
+.forecast-card {
+  .forecast-row {
+    display: grid;
+    grid-template-columns: 1fr auto auto auto auto;
+    gap: 16px;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--sc-border, #f0f0f0);
+
+    &:last-child { border-bottom: none; }
+  }
+
+  .fc-etapa { font-weight: 500; font-size: 0.9rem; }
+  .fc-count  { color: var(--sc-text-secondary); font-size: 0.85rem; }
+  .fc-prob   { color: var(--sc-text-secondary); font-size: 0.85rem; }
+  .fc-esperado { font-size: 0.85rem; text-align: right; }
+  .fc-ponderado {
+    font-weight: 700;
+    color: var(--sc-primary, #1976d2);
+    text-align: right;
+    font-size: 0.9rem;
+  }
+}

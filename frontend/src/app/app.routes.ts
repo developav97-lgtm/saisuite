@@ -78,6 +78,14 @@ export const routes: Routes = [
                         m => m.NotificacionesConfiguracionComponent
                     ),
             },
+            // CRM — gestión de ventas y pipeline
+            {
+                path: 'crm',
+                canActivate: [noSuperAdminGuard, moduleAccessGuard],
+                data: { requiredModule: 'crm' },
+                loadChildren: () =>
+                    import('./features/crm/crm.routes').then(m => m.CRM_ROUTES),
+            },
             // SaiDashboard — BI financiero
             {
                 path: 'saidashboard',

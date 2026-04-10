@@ -1,0 +1,234 @@
+.op-detail-page {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 16px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.op-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--sc-surface-border);
+
+  .op-title-block {
+    flex: 1;
+    min-width: 200px;
+  }
+
+  .op-titulo {
+    font-size: 1.4rem;
+    font-weight: 700;
+    margin: 0 0 8px;
+    color: var(--sc-text-primary);
+  }
+
+  .op-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .meta-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.85rem;
+    color: var(--sc-text-secondary);
+  }
+
+  .mini-icon {
+    font-size: 16px;
+    height: 16px;
+    width: 16px;
+  }
+
+  .op-valor {
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: var(--sc-primary, #1976d2);
+  }
+
+  .op-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+}
+
+.ganada-chip {
+  background: var(--sc-success-light, #e8f5e9) !important;
+  color: var(--sc-success, #2e7d32) !important;
+}
+
+.perdida-chip {
+  background: var(--sc-error-light, #ffebee) !important;
+  color: var(--sc-error, #c62828) !important;
+}
+
+.op-tabs {
+  flex: 1;
+}
+
+.tab-content {
+  padding: 16px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.tab-header-bar {
+  display: flex;
+  justify-content: flex-end;
+}
+
+// Timeline
+.nota-form {
+  form {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+
+    .nota-field { flex: 1; }
+  }
+}
+
+.timeline-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.timeline-item {
+  display: flex;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--sc-surface-border);
+
+  &:last-child { border-bottom: none; }
+}
+
+.timeline-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--sc-surface-header);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  mat-icon { font-size: 18px; height: 18px; width: 18px; }
+}
+
+.timeline-body {
+  flex: 1;
+
+  .timeline-desc {
+    margin: 0 0 4px;
+    font-size: 0.9rem;
+    color: var(--sc-text-color);
+  }
+
+  .timeline-meta {
+    font-size: 0.78rem;
+    color: var(--sc-text-muted);
+  }
+}
+
+// Actividades
+.actividad-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--sc-surface-card);
+  border: 1px solid var(--sc-surface-border);
+
+  &.completada { opacity: 0.6; }
+
+  .act-icon {
+    color: var(--sc-primary);
+    flex-shrink: 0;
+  }
+
+  .act-body { flex: 1; min-width: 0; }
+
+  .act-titulo {
+    font-weight: 500;
+    margin: 0 0 2px;
+    font-size: 0.9rem;
+    color: var(--sc-text-color);
+  }
+
+  .act-meta {
+    font-size: 0.78rem;
+    color: var(--sc-text-muted);
+    text-transform: capitalize;
+  }
+
+  .act-resultado {
+    font-size: 0.82rem;
+    color: var(--sc-text-muted);
+    font-style: italic;
+    margin: 4px 0 0;
+  }
+
+  .done-icon { color: var(--sc-success, #2e7d32); }
+}
+
+// Cotizaciones
+.cotizacion-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-radius: 8px;
+  background: var(--sc-surface-card);
+  border: 1px solid var(--sc-surface-border);
+  cursor: pointer;
+  transition: box-shadow 200ms;
+
+  &:hover { box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08); }
+
+  .cot-info {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+
+  .cot-numero {
+    font-family: monospace;
+    font-size: 0.85rem;
+    color: var(--sc-text-secondary);
+  }
+
+  .cot-titulo { font-weight: 500; }
+
+  .cot-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .cot-total { font-weight: 700; color: var(--sc-primary, #1976d2); }
+}
+
+.estado-borrador   { background: #e3f2fd !important; color: #1565c0 !important; }
+.estado-enviada    { background: #fff3e0 !important; color: #e65100 !important; }
+.estado-aceptada   { background: #e8f5e9 !important; color: #2e7d32 !important; }
+.estado-rechazada  { background: #ffebee !important; color: #c62828 !important; }
+.estado-vencida    { background: #fce4ec !important; color: #880e4f !important; }
+
+.empty-tab {
+  color: var(--sc-text-secondary);
+  text-align: center;
+  padding: 32px;
+  font-size: 0.9rem;
+}

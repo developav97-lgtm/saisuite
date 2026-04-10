@@ -13,7 +13,7 @@
 
   <!-- Grid de módulos -->
   <div class="ms-grid">
-    @for (mod of modulos; track mod.key) {
+    @for (mod of modulos(); track mod.key) {
       <div
         class="ms-card"
         [class.ms-card--disabled]="!mod.available"

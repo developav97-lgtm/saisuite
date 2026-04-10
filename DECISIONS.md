@@ -1,3 +1,75 @@
+## DEC-062: sai_key cotizacion CRM = "{numero}_{tipo}_{empresa}_{sucursal}"
+**Fecha:** 2026-04-10
+**Estado:** Decidido
+
+**Contexto:** La PK de COTIZACI en Saiopen es compuesta por 4 campos (NUMERO + TIPO + ID_EMPRESA + ID_SUCURSAL). El campo `sai_key` de BaseModel es un CharField simple. Se necesita una representación única y legible.
+
+**Decisión:** `sai_key = f"{sai_numero}_{sai_tipo}_{sai_empresa}_{sai_sucursal}"`. Unique_together con `company`.
+
+**Consecuencias:** Trazabilidad directa. El agente retorna los 4 campos y Django construye el sai_key al confirmar sync.
+
+---
+
+## DEC-061: Permisos CRM sobre roles existentes — sin roles nuevos
+**Fecha:** 2026-04-10
+**Estado:** Decidido
+
+**Contexto:** CRM necesita control de acceso. Opciones: (a) roles CRM específicos, (b) permisos Django sobre roles existentes.
+
+**Decisión:** Opción (b). Se agregan permisos estándar Django (`view_*`, `add_*`, `change_*`, `delete_*`) + custom (`import_leads`, `sync_productos`, `export_pdf_cotizacion`) sobre los roles existentes: `company_admin` full, `seller` CRUD propio, `viewer` lectura.
+
+**Consecuencias:** Empresas pueden crear sus propios roles en admin y asignar permisos CRM granularmente. Consistente con el resto de la plataforma.
+
+---
+
+## DEC-060: Cotización CRM → Saiopen solo al aceptar (AUTORIZADO='S')
+**Fecha:** 2026-04-10
+**Estado:** Decidido
+
+**Contexto:** Saiopen no tiene estados de borrador en COTIZACI. CRM necesita ciclo de vida completo (Borrador → Enviada → Aceptada/Rechazada). Sincronizar borradores contaminaría Saiopen con cotizaciones incompletas.
+
+**Decisión:** CRM gestiona ciclo completo internamente. Solo al cambiar a `aceptada` se hace push a Saiopen como COTIZACI con `AUTORIZADO='S'`. Si Saiopen anula (ANULAR cambia), el agente actualiza CRM a `anulada`.
+
+**Consecuencias:** Saiopen solo recibe cotizaciones confirmadas. Hay un gap temporal entre aprobación en CRM y creación en Saiopen (tiempo de procesamiento SQS < 30s).
+
+---
+
+## DEC-059: Catálogo CRM = ITEM de Saiopen (unidireccional Saiopen→CRM)
+**Fecha:** 2026-04-10
+**Estado:** Decidido
+
+**Contexto:** Los productos son gestionados en Saiopen. CRM necesita un catálogo para cotizaciones. "Bidireccional" confirmado por PO = cambios en ITEM llegan al CRM automáticamente.
+
+**Decisión:** `CrmProducto` se sincroniza desde `ITEM` vía agente (con watermark). Desde CRM no se crean/modifican productos. `CrmImpuesto` se sincroniza desde `TAXAUTH`. ITEM.IMPOVENTA → lookup en TAXAUTH → FK a CrmImpuesto.
+
+**Consecuencias:** El catálogo CRM siempre refleja Saiopen. Si un producto se desactiva en Saiopen (`ESTADO='False'`), se desactiva en CRM (`is_active=False`) y deja de aparecer en buscador de cotizaciones.
+
+---
+
+## DEC-058: CRM reutiliza `terceros.Tercero` — sin duplicar modelo de cliente
+**Fecha:** 2026-04-10
+**Estado:** Decidido
+
+**Contexto:** `terceros.Tercero` ya sincroniza clientes con CUST de Saiopen. CRM necesita vincular oportunidades a clientes.
+
+**Decisión:** `CrmOportunidad.contacto` es FK a `terceros.Tercero`. Al convertir un lead, se busca Tercero por email/NIT existente o se crea uno nuevo. El CRM no tiene su propio modelo de "contacto".
+
+**Consecuencias:** Oportunidades siempre ligadas a un tercero real en Saiopen. Al crear cotización, `ID_CLIENTE` en COTIZACI viene del `Tercero.saiopen_id`. Sin duplicación de datos de clientes.
+
+---
+
+## DEC-057: Módulo CRM en Django — no Go
+**Fecha:** 2026-04-10
+**Estado:** Decidido
+
+**Contexto:** Evaluación rutinaria Django vs Go para nuevo módulo.
+
+**Decisión:** Django. CRM es CRUD + lógica comercial sin >1000 req/s, sin batch masivo, sin standalone. Los 4 criterios de Go no se cumplen.
+
+**Consecuencias:** Consistente con resto de backend. Menor overhead de mantenimiento.
+
+---
+
 ## DEC-056: CUST sync atómico — SHIPTO y TRIBUTARIA viajan en el mismo mensaje SQS
 **Fecha:** 2026-04-07
 **Estado:** Decidido

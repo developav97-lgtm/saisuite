@@ -1,0 +1,67 @@
+<h2 mat-dialog-title>Convertir Lead a Oportunidad</h2>
+
+@if (loading()) {
+  <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+}
+
+<mat-dialog-content>
+  <p class="lead-info">
+    <strong>{{ lead.nombre }}</strong>
+    @if (lead.empresa) { — {{ lead.empresa }} }
+  </p>
+
+  <form [formGroup]="form" class="form-grid">
+    @if (pipelines().length > 1) {
+      <mat-form-field appearance="outline" class="span-2">
+        <mat-label>Pipeline</mat-label>
+        <mat-select (valueChange)="onPipelineChange($event)">
+          @for (p of pipelines(); track p.id) {
+            <mat-option [value]="p.id">{{ p.nombre }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    }
+
+    <mat-form-field appearance="outline">
+      <mat-label>Etapa inicial *</mat-label>
+      <mat-select formControlName="etapa_id">
+        @for (e of etapas(); track e.id) {
+          <mat-option [value]="e.id">{{ e.nombre }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Valor estimado</mat-label>
+      <span matPrefix>$&nbsp;</span>
+      <input matInput scMoneyInput formControlName="valor_esperado" placeholder="0" />
+    </mat-form-field>
+
+    <mat-divider class="span-2"></mat-divider>
+
+    <mat-form-field appearance="outline" class="span-2">
+      <mat-label>Asignar oportunidad a</mat-label>
+      <mat-select formControlName="asignado_a_id">
+        <mat-option [value]="null">Sin asignar</mat-option>
+        @for (u of usuarios(); track u.id) {
+          <mat-option [value]="u.id">{{ u.full_name || u.email }}</mat-option>
+        }
+      </mat-select>
+      <mat-hint>Se heredará del lead si se deja sin cambios</mat-hint>
+    </mat-form-field>
+
+    <mat-checkbox formControlName="crear_tercero" class="span-2">
+      Crear Tercero automáticamente desde datos del lead
+    </mat-checkbox>
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button mat-dialog-close>Cancelar</button>
+  <button mat-flat-button color="primary"
+    [disabled]="form.invalid || loading()"
+    (click)="convertir()">
+    <mat-icon>trending_up</mat-icon>
+    Convertir
+  </button>
+</mat-dialog-actions>

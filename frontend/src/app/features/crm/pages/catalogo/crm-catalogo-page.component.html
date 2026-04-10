@@ -1,0 +1,62 @@
+<div class="catalogo-page">
+  <header class="cat-header">
+    <h2 class="cat-title">Catálogo de Productos</h2>
+    <mat-form-field appearance="outline" class="search-field">
+      <mat-label>Buscar producto...</mat-label>
+      <mat-icon matPrefix>search</mat-icon>
+      <input matInput [value]="searchTerm()" (input)="onSearchChange($any($event.target).value)" />
+    </mat-form-field>
+  </header>
+
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+  }
+
+  <div class="table-responsive mat-elevation-z1">
+    <table mat-table [dataSource]="dataSource">
+
+      <ng-container matColumnDef="codigo">
+        <th mat-header-cell *matHeaderCellDef>Código</th>
+        <td mat-cell *matCellDef="let p">
+          <span class="codigo">{{ p.codigo }}</span>
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="nombre">
+        <th mat-header-cell *matHeaderCellDef>Nombre</th>
+        <td mat-cell *matCellDef="let p">{{ p.nombre }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="precio_base">
+        <th mat-header-cell *matHeaderCellDef class="money-col">Precio base</th>
+        <td mat-cell *matCellDef="let p" class="money-col">{{ formatPrecio(p.precio_base) }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="impuesto">
+        <th mat-header-cell *matHeaderCellDef>Impuesto</th>
+        <td mat-cell *matCellDef="let p">
+          @if (p.impuesto_nombre) {
+            <mat-chip class="impuesto-chip">{{ p.impuesto_nombre }} {{ p.impuesto_porcentaje }}%</mat-chip>
+          } @else {
+            <span class="no-tax">—</span>
+          }
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="unidad_venta">
+        <th mat-header-cell *matHeaderCellDef>Unidad</th>
+        <td mat-cell *matCellDef="let p">{{ p.unidad_venta || '—' }}</td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>
+      <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+    </table>
+
+    @if (productos().length === 0 && !loading()) {
+      <div class="empty-state">
+        <mat-icon>inventory_2</mat-icon>
+        <p>No hay productos en el catálogo</p>
+      </div>
+    }
+  </div>
+</div>

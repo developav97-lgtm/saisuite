@@ -1,10 +1,14 @@
 /**
  * SaiSuite — Module Selector (Dashboard)
  * Landing post-login: grid de módulos disponibles.
+ * `available` se deriva de los módulos incluidos en la licencia de la empresa.
+ * Los módulos de acceso universal (admin, terceros, proyectos) siempre están disponibles.
  */
 import {
   ChangeDetectionStrategy,
   Component,
+  OnInit,
+  computed,
   inject,
 } from '@angular/core';
 import { Router } from '@angular/router';
@@ -13,15 +17,20 @@ import { MatRippleModule } from '@angular/material/core';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { AuthService } from '../../core/auth/auth.service';
 
-interface AppModule {
+interface AppModuleDef {
   key: string;
   label: string;
   description: string;
   icon: string;
   route: string;
   color: string;
-  available: boolean;
+  /** true = siempre disponible sin necesitar licencia de módulo */
+  alwaysAvailable?: boolean;
   badge?: string;
+}
+
+interface AppModule extends AppModuleDef {
+  available: boolean;
 }
 
 @Component({
@@ -32,11 +41,16 @@ interface AppModule {
   styleUrl: './dashboard.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class DashboardComponent {
+export class DashboardComponent implements OnInit {
   private readonly router = inject(Router);
-  readonly auth           = inject(AuthService);
+  private readonly auth   = inject(AuthService);
 
-  readonly modulos: AppModule[] = [
+  ngOnInit(): void {
+    // Refresca el perfil para reflejar cambios de licencia sin necesidad de re-login.
+    this.auth.refreshUserProfile().subscribe({ error: () => {} });
+  }
+
+  private readonly MODULOS_DEF: AppModuleDef[] = [
     {
       key: 'proyectos',
       label: 'Gestión de Proyectos',
@@ -44,7 +58,7 @@ export class DashboardComponent {
       icon: 'engineering',
       route: '/proyectos',
       color: '#1565c0',
-      available: true,
+      alwaysAvailable: true,
     },
     {
       key: 'terceros',
@@ -53,17 +67,15 @@ export class DashboardComponent {
       icon: 'contacts',
       route: '/terceros',
       color: '#2e7d32',
-      available: true,
+      alwaysAvailable: true,
     },
     {
       key: 'crm',
       label: 'CRM',
-      description: 'Pedidos, clientes y catálogo de productos',
+      description: 'Pipeline de ventas, leads y cotizaciones',
       icon: 'storefront',
       route: '/crm',
       color: '#e65100',
-      available: false,
-      badge: 'Próximamente',
     },
     {
       key: 'soporte',
@@ -72,17 +84,14 @@ export class DashboardComponent {
       icon: 'account_balance_wallet',
       route: '/soporte-module',
       color: '#6a1b9a',
-      available: false,
-      badge: 'Próximamente',
     },
     {
-      key: 'saidashboard',
+      key: 'dashboard',
       label: 'SaiDashboard',
       description: 'Dashboards financieros, indicadores y BI contable',
       icon: 'analytics',
       route: '/saidashboard',
       color: '#1565c0',
-      available: true,
       badge: 'Nuevo',
     },
     {
@@ -92,9 +101,20 @@ export class DashboardComponent {
       icon: 'admin_panel_settings',
       route: '/admin/usuarios',
       color: '#37474f',
-      available: true,
+      alwaysAvailable: true,
     },
   ];
+
+  readonly modulos = computed<AppModule[]>(() => {
+    const user     = this.auth.currentUser();
+    const included: string[] = user?.company?.license?.modules_included ?? [];
+
+    return this.MODULOS_DEF.map(def => ({
+      ...def,
+      available: def.alwaysAvailable === true || included.includes(def.key),
+      badge: def.alwaysAvailable || included.includes(def.key) ? def.badge : (def.badge ?? 'Próximamente'),
+    }));
+  });
 
   goTo(mod: AppModule): void {
     if (mod.available) this.router.navigate([mod.route]);

@@ -31,6 +31,13 @@ urlpatterns = [
     path('api/v1/notificaciones/', include('apps.notifications.urls')),
     path('api/v1/chat/', include('apps.chat.urls')),
     path('api/v1/contabilidad/', include('apps.contabilidad.urls')),
-    path('api/v1/dashboard/', include('apps.dashboard.urls')),
-    path('api/v1/ai/', include('apps.ai.urls')),
-] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    path('api/v1/crm/', include('apps.crm.urls')),
+]
+
+# Módulos opcionales — excluidos en tests (SQLite incompatible o dependencias opcionales)
+if 'apps.dashboard' in settings.INSTALLED_APPS:
+    urlpatterns += [path('api/v1/dashboard/', include('apps.dashboard.urls'))]
+if 'apps.ai' in settings.INSTALLED_APPS:
+    urlpatterns += [path('api/v1/ai/', include('apps.ai.urls'))]
+
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

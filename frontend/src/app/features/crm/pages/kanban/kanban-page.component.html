@@ -1,0 +1,97 @@
+<div class="crm-kanban-page">
+  <header class="page-header">
+    <div class="header-left">
+      <h1 class="page-title">Pipeline de Ventas</h1>
+      @if (pipelines().length > 1) {
+        <mat-form-field appearance="outline" class="pipeline-selector">
+          <mat-label>Pipeline</mat-label>
+          <mat-select [value]="selectedPipelineId()" (valueChange)="onPipelineChange($event)">
+            @for (pipeline of pipelines(); track pipeline.id) {
+              <mat-option [value]="pipeline.id">{{ pipeline.nombre }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      }
+    </div>
+    <div class="header-actions">
+      <button mat-flat-button color="primary" (click)="createOportunidad()">
+        <mat-icon>add</mat-icon>
+        Nueva Oportunidad
+      </button>
+    </div>
+  </header>
+
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate" class="loading-bar"></mat-progress-bar>
+  }
+
+  <div class="kanban-board" cdkDropListGroup>
+    @for (columna of columnas(); track columna.etapa_id) {
+      <div class="kanban-column">
+        <div class="column-header">
+          <span class="column-color-bar" [style.background]="columna.color || '#9e9e9e'"></span>
+          <div class="column-header-body">
+            <div class="column-title">
+              <span class="etapa-nombre">{{ columna.etapa_nombre }}</span>
+              <span class="count-chip">{{ columna.total_count }}</span>
+            </div>
+            <div class="column-valor">{{ formatMoney(columna.total_valor) }}</div>
+          </div>
+        </div>
+
+        <div
+          class="column-body"
+          cdkDropList
+          [id]="'etapa-' + columna.etapa_id"
+          [attr.data-etapa-id]="columna.etapa_id"
+          [cdkDropListData]="columna.oportunidades"
+          [cdkDropListConnectedTo]="connectedLists()"
+          (cdkDropListDropped)="onCardDrop($event, columna)">
+
+          @for (op of columna.oportunidades; track op.id) {
+            <div
+              class="oportunidad-card"
+              cdkDrag
+              [cdkDragData]="op"
+              (click)="openOportunidad(op)">
+              <div class="card-drag-handle" cdkDragHandle>
+                <mat-icon>drag_indicator</mat-icon>
+              </div>
+              <div class="card-body">
+                <p class="card-titulo">{{ op.titulo }}</p>
+                @if (op.contacto_nombre) {
+                  <p class="card-contacto">
+                    <mat-icon class="inline-icon">person</mat-icon>
+                    {{ op.contacto_nombre }}
+                  </p>
+                }
+                <div class="card-footer">
+                  <span class="card-valor">{{ formatMoney(op.valor_esperado) }}</span>
+                  @if (op.proxima_actividad_tipo) {
+                    <mat-chip class="actividad-chip" [matTooltip]="op.proxima_actividad_fecha || ''">
+                      <mat-icon class="chip-icon">event</mat-icon>
+                      {{ op.proxima_actividad_tipo }}
+                    </mat-chip>
+                  }
+                </div>
+                @if (op.asignado_a_nombre) {
+                  <div class="card-asignado">
+                    <mat-icon class="inline-icon">account_circle</mat-icon>
+                    {{ op.asignado_a_nombre }}
+                  </div>
+                }
+              </div>
+            </div>
+          }
+
+          @if (columna.oportunidades.length === 0) {
+            <div class="empty-column">
+              <mat-icon>inbox</mat-icon>
+              <p>Sin oportunidades</p>
+            </div>
+          }
+        </div>
+      </div>
+    }
+  </div>
+</div>

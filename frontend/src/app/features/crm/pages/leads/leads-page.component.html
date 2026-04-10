@@ -1,0 +1,138 @@
+<div class="leads-page">
+  <header class="page-header">
+    <h1 class="page-title">Leads</h1>
+    <div class="header-actions">
+      <button mat-stroked-button (click)="openImportDialog()">
+        <mat-icon>upload_file</mat-icon>
+        Importar CSV
+      </button>
+      <button mat-stroked-button matTooltip="Asignar todos los leads sin vendedor vía round-robin"
+        (click)="asignarTodosRoundRobin()">
+        <mat-icon>shuffle</mat-icon>
+        Auto-asignar
+      </button>
+      <button mat-flat-button color="primary" [routerLink]="['/crm/leads/nuevo']">
+        <mat-icon>add</mat-icon>
+        Nuevo Lead
+      </button>
+    </div>
+  </header>
+
+  <div class="filters-bar">
+    <mat-form-field appearance="outline" class="search-field">
+      <mat-label>Buscar leads...</mat-label>
+      <mat-icon matPrefix>search</mat-icon>
+      <input matInput [value]="searchTerm()" (input)="onSearchChange($any($event.target).value)" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="filter-field">
+      <mat-label>Fuente</mat-label>
+      <mat-select [value]="filtroFuente()" (valueChange)="onFuenteChange($event)">
+        @for (op of fuenteOpciones; track op.value) {
+          <mat-option [value]="op.value">{{ op.label }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+  </div>
+
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+  }
+
+  <div class="table-container mat-elevation-z1 table-responsive">
+    <table mat-table [dataSource]="dataSource">
+
+      <ng-container matColumnDef="nombre">
+        <th mat-header-cell *matHeaderCellDef>Nombre</th>
+        <td mat-cell *matCellDef="let lead">
+          <a class="lead-nombre-link" [routerLink]="['/crm/leads', lead.id]">{{ lead.nombre }}</a>
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="empresa">
+        <th mat-header-cell *matHeaderCellDef>Empresa</th>
+        <td mat-cell *matCellDef="let lead">{{ lead.empresa }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="email">
+        <th mat-header-cell *matHeaderCellDef>Email</th>
+        <td mat-cell *matCellDef="let lead">{{ lead.email }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="fuente">
+        <th mat-header-cell *matHeaderCellDef>Fuente</th>
+        <td mat-cell *matCellDef="let lead">
+          <mat-chip class="fuente-chip">{{ getFuenteLabel(lead.fuente) }}</mat-chip>
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="score">
+        <th mat-header-cell *matHeaderCellDef>Score</th>
+        <td mat-cell *matCellDef="let lead">
+          <span class="score-badge" [style.color]="getScoreColor(lead.score)">
+            {{ lead.score }}
+          </span>
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="asignado_a">
+        <th mat-header-cell *matHeaderCellDef>Asignado a</th>
+        <td mat-cell *matCellDef="let lead">{{ lead.asignado_a_nombre ?? '—' }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="acciones">
+        <th mat-header-cell *matHeaderCellDef></th>
+        <td mat-cell *matCellDef="let lead">
+          <div class="acciones-cell">
+            <button mat-icon-button matTooltip="Editar"
+              [routerLink]="['/crm/leads', lead.id, 'editar']"
+              (click)="$event.stopPropagation()">
+              <mat-icon>edit</mat-icon>
+            </button>
+            @if (!lead.asignado_a_nombre) {
+              <button mat-icon-button matTooltip="Asignar automáticamente (round-robin)"
+                (click)="asignarRoundRobin(lead, $event)">
+                <mat-icon>person_add</mat-icon>
+              </button>
+            } @else {
+              <span class="acciones-spacer"></span>
+            }
+            @if (!lead.convertido) {
+              <button mat-icon-button color="primary" matTooltip="Convertir a oportunidad"
+                (click)="openConvertirDialog(lead); $event.stopPropagation()">
+                <mat-icon>trending_up</mat-icon>
+              </button>
+            } @else {
+              <button mat-icon-button class="convertido-icon" matTooltip="Ya convertido a oportunidad" disabled>
+                <mat-icon>check_circle</mat-icon>
+              </button>
+            }
+            <button mat-icon-button color="warn" matTooltip="Eliminar"
+              (click)="deleteLead(lead); $event.stopPropagation()">
+              <mat-icon>delete</mat-icon>
+            </button>
+          </div>
+        </td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+      <tr mat-row *matRowDef="let row; columns: displayedColumns;" class="lead-row"></tr>
+    </table>
+
+    @if (leads().length === 0 && !loading()) {
+      <div class="empty-state">
+        <mat-icon>person_search</mat-icon>
+        <p>No hay leads que mostrar</p>
+        <button mat-flat-button color="primary" (click)="openImportDialog()">Importar leads</button>
+      </div>
+    }
+  </div>
+
+  <mat-paginator
+    [length]="total()"
+    [pageSize]="pageSize()"
+    [pageIndex]="pageIndex()"
+    [pageSizeOptions]="[10, 20, 50]"
+    (page)="onPageChange($event)">
+  </mat-paginator>
+</div>

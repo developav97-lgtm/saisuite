@@ -27,6 +27,15 @@ class DisableMigrations:
 
 MIGRATION_MODULES = DisableMigrations()
 
+# Excluir apps incompatibles con SQLite de tests:
+# - apps.ai: pgvector HnswIndex incompatible con SQLite
+# - apps.dashboard: importa 'requests' que puede no estar en venv de test
+# - django.contrib.postgres: requiere psycopg2, incompatible con SQLite
+INSTALLED_APPS = [
+    app for app in INSTALLED_APPS
+    if app not in ('apps.ai', 'apps.dashboard', 'django.contrib.postgres')
+]
+
 # Passwords más simples en tests → más rápido
 PASSWORD_HASHERS = ['django.contrib.auth.hashers.MD5PasswordHasher']
 

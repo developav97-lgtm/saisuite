@@ -1,0 +1,21 @@
+.lead-info {
+  font-size: 0.9rem;
+  color: var(--sc-text-secondary);
+  margin: 0 0 16px;
+}
+
+.form-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  mat-form-field { margin-bottom: -1.25em; }
+
+  .span-2 { width: 100%; }
+
+  mat-divider { margin: 8px 0; }
+}
+
+mat-dialog-content {
+  min-width: 380px;
+}

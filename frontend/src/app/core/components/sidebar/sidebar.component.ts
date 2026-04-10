@@ -76,6 +76,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
       items: [
         { label: 'Proyectos',       icon: 'engineering',          route: '/proyectos' },
         { label: 'SaiDashboard',    icon: 'bar_chart',            route: '/saidashboard' },
+        { label: 'CRM Ventas',      icon: 'contacts_product',     route: '/crm' },
         { label: 'Terceros',        icon: 'contacts',             route: '/terceros' },
         { label: 'Administración',  icon: 'admin_panel_settings', route: '/admin/usuarios' },
       ],
@@ -233,6 +234,61 @@ export class SidebarComponent implements OnInit, OnDestroy {
     ];
   }
 
+  private get CRM_NAV(): NavSection[] {
+    return [
+      {
+        items: [
+          { label: 'Módulos', icon: 'apps', route: '/dashboard' },
+        ],
+      },
+      {
+        sectionLabel: 'CRM Ventas',
+        items: [
+          { label: 'Dashboard',   icon: 'bar_chart',    route: '/crm/dashboard' },
+          { label: 'Leads',       icon: 'person_add',   route: '/crm/leads' },
+          { label: 'Pipeline',    icon: 'view_kanban',  route: '/crm/kanban' },
+          { label: 'Agenda',      icon: 'event',        route: '/crm/agenda' },
+        ],
+      },
+      {
+        sectionLabel: 'Acceso rápido',
+        items: [
+          {
+            label: 'Terceros',
+            icon: 'contacts',
+            action: () => this.openQuickAccess(
+              'Terceros',
+              () => import('../../../features/terceros/pages/tercero-list-page/tercero-list-page.component')
+                        .then(m => m.TerceroListPageComponent),
+              [
+                {
+                  pattern: '/terceros/nuevo',
+                  loader: () => import('../../../features/terceros/pages/tercero-form/tercero-form.component')
+                                    .then(m => m.TerceroFormComponent),
+                },
+                {
+                  pattern: '/terceros/:id/editar',
+                  loader: () => import('../../../features/terceros/pages/tercero-form/tercero-form.component')
+                                    .then(m => m.TerceroFormComponent),
+                },
+              ],
+            ),
+          },
+          {
+            label: 'Catálogo',
+            icon: 'inventory_2',
+            action: () => this.openQuickAccess(
+              'Catálogo de Productos',
+              () => import('../../../features/crm/pages/catalogo/crm-catalogo-page.component')
+                        .then(m => m.CrmCatalogoPageComponent),
+              [],
+            ),
+          },
+        ],
+      },
+    ];
+  }
+
   private readonly TERCEROS_NAV: NavSection[] = [
     {
       items: [
@@ -288,6 +344,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
       case 'admin':        sections = this.ADMIN_NAV;        break;
       case 'terceros':     sections = this.TERCEROS_NAV;     break;
       case 'saidashboard': sections = this.SAIDASHBOARD_NAV; break;
+      case 'crm':          sections = this.CRM_NAV;          break;
       default:             sections = this.HOME_NAV;
     }
 
@@ -313,6 +370,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
     if (url.startsWith('/admin'))        return 'admin';
     if (url.startsWith('/terceros'))     return 'terceros';
     if (url.startsWith('/saidashboard')) return 'saidashboard';
+    if (url.startsWith('/crm'))          return 'crm';
     return 'home';
   }
 

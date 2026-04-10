@@ -1,0 +1,86 @@
+<div class="agenda-page">
+  <header class="agenda-header">
+    <h1 class="page-title">Agenda</h1>
+
+    <div class="nav-semana">
+      <button mat-icon-button matTooltip="Semana anterior" (click)="semanaAnterior()">
+        <mat-icon>chevron_left</mat-icon>
+      </button>
+      <span class="semana-label">{{ semanaLabel() }}</span>
+      <button mat-icon-button matTooltip="Semana siguiente" (click)="semanaSiguiente()">
+        <mat-icon>chevron_right</mat-icon>
+      </button>
+      <button mat-stroked-button (click)="hoy()">Hoy</button>
+    </div>
+
+    <mat-checkbox [(ngModel)]="soloPendientes" (change)="onFiltroChange()">
+      Solo pendientes
+    </mat-checkbox>
+  </header>
+
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+  }
+
+  <div class="agenda-content">
+    @if (diasConActividades().length === 0 && !loading()) {
+      <div class="empty-agenda">
+        <mat-icon>event_available</mat-icon>
+        <p>Sin actividades esta semana</p>
+      </div>
+    } @else {
+      @for (dia of diasAgenda(); track dia.fecha.toISOString()) {
+        @if (dia.actividades.length > 0) {
+          <div class="dia-block">
+            <div class="dia-header">
+              <span class="dia-label">{{ dia.label }}</span>
+              <span class="dia-count">{{ dia.actividades.length }} actividad{{ dia.actividades.length !== 1 ? 'es' : '' }}</span>
+            </div>
+
+            <div class="actividades-list">
+              @for (act of dia.actividades; track act.id) {
+                <div class="act-card" [class.completada]="act.completada">
+                  <div class="act-time">
+                    {{ act.fecha_programada | date:'HH:mm' }}
+                  </div>
+
+                  <div class="act-icon-wrap">
+                    <mat-icon>{{ getTipoIcon(act.tipo) }}</mat-icon>
+                  </div>
+
+                  <div class="act-body">
+                    <p class="act-titulo">{{ act.titulo }}</p>
+                    @if (act.contexto_nombre) {
+                      <a class="act-contexto" [routerLink]="getContextoRoute(act)">
+                        <mat-icon class="ctx-icon">
+                          {{ act.contexto_tipo === 'oportunidad' ? 'trending_up' : 'person_add' }}
+                        </mat-icon>
+                        {{ act.contexto_nombre }}
+                      </a>
+                    }
+                    @if (act.asignado_a_nombre) {
+                      <span class="act-asignado">
+                        <mat-icon class="mini-icon">person</mat-icon>
+                        {{ act.asignado_a_nombre }}
+                      </span>
+                    }
+                  </div>
+
+                  <div class="act-estado">
+                    @if (act.completada) {
+                      <mat-chip class="chip-done">Completada</mat-chip>
+                    } @else {
+                      <button mat-icon-button color="primary" matTooltip="Completar" (click)="completar(act)">
+                        <mat-icon>check_circle_outline</mat-icon>
+                      </button>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        }
+      }
+    }
+  </div>
+</div>

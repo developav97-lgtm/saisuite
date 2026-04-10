@@ -1,0 +1,87 @@
+<div class="lead-form-page">
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+  }
+
+  <header class="page-header">
+    <button mat-icon-button (click)="cancel()">
+      <mat-icon>arrow_back</mat-icon>
+    </button>
+    <h1 class="page-title">{{ pageTitle }}</h1>
+  </header>
+
+  <mat-card class="form-card">
+    <mat-card-content>
+      <form [formGroup]="form" class="form-grid">
+
+        <mat-form-field appearance="outline" class="span-2">
+          <mat-label>Nombre *</mat-label>
+          <input matInput formControlName="nombre" placeholder="Nombre completo del contacto" />
+          @if (form.get('nombre')?.hasError('required') && form.get('nombre')?.touched) {
+            <mat-error>El nombre es obligatorio</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Empresa</mat-label>
+          <input matInput formControlName="empresa" placeholder="Nombre de la empresa" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Cargo</mat-label>
+          <input matInput formControlName="cargo" placeholder="Ej: Gerente de Compras" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Email</mat-label>
+          <input matInput type="email" formControlName="email" placeholder="correo@empresa.com" />
+          @if (form.get('email')?.hasError('email') && form.get('email')?.touched) {
+            <mat-error>Email inválido</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Teléfono</mat-label>
+          <input matInput formControlName="telefono" placeholder="3001234567" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Fuente *</mat-label>
+          <mat-select formControlName="fuente">
+            @for (op of fuenteOpciones; track op.value) {
+              <mat-option [value]="op.value">{{ op.label }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Pipeline</mat-label>
+          <mat-select formControlName="pipeline">
+            <mat-option [value]="null">— Sin pipeline —</mat-option>
+            @for (p of pipelines(); track p.id) {
+              <mat-option [value]="p.id">{{ p.nombre }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="span-2">
+          <mat-label>Notas</mat-label>
+          <textarea matInput formControlName="notas" rows="3"
+            placeholder="Información adicional sobre el lead..."></textarea>
+        </mat-form-field>
+
+      </form>
+    </mat-card-content>
+
+    <mat-card-actions align="end">
+      <button mat-button (click)="cancel()" [disabled]="saving()">Cancelar</button>
+      <button mat-flat-button color="primary" (click)="save()" [disabled]="saving() || loading()">
+        @if (saving()) {
+          Guardando...
+        } @else {
+          {{ isEdit ? 'Actualizar' : 'Crear Lead' }}
+        }
+      </button>
+    </mat-card-actions>
+  </mat-card>
+</div>

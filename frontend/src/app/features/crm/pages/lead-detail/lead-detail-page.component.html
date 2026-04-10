@@ -1,0 +1,178 @@
+<div class="lead-detail-page">
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+  }
+
+  @if (lead(); as l) {
+    <!-- Header -->
+    <div class="ld-header">
+      <button mat-icon-button (click)="goBack()" matTooltip="Volver a Leads">
+        <mat-icon>arrow_back</mat-icon>
+      </button>
+
+      <div class="ld-title-block">
+        <h1 class="ld-nombre">{{ l.nombre }}</h1>
+        <div class="ld-meta">
+          @if (l.empresa) {
+            <span class="meta-item">
+              <mat-icon class="mini-icon">business</mat-icon>
+              {{ l.empresa }}
+            </span>
+          }
+          @if (l.cargo) {
+            <span class="meta-item">
+              <mat-icon class="mini-icon">work</mat-icon>
+              {{ l.cargo }}
+            </span>
+          }
+          <mat-chip class="fuente-chip">{{ fuenteLabel[l.fuente] ?? l.fuente }}</mat-chip>
+          @if (l.convertido) {
+            <mat-chip class="convertido-chip">
+              <mat-icon>check_circle</mat-icon>
+              Convertido
+            </mat-chip>
+          }
+        </div>
+      </div>
+
+      <!-- Score badge -->
+      <div class="score-panel">
+        <span class="score-value" [style.color]="getScoreColor(l.score)">{{ l.score }}</span>
+        <span class="score-label" [style.color]="getScoreColor(l.score)">{{ getScoreLabel(l.score) }}</span>
+      </div>
+
+      <!-- Actions -->
+      <div class="ld-actions">
+        <button mat-stroked-button [routerLink]="['/crm/leads', l.id, 'editar']">
+          <mat-icon>edit</mat-icon>
+          Editar
+        </button>
+        @if (!l.convertido) {
+          <button mat-flat-button color="primary" (click)="openConvertirDialog()">
+            <mat-icon>trending_up</mat-icon>
+            Convertir
+          </button>
+        } @else {
+          <button mat-stroked-button color="primary" [routerLink]="['/crm/oportunidades', l.oportunidad]">
+            <mat-icon>open_in_new</mat-icon>
+            Ver oportunidad
+          </button>
+        }
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <mat-tab-group class="ld-tabs" animationDuration="150ms">
+      <!-- TAB: Detalles -->
+      <mat-tab label="Detalles">
+        <div class="tab-content">
+          <div class="info-grid">
+            <div class="info-item">
+              <mat-icon class="info-icon">email</mat-icon>
+              <div>
+                <span class="info-label">Email</span>
+                <span class="info-value">{{ l.email || '—' }}</span>
+              </div>
+            </div>
+            <div class="info-item">
+              <mat-icon class="info-icon">phone</mat-icon>
+              <div>
+                <span class="info-label">Teléfono</span>
+                <span class="info-value">{{ l.telefono || '—' }}</span>
+              </div>
+            </div>
+            <div class="info-item">
+              <mat-icon class="info-icon">person</mat-icon>
+              <div>
+                <span class="info-label">Asignado a</span>
+                <span class="info-value">{{ l.asignado_a_nombre || 'Sin asignar' }}</span>
+              </div>
+            </div>
+            <div class="info-item">
+              <mat-icon class="info-icon">calendar_today</mat-icon>
+              <div>
+                <span class="info-label">Creado</span>
+                <span class="info-value">{{ l.created_at | date:'dd/MM/yyyy' }}</span>
+              </div>
+            </div>
+          </div>
+
+          @if (l.notas) {
+            <mat-divider></mat-divider>
+            <div class="notas-section">
+              <h3 class="section-title">
+                <mat-icon>notes</mat-icon>
+                Notas
+              </h3>
+              <pre class="notas-content">{{ l.notas }}</pre>
+            </div>
+          }
+        </div>
+      </mat-tab>
+
+      <!-- TAB: Actividades -->
+      <mat-tab label="Actividades">
+        <div class="tab-content">
+          <div class="tab-header-bar">
+            <button mat-stroked-button (click)="openActividadDialog()">
+              <mat-icon>add</mat-icon>
+              Nueva actividad
+            </button>
+          </div>
+
+          @if (actividades().length === 0) {
+            <p class="empty-tab">Sin actividades programadas.</p>
+          } @else {
+            <div class="actividades-list">
+              @for (act of actividades(); track act.id) {
+                <div class="actividad-item" [class.completada]="act.completada">
+                  <mat-icon class="act-icon">{{ getTipoIcon(act.tipo) }}</mat-icon>
+                  <div class="act-body">
+                    <p class="act-titulo">{{ act.titulo }}</p>
+                    <p class="act-meta">{{ act.tipo_display }} · {{ act.fecha_programada | date:'dd/MM/yyyy HH:mm' }}</p>
+                    @if (act.resultado) {
+                      <p class="act-resultado">{{ act.resultado }}</p>
+                    }
+                  </div>
+                  @if (!act.completada) {
+                    <button mat-icon-button matTooltip="Completar" (click)="completarActividad(act)">
+                      <mat-icon>check_circle_outline</mat-icon>
+                    </button>
+                  } @else {
+                    <mat-icon class="done-icon" matTooltip="Completada">check_circle</mat-icon>
+                  }
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </mat-tab>
+
+      <!-- TAB: Notas -->
+      <mat-tab label="Notas">
+        <div class="tab-content">
+          <div class="nota-form">
+            <form [formGroup]="notaForm" (ngSubmit)="guardarNota()">
+              <mat-form-field appearance="outline" class="nota-field">
+                <mat-label>Agregar nota...</mat-label>
+                <textarea matInput formControlName="nota" rows="3"></textarea>
+              </mat-form-field>
+              <button mat-flat-button color="primary" type="submit" [disabled]="saving()">
+                <mat-icon>save</mat-icon>
+                Guardar nota
+              </button>
+            </form>
+          </div>
+
+          @if (l.notas) {
+            <div class="notas-content-block">
+              <pre class="notas-content">{{ l.notas }}</pre>
+            </div>
+          } @else {
+            <p class="empty-tab">Sin notas registradas.</p>
+          }
+        </div>
+      </mat-tab>
+    </mat-tab-group>
+  }
+</div>

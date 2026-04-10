@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: Arial, sans-serif; font-size: 11px; color: #333; }
+    .header { display: flex; justify-content: space-between; padding: 20px; border-bottom: 2px solid #1976D2; }
+    .logo { font-size: 22px; font-weight: bold; color: #1976D2; }
+    .company-info { text-align: right; font-size: 10px; line-height: 1.4; }
+    .cot-title { text-align: center; margin: 20px 0 10px; font-size: 16px; font-weight: bold; color: #1976D2; }
+    .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding: 0 20px 15px; }
+    .meta-box { background: #f5f5f5; padding: 12px; border-radius: 4px; }
+    .meta-box label { font-size: 9px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 2px; }
+    .meta-box span { font-size: 12px; font-weight: 600; }
+    table { width: 100%; border-collapse: collapse; margin: 0 20px; width: calc(100% - 40px); }
+    thead th { background: #1976D2; color: white; padding: 8px 6px; text-align: left; font-size: 10px; }
+    thead th.right { text-align: right; }
+    tbody tr:nth-child(even) { background: #f9f9f9; }
+    tbody td { padding: 7px 6px; border-bottom: 1px solid #eee; font-size: 10px; }
+    tbody td.right { text-align: right; }
+    .totales { margin: 15px 20px 0; display: flex; justify-content: flex-end; }
+    .totales-box { width: 250px; }
+    .totales-row { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #eee; font-size: 11px; }
+    .totales-row.total { font-weight: bold; font-size: 14px; color: #1976D2; border-top: 2px solid #1976D2; padding-top: 6px; }
+    .footer-section { margin: 20px; padding-top: 15px; border-top: 1px solid #ddd; font-size: 10px; color: #666; }
+    .footer-section h4 { color: #333; margin-bottom: 4px; font-size: 11px; }
+    .estado-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 9px; font-weight: bold; }
+    .estado-borrador { background: #FFF3CD; color: #856404; }
+    .estado-enviada  { background: #D1ECF1; color: #0C5460; }
+    .estado-aceptada { background: #D4EDDA; color: #155724; }
+    .estado-rechazada { background: #F8D7DA; color: #721C24; }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="logo">{{ cotizacion.company.name }}</div>
+    <div style="font-size:10px; margin-top:4px; color:#666;">SaiCloud CRM</div>
+  </div>
+  <div class="company-info">
+    <strong>COTIZACIÓN</strong><br>
+    N° {{ cotizacion.numero_interno }}<br>
+    Fecha: {{ cotizacion.created_at|date:"d/m/Y" }}<br>
+    {% if cotizacion.fecha_vencimiento %}
+    Válida hasta: {{ cotizacion.fecha_vencimiento|date:"d/m/Y" }}<br>
+    {% endif %}
+    Estado:
+    <span class="estado-badge estado-{{ cotizacion.estado }}">
+      {{ cotizacion.get_estado_display }}
+    </span>
+  </div>
+</div>
+
+<div class="cot-title">{{ cotizacion.titulo }}</div>
+
+<div class="meta-grid">
+  <div class="meta-box">
+    <label>Cliente</label>
+    <span>
+      {% if cotizacion.contacto %}
+        {{ cotizacion.contacto.nombre_completo }}
+      {% else %}
+        —
+      {% endif %}
+    </span>
+    {% if cotizacion.contacto and cotizacion.contacto.email %}
+    <div style="font-size:10px; color:#666; margin-top:2px;">{{ cotizacion.contacto.email }}</div>
+    {% endif %}
+  </div>
+  <div class="meta-box">
+    <label>Oportunidad</label>
+    <span>{{ cotizacion.oportunidad.titulo }}</span>
+    {% if cotizacion.validez_dias %}
+    <div style="font-size:10px; color:#666; margin-top:2px;">Validez: {{ cotizacion.validez_dias }} días</div>
+    {% endif %}
+  </div>
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th style="width:5%">#</th>
+      <th style="width:35%">Descripción</th>
+      <th class="right" style="width:10%">Cantidad</th>
+      <th class="right" style="width:15%">Valor Unit.</th>
+      <th class="right" style="width:10%">Dto %</th>
+      <th class="right" style="width:10%">IVA</th>
+      <th class="right" style="width:15%">Total</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for linea in lineas %}
+    <tr>
+      <td>{{ linea.conteo }}</td>
+      <td>
+        {{ linea.descripcion }}
+        {% if linea.descripcion_adic %}
+        <div style="font-size:9px; color:#888; margin-top:2px;">{{ linea.descripcion_adic }}</div>
+        {% endif %}
+      </td>
+      <td class="right">{{ linea.cantidad|floatformat:2 }}</td>
+      <td class="right">$ {{ linea.vlr_unitario|floatformat:0 }}</td>
+      <td class="right">{{ linea.descuento_p|floatformat:1 }}%</td>
+      <td class="right">$ {{ linea.iva_valor|floatformat:0 }}</td>
+      <td class="right"><strong>$ {{ linea.total_parcial|floatformat:0 }}</strong></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<div class="totales">
+  <div class="totales-box">
+    <div class="totales-row">
+      <span>Subtotal</span>
+      <span>$ {{ cotizacion.subtotal|floatformat:0 }}</span>
+    </div>
+    {% if cotizacion.descuento_adicional_p > 0 %}
+    <div class="totales-row">
+      <span>Descuento ({{ cotizacion.descuento_adicional_p }}%)</span>
+      <span>- $ {{ cotizacion.descuento_adicional_val|floatformat:0 }}</span>
+    </div>
+    {% endif %}
+    <div class="totales-row">
+      <span>IVA</span>
+      <span>$ {{ cotizacion.total_iva|floatformat:0 }}</span>
+    </div>
+    <div class="totales-row total">
+      <span>TOTAL</span>
+      <span>$ {{ cotizacion.total|floatformat:0 }}</span>
+    </div>
+  </div>
+</div>
+
+{% if cotizacion.observaciones or cotizacion.condiciones %}
+<div class="footer-section">
+  {% if cotizacion.observaciones %}
+  <h4>Observaciones</h4>
+  <p>{{ cotizacion.observaciones }}</p>
+  {% endif %}
+  {% if cotizacion.condiciones %}
+  <h4 style="margin-top:10px;">Condiciones</h4>
+  <p>{{ cotizacion.condiciones }}</p>
+  {% endif %}
+</div>
+{% endif %}
+
+<div class="footer-section" style="margin-top:30px; color:#aaa; font-size:9px; text-align:center;">
+  Generado por SaiCloud CRM — {{ cotizacion.created_at|date:"d/m/Y H:i" }}
+</div>
+
+</body>
+</html>

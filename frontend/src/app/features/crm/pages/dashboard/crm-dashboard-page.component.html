@@ -1,0 +1,132 @@
+<div class="crm-dashboard">
+  <header class="page-header">
+    <h1 class="page-title">CRM Dashboard</h1>
+  </header>
+
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+  }
+
+  @if (dashboard(); as dash) {
+    <!-- KPI Cards -->
+    <div class="kpi-grid">
+      <mat-card class="kpi-card">
+        <mat-card-content>
+          <mat-icon class="kpi-icon primary">person_add</mat-icon>
+          <div class="kpi-value">{{ dash.total_leads }}</div>
+          <div class="kpi-label">Total Leads</div>
+          <div class="kpi-sub">+{{ dash.leads_nuevos_mes }} este mes</div>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="kpi-card">
+        <mat-card-content>
+          <mat-icon class="kpi-icon accent">trending_up</mat-icon>
+          <div class="kpi-value">{{ dash.oportunidades_activas }}</div>
+          <div class="kpi-label">Oportunidades Activas</div>
+          <div class="kpi-sub">{{ formatMoney(dash.valor_total_activo) }}</div>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="kpi-card">
+        <mat-card-content>
+          <mat-icon class="kpi-icon success">percent</mat-icon>
+          <div class="kpi-value">{{ formatPercent(dash.tasa_conversion) }}</div>
+          <div class="kpi-label">Tasa de Conversión</div>
+          <div class="kpi-sub">Lead → Oportunidad</div>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="kpi-card">
+        <mat-card-content>
+          <mat-icon class="kpi-icon warning">calculate</mat-icon>
+          <div class="kpi-value">{{ formatMoney(dash.forecast) }}</div>
+          <div class="kpi-label">Forecast Ponderado</div>
+          <div class="kpi-sub">Pipeline activo</div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+    <div class="dashboard-grid">
+      <!-- Embudo de ventas -->
+      <mat-card class="funnel-card">
+        <mat-card-header>
+          <mat-card-title>Embudo de Ventas</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          @for (item of dash.funnel; track item.etapa_id) {
+            <div class="funnel-item">
+              <div class="funnel-label">
+                <span class="etapa-dot" [style.background]="item.color"></span>
+                <span>{{ item.etapa_nombre }}</span>
+              </div>
+              <div class="funnel-bar-container">
+                <div class="funnel-bar"
+                  [style.width.%]="item.count > 0 ? (item.count / dash.oportunidades_activas) * 100 : 0"
+                  [style.background]="item.color">
+                </div>
+              </div>
+              <div class="funnel-stats">
+                <span class="count-badge">{{ item.count }}</span>
+                <span class="valor-badge">{{ formatMoney(item.valor_total) }}</span>
+              </div>
+            </div>
+          }
+        </mat-card-content>
+      </mat-card>
+
+      <!-- Rendimiento vendedores -->
+      <mat-card class="vendedores-card">
+        <mat-card-header>
+          <mat-card-title>Rendimiento del Equipo</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <table mat-table [dataSource]="dash.rendimiento_vendedores" class="vendedores-table">
+            <ng-container matColumnDef="nombre">
+              <th mat-header-cell *matHeaderCellDef>Vendedor</th>
+              <td mat-cell *matCellDef="let v">{{ v.vendedor }}</td>
+            </ng-container>
+            <ng-container matColumnDef="activas">
+              <th mat-header-cell *matHeaderCellDef>Activas</th>
+              <td mat-cell *matCellDef="let v">{{ v.oportunidades }}</td>
+            </ng-container>
+            <ng-container matColumnDef="ganadas_mes">
+              <th mat-header-cell *matHeaderCellDef>Ganadas (mes)</th>
+              <td mat-cell *matCellDef="let v">{{ v.ganadas }}</td>
+            </ng-container>
+            <ng-container matColumnDef="valor_ganado_mes">
+              <th mat-header-cell *matHeaderCellDef class="money-col">Valor Ganado</th>
+              <td mat-cell *matCellDef="let v" class="money-col">{{ formatMoney(v.valor_ganado) }}</td>
+            </ng-container>
+            <tr mat-header-row *matHeaderRowDef="vendedoresColumns"></tr>
+            <tr mat-row *matRowDef="let row; columns: vendedoresColumns;"></tr>
+          </table>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+    <!-- Forecast detalle -->
+    @if (forecast(); as fc) {
+      <mat-card class="forecast-card">
+        <mat-card-header>
+          <mat-card-title>Forecast por Etapa</mat-card-title>
+          <mat-card-subtitle>
+            Total esperado: {{ formatMoney(fc.total_valor_esperado) }} ·
+            Ponderado: <strong>{{ formatMoney(fc.total_forecast) }}</strong>
+          </mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content>
+          @for (item of fc.detalle; track item.etapa_id) {
+            <div class="forecast-row">
+              <span class="fc-etapa">{{ item.etapa_nombre }}</span>
+              <span class="fc-count">{{ item.count }} ops</span>
+              <span class="fc-prob">{{ formatPercent(item.probabilidad) }}</span>
+              <span class="fc-esperado">{{ formatMoney(item.valor_esperado) }}</span>
+              <span class="fc-ponderado money">{{ formatMoney(item.valor_ponderado) }}</span>
+            </div>
+          }
+        </mat-card-content>
+      </mat-card>
+    }
+  }
+</div>

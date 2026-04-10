@@ -1,0 +1,166 @@
+.agenda-page {
+  padding: 16px 24px;
+  max-width: 800px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.agenda-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+
+  .page-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 0;
+    color: var(--sc-text-primary);
+  }
+}
+
+.nav-semana {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+
+  .semana-label {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--sc-text-secondary);
+    min-width: 180px;
+    text-align: center;
+    text-transform: capitalize;
+  }
+}
+
+.agenda-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.dia-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dia-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 0 8px;
+  border-bottom: 2px solid var(--sc-primary, #1976d2);
+
+  .dia-label {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--sc-text-primary);
+    text-transform: capitalize;
+  }
+
+  .dia-count {
+    font-size: 0.78rem;
+    color: var(--sc-text-muted);
+  }
+}
+
+.actividades-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.act-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  background: var(--sc-surface-card);
+  border: 1px solid var(--sc-surface-border);
+  transition: box-shadow 150ms;
+
+  &:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+  &.completada { opacity: 0.55; }
+
+  .act-time {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--sc-primary, #1976d2);
+    min-width: 44px;
+    padding-top: 2px;
+  }
+
+  .act-icon-wrap {
+    color: var(--sc-primary, #1976d2);
+    flex-shrink: 0;
+    mat-icon { font-size: 20px; height: 20px; width: 20px; }
+  }
+
+  .act-body {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .act-titulo {
+    font-weight: 500;
+    margin: 0 0 4px;
+    font-size: 0.9rem;
+    color: var(--sc-text-color);
+  }
+
+  .act-contexto {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.78rem;
+    color: var(--sc-primary, #1976d2);
+    text-decoration: none;
+    margin-right: 12px;
+
+    &:hover { text-decoration: underline; }
+
+    .ctx-icon { font-size: 14px; height: 14px; width: 14px; }
+  }
+
+  .act-asignado {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.78rem;
+    color: var(--sc-text-muted);
+  }
+
+  .mini-icon { font-size: 14px; height: 14px; width: 14px; }
+
+  .act-estado {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+  }
+}
+
+.chip-done {
+  font-size: 0.72rem;
+  height: 22px;
+  min-height: 22px;
+  background: var(--sc-success-light, #e8f5e9) !important;
+  color: var(--sc-success, #2e7d32) !important;
+}
+
+.empty-agenda {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 64px;
+  gap: 8px;
+  color: var(--sc-text-secondary);
+
+  mat-icon { font-size: 48px; height: 48px; width: 48px; opacity: 0.3; }
+  p { font-size: 0.9rem; margin: 0; }
+}

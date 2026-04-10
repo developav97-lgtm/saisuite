@@ -1,7 +1,7 @@
 # CONTEXT.md - Estado del Proyecto Saicloud
 
-**Ultima actualizacion:** 09 Abril 2026
-**Sesion:** Sistema de Licencias Modular — Solicitudes, Bloqueo de Módulos, N8N, Email (CERRADO)
+**Ultima actualizacion:** 10 Abril 2026
+**Sesion:** CRM v2 Sprint UX/Features — Actividades en Lead, Round-Robin, Agenda, Tests, Docker fix (CERRADO)
 
 ---
 
@@ -218,8 +218,77 @@ Conecta el módulo Proyectos con los datos contables de Saiopen (Firebird/GL).
 - N8N workflows: siempre importar con ID explícito y sin tags (evita errores FK)
 - Google SMTP: `EMAIL_HOST_USER` = cuenta primaria, `DEFAULT_FROM_EMAIL` = alias noreply
 
+---
+
+## COMPLETADO (10 Abril 2026) — CRM v2 Sprint UX/Features
+
+### Módulo: CRM (sesión `SESSION-CRM-2026-04-10.md`)
+
+#### Backend
+
+**`signals.py` — BUGFIX CRÍTICO:**
+- Guard `if not instance.oportunidad_id: return` en `actividad_creada_timeline`
+- Previene `IntegrityError` (CrmTimelineEvent.oportunidad NOT NULL) para actividades de lead
+- Sin esta corrección: `TransactionManagementError` en todos los tests v2
+
+**`services.py` — RF-2.3 Round-Robin:**
+- `LeadService.asignar_round_robin(lead)` — asigna al vendedor con mínimo leads (`annotate` + `order_by`)
+- `LeadService.asignar_masivo_round_robin(company)` — asigna todos los leads sin asignar, retorna conteo
+- `LeadService._asignar_round_robin` ahora delega a `asignar_round_robin` (alias)
+- `ActividadService.create_for_lead(lead, data)` — crea actividad con `lead=lead, oportunidad=None`
+- `ActividadService.list_for_lead(lead, solo_pendientes=False)` — filtra por lead, excluye oportunidad
+
+**`serializers.py` — asignado_a_nombre:**
+- `CrmLeadListSerializer` y `CrmLeadDetailSerializer` ahora incluyen `asignado_a_nombre` (SerializerMethodField)
+- Devuelve `full_name` o `email` del vendedor; `null` si no asignado
+
+**`views.py` — nuevos endpoints:**
+- `LeadActividadesView` — GET/POST `/leads/{id}/actividades/` (con `?solo_pendientes=true`)
+- `round_robin` action — POST `/leads/{id}/round-robin/` (404 si no existe lead)
+- `asignar_masivo` action — POST `/leads/asignar-masivo/` (retorna `{asignados: N}`)
+- `AgendaView` — GET `/agenda/` (con `?fecha_desde&fecha_hasta&solo_pendientes`)
+
+**`urls.py`:** `asignar-masivo/` declarada ANTES de `<uuid:pk>/` para evitar conflicto de routing
+
+**Tests — 72/72 passing:**
+- `test_v2_services.py` (10 tests): actividades en lead, round-robin service
+- `test_v2_views.py` (15 tests): agenda API, lead activities views, round-robin views
+- `test_license_request_service.py` (22 tests): LicenseRequestService completo
+
+#### Frontend
+
+**`crm.service.ts`:**
+- `getLeadActividades(id, params?)` — GET actividades del lead
+- `createLeadActividad(id, data)` — POST actividad en lead
+- `asignarRoundRobin(id)` — POST round-robin individual
+- `asignarMasivoRoundRobin()` — POST asignación masiva
+
+**`leads-page.component.ts/html`:**
+- Botón "Auto-asignar" (bulk round-robin) en header
+- Ícono `person_add` por fila (visible solo si `!lead.asignado_a_nombre`)
+- `asignarRoundRobin(lead, event)` — asigna y actualiza signal `leads()`
+- `asignarTodosRoundRobin()` — asigna masivo y recarga lista
+
+**`crm-agenda-page.component.ts`:**
+- Corregido: `soloPendientes` cambiado de `readonly signal()` a propiedad boolean regular
+- Compatible con `[(ngModel)]`
+
+#### Docker fix
+
+**`docker-compose.yml`:**
+- sqs-worker healthcheck: `pgrep -f` → `pidof python` (`pgrep` no disponible en imagen)
+- sqs-worker: ✅ healthy
+
+#### Documentación actualizada
+
+- `docs/technical/crm/RAG-CHUNKS.md` v1.1 — chunks 16, 17, 18 nuevos; chunks 3, 6, 10, 12, 13, 14, 15 actualizados
+- `docs/manuales/MANUAL-CRM-SAICLOUD.md` v1.1 — Round-Robin, Actividades en Lead, Agenda (sección 11 nueva)
+- `PROGRESS-CRM.md` — tickets CRM-009 a RF-2.3 actualizados/cerrados
+
+---
+
 ## Próximas prioridades
 
-- Activar workflows N8N en producción (auto-renovación, KB watcher)
-- Validación 4×4 (Desktop/Mobile × Light/Dark) del sistema de solicitudes
-- Tests unitarios en `LicenseRequestService`
+- Activar workflows N8N en producción (auto-renovación, KB watcher) — acción manual en n8n UI
+- Validación 4×4 (Desktop/Mobile × Light/Dark) del sistema de solicitudes de licencia
+- RF-4.3 PDF export de cotizaciones (pendiente de implementación, sesión anterior)

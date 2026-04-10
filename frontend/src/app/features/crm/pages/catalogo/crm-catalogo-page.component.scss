@@ -1,0 +1,69 @@
+.catalogo-page {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 100%;
+}
+
+.cat-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+
+  .cat-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 0;
+    color: var(--sc-text-primary);
+    flex: 1;
+    white-space: nowrap;
+  }
+
+  .search-field {
+    width: 260px;
+    mat-form-field { margin-bottom: -1.25em; }
+  }
+}
+
+.table-responsive {
+  border-radius: 8px;
+  overflow: auto;
+  flex: 1;
+
+  table { width: 100%; }
+}
+
+.codigo {
+  font-family: monospace;
+  font-size: 0.82rem;
+  color: var(--sc-text-secondary);
+}
+
+.money-col {
+  text-align: right !important;
+}
+
+.impuesto-chip {
+  font-size: 0.72rem;
+  height: 20px;
+  min-height: 20px;
+}
+
+.no-tax {
+  color: var(--sc-text-muted);
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px;
+  gap: 8px;
+  color: var(--sc-text-secondary);
+
+  mat-icon { font-size: 48px; height: 48px; width: 48px; opacity: 0.4; }
+  p { font-size: 0.9rem; margin: 0; }
+}

@@ -16,7 +16,10 @@ Analytics endpoints:
 import logging
 from datetime import date
 
-import openpyxl
+try:
+    import openpyxl
+except ImportError:
+    openpyxl = None
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from rest_framework import status

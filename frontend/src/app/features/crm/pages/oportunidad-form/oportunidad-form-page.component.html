@@ -1,0 +1,101 @@
+<div class="op-form-page">
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+  }
+
+  <header class="page-header">
+    <button mat-icon-button (click)="cancel()">
+      <mat-icon>arrow_back</mat-icon>
+    </button>
+    <h1 class="page-title">{{ pageTitle }}</h1>
+  </header>
+
+  <mat-card class="form-card">
+    <mat-card-content>
+      <form [formGroup]="form" class="form-grid">
+
+        <mat-form-field appearance="outline" class="span-2">
+          <mat-label>Título *</mat-label>
+          <input matInput formControlName="titulo" placeholder="Ej: Venta software ERP — Empresa ABC" />
+          @if (form.get('titulo')?.hasError('required') && form.get('titulo')?.touched) {
+            <mat-error>El título es obligatorio</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Pipeline *</mat-label>
+          <mat-select formControlName="pipeline"
+            (valueChange)="onPipelineChange($event)">
+            @for (p of pipelines(); track p.id) {
+              <mat-option [value]="p.id">{{ p.nombre }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Etapa *</mat-label>
+          <mat-select formControlName="etapa">
+            @for (e of etapas(); track e.id) {
+              <mat-option [value]="e.id">{{ e.nombre }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <!-- Autocomplete contacto (Tercero) -->
+        <mat-form-field appearance="outline" class="span-2">
+          <mat-label>Contacto</mat-label>
+          <mat-icon matPrefix>person_search</mat-icon>
+          <input matInput
+            formControlName="contacto_search"
+            [matAutocomplete]="autoContacto"
+            placeholder="Buscar cliente por nombre o NIT..."
+            (input)="onContactoSearch($any($event.target).value)" />
+          <mat-autocomplete #autoContacto="matAutocomplete">
+            @for (t of contactosSuger(); track t.id) {
+              <mat-option [value]="t.nombre_completo" (click)="onContactoSelected(t)">
+                <span class="autocomplete-nombre">{{ t.nombre_completo }}</span>
+                <span class="autocomplete-codigo">{{ t.codigo }}</span>
+              </mat-option>
+            }
+          </mat-autocomplete>
+          <mat-hint>Escribe al menos 2 caracteres para buscar</mat-hint>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Valor esperado *</mat-label>
+          <span matPrefix>$&nbsp;</span>
+          <input matInput scMoneyInput formControlName="valor_esperado" placeholder="0" />
+          @if (form.get('valor_esperado')?.hasError('required') && form.get('valor_esperado')?.touched) {
+            <mat-error>El valor es obligatorio</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Probabilidad % *</mat-label>
+          <input matInput type="number" formControlName="probabilidad" min="0" max="100" />
+          <span matSuffix>%</span>
+          <mat-hint>0 = 0% — 100 = certeza</mat-hint>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="span-2">
+          <mat-label>Fecha estimada de cierre</mat-label>
+          <input matInput [matDatepicker]="picker" formControlName="fecha_cierre_estimada" />
+          <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
+          <mat-datepicker #picker></mat-datepicker>
+        </mat-form-field>
+
+      </form>
+    </mat-card-content>
+
+    <mat-card-actions align="end">
+      <button mat-button (click)="cancel()" [disabled]="saving()">Cancelar</button>
+      <button mat-flat-button color="primary" (click)="save()" [disabled]="saving() || loading()">
+        @if (saving()) {
+          Guardando...
+        } @else {
+          {{ isEdit ? 'Actualizar' : 'Crear Oportunidad' }}
+        }
+      </button>
+    </mat-card-actions>
+  </mat-card>
+</div>

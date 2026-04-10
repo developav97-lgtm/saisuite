@@ -1,0 +1,162 @@
+<div class="cotizacion-page">
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+  }
+
+  @if (cotizacion(); as cot) {
+    <header class="cot-header">
+      <div class="cot-title-block">
+        <h1 class="cot-numero">{{ cot.numero_interno }}</h1>
+        <p class="cot-titulo">{{ cot.titulo }}</p>
+        <mat-chip class="estado-chip" [class]="'estado-' + cot.estado">{{ cot.estado }}</mat-chip>
+      </div>
+      <div class="cot-actions">
+        <button mat-stroked-button (click)="openPdf()">
+          <mat-icon>picture_as_pdf</mat-icon> PDF
+        </button>
+        @if (cot.estado === 'borrador') {
+          <button mat-flat-button color="primary" (click)="enviar()">
+            <mat-icon>send</mat-icon> Enviar
+          </button>
+        }
+        @if (cot.estado === 'enviada') {
+          <button mat-flat-button color="primary" (click)="aceptar()">
+            <mat-icon>check</mat-icon> Aceptar
+          </button>
+          <button mat-stroked-button color="warn" (click)="rechazar()">
+            <mat-icon>close</mat-icon> Rechazar
+          </button>
+        }
+        @if (cot.saiopen_synced) {
+          <mat-chip class="synced-chip" matTooltip="Sincronizado con Saiopen">
+            <mat-icon>sync</mat-icon> Saiopen
+          </mat-chip>
+        }
+      </div>
+    </header>
+
+    <!-- Líneas -->
+    <section class="lineas-section">
+      <h2>Líneas de cotización</h2>
+
+      <table mat-table [dataSource]="cot.lineas" class="lineas-table mat-elevation-z1">
+        <ng-container matColumnDef="descripcion">
+          <th mat-header-cell *matHeaderCellDef>Descripción</th>
+          <td mat-cell *matCellDef="let l">{{ l.descripcion }}</td>
+        </ng-container>
+        <ng-container matColumnDef="cantidad">
+          <th mat-header-cell *matHeaderCellDef class="num-col">Cant.</th>
+          <td mat-cell *matCellDef="let l" class="num-col">{{ l.cantidad }}</td>
+        </ng-container>
+        <ng-container matColumnDef="vlr_unitario">
+          <th mat-header-cell *matHeaderCellDef class="money-col">Vlr. Unitario</th>
+          <td mat-cell *matCellDef="let l" class="money-col">{{ formatMoney(l.vlr_unitario) }}</td>
+        </ng-container>
+        <ng-container matColumnDef="descuento_p">
+          <th mat-header-cell *matHeaderCellDef class="num-col">Dto. %</th>
+          <td mat-cell *matCellDef="let l" class="num-col">{{ l.descuento_p }}%</td>
+        </ng-container>
+        <ng-container matColumnDef="impuesto">
+          <th mat-header-cell *matHeaderCellDef class="num-col">IVA</th>
+          <td mat-cell *matCellDef="let l" class="num-col">{{ formatMoney(l.iva_valor) }}</td>
+        </ng-container>
+        <ng-container matColumnDef="total_parcial">
+          <th mat-header-cell *matHeaderCellDef class="money-col">Total</th>
+          <td mat-cell *matCellDef="let l" class="money-col">
+            <strong>{{ formatMoney(l.total_parcial) }}</strong>
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="acciones">
+          <th mat-header-cell *matHeaderCellDef></th>
+          <td mat-cell *matCellDef="let l">
+            @if (esBorrador) {
+              <button mat-icon-button color="warn" (click)="deleteLinea(l.id)">
+                <mat-icon>delete</mat-icon>
+              </button>
+            }
+          </td>
+        </ng-container>
+        <tr mat-header-row *matHeaderRowDef="lineaColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: lineaColumns;"></tr>
+      </table>
+
+      <!-- Agregar línea (solo borrador) -->
+      @if (esBorrador) {
+        <div class="add-linea-form">
+          <h3>Agregar línea</h3>
+          <form [formGroup]="lineaForm" class="linea-form-grid">
+            <mat-form-field appearance="outline">
+              <mat-label>Producto (opcional)</mat-label>
+              <mat-select formControlName="producto" (valueChange)="onProductoChange($event)">
+                <mat-option [value]="null">— Sin producto —</mat-option>
+                @for (p of productos(); track p.id) {
+                  <mat-option [value]="p.id">{{ p.nombre }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="desc-field">
+              <mat-label>Descripción</mat-label>
+              <input matInput formControlName="descripcion" />
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>Cantidad</mat-label>
+              <input matInput type="number" formControlName="cantidad" min="0.01" step="1" />
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>Valor unitario</mat-label>
+              <span matPrefix>$&nbsp;</span>
+              <input matInput type="number" formControlName="vlr_unitario" min="0" />
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>Dto. %</mat-label>
+              <input matInput type="number" formControlName="descuento_p" min="0" max="100" />
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>IVA</mat-label>
+              <mat-select formControlName="impuesto">
+                <mat-option [value]="null">Sin IVA</mat-option>
+                @for (i of impuestos(); track i.id) {
+                  <mat-option [value]="i.id">{{ i.nombre }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+
+            <button mat-flat-button color="primary" type="button"
+              [disabled]="lineaForm.invalid || addingLinea()"
+              (click)="addLinea()">
+              <mat-icon>add</mat-icon> Agregar
+            </button>
+          </form>
+        </div>
+      }
+    </section>
+
+    <!-- Totales -->
+    <section class="totales-section">
+      <div class="total-row">
+        <span>Subtotal</span>
+        <span>{{ formatMoney(cot.subtotal) }}</span>
+      </div>
+      @if (+cot.descuento_adicional_p > 0) {
+        <div class="total-row descuento">
+          <span>Descuento adicional ({{ cot.descuento_adicional_p }}%)</span>
+          <span>- {{ formatMoney(cot.descuento_adicional_val) }}</span>
+        </div>
+      }
+      <div class="total-row">
+        <span>IVA Total</span>
+        <span>{{ formatMoney(cot.total_iva) }}</span>
+      </div>
+      <mat-divider></mat-divider>
+      <div class="total-row grand-total">
+        <span>TOTAL</span>
+        <span>{{ formatMoney(cot.total) }}</span>
+      </div>
+    </section>
+  }
+</div>
