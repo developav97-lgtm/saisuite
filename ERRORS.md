@@ -1,3 +1,12 @@
+## [09 Abril 2026] ERROR: KeyError en logger.info — clave 'created' reservada por Python logging
+
+**Síntoma:** `POST /api/v1/projects/{pk}/documents/sync/` retornaba 500. Traceback: `KeyError: "Attempt to overwrite 'created' in LogRecord"`.
+**Causa:** `logging.LogRecord` tiene atributos internos fijos (`created`, `message`, `name`, `levelname`, etc.). Pasar `extra={'created': n}` a `logger.info()` intenta sobrescribir uno de esos atributos y Python lanza `KeyError`.
+**Fix:** Renombrar la clave en `extra` a `'docs_created'` y `'docs_updated'` en `DocumentoContableService.sync_from_gl()` (`proyectos/services.py:989`).
+**Prevención:** En llamadas a `logger.*(..., extra={...})` nunca usar como claves: `created`, `message`, `asctime`, `levelname`, `levelno`, `name`, `pathname`, `filename`, `module`, `lineno`, `funcName`, `process`, `thread`, `taskName`. Prefijar siempre con el dominio (ej. `docs_`, `sync_`, `proj_`).
+
+---
+
 ## [07 Abril 2026] ERROR: Go Firebird query cuelga sin error cuando columna es palabra reservada
 
 **Síntoma:** Go agent logueaba `syncing CUST incremental` y luego silencio total. La goroutine no completaba, no retornaba error, no había timeout. El proceso quedaba bloqueado indefinidamente.

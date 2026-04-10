@@ -82,6 +82,7 @@ type SyncConfig struct {
 	LastSyncLista          *time.Time `json:"last_sync_lista"`
 	LastSyncProyectos      *time.Time `json:"last_sync_proyectos"`
 	LastSyncActividades    *time.Time `json:"last_sync_actividades"`
+	LastSyncTipdoc         *time.Time `json:"last_sync_tipdoc"`
 }
 
 // configFileName is the name of the configuration file placed next to the binary.
@@ -326,6 +327,8 @@ func (cfg *AgentConfig) UpdateReferenceSyncTime(connID string, table string) err
 				cfg.Connections[i].Sync.LastSyncProyectos = &now
 			case "actividades":
 				cfg.Connections[i].Sync.LastSyncActividades = &now
+			case "tipdoc":
+				cfg.Connections[i].Sync.LastSyncTipdoc = &now
 			default:
 				cfg.mu.Unlock()
 				return fmt.Errorf("unknown reference table: %s", table)

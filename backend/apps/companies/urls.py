@@ -45,6 +45,8 @@ from .views import (
     AdminLicenseRequestListView,
     AdminLicenseRequestApproveView,
     AdminLicenseRequestRejectView,
+    # Catálogo público de paquetes
+    PackageCatalogView,
 )
 
 router = DefaultRouter()
@@ -64,6 +66,8 @@ urlpatterns = [
     # Trials de módulo (genérico — para company_admin)
     path('modules/<str:module_code>/trial/status/',   ModuleTrialStatusView.as_view(),   name='module-trial-status'),
     path('modules/<str:module_code>/trial/activate/', ModuleTrialActivateView.as_view(), name='module-trial-activate'),
+    # Catálogo de paquetes (lectura para company_admin)
+    path('packages/catalog/', PackageCatalogView.as_view(), name='packages-catalog'),
     # Solicitudes de licencia (company_admin)
     path('license-requests/', LicenseRequestListCreateView.as_view(), name='license-requests'),
     path('licenses/<uuid:pk>/',             LicenseDetailView.as_view(),       name='license-detail'),

@@ -306,8 +306,11 @@ class AccountingDocumentListSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'tipo_documento', 'tipo_documento_display',
             'saiopen_doc_id', 'numero_documento', 'fecha_documento',
-            'tercero_nombre', 'valor_neto',
+            'tercero_nombre', 'valor_bruto', 'valor_neto',
             'sincronizado_desde_saiopen',
+            # Campos GL — permiten badge TIPDOC y filtro por tipo en UI
+            'tipo_gl', 'batch_gl', 'invc_gl',
+            'tipdoc_descripcion', 'tipdoc_sigla',
         ]
         read_only_fields = fields
 
@@ -327,6 +330,9 @@ class AccountingDocumentDetailSerializer(serializers.ModelSerializer):
             'tercero_id', 'tercero_nombre',
             'valor_bruto', 'valor_descuento', 'valor_neto',
             'observaciones', 'sincronizado_desde_saiopen',
+            # Campos GL — permiten consultar líneas del asiento vía /lineas/
+            'tipo_gl', 'batch_gl', 'invc_gl',
+            'tipdoc_descripcion', 'tipdoc_sigla',
         ]
         read_only_fields = fields
 

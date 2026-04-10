@@ -1,6 +1,6 @@
 import {
   ChangeDetectionStrategy, Component, OnInit,
-  inject, input, signal,
+  computed, effect, inject, input, signal,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -17,6 +17,7 @@ import { FaseService } from '../../services/fase.service';
 import { DocumentoContableList, DocumentoContableDetail, TIPO_DOCUMENTO_LABELS } from '../../models/documento-contable.model';
 import { FaseList } from '../../models/fase.model';
 import { DocumentoDetailDialogComponent } from './documento-detail-dialog/documento-detail-dialog.component';
+import { AsientoContableDialogComponent } from './asiento-contable-dialog/asiento-contable-dialog.component';
 import { ToastService } from '../../../../core/services/toast.service';
 
 @Component({
@@ -30,6 +31,7 @@ import { ToastService } from '../../../../core/services/toast.service';
     MatFormFieldModule, MatSelectModule,
     MatProgressBarModule, MatTooltipModule, MatDialogModule,
     DocumentoDetailDialogComponent,
+    AsientoContableDialogComponent,
   ],
 })
 export class DocumentoListComponent implements OnInit {
@@ -38,15 +40,44 @@ export class DocumentoListComponent implements OnInit {
   private readonly dialog      = inject(MatDialog);
   private readonly toast       = inject(ToastService);
 
-  readonly proyectoId = input.required<string>();
+  constructor() {
+    // Recarga automática cuando el padre incrementa refreshTrigger (skip valor inicial 0)
+    effect(() => {
+      if (this.refreshTrigger() > 0) {
+        this.loadDocumentos();
+      }
+    });
+  }
 
-  readonly documentos    = signal<DocumentoContableList[]>([]);
-  readonly fases         = signal<FaseList[]>([]);
-  readonly loading       = signal(false);
+  readonly proyectoId      = input.required<string>();
+  /** Incrementar para forzar recarga (p.ej. tras sincronizar desde General tab) */
+  readonly refreshTrigger  = input<number>(0);
+
+  readonly documentos       = signal<DocumentoContableList[]>([]);
+  readonly fases            = signal<FaseList[]>([]);
+  readonly loading          = signal(false);
+  readonly syncing          = signal(false);
   readonly faseSeleccionada = signal<string | null>(null);
+  readonly tipoSeleccionado = signal<string | null>(null);
+
+  /** Valores únicos de tipdoc_descripcion para el filtro */
+  readonly tiposUnicos = computed<string[]>(() => {
+    const set = new Set<string>();
+    for (const d of this.documentos()) {
+      if (d.tipdoc_descripcion) set.add(d.tipdoc_descripcion);
+    }
+    return Array.from(set).sort();
+  });
+
+  /** Documentos filtrados por tipo de documento Saiopen */
+  readonly documentosFiltrados = computed(() => {
+    const tipo = this.tipoSeleccionado();
+    if (!tipo) return this.documentos();
+    return this.documentos().filter(d => d.tipdoc_descripcion === tipo);
+  });
 
   readonly displayedColumns = [
-    'tipo_documento_display', 'numero_documento',
+    'tipdoc_sigla', 'tipo_documento_display', 'numero_documento',
     'fecha_documento', 'tercero_nombre', 'valor_neto', 'acciones',
   ];
 
@@ -79,6 +110,24 @@ export class DocumentoListComponent implements OnInit {
     this.loadDocumentos();
   }
 
+  sincronizarDesdeGL(): void {
+    this.syncing.set(true);
+    this.service.sync(this.proyectoId()).subscribe({
+      next: (res) => {
+        this.syncing.set(false);
+        this.toast.success(
+          `Sincronizado: ${res.created} creados, ${res.updated} actualizados.` +
+          (res.errors.length ? ` (${res.errors.length} errores)` : ''),
+        );
+        this.loadDocumentos();
+      },
+      error: () => {
+        this.syncing.set(false);
+        this.toast.error('Error al sincronizar documentos desde GL.');
+      },
+    });
+  }
+
   verDetalle(doc: DocumentoContableList): void {
     this.service.getById(this.proyectoId(), doc.id).subscribe({
       next: (detalle: DocumentoContableDetail) => {
@@ -89,6 +138,21 @@ export class DocumentoListComponent implements OnInit {
       },
       error: () => {
         this.toast.error('No se pudo cargar el detalle.');
+      },
+    });
+  }
+
+  verAsiento(doc: DocumentoContableList): void {
+    this.service.getLineas(this.proyectoId(), doc.id).subscribe({
+      next: (lineas) => {
+        this.dialog.open(AsientoContableDialogComponent, {
+          data: { doc, lineas },
+          width: '900px',
+          maxWidth: '98vw',
+        });
+      },
+      error: () => {
+        this.toast.error('No se pudo cargar el asiento contable.');
       },
     });
   }

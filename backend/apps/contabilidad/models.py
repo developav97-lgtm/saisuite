@@ -466,3 +466,41 @@ class TributariaSaiopen(models.Model):
             self.primer_apellido, self.segundo_apellido,
         ]))
         return f'{self.id_n} - {nombre or "(jurídica)"}'
+
+
+class TipdocSaiopen(models.Model):
+    """
+    Espejo de la tabla TIPDOC de Saiopen (catálogo de tipos de documento).
+    PK Firebird: (CLASE, E, S).
+    CLASE (3 chars) es el mismo valor que aparece en GL.TIPO / MovimientoContable.tipo.
+    READ-ONLY desde Saicloud: solo escribe el agente Go vía SQS.
+    """
+    company = models.ForeignKey(
+        'companies.Company',
+        on_delete=models.CASCADE,
+        related_name='tipdocs_saiopen',
+        db_index=True,
+    )
+    # PK compuesta Firebird: CLASE + E + S
+    clase        = models.CharField(max_length=3, help_text='TIPDOC.CLASE = GL.TIPO (ej: FAC, CE)')
+    e            = models.SmallIntegerField(default=0, help_text='Entidad (E en Firebird)')
+    s            = models.SmallIntegerField(default=0, help_text='Serie (S en Firebird)')
+    tipo         = models.CharField(max_length=2, blank=True, default='')
+    consecutivo  = models.IntegerField(default=0)
+    descripcion  = models.CharField(max_length=35, blank=True, default='')
+    sigla        = models.CharField(max_length=10, blank=True, default='',
+                                    help_text='Abreviatura del tipo (ej: FACT, CE)')
+    operar       = models.CharField(max_length=2, blank=True, default='')
+    enviafacelect = models.CharField(max_length=1, blank=True, default='')
+    prefijo_dian  = models.CharField(max_length=5, blank=True, default='')
+    sincronizado_en = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table        = 'cont_tipdoc_saiopen'
+        unique_together = [('company', 'clase', 'e', 's')]
+        verbose_name    = 'Tipo de documento Saiopen'
+        verbose_name_plural = 'Tipos de documento Saiopen'
+        ordering        = ['clase', 'e', 's']
+
+    def __str__(self):
+        return f'{self.clase} ({self.sigla}) — {self.descripcion}'

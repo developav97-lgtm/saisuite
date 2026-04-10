@@ -96,8 +96,8 @@ export class AdminService {
   // ── Catálogo de paquetes (para company-settings) ──────────────────────────
 
   getAvailablePackages(packageType?: string): Observable<LicensePackage[]> {
-    let url = '/api/v1/admin/packages/?is_active=true';
-    if (packageType) url += `&type=${packageType}`;
+    let url = '/api/v1/companies/packages/catalog/';
+    if (packageType) url += `?type=${packageType}`;
     return this.http.get<LicensePackage[]>(url);
   }
 

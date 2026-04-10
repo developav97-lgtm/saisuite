@@ -300,11 +300,41 @@ class AccountingDocument(BaseModel):
     observaciones             = models.TextField(blank=True)
     sincronizado_desde_saiopen = models.DateTimeField(auto_now_add=True)
 
+    # Claves GL — pobladas por sync_from_gl()
+    # saiopen_doc_id = f"{tipo_gl}_{batch_gl}"
+    tipo_gl  = models.CharField(
+        max_length=3, blank=True, default='',
+        help_text='MovimientoContable.tipo — corresponde a TIPDOC.CLASE',
+    )
+    batch_gl = models.IntegerField(
+        null=True, blank=True,
+        help_text='MovimientoContable.batch — número secuencial del documento en Saiopen',
+    )
+    invc_gl  = models.CharField(
+        max_length=15, blank=True, default='',
+        help_text='MovimientoContable.invc — referencia externa impresa en el documento',
+    )
+    # Desnormalización de TIPDOC (capturada en el momento del sync)
+    tipdoc_descripcion = models.CharField(
+        max_length=35, blank=True, default='',
+        help_text='TIPDOC.DESCRIPCION — nombre legible del tipo de documento',
+    )
+    tipdoc_sigla = models.CharField(
+        max_length=10, blank=True, default='',
+        help_text='TIPDOC.SIGLA — abreviatura para badge en UI',
+    )
+
     class Meta:
         verbose_name        = 'Documento contable'
         verbose_name_plural = 'Documentos contables'
         ordering            = ['-fecha_documento']
         unique_together     = [('company', 'saiopen_doc_id')]
+        indexes             = [
+            models.Index(
+                fields=['company', 'tipo_gl', 'batch_gl'],
+                name='idx_proj_doc_gl_key',
+            ),
+        ]
 
     def __str__(self):
         return f'{self.get_tipo_documento_display()} {self.numero_documento} ({self.fecha_documento})'

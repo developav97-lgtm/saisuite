@@ -11,6 +11,7 @@
       <h1 class="ml-title">{{ moduleName() }} no está disponible</h1>
       <p class="ml-desc">Este módulo no está incluido en tu licencia actual.</p>
 
+      <!-- Trial recién activado -->
       @if (trialActivated()) {
         <div class="ml-success-box">
           <mat-icon>check_circle</mat-icon>
@@ -21,6 +22,7 @@
           </button>
         </div>
 
+      <!-- Trial activo (previo) -->
       } @else if (trialStatus()?.trial_activo) {
         <div class="ml-info-box">
           <mat-icon>timer</mat-icon>
@@ -31,21 +33,26 @@
           Ir al módulo
         </button>
 
+      <!-- Solicitud enviada -->
+      } @else if (requestSent()) {
+        <div class="ml-success-box">
+          <mat-icon>send</mat-icon>
+          <p>Solicitud enviada al equipo de ValMen Tech. Te notificaremos por correo cuando esté lista.</p>
+        </div>
+
+      <!-- Sin trial usado → puede iniciar trial (solo admin) -->
       } @else if (!trialStatus()?.trial_usado && isAdmin()) {
         <p class="ml-trial-hint">
           Puedes iniciar una prueba gratuita de 14 días sin costo adicional.
         </p>
         <button mat-raised-button color="primary"
-          [disabled]="activating()"
-          (click)="activarTrial()">
-          @if (activating()) {
-            <mat-icon>hourglass_empty</mat-icon>
-          } @else {
-            <mat-icon>play_circle</mat-icon>
-          }
+                [disabled]="activating()"
+                (click)="activarTrial()">
+          <mat-icon>{{ activating() ? 'hourglass_empty' : 'play_circle' }}</mat-icon>
           Iniciar prueba gratuita de 14 días
         </button>
 
+      <!-- Trial usado o no admin -->
       } @else {
         @if (trialStatus()?.trial_usado) {
           <p class="ml-trial-expired">Ya utilizaste el período de prueba para este módulo.</p>
@@ -55,10 +62,17 @@
             Contacta al administrador de tu empresa para activar este módulo.
           </p>
         }
-        <a mat-raised-button color="primary" href="mailto:ventas@valmentech.com">
-          <mat-icon>mail</mat-icon>
-          Contactar ventas
-        </a>
+        @if (isAdmin()) {
+          <button mat-raised-button color="primary" (click)="solicitarLicencia()">
+            <mat-icon>send</mat-icon>
+            Solicitar licencia de {{ moduleName() }}
+          </button>
+        } @else {
+          <a mat-raised-button color="primary" href="mailto:ventas@valmentech.com">
+            <mat-icon>mail</mat-icon>
+            Contactar ventas
+          </a>
+        }
       }
 
       <button mat-stroked-button class="ml-back-btn" (click)="volver()">

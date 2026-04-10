@@ -77,6 +77,8 @@ from apps.proyectos.services import (
     ProyectoExportService,
     PlantillaProyectoService,
     ProyectoImportService,
+    ProyectoSaiopenSyncService,
+    ActividadSaiopenSyncService,
 )
 from apps.proyectos.tarea_services import TimesheetService, DependencyService, TimesheetEntryService
 from apps.notifications.services import NotificacionService
@@ -800,9 +802,11 @@ class ProjectStakeholderViewSet(viewsets.GenericViewSet):
 
 class AccountingDocumentViewSet(viewsets.GenericViewSet):
     """
-    Documentos contables del proyecto (solo lectura — los crea el agente Go).
-    - GET  /api/v1/proyectos/{proyecto_pk}/documentos/
-    - GET  /api/v1/proyectos/{proyecto_pk}/documentos/{pk}/
+    Documentos contables del proyecto.
+    - GET   /api/v1/projects/{proyecto_pk}/documents/
+    - GET   /api/v1/projects/{proyecto_pk}/documents/{pk}/
+    - POST  /api/v1/projects/{proyecto_pk}/documents/sync/
+    - GET   /api/v1/projects/{proyecto_pk}/documents/{pk}/lineas/
     """
     permission_classes = [CanAccessProyectos]
 
@@ -810,7 +814,7 @@ class AccountingDocumentViewSet(viewsets.GenericViewSet):
         return Project.all_objects.get(id=self.kwargs['proyecto_pk'])
 
     def list(self, request, proyecto_pk=None):
-        """GET /api/v1/proyectos/{id}/documentos/"""
+        """GET /api/v1/projects/{id}/documents/"""
         proyecto = self._get_proyecto()
         fase_id  = request.query_params.get('fase')
         qs       = DocumentoContableService.list_documentos(proyecto, fase_id=fase_id)
@@ -818,10 +822,108 @@ class AccountingDocumentViewSet(viewsets.GenericViewSet):
         return Response(serializer.data)
 
     def retrieve(self, request, proyecto_pk=None, pk=None):
-        """GET /api/v1/proyectos/{id}/documentos/{pk}/"""
+        """GET /api/v1/projects/{id}/documents/{pk}/"""
         documento  = DocumentoContableService.get_documento(pk)
         serializer = AccountingDocumentDetailSerializer(documento)
         return Response(serializer.data)
+
+    def sync(self, request, proyecto_pk=None):
+        """
+        POST /api/v1/projects/{id}/documents/sync/
+        Sincroniza documentos del GL (MovimientoContable) al proyecto.
+        Requiere que el proyecto esté vinculado a un ProyectoSaiopen.
+        """
+        proyecto = self._get_proyecto()
+        result = DocumentoContableService.sync_from_gl(proyecto)
+        return Response(result, status=status.HTTP_200_OK)
+
+    def lineas(self, request, proyecto_pk=None, pk=None):
+        """
+        GET /api/v1/projects/{id}/documents/{pk}/lineas/
+        Retorna las líneas GL (MovimientoContable) que componen este documento.
+        Usa tipo_gl + batch_gl para filtrar en la tabla de movimientos.
+        """
+        from apps.contabilidad.models import MovimientoContable
+        from apps.contabilidad.serializers import MovimientoContableSerializer
+
+        documento = DocumentoContableService.get_documento(pk)
+
+        if not documento.tipo_gl or documento.batch_gl is None:
+            return Response(
+                {'error': 'El documento no tiene claves GL. Sincroniza primero desde GL.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        lineas = MovimientoContable.objects.filter(
+            company=documento.proyecto.company,
+            tipo=documento.tipo_gl,
+            batch=documento.batch_gl,
+        ).order_by('auxiliar')
+
+        serializer = MovimientoContableSerializer(lineas, many=True)
+        return Response(serializer.data)
+
+
+class ProyectoSaiopenDisponiblesView(APIView):
+    """
+    GET /api/v1/projects/saiopen/disponibles/
+    Lista ProyectoSaiopen no vinculados a ningún Project de la empresa.
+    """
+    permission_classes = [CanAccessProyectos]
+
+    def get(self, request):
+        company = request.user.effective_company or request.user.company
+        qs = ProyectoSaiopenSyncService.list_disponibles(company)
+        data = [
+            {
+                'codigo':       ps.codigo,
+                'descripcion':  ps.descripcion,
+                'cliente_nit':  ps.cliente_nit,
+                'estado':       ps.estado,
+                'costo_estimado': str(ps.costo_estimado),
+                'fecha_inicio':           ps.fecha_inicio,
+                'fecha_estimada_fin':     ps.fecha_estimada_fin,
+            }
+            for ps in qs
+        ]
+        return Response(data)
+
+
+class ProyectoVincularSaiopenView(APIView):
+    """
+    POST /api/v1/projects/{pk}/vincular-saiopen/
+    Vincula un proyecto existente a un ProyectoSaiopen.
+    Body: {"saiopen_codigo": "CONC001"}
+
+    DELETE /api/v1/projects/{pk}/vincular-saiopen/
+    Desvincula el proyecto de Saiopen.
+    """
+    permission_classes = [CanAccessProyectos, CanEditProyecto]
+
+    def post(self, request, pk=None):
+        proyecto = Project.all_objects.get(id=pk)
+        saiopen_codigo = request.data.get('saiopen_codigo', '')
+        proyecto = ProyectoSaiopenSyncService.vincular(proyecto, saiopen_codigo)
+        from apps.proyectos.serializers import ProjectDetailSerializer
+        return Response(ProjectDetailSerializer(proyecto, context={'request': request}).data)
+
+    def delete(self, request, pk=None):
+        proyecto = Project.all_objects.get(id=pk)
+        proyecto = ProyectoSaiopenSyncService.desvincular(proyecto)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class ProyectoSyncActividadesView(APIView):
+    """
+    POST /api/v1/projects/{pk}/sync-actividades/
+    Sincroniza actividades desde cont_actividad_saiopen al catálogo SaiopenActivity.
+    """
+    permission_classes = [CanAccessProyectos, CanEditProyecto]
+
+    def post(self, request, pk=None):
+        proyecto = Project.all_objects.get(id=pk)
+        result = ActividadSaiopenSyncService.sync_for_project(proyecto)
+        return Response(result, status=status.HTTP_200_OK)
 
 
 class MilestoneViewSet(viewsets.GenericViewSet):

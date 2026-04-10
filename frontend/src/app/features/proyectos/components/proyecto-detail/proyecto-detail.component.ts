@@ -29,6 +29,7 @@ import { BudgetDashboardComponent } from '../budget-dashboard/budget-dashboard.c
 import { TareaListComponent } from '../tarea-list/tarea-list.component';
 import { TareaKanbanComponent } from '../tarea-kanban/tarea-kanban.component';
 import { ProyectoTimesheetTabComponent } from './proyecto-timesheet-tab/proyecto-timesheet-tab.component';
+import { ProyectoSaiopenSectionComponent } from '../proyecto-saiopen-section/proyecto-saiopen-section.component';
 import { ToastService } from '../../../../core/services/toast.service';
 
 @Component({
@@ -56,6 +57,7 @@ import { ToastService } from '../../../../core/services/toast.service';
     TareaListComponent,
     TareaKanbanComponent,
     ProyectoTimesheetTabComponent,
+    ProyectoSaiopenSectionComponent,
   ],
 })
 export class ProyectoDetailComponent implements OnInit {
@@ -77,6 +79,8 @@ export class ProyectoDetailComponent implements OnInit {
   // Actividades(6) Gantt(7) Equipo(8) Timesheets(9)
   // Analytics(10) Baselines(11) Escenarios(12) Presupuesto(13)
   readonly proyectoId            = computed(() => this.proyecto()?.id ?? '');
+  /** Incrementar para forzar recarga del tab Documentos tras sync desde General tab */
+  readonly docsRefreshCount      = signal(0);
   readonly exportingPDF          = signal(false);
   readonly tareasTabLoaded       = computed(() => this.selectedTab() >= 5);
   readonly kanbanTabLoaded       = computed(() => false); // ya no existe como tab separado
@@ -223,6 +227,17 @@ export class ProyectoDetailComponent implements OnInit {
         },
       });
     });
+  }
+
+  onDocsSynced(): void {
+    this.docsRefreshCount.update(n => n + 1);
+  }
+
+  onSaiopenVinculoChanged(codigo: string | null): void {
+    const p = this.proyecto();
+    if (!p) return;
+    // Actualizar localmente el campo vinculado sin recargar todo el proyecto
+    this.proyecto.set({ ...p, saiopen_proyecto_id: codigo, sincronizado_con_saiopen: codigo !== null });
   }
 
   formatCurrency(value: string): string {

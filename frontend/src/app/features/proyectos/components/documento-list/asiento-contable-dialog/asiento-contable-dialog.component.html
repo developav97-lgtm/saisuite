@@ -1,0 +1,115 @@
+<h2 mat-dialog-title class="acd-title">
+  <mat-icon>receipt_long</mat-icon>
+  <span class="acd-title-text">
+    @if (doc.tipdoc_descripcion) {
+      {{ doc.tipdoc_descripcion }}
+    } @else {
+      Asiento contable
+    }
+    <span class="acd-title-sep">·</span>
+    <span class="acd-nro">{{ doc.invc_gl || doc.numero_documento }}</span>
+  </span>
+</h2>
+
+<mat-dialog-content class="acd-content">
+  <!-- Header del documento -->
+  <div class="acd-header-grid">
+    <div class="acd-header-field">
+      <label>Fecha</label>
+      <span>{{ formatDate(doc.fecha_documento) }}</span>
+    </div>
+    <div class="acd-header-field">
+      <label>Tipo GL</label>
+      <span class="acd-sigla-badge">{{ doc.tipdoc_sigla || doc.tipo_gl || '—' }}</span>
+    </div>
+    <div class="acd-header-field">
+      <label>Batch</label>
+      <span>{{ doc.batch_gl ?? '—' }}</span>
+    </div>
+    <div class="acd-header-field acd-header-field--full">
+      <label>Tercero</label>
+      <span>{{ doc.tercero_nombre }}</span>
+    </div>
+  </div>
+
+  <!-- Líneas de asiento -->
+  @if (lineas.length === 0) {
+    <div class="acd-empty">
+      <mat-icon>info</mat-icon>
+      <p>No se encontraron líneas de asiento para este documento.</p>
+    </div>
+  } @else {
+    <div class="table-responsive">
+      <mat-table [dataSource]="lineas" class="acd-table">
+
+        <ng-container matColumnDef="auxiliar">
+          <mat-header-cell *matHeaderCellDef class="acd-col-code">Auxiliar</mat-header-cell>
+          <mat-cell *matCellDef="let l" class="acd-col-code">
+            <span class="acd-code" [matTooltip]="l.cuenta_nombre">{{ l.auxiliar }}</span>
+          </mat-cell>
+        </ng-container>
+
+        <ng-container matColumnDef="auxiliar_nombre">
+          <mat-header-cell *matHeaderCellDef>Nombre auxiliar</mat-header-cell>
+          <mat-cell *matCellDef="let l">{{ l.auxiliar_nombre }}</mat-cell>
+        </ng-container>
+
+        <ng-container matColumnDef="titulo_nombre">
+          <mat-header-cell *matHeaderCellDef>Grupo / cuenta</mat-header-cell>
+          <mat-cell *matCellDef="let l">
+            <span class="acd-text-muted">{{ l.grupo_nombre }}</span>
+            @if (l.titulo_nombre) {
+              <span class="acd-text-sep"> / </span>{{ l.titulo_nombre }}
+            }
+          </mat-cell>
+        </ng-container>
+
+        <ng-container matColumnDef="tercero_nombre">
+          <mat-header-cell *matHeaderCellDef>Tercero</mat-header-cell>
+          <mat-cell *matCellDef="let l">{{ l.tercero_nombre || '—' }}</mat-cell>
+        </ng-container>
+
+        <ng-container matColumnDef="descripcion">
+          <mat-header-cell *matHeaderCellDef>Descripción</mat-header-cell>
+          <mat-cell *matCellDef="let l" class="acd-desc">{{ l.descripcion }}</mat-cell>
+        </ng-container>
+
+        <ng-container matColumnDef="debito">
+          <mat-header-cell *matHeaderCellDef class="acd-col-amount">Débito</mat-header-cell>
+          <mat-cell *matCellDef="let l" class="acd-col-amount acd-debito">
+            {{ formatCurrency(l.debito) }}
+          </mat-cell>
+        </ng-container>
+
+        <ng-container matColumnDef="credito">
+          <mat-header-cell *matHeaderCellDef class="acd-col-amount">Haber</mat-header-cell>
+          <mat-cell *matCellDef="let l" class="acd-col-amount acd-credito">
+            {{ formatCurrency(l.credito) }}
+          </mat-cell>
+        </ng-container>
+
+        <mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></mat-header-row>
+        <mat-row *matRowDef="let row; columns: displayedColumns;"></mat-row>
+      </mat-table>
+    </div>
+
+    <!-- Footer totales -->
+    <div class="acd-footer">
+      <span class="acd-footer-label">TOTAL</span>
+      <div class="acd-footer-totals">
+        <div class="acd-footer-total">
+          <label>Débito</label>
+          <span class="acd-total-debito">{{ formatCurrency(totalDebito()) }}</span>
+        </div>
+        <div class="acd-footer-total">
+          <label>Haber</label>
+          <span class="acd-total-credito">{{ formatCurrency(totalCredito()) }}</span>
+        </div>
+      </div>
+    </div>
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button [mat-dialog-close]="null">Cerrar</button>
+</mat-dialog-actions>

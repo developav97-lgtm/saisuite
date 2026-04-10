@@ -230,6 +230,14 @@
               </div>
             </div>
 
+            <!-- Vinculación Saiopen -->
+            <app-proyecto-saiopen-section
+              [proyectoId]="p.id"
+              [saiopenProyectoId]="p.saiopen_proyecto_id"
+              [ultimaSincronizacion]="p.ultima_sincronizacion"
+              (vinculoChanged)="onSaiopenVinculoChanged($event)"
+              (docsSynced)="onDocsSynced()" />
+
           </div>
         </div>
       </mat-tab>
@@ -251,7 +259,7 @@
       <!-- Tab 4: Documentos -->
       <mat-tab label="Documentos">
         <div class="pd-tab-content">
-          <app-documento-list [proyectoId]="p.id" />
+          <app-documento-list [proyectoId]="p.id" [refreshTrigger]="docsRefreshCount()" />
         </div>
       </mat-tab>
 

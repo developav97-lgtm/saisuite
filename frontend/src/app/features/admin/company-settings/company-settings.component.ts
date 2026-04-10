@@ -102,9 +102,26 @@ export class CompanySettingsComponent implements OnInit {
   }
 
   openRequestDialog(requestType: 'user_seats' | 'module' | 'ai_tokens'): void {
-    const packages = this.availablePackages().filter(p => p.package_type === requestType);
+    const activeLicense = this.license();
+    const alreadyIncluded: string[] = activeLicense?.modules_included ?? [];
+
+    let packages = this.availablePackages().filter(p => p.package_type === requestType);
+
+    if (requestType === 'user_seats' || requestType === 'ai_tokens') {
+      // Excluir paquetes base (sin costo) — el cliente ya los tiene incluidos
+      packages = packages.filter(p => +p.price_monthly > 0 || +p.price_annual > 0);
+    }
+
+    if (requestType === 'module') {
+      // Excluir módulos que la empresa ya tiene en su licencia
+      packages = packages.filter(p => !alreadyIncluded.includes(p.module_code ?? ''));
+    }
+
     if (packages.length === 0) {
-      this.toast.error('No hay paquetes disponibles para este tipo de solicitud.');
+      const msg = requestType === 'module'
+        ? 'Ya tienes todos los módulos disponibles en tu licencia.'
+        : 'No hay paquetes adicionales disponibles para solicitar.';
+      this.toast.error(msg);
       return;
     }
 

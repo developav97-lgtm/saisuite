@@ -18,7 +18,7 @@ from rest_framework.exceptions import ValidationError, PermissionDenied
 from apps.proyectos.models import (
     Project, Phase, Task, ProjectStakeholder, AccountingDocument, Milestone,
     ProjectStatus, PhaseStatus, Activity, ProjectActivity, ModuleSettings,
-    ActivityType, MeasurementMode, ProjectType,
+    ActivityType, MeasurementMode, ProjectType, SaiopenActivity, DocumentType,
 )
 
 logger = logging.getLogger(__name__)
@@ -789,6 +789,41 @@ class TerceroProyectoService:
 # DocumentoContableService
 # ──────────────────────────────────────────────
 
+# Mapeo TIPDOC.CLASE → DocumentType enum.
+# Basado en códigos estándar colombianos de Saiopen.
+# Clases desconocidas → expense_voucher como fallback.
+CLASE_TO_DOCUMENT_TYPE: dict[str, str] = {
+    # Facturas de venta
+    'FAC': DocumentType.SALES_INVOICE,
+    'FEV': DocumentType.SALES_INVOICE,
+    'FES': DocumentType.SALES_INVOICE,
+    # Facturas de compra
+    'FCP': DocumentType.PURCHASE_INVOICE,
+    'FAP': DocumentType.PURCHASE_INVOICE,
+    'FEP': DocumentType.PURCHASE_INVOICE,
+    # Órdenes de compra
+    'OCP': DocumentType.PURCHASE_ORDER,
+    'OCM': DocumentType.PURCHASE_ORDER,
+    # Recibos de caja
+    'REC': DocumentType.CASH_RECEIPT,
+    'RC':  DocumentType.CASH_RECEIPT,
+    'RCJ': DocumentType.CASH_RECEIPT,
+    # Comprobantes de egreso
+    'CE':  DocumentType.EXPENSE_VOUCHER,
+    'CEG': DocumentType.EXPENSE_VOUCHER,
+    'CDI': DocumentType.EXPENSE_VOUCHER,
+    # Nómina
+    'CNM': DocumentType.PAYROLL,
+    'NOM': DocumentType.PAYROLL,
+    # Anticipos
+    'ANT': DocumentType.ADVANCE,
+    'APC': DocumentType.ADVANCE,
+    # Actas de obra / certificados
+    'ACO': DocumentType.WORK_CERTIFICATE,
+    'CAO': DocumentType.WORK_CERTIFICATE,
+}
+
+
 class DocumentoContableService:
 
     @staticmethod
@@ -814,6 +849,289 @@ class DocumentoContableService:
             .select_related('proyecto', 'fase')
             .get(id=documento_id)
         )
+
+    @staticmethod
+    @transaction.atomic
+    def sync_from_gl(proyecto: Project) -> dict:
+        """
+        Lee MovimientoContable filtrando por proyecto.saiopen_proyecto_id,
+        agrupa por (tipo, batch) para identificar documentos únicos,
+        y crea/actualiza AccountingDocument records.
+
+        Returns: {'created': int, 'updated': int, 'skipped': int, 'errors': list}
+        """
+        from collections import defaultdict
+        from apps.contabilidad.models import MovimientoContable, TipdocSaiopen
+
+        if not proyecto.saiopen_proyecto_id:
+            raise ProyectoException(
+                'El proyecto no está vinculado a Saiopen. '
+                'Vincúlalo primero con un código de ProyectoSaiopen.'
+            )
+
+        # 1. Pre-cargar TIPDOC de la empresa (dict clase→TipdocSaiopen)
+        tipdocs: dict[str, TipdocSaiopen] = {
+            t.clase: t
+            for t in TipdocSaiopen.objects.filter(company=proyecto.company)
+        }
+
+        # 2. Leer movimientos del GL para este proyecto
+        rows = list(
+            MovimientoContable.objects.filter(
+                company=proyecto.company,
+                proyecto_codigo=proyecto.saiopen_proyecto_id,
+            ).values(
+                'tipo', 'batch', 'invc', 'fecha', 'tercero_id',
+                'tercero_nombre', 'descripcion', 'actividad_codigo',
+                'debito', 'credito',
+            )
+        )
+
+        if not rows:
+            logger.info(
+                'sync_from_gl_no_rows',
+                extra={
+                    'proyecto_id': str(proyecto.id),
+                    'saiopen_codigo': proyecto.saiopen_proyecto_id,
+                },
+            )
+            return {'created': 0, 'updated': 0, 'skipped': 0, 'errors': []}
+
+        # 3. Agrupar por (tipo, batch)
+        groups: dict[tuple, list] = defaultdict(list)
+        for row in rows:
+            groups[(row['tipo'] or '', row['batch'])].append(row)
+
+        # Pre-cargar fases y sus SaiopenActivity para el proyecto
+        # (evitar N+1 en la resolución de fase por actividad_codigo)
+        from apps.proyectos.models import Task as ProyectoTask
+        actividad_to_fase: dict[str, Phase] = {}
+        tasks_with_actividad = (
+            ProyectoTask.all_objects
+            .filter(proyecto=proyecto, actividad_saiopen__isnull=False)
+            .select_related('fase', 'actividad_saiopen')
+            .only('fase', 'actividad_saiopen__codigo')
+        )
+        for t in tasks_with_actividad:
+            if t.actividad_saiopen and t.actividad_saiopen.codigo not in actividad_to_fase:
+                actividad_to_fase[t.actividad_saiopen.codigo] = t.fase
+
+        created = updated = skipped = 0
+        errors = []
+
+        for (tipo, batch), lineas in groups.items():
+            if not tipo and not batch:
+                skipped += 1
+                continue
+            try:
+                tipo_str = tipo or '__'
+                batch_val = batch or 0
+                saiopen_doc_id = f'{tipo_str}_{batch_val}'
+
+                header = lineas[0]
+                sum_deb = sum(Decimal(str(r['debito'])) for r in lineas)
+                sum_cre = sum(Decimal(str(r['credito'])) for r in lineas)
+                valor_bruto = max(sum_deb, sum_cre)
+                valor_neto  = abs(sum_deb - sum_cre)
+
+                # Resolver fase vía actividad_codigo
+                actividad_codigo = next(
+                    (r['actividad_codigo'] for r in lineas if r.get('actividad_codigo')),
+                    None,
+                )
+                fase = actividad_to_fase.get(actividad_codigo) if actividad_codigo else None
+
+                # Lookup TIPDOC
+                tipdoc = tipdocs.get(tipo_str)
+                tipo_documento = CLASE_TO_DOCUMENT_TYPE.get(tipo_str, DocumentType.EXPENSE_VOUCHER)
+
+                invc_val = str(header.get('invc') or '').strip()
+
+                _, is_created = AccountingDocument.all_objects.update_or_create(
+                    company=proyecto.company,
+                    saiopen_doc_id=saiopen_doc_id,
+                    defaults=dict(
+                        proyecto=proyecto,
+                        fase=fase,
+                        tipo_documento=tipo_documento,
+                        numero_documento=invc_val or str(batch_val),
+                        fecha_documento=header['fecha'],
+                        tercero_id=str(header.get('tercero_id') or '').strip(),
+                        tercero_nombre=str(header.get('tercero_nombre') or '').strip(),
+                        valor_bruto=valor_bruto,
+                        valor_descuento=Decimal('0'),
+                        valor_neto=valor_neto,
+                        observaciones=str(header.get('descripcion') or '').strip(),
+                        tipo_gl=tipo_str,
+                        batch_gl=batch_val,
+                        invc_gl=invc_val,
+                        tipdoc_descripcion=tipdoc.descripcion if tipdoc else '',
+                        tipdoc_sigla=tipdoc.sigla if tipdoc else '',
+                    ),
+                )
+                if is_created:
+                    created += 1
+                else:
+                    updated += 1
+
+            except Exception as exc:
+                logger.exception(
+                    'sync_from_gl_doc_error',
+                    extra={'tipo': tipo, 'batch': batch, 'proyecto_id': str(proyecto.id)},
+                )
+                errors.append(f'Documento {tipo}_{batch}: {exc}')
+
+        # Marcar proyecto como sincronizado
+        proyecto.sincronizado_con_saiopen = True
+        proyecto.ultima_sincronizacion = timezone.now()
+        proyecto.save(update_fields=['sincronizado_con_saiopen', 'ultima_sincronizacion'])
+
+        logger.info(
+            'sync_from_gl_complete',
+            extra={
+                'proyecto_id': str(proyecto.id),
+                'docs_created': created,
+                'docs_updated': updated,
+                'skipped': skipped,
+                'error_count': len(errors),
+            },
+        )
+        return {'created': created, 'updated': updated, 'skipped': skipped, 'errors': errors}
+
+
+# ──────────────────────────────────────────────
+# ProyectoSaiopenSyncService
+# ──────────────────────────────────────────────
+
+class ProyectoSaiopenSyncService:
+    """Vinculación y sincronización entre Project y ProyectoSaiopen."""
+
+    @staticmethod
+    def list_disponibles(company) -> QuerySet:
+        """
+        Retorna ProyectoSaiopen que NO están vinculados a ningún Project.
+        """
+        from apps.contabilidad.models import ProyectoSaiopen
+        linked_codes = Project.all_objects.filter(
+            company=company,
+            saiopen_proyecto_id__isnull=False,
+        ).exclude(saiopen_proyecto_id='').values_list('saiopen_proyecto_id', flat=True)
+
+        return ProyectoSaiopen.objects.filter(
+            company=company,
+        ).exclude(codigo__in=linked_codes).order_by('codigo')
+
+    @staticmethod
+    @transaction.atomic
+    def vincular(proyecto: Project, saiopen_codigo: str) -> Project:
+        """
+        Vincula un Project existente a un ProyectoSaiopen por código.
+        Valida que el código exista y no esté ya enlazado a otro proyecto.
+        """
+        from apps.contabilidad.models import ProyectoSaiopen as ContProyecto
+
+        saiopen_codigo = str(saiopen_codigo).strip()
+        if not saiopen_codigo:
+            raise ProyectoException('El código Saiopen no puede estar vacío.')
+
+        ps = ContProyecto.objects.filter(
+            company=proyecto.company,
+            codigo=saiopen_codigo,
+        ).first()
+        if not ps:
+            raise ProyectoException(
+                f'ProyectoSaiopen con código "{saiopen_codigo}" no encontrado '
+                f'para la empresa {proyecto.company.name}.'
+            )
+
+        duplicate = Project.all_objects.filter(
+            company=proyecto.company,
+            saiopen_proyecto_id=saiopen_codigo,
+        ).exclude(id=proyecto.id).first()
+        if duplicate:
+            raise ProyectoException(
+                f'El código Saiopen "{saiopen_codigo}" ya está vinculado '
+                f'al proyecto {duplicate.codigo} ({duplicate.nombre}).'
+            )
+
+        proyecto.saiopen_proyecto_id = saiopen_codigo
+        proyecto.save(update_fields=['saiopen_proyecto_id'])
+
+        logger.info(
+            'proyecto_vinculado_saiopen',
+            extra={'proyecto_id': str(proyecto.id), 'saiopen_codigo': saiopen_codigo},
+        )
+        return proyecto
+
+    @staticmethod
+    @transaction.atomic
+    def desvincular(proyecto: Project) -> Project:
+        """Elimina el vínculo Saiopen del proyecto."""
+        proyecto.saiopen_proyecto_id = None
+        proyecto.sincronizado_con_saiopen = False
+        proyecto.ultima_sincronizacion = None
+        proyecto.save(update_fields=[
+            'saiopen_proyecto_id', 'sincronizado_con_saiopen', 'ultima_sincronizacion',
+        ])
+        return proyecto
+
+
+# ──────────────────────────────────────────────
+# ActividadSaiopenSyncService
+# ──────────────────────────────────────────────
+
+class ActividadSaiopenSyncService:
+    """Sincronización de actividades Saiopen al catálogo SaiopenActivity del módulo."""
+
+    @staticmethod
+    @transaction.atomic
+    def sync_for_project(proyecto: Project) -> dict:
+        """
+        Lee cont_actividad_saiopen para el proyecto vinculado y crea/actualiza
+        registros en proyectos_saiopenactivity.
+
+        Returns: {'created': int, 'updated': int}
+        """
+        from apps.contabilidad.models import ActividadSaiopen as ContActividad
+
+        if not proyecto.saiopen_proyecto_id:
+            raise ProyectoException(
+                'El proyecto no está vinculado a Saiopen. Vincúlalo primero.'
+            )
+
+        actividades = ContActividad.objects.filter(
+            company=proyecto.company,
+            proyecto_codigo=proyecto.saiopen_proyecto_id,
+        )
+
+        created = updated = 0
+        for a in actividades:
+            _, was_created = SaiopenActivity.all_objects.update_or_create(
+                company=proyecto.company,
+                codigo=a.codigo,
+                defaults=dict(
+                    nombre=a.descripcion or a.codigo,
+                    descripcion=a.descripcion or '',
+                    saiopen_actividad_id=a.codigo,
+                    sincronizado_con_saiopen=True,
+                    activo=True,
+                ),
+            )
+            if was_created:
+                created += 1
+            else:
+                updated += 1
+
+        logger.info(
+            'actividades_saiopen_synced',
+            extra={
+                'proyecto_id': str(proyecto.id),
+                'saiopen_codigo': proyecto.saiopen_proyecto_id,
+                'created': created,
+                'updated': updated,
+            },
+        )
+        return {'created': created, 'updated': updated}
 
 
 # ──────────────────────────────────────────────

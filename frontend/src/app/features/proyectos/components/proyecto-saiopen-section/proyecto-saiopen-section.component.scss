@@ -1,0 +1,134 @@
+.pss-card {
+  // inherits sc-card styles from global
+}
+
+/* Estado vinculado */
+.pss-linked {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.pss-linked__info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.pss-linked__icon {
+  color: var(--sc-success, #2e7d32);
+  font-size: 1.5rem;
+  height: 1.5rem;
+  width: 1.5rem;
+  flex-shrink: 0;
+}
+
+.pss-linked__text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.pss-linked__label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--sc-text-muted);
+  letter-spacing: 0.04em;
+}
+
+.pss-linked__codigo {
+  font-family: monospace;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--sc-primary);
+}
+
+.pss-sync-time {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+  color: var(--sc-text-muted);
+
+  mat-icon {
+    font-size: 1rem;
+    height: 1rem;
+    width: 1rem;
+  }
+}
+
+/* Botones de acción */
+.pss-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+
+    button:not(.pss-desvincular-btn) {
+      min-height: 44px;
+    }
+  }
+}
+
+.pss-desvincular-btn {
+  margin-left: auto;
+
+  @media (max-width: 768px) {
+    margin-left: 0;
+    align-self: flex-start;
+  }
+}
+
+/* Estado no vinculado */
+.pss-hint {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--sc-text-secondary);
+  margin-bottom: 1rem;
+
+  mat-icon {
+    font-size: 1.1rem;
+    height: 1.1rem;
+    width: 1.1rem;
+    color: var(--sc-text-muted);
+    flex-shrink: 0;
+    margin-top: 0.1rem;
+  }
+}
+
+.pss-empty {
+  font-size: 0.875rem;
+  color: var(--sc-text-muted);
+  font-style: italic;
+}
+
+.pss-vincular-form {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+.pss-select {
+  flex: 1;
+  min-width: 200px;
+}
+
+.pss-opt-codigo {
+  font-family: monospace;
+  font-weight: 600;
+  color: var(--sc-primary);
+}

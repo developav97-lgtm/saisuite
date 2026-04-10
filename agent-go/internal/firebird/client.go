@@ -157,6 +157,21 @@ type ActividadRecord struct {
 	CC          int     `json:"cc"`
 }
 
+// TipdocRecord represents a document type from the TIPDOC table.
+// PK: (CLASE, E, S). CLASE is the same value stored in GL.TIPO.
+type TipdocRecord struct {
+	Clase         string `json:"clase"`
+	E             int    `json:"e"`
+	S             int    `json:"s"`
+	Tipo          string `json:"tipo"`
+	Consecutivo   int    `json:"consecutivo"`
+	Descripcion   string `json:"descripcion"`
+	Sigla         string `json:"sigla"`
+	Operar        string `json:"operar"`
+	EnviaFacElect string `json:"enviafacelect"`
+	PrefijoDIAN   string `json:"prefijo_dian"`
+}
+
 // New creates a new Firebird client with the given DSN.
 // Format: user:password@host:port/path/to/database.fdb
 func New(dsn string, logger *slog.Logger) *Client {
@@ -881,6 +896,67 @@ func (c *Client) QueryAllActividades() ([]ActividadRecord, error) {
 	}
 
 	c.logger.Info("ACTIVIDADES query completed", "count", len(records))
+	return records, nil
+}
+
+// QueryAllTipdoc fetches all document types from the TIPDOC table.
+// PK: (CLASE, E, S). Only fetches columns needed for Django sync.
+func (c *Client) QueryAllTipdoc() ([]TipdocRecord, error) {
+	if c.db == nil {
+		return nil, fmt.Errorf("database not connected")
+	}
+
+	query := `
+		SELECT CLASE, E, S, TIPO, CONSECUTIVO, DESCRIPCION, SIGLA,
+		       OPERAR, ENVIAFACELECT, PREFIJO_DIAN
+		FROM TIPDOC
+		ORDER BY CLASE, E, S`
+
+	rows, err := c.db.Query(query)
+	if err != nil {
+		return nil, fmt.Errorf("TIPDOC query failed: %w", err)
+	}
+	defer rows.Close()
+
+	var records []TipdocRecord
+	for rows.Next() {
+		var r TipdocRecord
+		var clase, tipo, desc, sigla, operar, enviaFacElect, prefijoDIAN sql.NullString
+		var e, s, consecutivo sql.NullInt64
+
+		err := rows.Scan(
+			&clase, &e, &s, &tipo, &consecutivo, &desc,
+			&sigla, &operar, &enviaFacElect, &prefijoDIAN,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("TIPDOC row scan failed: %w", err)
+		}
+
+		r.Clase = trimString(clase)
+		if e.Valid {
+			r.E = int(e.Int64)
+		}
+		if s.Valid {
+			r.S = int(s.Int64)
+		}
+		r.Tipo = trimString(tipo)
+		if consecutivo.Valid {
+			r.Consecutivo = int(consecutivo.Int64)
+		}
+		r.Descripcion = trimString(desc)
+		r.Sigla = trimString(sigla)
+		r.Operar = trimString(operar)
+		r.EnviaFacElect = trimString(enviaFacElect)
+		r.PrefijoDIAN = trimString(prefijoDIAN)
+
+		records = append(records, r)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("TIPDOC rows iteration error: %w", err)
+	}
+
+	c.logger.Info("TIPDOC query completed", "count", len(records))
 	return records, nil
 }
 

@@ -29,7 +29,7 @@
       ],
       "credentials": {
         "googleDriveOAuth2Api": {
-          "id": "google-drive-oauth",
+          "id": "l3k9gQSEGKoXhBoK",
           "name": "Google Drive SaiSuite KB"
         }
       }
@@ -118,7 +118,7 @@
       ],
       "credentials": {
         "googleDriveOAuth2Api": {
-          "id": "google-drive-oauth",
+          "id": "l3k9gQSEGKoXhBoK",
           "name": "Google Drive SaiSuite KB"
         }
       }
@@ -140,7 +140,7 @@
       "parameters": {
         "method": "POST",
         "url": "={{ $env.BACKEND_URL }}/api/v1/ai/knowledge/ingest/",
-        "authentication": "genericCredentialType",
+        "authentication": "none",
         "genericAuthType": "httpHeaderAuth",
         "sendHeaders": true,
         "headerParameters": {

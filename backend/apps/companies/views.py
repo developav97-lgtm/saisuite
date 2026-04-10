@@ -831,6 +831,22 @@ class AdminExpiringLicensesView(APIView):
         return Response(data)
 
 
+# ── Catálogo de paquetes (lectura para company_admin) ─────────────────────────
+
+class PackageCatalogView(APIView):
+    """
+    GET /api/v1/companies/packages/catalog/?type=module
+    Devuelve paquetes activos. Accesible por company_admin para solicitudes.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        package_type = request.query_params.get('type')
+        packages = PackageService.list_packages(package_type=package_type)
+        return Response(LicensePackageSerializer(packages, many=True).data)
+
+
 # ── Solicitudes de licencia (company_admin) ───────────────────────────────────
 
 class LicenseRequestListCreateView(APIView):

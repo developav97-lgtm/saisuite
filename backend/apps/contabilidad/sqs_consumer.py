@@ -69,6 +69,7 @@ _REFERENCE_TYPE_MAP = {
     'lista_full':       'lista',
     'proyectos_full':   'proyectos',
     'actividades_full': 'actividades',
+    'tipdoc_full':      'tipdoc',
 }
 
 

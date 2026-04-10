@@ -1,0 +1,84 @@
+<div class="pss-card sc-card">
+  <div class="sc-card__header">
+    <mat-icon>link</mat-icon>
+    <span class="sc-card__title">Vinculación Saiopen</span>
+  </div>
+
+  <div class="sc-card__body">
+    @if (saiopenProyectoId()) {
+      <!-- Estado: vinculado -->
+      <div class="pss-linked">
+        <div class="pss-linked__info">
+          <mat-icon class="pss-linked__icon">check_circle</mat-icon>
+          <div class="pss-linked__text">
+            <span class="pss-linked__label">Proyecto Saiopen</span>
+            <span class="pss-linked__codigo">{{ saiopenProyectoId() }}</span>
+          </div>
+        </div>
+        @if (ultimaSincronizacion()) {
+          <div class="pss-sync-time">
+            <mat-icon>schedule</mat-icon>
+            <span>Última sync: {{ formatDate(ultimaSincronizacion()) }}</span>
+          </div>
+        }
+      </div>
+
+      <div class="pss-actions">
+        <button mat-stroked-button color="primary"
+                [disabled]="syncingDocs()"
+                (click)="sincronizarDocumentos()">
+          <mat-icon>{{ syncingDocs() ? 'hourglass_empty' : 'sync' }}</mat-icon>
+          {{ syncingDocs() ? 'Sincronizando…' : 'Sincronizar documentos' }}
+        </button>
+
+        <button mat-stroked-button color="accent"
+                [disabled]="syncingActs()"
+                (click)="sincronizarActividades()">
+          <mat-icon>{{ syncingActs() ? 'hourglass_empty' : 'task_alt' }}</mat-icon>
+          {{ syncingActs() ? 'Sincronizando…' : 'Sincronizar actividades' }}
+        </button>
+
+        <button mat-icon-button color="warn"
+                matTooltip="Desvincular de Saiopen"
+                class="pss-desvincular-btn"
+                (click)="desvincular()">
+          <mat-icon>link_off</mat-icon>
+        </button>
+      </div>
+
+    } @else {
+      <!-- Estado: no vinculado -->
+      <p class="pss-hint">
+        <mat-icon>info</mat-icon>
+        Vincula este proyecto a un código Saiopen para importar documentos contables y actividades.
+      </p>
+
+      @if (loadingDisp()) {
+        <mat-progress-bar mode="indeterminate" />
+      } @else if (disponibles().length === 0) {
+        <p class="pss-empty">No hay proyectos Saiopen disponibles para vincular.</p>
+      } @else {
+        <div class="pss-vincular-form">
+          <mat-form-field appearance="outline" class="pss-select">
+            <mat-label>Proyecto Saiopen</mat-label>
+            <mat-select [ngModel]="selectedCodigo()" (ngModelChange)="selectedCodigo.set($event)">
+              @for (ps of disponibles(); track ps.codigo) {
+                <mat-option [value]="ps.codigo">
+                  <span class="pss-opt-codigo">{{ ps.codigo }}</span>
+                  @if (ps.nombre) { — {{ ps.nombre }} }
+                </mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+
+          <button mat-flat-button color="primary"
+                  [disabled]="!selectedCodigo() || vinculando()"
+                  (click)="vincular()">
+            <mat-icon>link</mat-icon>
+            {{ vinculando() ? 'Vinculando…' : 'Vincular' }}
+          </button>
+        </div>
+      }
+    }
+  </div>
+</div>

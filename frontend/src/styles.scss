@@ -323,6 +323,12 @@ mat-card.mat-mdc-card {
 .mat-mdc-icon-button {
   border-radius: 50% !important;
   font-size: 0.8125rem !important;
+
+  // Touch target mínimo en mobile (CLAUDE.md §4)
+  @media (max-width: 768px) {
+    min-width: 44px !important;
+    min-height: 44px !important;
+  }
 }
 
 // Sombra sutil en botones primarios filled

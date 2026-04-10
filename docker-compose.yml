@@ -91,6 +91,8 @@ services:
       # Desactivar telemetría (evita errores EAI_AGAIN en logs)
       - N8N_DIAGNOSTICS_ENABLED=false
       - N8N_VERSION_NOTIFICATIONS_ENABLED=false
+      # Permitir $env.* en expresiones de nodos
+      - N8N_BLOCK_ENV_ACCESS_IN_NODE=false
     volumes:
       - n8n_data:/home/node/.n8n
       - ./n8n/workflows:/workflows

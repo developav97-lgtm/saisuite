@@ -35,7 +35,7 @@ func NewReferenceSync(
 	}
 }
 
-// SyncAll runs full sync for all reference tables (ACCT, LISTA, PROYECTOS, ACTIVIDADES).
+// SyncAll runs full sync for all reference tables (ACCT, LISTA, PROYECTOS, ACTIVIDADES, TIPDOC).
 // CUST is NOT called here — it runs on the GL ticker via SyncCustIncremental.
 func (rs *ReferenceSync) SyncAll(conn config.Connection) error {
 	rs.logger.Info("reference sync starting", "conn_id", conn.ID)
@@ -60,6 +60,11 @@ func (rs *ReferenceSync) SyncAll(conn config.Connection) error {
 	if err := rs.syncActividades(conn); err != nil {
 		rs.logger.Error("ACTIVIDADES sync failed", "conn_id", conn.ID, "error", err)
 		errs = append(errs, fmt.Errorf("ACTIVIDADES: %w", err))
+	}
+
+	if err := rs.syncTipdoc(conn); err != nil {
+		rs.logger.Error("TIPDOC sync failed", "conn_id", conn.ID, "error", err)
+		errs = append(errs, fmt.Errorf("TIPDOC: %w", err))
 	}
 
 	if len(errs) > 0 {
@@ -309,5 +314,38 @@ func (rs *ReferenceSync) syncActividades(conn config.Connection) error {
 	}
 
 	rs.logger.Info("ACTIVIDADES sync complete", "conn_id", conn.ID, "records", len(records))
+	return nil
+}
+
+// syncTipdoc fetches and sends all document types from TIPDOC.
+// TIPDOC is small (usually <100 rows) and changes rarely — full sync each cycle.
+func (rs *ReferenceSync) syncTipdoc(conn config.Connection) error {
+	rs.logger.Info("syncing TIPDOC", "conn_id", conn.ID)
+
+	records, err := rs.fbClient.QueryAllTipdoc()
+	if err != nil {
+		return err
+	}
+
+	payload := api.ReferencePayload{
+		Type:      "tipdoc_full",
+		CompanyID: conn.Saicloud.CompanyID,
+		ConnID:    conn.ID,
+		Timestamp: time.Now().UTC().Format(time.RFC3339),
+		Data: api.ReferenceData{
+			Records:    records,
+			TotalCount: len(records),
+		},
+	}
+
+	if err := rs.sender.PostReference("tipdoc", payload); err != nil {
+		return err
+	}
+
+	if err := rs.cfg.UpdateReferenceSyncTime(conn.ID, "tipdoc"); err != nil {
+		rs.logger.Warn("failed to update TIPDOC sync time", "error", err)
+	}
+
+	rs.logger.Info("TIPDOC sync complete", "conn_id", conn.ID, "records", len(records))
 	return nil
 }

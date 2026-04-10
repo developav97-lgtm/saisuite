@@ -10,63 +10,103 @@
       </mat-select>
     </mat-form-field>
 
-    <span class="dl-count">{{ documentos().length }} documento(s)</span>
+    <mat-form-field appearance="outline" class="dl-filter-tipo">
+      <mat-label>Tipo de documento</mat-label>
+      <mat-select [ngModel]="tipoSeleccionado()" (ngModelChange)="tipoSeleccionado.set($event)">
+        <mat-option [value]="null">Todos los tipos</mat-option>
+        @for (t of tiposUnicos(); track t) {
+          <mat-option [value]="t">{{ t }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <span class="dl-count">{{ documentosFiltrados().length }} documento(s)</span>
+
+    <button mat-stroked-button color="primary" class="dl-sync-btn"
+            [disabled]="syncing()"
+            (click)="sincronizarDesdeGL()">
+      <mat-icon>{{ syncing() ? 'hourglass_empty' : 'sync' }}</mat-icon>
+      {{ syncing() ? 'Sincronizando…' : 'Sincronizar desde GL' }}
+    </button>
   </div>
 
-  @if (loading()) {
+  @if (loading() || syncing()) {
     <mat-progress-bar mode="indeterminate" />
   }
 
-  @if (!loading() && documentos().length === 0) {
+  @if (!loading() && documentosFiltrados().length === 0) {
     <div class="sc-empty-state dl-empty">
       <mat-icon>description</mat-icon>
       <p>No hay documentos contables sincronizados para este proyecto.</p>
-      <small>Los documentos se importan automáticamente desde Saiopen.</small>
+      <small>Usa el botón "Sincronizar desde GL" para importar desde Saiopen.</small>
     </div>
-  } @else if (documentos().length > 0) {
-    <mat-table [dataSource]="documentos()">
-      <ng-container matColumnDef="tipo_documento_display">
-        <mat-header-cell *matHeaderCellDef>Tipo</mat-header-cell>
-        <mat-cell *matCellDef="let d">
-          <span class="dl-tipo-chip dl-tipo-chip--{{ d.tipo_documento }}">
-            {{ d.tipo_documento_display }}
-          </span>
-        </mat-cell>
-      </ng-container>
+  } @else if (documentosFiltrados().length > 0) {
+    <div class="table-responsive">
+      <mat-table [dataSource]="documentosFiltrados()">
 
-      <ng-container matColumnDef="numero_documento">
-        <mat-header-cell *matHeaderCellDef>Número</mat-header-cell>
-        <mat-cell *matCellDef="let d">{{ d.numero_documento }}</mat-cell>
-      </ng-container>
+        <ng-container matColumnDef="tipdoc_sigla">
+          <mat-header-cell *matHeaderCellDef>TIPDOC</mat-header-cell>
+          <mat-cell *matCellDef="let d">
+            @if (d.tipdoc_sigla) {
+              <span class="dl-sigla-badge" [matTooltip]="d.tipdoc_descripcion">
+                {{ d.tipdoc_sigla }}
+              </span>
+            } @else {
+              <span class="dl-sigla-badge dl-sigla-badge--raw" [matTooltip]="'Código GL: ' + d.tipo_gl">
+                {{ d.tipo_gl || '—' }}
+              </span>
+            }
+          </mat-cell>
+        </ng-container>
 
-      <ng-container matColumnDef="fecha_documento">
-        <mat-header-cell *matHeaderCellDef>Fecha</mat-header-cell>
-        <mat-cell *matCellDef="let d">{{ formatDate(d.fecha_documento) }}</mat-cell>
-      </ng-container>
+        <ng-container matColumnDef="tipo_documento_display">
+          <mat-header-cell *matHeaderCellDef>Tipo</mat-header-cell>
+          <mat-cell *matCellDef="let d">
+            <span class="dl-tipo-chip dl-tipo-chip--{{ d.tipo_documento }}">
+              {{ d.tipo_documento_display }}
+            </span>
+          </mat-cell>
+        </ng-container>
 
-      <ng-container matColumnDef="tercero_nombre">
-        <mat-header-cell *matHeaderCellDef>Tercero</mat-header-cell>
-        <mat-cell *matCellDef="let d">{{ d.tercero_nombre }}</mat-cell>
-      </ng-container>
+        <ng-container matColumnDef="numero_documento">
+          <mat-header-cell *matHeaderCellDef>Número</mat-header-cell>
+          <mat-cell *matCellDef="let d">{{ d.numero_documento }}</mat-cell>
+        </ng-container>
 
-      <ng-container matColumnDef="valor_neto">
-        <mat-header-cell *matHeaderCellDef class="dl-col-right">Valor neto</mat-header-cell>
-        <mat-cell *matCellDef="let d" class="dl-col-right dl-valor">
-          {{ formatCurrency(d.valor_neto) }}
-        </mat-cell>
-      </ng-container>
+        <ng-container matColumnDef="fecha_documento">
+          <mat-header-cell *matHeaderCellDef>Fecha</mat-header-cell>
+          <mat-cell *matCellDef="let d">{{ formatDate(d.fecha_documento) }}</mat-cell>
+        </ng-container>
 
-      <ng-container matColumnDef="acciones">
-        <mat-header-cell *matHeaderCellDef class="dl-col-acciones">Ver</mat-header-cell>
-        <mat-cell *matCellDef="let d" class="dl-col-acciones">
-          <button mat-icon-button matTooltip="Ver detalle" (click)="verDetalle(d)">
-            <mat-icon>open_in_new</mat-icon>
-          </button>
-        </mat-cell>
-      </ng-container>
+        <ng-container matColumnDef="tercero_nombre">
+          <mat-header-cell *matHeaderCellDef>Tercero</mat-header-cell>
+          <mat-cell *matCellDef="let d">{{ d.tercero_nombre }}</mat-cell>
+        </ng-container>
 
-      <mat-header-row *matHeaderRowDef="displayedColumns"></mat-header-row>
-      <mat-row *matRowDef="let row; columns: displayedColumns;"></mat-row>
-    </mat-table>
+        <ng-container matColumnDef="valor_neto">
+          <mat-header-cell *matHeaderCellDef class="dl-col-right"
+            matTooltip="Monto del documento (max débito/haber)">Monto</mat-header-cell>
+          <mat-cell *matCellDef="let d" class="dl-col-right dl-valor"
+            [matTooltip]="'Neto: ' + formatCurrency(d.valor_neto)">
+            {{ formatCurrency(d.valor_bruto) }}
+          </mat-cell>
+        </ng-container>
+
+        <ng-container matColumnDef="acciones">
+          <mat-header-cell *matHeaderCellDef class="dl-col-acciones">Acciones</mat-header-cell>
+          <mat-cell *matCellDef="let d" class="dl-col-acciones">
+            <button mat-icon-button matTooltip="Ver asiento contable" (click)="verAsiento(d)">
+              <mat-icon>receipt_long</mat-icon>
+            </button>
+            <button mat-icon-button matTooltip="Ver detalle" (click)="verDetalle(d)">
+              <mat-icon>open_in_new</mat-icon>
+            </button>
+          </mat-cell>
+        </ng-container>
+
+        <mat-header-row *matHeaderRowDef="displayedColumns"></mat-header-row>
+        <mat-row *matRowDef="let row; columns: displayedColumns;"></mat-row>
+      </mat-table>
+    </div>
   }
 </div>

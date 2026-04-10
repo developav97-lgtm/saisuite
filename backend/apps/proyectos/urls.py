@@ -63,6 +63,9 @@ from apps.proyectos.views import (
     WorkloadView,
     TeamAvailabilityView,
     UserCalendarView,
+    ProyectoSaiopenDisponiblesView,
+    ProyectoVincularSaiopenView,
+    ProyectoSyncActividadesView,
 )
 from apps.proyectos.analytics_views import (
     ProjectKPIsView,
@@ -177,9 +180,36 @@ urlpatterns = [
         name='project-documents-list',
     ),
     path(
+        '<uuid:proyecto_pk>/documents/sync/',
+        AccountingDocumentViewSet.as_view({'post': 'sync'}),
+        name='project-documents-sync',
+    ),
+    path(
         '<uuid:proyecto_pk>/documents/<uuid:pk>/',
         AccountingDocumentViewSet.as_view({'get': 'retrieve'}),
         name='project-documents-detail',
+    ),
+    path(
+        '<uuid:proyecto_pk>/documents/<uuid:pk>/lineas/',
+        AccountingDocumentViewSet.as_view({'get': 'lineas'}),
+        name='project-documents-lineas',
+    ),
+
+    # ── Saiopen sync ──────────────────────────────────────────────────────
+    path(
+        'saiopen/disponibles/',
+        ProyectoSaiopenDisponiblesView.as_view(),
+        name='projects-saiopen-disponibles',
+    ),
+    path(
+        '<uuid:pk>/vincular-saiopen/',
+        ProyectoVincularSaiopenView.as_view(),
+        name='project-vincular-saiopen',
+    ),
+    path(
+        '<uuid:pk>/sync-actividades/',
+        ProyectoSyncActividadesView.as_view(),
+        name='project-sync-actividades',
     ),
 
     # ── Milestones ────────────────────────────────────────────────────────

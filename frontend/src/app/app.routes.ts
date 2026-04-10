@@ -4,6 +4,7 @@ import { ShellComponent } from './core/components/shell/shell.component';
 import { authGuard } from './core/guards/auth.guard';
 import { licenseGuard } from './core/guards/license.guard';
 import { noSuperAdminGuard } from './core/guards/no-superadmin.guard';
+import { moduleAccessGuard } from './core/guards/module-access.guard';
 
 export const routes: Routes = [
     // ── Rutas PÚBLICAS (sin shell — login, recuperar contraseña) ────
@@ -51,6 +52,8 @@ export const routes: Routes = [
             // Proyectos
             {
                 path: 'proyectos',
+                canActivate: [moduleAccessGuard],
+                data: { requiredModule: 'proyectos' },
                 loadChildren: () =>
                     import('./features/proyectos/proyectos.routes').then(m => m.PROYECTOS_ROUTES),
             },
@@ -78,7 +81,8 @@ export const routes: Routes = [
             // SaiDashboard — BI financiero
             {
                 path: 'saidashboard',
-                canActivate: [noSuperAdminGuard],
+                canActivate: [noSuperAdminGuard, moduleAccessGuard],
+                data: { requiredModule: 'dashboard' },
                 loadChildren: () =>
                     import('./features/saidashboard/saidashboard.routes').then(m => m.SAIDASHBOARD_ROUTES),
             },

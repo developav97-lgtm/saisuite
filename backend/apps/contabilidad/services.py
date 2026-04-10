@@ -18,6 +18,7 @@ from apps.contabilidad.models import (
     ListaSaiopen,
     ProyectoSaiopen,
     ActividadSaiopen,
+    TipdocSaiopen,
 )
 
 logger = logging.getLogger(__name__)
@@ -259,6 +260,7 @@ class SyncService:
             'lista':       SyncService._process_lista,
             'proyectos':   SyncService._process_proyectos,
             'actividades': SyncService._process_actividades,
+            'tipdoc':      SyncService._process_tipdoc,
         }
         handler = handlers.get(table)
         if handler is None:
@@ -564,6 +566,61 @@ class SyncService:
 
         logger.info('actividades_processed', extra={'company_id': str(company_id), 'total': len(objects)})
         return {'inserted': len(objects) - len(existing), 'updated': len(existing), 'errors': []}
+
+    @staticmethod
+    def _process_tipdoc(company_id, records: list[dict]) -> dict:
+        """
+        Upsert de tipos de documento desde TIPDOC de Saiopen.
+        PK Firebird: (CLASE, E, S). CLASE es el valor que aparece en GL.TIPO.
+        """
+        if not records:
+            return {'inserted': 0, 'updated': 0, 'errors': []}
+
+        objects = []
+        errors = []
+        for idx, r in enumerate(records):
+            clase = str(r.get('clase', '')).strip()
+            if not clase:
+                errors.append(f'Record {idx}: missing clase')
+                continue
+            try:
+                objects.append(TipdocSaiopen(
+                    company_id=company_id,
+                    clase=clase,
+                    e=int(r.get('e', 0) or 0),
+                    s=int(r.get('s', 0) or 0),
+                    tipo=str(r.get('tipo', '') or '').strip(),
+                    consecutivo=int(r.get('consecutivo', 0) or 0),
+                    descripcion=str(r.get('descripcion', '') or '').strip(),
+                    sigla=str(r.get('sigla', '') or '').strip(),
+                    operar=str(r.get('operar', '') or '').strip(),
+                    enviafacelect=str(r.get('enviafacelect', '') or '').strip(),
+                    prefijo_dian=str(r.get('prefijo_dian', '') or '').strip(),
+                ))
+            except Exception as exc:
+                errors.append(f'Record {idx}: {exc}')
+
+        if not objects:
+            return {'inserted': 0, 'updated': 0, 'errors': errors}
+
+        existing = set(TipdocSaiopen.objects.filter(
+            company_id=company_id,
+            clase__in=[o.clase for o in objects],
+        ).values_list('clase', flat=True))
+
+        with transaction.atomic():
+            TipdocSaiopen.objects.bulk_create(
+                objects,
+                update_conflicts=True,
+                unique_fields=['company', 'clase', 'e', 's'],
+                update_fields=[
+                    'tipo', 'consecutivo', 'descripcion', 'sigla',
+                    'operar', 'enviafacelect', 'prefijo_dian',
+                ],
+            )
+
+        logger.info('tipdoc_processed', extra={'company_id': str(company_id), 'total': len(objects)})
+        return {'inserted': len(objects) - len(existing), 'updated': len(existing), 'errors': errors}
 
     @staticmethod
     def get_sync_status(company_id) -> dict:
