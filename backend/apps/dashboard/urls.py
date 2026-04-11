@@ -34,6 +34,21 @@ from apps.dashboard.views import (
     # Trial
     TrialActivateView,
     TrialStatusView,
+    # CFO BI Suggest
+    CfoSuggestReportView,
+    # Report BI
+    ReportBIListCreateView,
+    ReportBIDetailView,
+    ReportBIToggleFavoriteView,
+    ReportBIExecuteView,
+    ReportBIExportPdfView,
+    ReportBIPreviewView,
+    ReportBIShareView,
+    ReportBIShareRevokeView,
+    ReportBITemplatesView,
+    BISourcesView,
+    BIFieldsView,
+    BIFiltersView,
 )
 
 app_name = 'dashboard'
@@ -75,4 +90,19 @@ urlpatterns = [
 
     # ── CFO Virtual ──
     path('cfo-virtual/', CfoVirtualView.as_view(), name='cfo-virtual'),
+    path('cfo-virtual/suggest-report/', CfoSuggestReportView.as_view(), name='cfo-suggest-report'),
+
+    # ── Report BI CRUD ──
+    path('reportes/', ReportBIListCreateView.as_view(), name='report-bi-list-create'),
+    path('reportes/preview/', ReportBIPreviewView.as_view(), name='report-bi-preview'),
+    path('reportes/templates/', ReportBITemplatesView.as_view(), name='report-bi-templates'),
+    path('reportes/meta/sources/', BISourcesView.as_view(), name='bi-sources'),
+    path('reportes/meta/fields/', BIFieldsView.as_view(), name='bi-fields'),
+    path('reportes/meta/filters/', BIFiltersView.as_view(), name='bi-filters'),
+    path('reportes/<uuid:report_id>/', ReportBIDetailView.as_view(), name='report-bi-detail'),
+    path('reportes/<uuid:report_id>/toggle-favorite/', ReportBIToggleFavoriteView.as_view(), name='report-bi-toggle-favorite'),
+    path('reportes/<uuid:report_id>/execute/', ReportBIExecuteView.as_view(), name='report-bi-execute'),
+    path('reportes/<uuid:report_id>/export-pdf/', ReportBIExportPdfView.as_view(), name='report-bi-export-pdf'),
+    path('reportes/<uuid:report_id>/share/', ReportBIShareView.as_view(), name='report-bi-share'),
+    path('reportes/<uuid:report_id>/share/<uuid:user_id>/', ReportBIShareRevokeView.as_view(), name='report-bi-share-revoke'),
 ]

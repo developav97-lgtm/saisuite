@@ -1,0 +1,69 @@
+.report-builder {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 16px 24px;
+  max-width: 1400px;
+  margin: 0 auto;
+
+  &__toolbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  &__title-field {
+    flex: 1;
+    min-width: 200px;
+
+    ::ng-deep .mat-mdc-form-field-infix {
+      min-height: 40px;
+      padding: 8px 0;
+    }
+  }
+
+  &__actions {
+    display: flex;
+    gap: 8px;
+    margin-left: auto;
+  }
+
+  &__layout {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 20px;
+    min-height: 400px;
+
+    @media (max-width: 768px) {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  &__sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    max-height: calc(100vh - 280px);
+    overflow-y: auto;
+    padding-right: 8px;
+  }
+
+  &__main {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  &__viz-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  &__viz-label {
+    font-size: 13px;
+    color: var(--sc-text-secondary);
+    white-space: nowrap;
+  }
+}

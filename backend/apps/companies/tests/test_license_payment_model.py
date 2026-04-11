@@ -14,7 +14,6 @@ def make_company(nit='900200001'):
 def make_license(company):
     return CompanyLicense.objects.create(
         company=company,
-        plan='starter',
         status='active',
         starts_at=date.today() - timedelta(days=1),
         expires_at=date.today() + timedelta(days=30),

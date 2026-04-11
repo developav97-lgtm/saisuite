@@ -50,6 +50,10 @@
 | CRM-016 | IMPROVEMENT | UX asignación post-conversión: select vendedor + crear tercero opcional | ✅ COMPLETADO | DEV |
 | CRM-RF43 | FEATURE | PDF export cotizaciones — endpoint + botón UI (ya existía, validado) | ✅ COMPLETADO | DEV |
 | CRM-RF23 | FEATURE | Round-robin lead assignment — endpoint individual + masivo + UI | ✅ COMPLETADO | DEV |
+| LIC-001 | BUGFIX | Leads table última columna cortada + "onvertic" visual → wrapper div acciones | ✅ COMPLETADO | DEV |
+| LIC-002 | BUGFIX | 103 tests fallando por campo `plan` removido de CompanyLicense — 4 test files fix | ✅ COMPLETADO | DEV |
+| INF-001 | BUGFIX | CRM Dashboard rendimientos vacíos — field names frontend + filtro vendedores con ops | ✅ COMPLETADO | DEV |
+| CONT-001 | FEATURE | Vista GL Contabilidad — endpoint /movimientos/ + GlViewerPageComponent con filtros | ✅ COMPLETADO | DEV |
 
 ---
 
@@ -110,3 +114,4 @@
 | 02 | 2026-04-10 | CRM-001 (fases 2-10) | Backend completo: 11 modelos, 47 tests. Frontend: 5 páginas + kanban CDK. |
 | 03 | 2026-04-10 | CRM-002 a CRM-008 | Forms, dialogs, signals, rutas, tests (58+component specs), RAG (15 chunks), migración aplicada, dashboard dinámico, licencia aprobada. |
 | 04 | 2026-04-10 | CRM-009 a CRM-RF23 | Sprint v2: dark mode fix, lead detail, agenda, actividades en leads, round-robin, acceso rápido sidebar, directiva moneda, PDF export validado. sqs-worker rebuildeado. |
+| 05 | 2026-04-11 | LIC-001, LIC-002, INF-001, CONT-001 | Fixes visuales leads table + rendimientos CRM. Fix 103 tests companies (campo plan removido). GL Contabilidad viewer (backend API + Angular page). 158 tests passing. |

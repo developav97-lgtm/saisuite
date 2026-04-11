@@ -9,6 +9,8 @@ from apps.dashboard.models import (
     DashboardCard,
     DashboardShare,
     ModuleTrial,
+    ReportBI,
+    ReportBIShare,
 )
 
 
@@ -78,3 +80,55 @@ class ModuleTrialAdmin(admin.ModelAdmin):
             return f'Activo ({obj.dias_restantes()} dias)'
         return 'Expirado'
     trial_status.short_description = 'Estado'
+
+
+class ReportBIShareInline(admin.TabularInline):
+    model = ReportBIShare
+    extra = 0
+    readonly_fields = ['compartido_con', 'compartido_por', 'puede_editar', 'creado_en']
+
+
+@admin.register(ReportBI)
+class ReportBIAdmin(admin.ModelAdmin):
+    """Admin para reportes BI."""
+    list_display = [
+        'titulo', 'user', 'company', 'tipo_visualizacion',
+        'es_template', 'es_favorito', 'es_privado',
+        'fuentes_display', 'share_count', 'created_at',
+    ]
+    list_filter = [
+        'company', 'tipo_visualizacion', 'es_template',
+        'es_favorito', 'es_privado',
+    ]
+    search_fields = ['titulo', 'descripcion', 'user__email']
+    inlines = [ReportBIShareInline]
+    readonly_fields = [
+        'id', 'created_at', 'updated_at',
+        'fuentes', 'campos_config', 'viz_config',
+        'filtros', 'orden_config',
+    ]
+    list_per_page = 50
+
+    def fuentes_display(self, obj) -> str:
+        return ', '.join(obj.fuentes) if obj.fuentes else '-'
+    fuentes_display.short_description = 'Fuentes'
+
+    def share_count(self, obj) -> int:
+        return obj.shares.count()
+    share_count.short_description = 'Compartidos'
+
+
+@admin.register(ReportBIShare)
+class ReportBIShareAdmin(admin.ModelAdmin):
+    """Admin para shares de reportes BI."""
+    list_display = [
+        'reporte', 'compartido_con', 'compartido_por',
+        'puede_editar', 'creado_en',
+    ]
+    list_filter = ['puede_editar']
+    search_fields = [
+        'reporte__titulo',
+        'compartido_con__email',
+        'compartido_por__email',
+    ]
+    readonly_fields = ['creado_en']

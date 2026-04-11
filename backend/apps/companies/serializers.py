@@ -206,6 +206,7 @@ class CompanyLicenseSummarySerializer(serializers.ModelSerializer):
 class CompanyLicenseWriteSerializer(serializers.Serializer):
     """Serializer de escritura para crear/actualizar licencia."""
 
+    company            = serializers.PrimaryKeyRelatedField(queryset=Company.objects.all(), required=False)
     status             = serializers.ChoiceField(choices=CompanyLicense.Status.choices, required=False)
     period             = serializers.ChoiceField(choices=CompanyLicense.Period.choices, required=False)
     renewal_type       = serializers.ChoiceField(

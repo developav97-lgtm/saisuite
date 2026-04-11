@@ -1,0 +1,66 @@
+.pivot-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+
+  th, td {
+    padding: 8px 12px;
+    border: 1px solid var(--sc-border, #e0e0e0);
+    white-space: nowrap;
+  }
+
+  &__dim-header {
+    background: var(--sc-surface-variant, #f5f5f5);
+    font-weight: 600;
+    text-align: left;
+    text-transform: capitalize;
+  }
+
+  &__col-header {
+    background: var(--sc-primary-light, #e3f2fd);
+    font-weight: 600;
+    text-align: right;
+    min-width: 100px;
+
+    &--total {
+      background: var(--sc-surface-variant, #f5f5f5);
+    }
+  }
+
+  &__dim-cell {
+    background: var(--sc-surface, #fff);
+    font-weight: 500;
+
+    &--total {
+      font-weight: 700;
+      background: var(--sc-surface-variant, #f5f5f5);
+    }
+  }
+
+  &__value-cell {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+
+    &--clickable {
+      cursor: pointer;
+
+      &:hover {
+        background: var(--sc-primary-light, #e3f2fd);
+      }
+    }
+
+    &--total {
+      font-weight: 700;
+      background: var(--sc-surface-variant, #f5f5f5);
+    }
+
+    &--grand-total {
+      font-weight: 700;
+      background: var(--sc-primary-light, #e3f2fd);
+    }
+  }
+
+  &__totals-row {
+    border-top: 2px solid var(--sc-border, #bdbdbd);
+  }
+}

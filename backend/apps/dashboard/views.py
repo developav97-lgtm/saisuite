@@ -23,6 +23,12 @@ from apps.dashboard.serializers import (
     CardDataRequestSerializer,
     CardDataResponseSerializer,
     TrialStatusSerializer,
+    ReportBIListSerializer,
+    ReportBIDetailSerializer,
+    ReportBICreateSerializer,
+    ReportBIUpdateSerializer,
+    ReportBIExecuteSerializer,
+    ReportBIShareCreateSerializer,
 )
 from apps.dashboard.services import (
     DashboardService,
@@ -31,6 +37,7 @@ from apps.dashboard.services import (
     FilterService,
     CatalogService,
     ReportService,
+    ReportBIService,
     CfoVirtualService,
 )
 
@@ -501,3 +508,258 @@ class CfoVirtualView(APIView):
             extra={'company_id': str(company.id), 'user_id': str(request.user.id)},
         )
         return Response({'response': response_text})
+
+
+class CfoSuggestReportView(APIView):
+    """
+    POST /api/v1/dashboard/cfo-virtual/suggest-report/
+    Recibe {question} y retorna una sugerencia de reporte BI predefinido.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        question = request.data.get('question', '').strip()
+        if not question:
+            return Response(
+                {'error': 'El campo question es requerido.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        company = _get_company(request)
+        if not company:
+            return Response(
+                {'error': 'Usuario sin empresa asignada.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            result = CfoVirtualService.suggest_report(question, company, user=request.user)
+        except Exception as exc:
+            detail = getattr(exc, 'detail', str(exc))
+            return Response({'error': str(detail)}, status=status.HTTP_502_BAD_GATEWAY)
+
+        return Response(result)
+
+
+# ──────────────────────────────────────────────
+# Report BI CRUD
+# ──────────────────────────────────────────────
+
+class ReportBIListCreateView(APIView):
+    """
+    GET  /api/v1/dashboard/reportes/          -- Lista reportes BI del usuario
+    POST /api/v1/dashboard/reportes/          -- Crea un reporte BI
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        company = _get_company(request)
+        if not company:
+            return Response(
+                {'error': 'Usuario sin empresa asignada'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        reports = ReportBIService.list_reports(request.user, company.id)
+        serializer = ReportBIListSerializer(reports, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        company = _get_company(request)
+        if not company:
+            return Response(
+                {'error': 'Usuario sin empresa asignada'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        serializer = ReportBICreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        report = ReportBIService.create_report(
+            request.user, company.id, serializer.validated_data,
+        )
+        out = ReportBIDetailSerializer(report)
+        return Response(out.data, status=status.HTTP_201_CREATED)
+
+
+class ReportBIDetailView(APIView):
+    """
+    GET    /api/v1/dashboard/reportes/{id}/   -- Detalle de un reporte BI
+    PUT    /api/v1/dashboard/reportes/{id}/   -- Actualizar reporte BI
+    DELETE /api/v1/dashboard/reportes/{id}/   -- Eliminar reporte BI
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, report_id):
+        report = ReportBIService.get_report(report_id, request.user)
+        serializer = ReportBIDetailSerializer(report)
+        return Response(serializer.data)
+
+    def put(self, request, report_id):
+        serializer = ReportBIUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        report = ReportBIService.update_report(
+            report_id, request.user, serializer.validated_data,
+        )
+        out = ReportBIDetailSerializer(report)
+        return Response(out.data)
+
+    def delete(self, request, report_id):
+        ReportBIService.delete_report(report_id, request.user)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class ReportBIToggleFavoriteView(APIView):
+    """POST /api/v1/dashboard/reportes/{id}/toggle-favorite/"""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, report_id):
+        report = ReportBIService.toggle_favorite(report_id, request.user)
+        return Response({'es_favorito': report.es_favorito})
+
+
+class ReportBIExecuteView(APIView):
+    """
+    POST /api/v1/dashboard/reportes/{id}/execute/
+    Ejecuta un reporte guardado y retorna los datos.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, report_id):
+        company = _get_company(request)
+        if not company:
+            return Response(
+                {'error': 'Usuario sin empresa asignada'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        report = ReportBIService.get_report(report_id, request.user)
+        result = ReportBIService.execute_report(report, company.id)
+        return Response(result)
+
+
+class ReportBIPreviewView(APIView):
+    """
+    POST /api/v1/dashboard/reportes/preview/
+    Ejecuta una preview ad-hoc sin guardar el reporte.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        company = _get_company(request)
+        if not company:
+            return Response(
+                {'error': 'Usuario sin empresa asignada'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        serializer = ReportBIExecuteSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        result = ReportBIService.execute_preview(
+            serializer.validated_data, company.id,
+        )
+        return Response(result)
+
+
+class ReportBIExportPdfView(APIView):
+    """
+    POST /api/v1/dashboard/reportes/{id}/export-pdf/
+    Genera y retorna un PDF con los datos del reporte.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, report_id):
+        company = _get_company(request)
+        if not company:
+            return Response(
+                {'error': 'Usuario sin empresa asignada'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        report = ReportBIService.get_report(report_id, request.user)
+        pdf_bytes = ReportBIService.export_pdf(report, company.id)
+        from django.http import HttpResponse
+        response = HttpResponse(pdf_bytes, content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="{report.titulo}.pdf"'
+        return response
+
+
+class ReportBIShareView(APIView):
+    """
+    POST /api/v1/dashboard/reportes/{id}/share/
+    Comparte un reporte con otro usuario.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, report_id):
+        serializer = ReportBIShareCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        ReportBIService.share_report(
+            report_id,
+            request.user,
+            serializer.validated_data['user_id'],
+            serializer.validated_data.get('puede_editar', False),
+        )
+        return Response({'status': 'compartido'}, status=status.HTTP_201_CREATED)
+
+
+class ReportBIShareRevokeView(APIView):
+    """DELETE /api/v1/dashboard/reportes/{id}/share/{user_id}/"""
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, report_id, user_id):
+        ReportBIService.revoke_share(report_id, user_id)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class ReportBITemplatesView(APIView):
+    """GET /api/v1/dashboard/reportes/templates/"""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        company = _get_company(request)
+        if not company:
+            return Response(
+                {'error': 'Usuario sin empresa asignada'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        templates = ReportBIService.list_templates(company.id)
+        serializer = ReportBIListSerializer(templates, many=True)
+        return Response(serializer.data)
+
+
+# ──────────────────────────────────────────────
+# BI Metadata (sources, fields, filters)
+# ──────────────────────────────────────────────
+
+class BISourcesView(APIView):
+    """GET /api/v1/dashboard/reportes/meta/sources/"""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        sources = ReportBIService.get_sources()
+        return Response(sources)
+
+
+class BIFieldsView(APIView):
+    """GET /api/v1/dashboard/reportes/meta/fields/?source=gl"""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        source = request.query_params.get('source', '')
+        if not source:
+            return Response(
+                {'error': 'El parámetro source es requerido.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        fields = ReportBIService.get_fields(source)
+        return Response(fields)
+
+
+class BIFiltersView(APIView):
+    """GET /api/v1/dashboard/reportes/meta/filters/?source=gl"""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        source = request.query_params.get('source', '')
+        if not source:
+            return Response(
+                {'error': 'El parámetro source es requerido.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        filters = ReportBIService.get_filters(source)
+        return Response(filters)

@@ -8,6 +8,7 @@ from apps.contabilidad.views import (
     GLBatchSyncView,
     ACCTSyncView,
     SyncStatusView,
+    GLMovimientoListView,
 )
 
 app_name = 'contabilidad'
@@ -16,4 +17,5 @@ urlpatterns = [
     path('sync/gl-batch/', GLBatchSyncView.as_view(), name='sync-gl-batch'),
     path('sync/acct/', ACCTSyncView.as_view(), name='sync-acct'),
     path('sync/status/', SyncStatusView.as_view(), name='sync-status'),
+    path('movimientos/', GLMovimientoListView.as_view(), name='gl-movimientos'),
 ]

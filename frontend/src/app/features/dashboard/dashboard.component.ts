@@ -87,8 +87,8 @@ export class DashboardComponent implements OnInit {
     },
     {
       key: 'dashboard',
-      label: 'SaiDashboard',
-      description: 'Dashboards financieros, indicadores y BI contable',
+      label: 'Reportes',
+      description: 'Reportes BI, dashboards financieros e indicadores contables',
       icon: 'analytics',
       route: '/saidashboard',
       color: '#1565c0',

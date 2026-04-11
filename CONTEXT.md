@@ -1,7 +1,7 @@
 # CONTEXT.md - Estado del Proyecto Saicloud
 
-**Ultima actualizacion:** 10 Abril 2026
-**Sesion:** CRM v2 Sprint UX/Features — Actividades en Lead, Round-Robin, Agenda, Tests, Docker fix (CERRADO)
+**Ultima actualizacion:** 11 Abril 2026
+**Sesion:** Fixes + GL Contabilidad — Tests companies (158 passing), leads table visual, rendimientos CRM, CONT-001 (CERRADO)
 
 ---
 
@@ -287,8 +287,35 @@ Conecta el módulo Proyectos con los datos contables de Saiopen (Firebird/GL).
 
 ---
 
+---
+
+## COMPLETADO (11 Abril 2026) — Fixes + GL Contabilidad
+
+### LIC-001: Visual leads table
+- `display: flex` en `td` de mat-table rompe el grid → wrapper `div.acciones-cell`
+- "Convertido" chip recortado → `mat-icon-button` con `check_circle` + tooltip
+- `.mat-column-acciones { width: 176px }` para columna consistente
+
+### LIC-002: 103 tests companies fallando
+- Campo `plan` removido de `CompanyLicense` en sesión anterior, tests no actualizados
+- 5 archivos corregidos: `test_company_model.py`, `test_company_license_model.py`, `test_license_payment_model.py`, `test_license_services.py`, `test_license_views.py`, `test_license_serializers.py`, `test_notify_license_expiry_command.py`
+- `CompanyLicenseWriteSerializer` le faltaba campo `company` (PrimaryKeyRelatedField) → agregado
+- Tests timezone-robustos (Colombia UTC-5 vs UTC): `expires_at - 3 days` en vez de `-1 day`
+- **158/158 tests passing**
+
+### INF-001: CRM Dashboard rendimientos vacíos
+- Frontend usaba `v.nombre`, `v.oportunidades_activas`, `v.ganadas_mes`, `v.valor_ganado_mes`
+- Backend retorna `v.vendedor`, `v.oportunidades`, `v.ganadas`, `v.valor_ganado`
+- Backend filtraba todos los 14 usuarios → ahora solo vendedores con al menos 1 oportunidad
+
+### CONT-001: GL Contabilidad viewer
+- **Backend:** `GLMovimientoListView` (`GET /api/v1/contabilidad/movimientos/`) con filtros: `periodo`, `titulo_codigo`, `tercero_id`, `tipo`, `fecha_inicio`, `fecha_fin`, `search`
+- **Frontend:** `features/contabilidad/` — `GlViewerPageComponent` (tabla + filtros reactivos), `ContabilidadService`
+- **Sidebar:** entrada "Contabilidad GL" en HOME_NAV + `CONTABILIDAD_NAV` propio
+- **Ruta:** `/contabilidad` en `app.routes.ts` (lazy-loaded)
+
 ## Próximas prioridades
 
 - Activar workflows N8N en producción (auto-renovación, KB watcher) — acción manual en n8n UI
 - Validación 4×4 (Desktop/Mobile × Light/Dark) del sistema de solicitudes de licencia
-- RF-4.3 PDF export de cotizaciones (pendiente de implementación, sesión anterior)
+- Validación 4×4 de GL Contabilidad viewer

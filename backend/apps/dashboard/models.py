@@ -186,3 +186,117 @@ class ModuleTrial(models.Model):
         delta = self.expira_en - timezone.now()
         days = delta.days
         return max(0, days)
+
+
+class ReportBI(BaseModel):
+    """Reporte BI personalizado con constructor visual."""
+
+    class TipoVisualizacion(models.TextChoices):
+        TABLE = 'table', 'Tabla'
+        PIVOT = 'pivot', 'Tabla Dinámica'
+        BAR = 'bar', 'Barras'
+        LINE = 'line', 'Líneas'
+        PIE = 'pie', 'Torta'
+        AREA = 'area', 'Área'
+        KPI = 'kpi', 'KPI'
+        WATERFALL = 'waterfall', 'Cascada'
+
+    user = models.ForeignKey(
+        'users.User',
+        on_delete=models.CASCADE,
+        related_name='reportes_bi',
+    )
+
+    titulo = models.CharField(max_length=200)
+    descripcion = models.TextField(blank=True, default='')
+    es_privado = models.BooleanField(default=True)
+    es_favorito = models.BooleanField(default=False)
+    es_template = models.BooleanField(
+        default=False,
+        help_text='True para reportes predefinidos (templates)',
+    )
+
+    # Configuración de fuente de datos
+    fuentes = models.JSONField(
+        default=list,
+        help_text='Lista de fuentes: ["gl", "facturacion", "cartera", "inventario"]',
+    )
+
+    # Campos seleccionados con configuración
+    campos_config = models.JSONField(
+        default=list,
+        help_text=(
+            'Campos configurados. Ejemplo: '
+            '[{"source": "gl", "field": "tercero_nombre", '
+            '"role": "dimension", "label": "Tercero"}]'
+        ),
+    )
+
+    # Tipo de visualización
+    tipo_visualizacion = models.CharField(
+        max_length=20,
+        choices=TipoVisualizacion.choices,
+        default=TipoVisualizacion.TABLE,
+    )
+
+    # Configuración específica del tipo de visualización
+    viz_config = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text='Config de pivot, chart, kpi según tipo_visualizacion',
+    )
+
+    # Filtros guardados
+    filtros = models.JSONField(default=dict, blank=True)
+
+    # Ordenamiento
+    orden_config = models.JSONField(default=list, blank=True)
+
+    # Límite de registros
+    limite_registros = models.IntegerField(null=True, blank=True)
+
+    # Template base
+    template_origen = models.ForeignKey(
+        'self',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='reportes_derivados',
+    )
+
+    class Meta:
+        ordering = ['-updated_at']
+        verbose_name = 'Reporte BI'
+        verbose_name_plural = 'Reportes BI'
+
+    def __str__(self):
+        return f'{self.titulo} ({self.user.email})'
+
+
+class ReportBIShare(models.Model):
+    """Compartir reporte BI con otro usuario de la misma empresa."""
+    reporte = models.ForeignKey(
+        ReportBI,
+        on_delete=models.CASCADE,
+        related_name='shares',
+    )
+    compartido_con = models.ForeignKey(
+        'users.User',
+        on_delete=models.CASCADE,
+        related_name='reportes_bi_compartidos',
+    )
+    compartido_por = models.ForeignKey(
+        'users.User',
+        on_delete=models.CASCADE,
+        related_name='reportes_bi_compartidos_por_mi',
+    )
+    puede_editar = models.BooleanField(default=False)
+    creado_en = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Reporte BI compartido'
+        verbose_name_plural = 'Reportes BI compartidos'
+        unique_together = [('reporte', 'compartido_con')]
+
+    def __str__(self):
+        return f'{self.reporte.titulo} -> {self.compartido_con.email}'

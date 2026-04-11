@@ -1,0 +1,172 @@
+<div class="sc-page report-list">
+
+  <!-- Header -->
+  <div class="sc-page-header report-list__header">
+    <h1 class="sc-page-header__title">Reportes BI</h1>
+    <button mat-raised-button color="primary" (click)="nuevo()">
+      <mat-icon>add</mat-icon>
+      Nuevo Reporte
+    </button>
+  </div>
+
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+  }
+
+  <!-- Search -->
+  <mat-form-field appearance="outline" class="report-list__search" subscriptSizing="dynamic">
+    <mat-icon matPrefix>search</mat-icon>
+    <input matInput placeholder="Buscar reportes..." [ngModel]="searchText()" (ngModelChange)="searchText.set($event)">
+  </mat-form-field>
+
+  <!-- IA Suggest -->
+  <div class="report-list__ai-suggest">
+    <mat-form-field appearance="outline" class="report-list__ai-input" subscriptSizing="dynamic">
+      <mat-icon matPrefix>auto_awesome</mat-icon>
+      <input matInput placeholder="¿Qué quieres analizar? Ej: ¿Quién me debe más?"
+             #aiInput
+             (keydown.enter)="sugerirConIA(aiInput.value)">
+    </mat-form-field>
+    <button mat-stroked-button
+            [disabled]="suggesting()"
+            (click)="sugerirConIA(aiInput.value)">
+      @if (suggesting()) {
+        Analizando...
+      } @else {
+        Sugerir reporte
+      }
+    </button>
+  </div>
+
+  @if (suggestion(); as s) {
+    @if (s.template_titulo && s.config) {
+      <div class="report-list__suggestion">
+        <mat-icon>lightbulb</mat-icon>
+        <div class="report-list__suggestion-text">
+          <strong>{{ s.template_titulo }}</strong>
+          <span>{{ s.explanation }}</span>
+        </div>
+        <button mat-flat-button color="primary" (click)="usarSugerencia()">
+          Crear este reporte
+        </button>
+      </div>
+    }
+  }
+
+  <!-- Tabs -->
+  <mat-tab-group [(selectedIndex)]="activeTab" animationDuration="0ms">
+    <!-- Mis Reportes -->
+    <mat-tab label="Mis Reportes">
+      @if (filteredReports().length > 0) {
+        <div class="table-responsive">
+          <table mat-table [dataSource]="filteredReports()" class="report-list__table">
+            <!-- Favorito -->
+            <ng-container matColumnDef="es_favorito">
+              <th mat-header-cell *matHeaderCellDef></th>
+              <td mat-cell *matCellDef="let row">
+                <button mat-icon-button (click)="toggleFavorite(row, $event)"
+                        [matTooltip]="row.es_favorito ? 'Quitar de favoritos' : 'Agregar a favoritos'">
+                  <mat-icon>{{ row.es_favorito ? 'star' : 'star_border' }}</mat-icon>
+                </button>
+              </td>
+            </ng-container>
+
+            <!-- Titulo -->
+            <ng-container matColumnDef="titulo">
+              <th mat-header-cell *matHeaderCellDef>Título</th>
+              <td mat-cell *matCellDef="let row">
+                <span class="report-list__report-title">{{ row.titulo }}</span>
+                @if (row.descripcion) {
+                  <span class="report-list__report-desc">{{ row.descripcion }}</span>
+                }
+              </td>
+            </ng-container>
+
+            <!-- Fuentes -->
+            <ng-container matColumnDef="fuentes">
+              <th mat-header-cell *matHeaderCellDef>Fuentes</th>
+              <td mat-cell *matCellDef="let row">
+                <span class="report-list__sources">{{ getSourceLabels(row.fuentes) }}</span>
+              </td>
+            </ng-container>
+
+            <!-- Tipo -->
+            <ng-container matColumnDef="tipo_visualizacion">
+              <th mat-header-cell *matHeaderCellDef>Tipo</th>
+              <td mat-cell *matCellDef="let row">
+                <mat-icon [matTooltip]="getVizLabel(row.tipo_visualizacion)">
+                  {{ getVizIcon(row.tipo_visualizacion) }}
+                </mat-icon>
+              </td>
+            </ng-container>
+
+            <!-- Updated -->
+            <ng-container matColumnDef="updated_at">
+              <th mat-header-cell *matHeaderCellDef>Actualizado</th>
+              <td mat-cell *matCellDef="let row">{{ row.updated_at | date:'short' }}</td>
+            </ng-container>
+
+            <!-- Acciones -->
+            <ng-container matColumnDef="acciones">
+              <th mat-header-cell *matHeaderCellDef></th>
+              <td mat-cell *matCellDef="let row">
+                <button mat-icon-button [matMenuTriggerFor]="menu">
+                  <mat-icon>more_vert</mat-icon>
+                </button>
+                <mat-menu #menu="matMenu">
+                  <button mat-menu-item (click)="ver(row.id)">
+                    <mat-icon>visibility</mat-icon>
+                    <span>Ver</span>
+                  </button>
+                  <button mat-menu-item (click)="editar(row.id)">
+                    <mat-icon>edit</mat-icon>
+                    <span>Editar</span>
+                  </button>
+                  <button mat-menu-item (click)="compartir(row)">
+                    <mat-icon>share</mat-icon>
+                    <span>Compartir</span>
+                  </button>
+                  <button mat-menu-item (click)="confirmarEliminar(row)">
+                    <mat-icon color="warn">delete</mat-icon>
+                    <span>Eliminar</span>
+                  </button>
+                </mat-menu>
+              </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+            <tr mat-row *matRowDef="let row; columns: displayedColumns" (click)="ver(row.id)" class="report-list__row"></tr>
+          </table>
+        </div>
+      } @else if (!loading()) {
+        <div class="sc-empty-state">
+          <mat-icon>query_stats</mat-icon>
+          <p>No hay reportes. Crea tu primer reporte BI.</p>
+          <button mat-stroked-button color="primary" (click)="nuevo()">
+            <mat-icon>add</mat-icon> Crear reporte
+          </button>
+        </div>
+      }
+    </mat-tab>
+
+    <!-- Templates -->
+    <mat-tab label="Templates">
+      @if (templates().length > 0) {
+        <div class="report-list__templates">
+          @for (tpl of templates(); track tpl.id) {
+            <div class="template-card" (click)="usarTemplate(tpl)">
+              <mat-icon class="template-card__icon">{{ getVizIcon(tpl.tipo_visualizacion) }}</mat-icon>
+              <span class="template-card__title">{{ tpl.titulo }}</span>
+              <span class="template-card__desc">{{ tpl.descripcion }}</span>
+              <button mat-stroked-button color="primary" class="template-card__btn">Usar</button>
+            </div>
+          }
+        </div>
+      } @else {
+        <div class="sc-empty-state">
+          <p>No hay templates disponibles.</p>
+        </div>
+      }
+    </mat-tab>
+  </mat-tab-group>
+</div>

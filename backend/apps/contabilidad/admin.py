@@ -11,6 +11,10 @@ from apps.contabilidad.models import (
     TerceroSaiopen,
     ShipToSaiopen,
     TributariaSaiopen,
+    FacturaEncabezado,
+    FacturaDetalle,
+    MovimientoCartera,
+    MovimientoInventario,
 )
 
 
@@ -147,6 +151,127 @@ class TributariaSaiopenAdmin(admin.ModelAdmin):
     list_filter = ['company', 'tdoc', 'tipo_contribuyente']
     search_fields = ['id_n', 'primer_nombre', 'primer_apellido']
     list_per_page = 50
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(FacturaEncabezado)
+class FacturaEncabezadoAdmin(admin.ModelAdmin):
+    """Admin readonly para facturas sincronizadas desde OE."""
+    list_display = [
+        'number', 'tipo', 'company', 'tercero_nombre',
+        'fecha', 'periodo', 'subtotal', 'iva', 'total',
+        'posted', 'salesman_nombre',
+    ]
+    list_filter = ['company', 'tipo', 'posted', 'closed', 'periodo']
+    search_fields = ['tercero_nombre', 'tercero_id', 'comentarios']
+    readonly_fields = [
+        'company', 'number', 'tipo', 'id_sucursal',
+        'tercero_id', 'tercero_nombre', 'salesman', 'salesman_nombre',
+        'fecha', 'duedate', 'periodo',
+        'subtotal', 'costo', 'iva', 'descuento_global', 'total',
+        'posted', 'closed', 'cod_moneda', 'comentarios', 'sincronizado_en',
+    ]
+    list_per_page = 50
+    ordering = ['-fecha', '-number']
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(FacturaDetalle)
+class FacturaDetalleAdmin(admin.ModelAdmin):
+    """Admin readonly para líneas de factura sincronizadas desde OEDET."""
+    list_display = [
+        'conteo', 'company', 'item_codigo', 'item_descripcion',
+        'qty_ship', 'precio_unitario', 'precio_extendido',
+        'margen_porcentaje',
+    ]
+    list_filter = ['company']
+    search_fields = ['item_codigo', 'item_descripcion']
+    readonly_fields = [
+        'company', 'factura', 'conteo',
+        'item_codigo', 'item_descripcion', 'location',
+        'qty_order', 'qty_ship', 'precio_unitario', 'precio_extendido',
+        'costo_unitario', 'valor_iva', 'porc_iva', 'descuento',
+        'margen_valor', 'margen_porcentaje', 'proyecto_codigo',
+        'sincronizado_en',
+    ]
+    list_per_page = 50
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(MovimientoCartera)
+class MovimientoCarteraAdmin(admin.ModelAdmin):
+    """Admin readonly para movimientos de cartera sincronizados desde CARPRO."""
+    list_display = [
+        'conteo', 'company', 'tipo_cartera', 'tercero_nombre',
+        'fecha', 'periodo', 'debito', 'credito', 'saldo',
+    ]
+    list_filter = ['company', 'tipo_cartera', 'periodo']
+    search_fields = ['tercero_nombre', 'tercero_id', 'invc', 'descripcion']
+    readonly_fields = [
+        'company', 'conteo', 'tercero_id', 'tercero_nombre',
+        'cuenta_contable', 'tipo', 'batch', 'invc', 'descripcion',
+        'fecha', 'duedate', 'periodo',
+        'debito', 'credito', 'saldo',
+        'departamento', 'centro_costo', 'proyecto_codigo',
+        'tipo_cartera', 'sincronizado_en',
+    ]
+    list_per_page = 50
+    ordering = ['-fecha', '-conteo']
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(MovimientoInventario)
+class MovimientoInventarioAdmin(admin.ModelAdmin):
+    """Admin readonly para movimientos de inventario sincronizados desde ITEMACT."""
+    list_display = [
+        'conteo', 'company', 'item_codigo', 'item_descripcion',
+        'fecha', 'periodo', 'cantidad', 'total',
+        'saldo_unidades', 'saldo_pesos', 'location',
+    ]
+    list_filter = ['company', 'periodo', 'location']
+    search_fields = ['item_codigo', 'item_descripcion', 'lote', 'serie']
+    readonly_fields = [
+        'company', 'conteo', 'item_codigo', 'item_descripcion', 'location',
+        'tercero_id', 'tipo', 'batch',
+        'fecha', 'periodo',
+        'cantidad', 'valor_unitario', 'costo_peps', 'total',
+        'saldo_unidades', 'saldo_pesos',
+        'lote', 'serie', 'lote_vencimiento', 'sincronizado_en',
+    ]
+    list_per_page = 50
+    ordering = ['-fecha', '-conteo']
 
     def has_add_permission(self, request):
         return False

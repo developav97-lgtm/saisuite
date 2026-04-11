@@ -1,0 +1,33 @@
+@if (isKpi()) {
+  <div class="kpi-grid">
+    @for (kpi of kpiData(); track kpi.label) {
+      <div class="kpi-card" [style.border-left-color]="kpi.color">
+        <mat-icon class="kpi-card__icon" [style.color]="kpi.color">{{ kpi.icon }}</mat-icon>
+        <div class="kpi-card__content">
+          <span class="kpi-card__value">{{ kpi.value | number:'1.0-2' }}</span>
+          <span class="kpi-card__label">{{ kpi.label }}</span>
+        </div>
+      </div>
+    }
+    @if (kpiData().length === 0 && !loading()) {
+      <div class="sc-empty-state">
+        <p>Selecciona al menos una métrica para ver KPIs.</p>
+      </div>
+    }
+  </div>
+} @else if (isChart()) {
+  <div class="chart-container">
+    @if (chartConfig(); as config) {
+      <canvas baseChart
+              [type]="chartType()"
+              [data]="config.data"
+              [options]="config.options"
+              (chartClick)="onChartClick($event)">
+      </canvas>
+    } @else if (!loading()) {
+      <div class="sc-empty-state">
+        <p>Selecciona al menos una dimensión y una métrica para generar el gráfico.</p>
+      </div>
+    }
+  </div>
+}

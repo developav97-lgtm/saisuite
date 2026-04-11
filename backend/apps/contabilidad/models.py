@@ -468,6 +468,256 @@ class TributariaSaiopen(models.Model):
         return f'{self.id_n} - {nombre or "(jurídica)"}'
 
 
+class FacturaEncabezado(models.Model):
+    """
+    Espejo denormalizado de OE (encabezados de facturación).
+    READ-ONLY desde Saicloud: solo se escribe via sync desde el agente.
+    """
+    company = models.ForeignKey(
+        'companies.Company',
+        on_delete=models.CASCADE,
+        related_name='facturas_encabezado',
+        db_index=True,
+    )
+
+    # PK Firebird compuesta
+    number = models.IntegerField()
+    tipo = models.CharField(max_length=3, db_index=True)
+    id_sucursal = models.SmallIntegerField(default=1)
+
+    # Tercero
+    tercero_id = models.CharField(max_length=30, db_index=True)
+    tercero_nombre = models.CharField(max_length=120, blank=True, default='')
+
+    # Vendedor
+    salesman = models.SmallIntegerField(null=True, blank=True)
+    salesman_nombre = models.CharField(max_length=60, blank=True, default='')
+
+    # Fechas
+    fecha = models.DateField(db_index=True)
+    duedate = models.DateField(null=True, blank=True)
+    periodo = models.CharField(max_length=7, db_index=True)
+
+    # Montos
+    subtotal = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    costo = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    iva = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    descuento_global = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    total = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+
+    # Estado
+    posted = models.BooleanField(default=False)
+    closed = models.BooleanField(default=False)
+
+    # Moneda
+    cod_moneda = models.CharField(max_length=5, blank=True, default='COP')
+
+    # Dimensiones
+    comentarios = models.TextField(blank=True, default='')
+
+    # Metadata de sincronizacion
+    sincronizado_en = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'cont_factura_encabezado'
+        unique_together = [('company', 'number', 'tipo', 'id_sucursal')]
+        indexes = [
+            models.Index(fields=['company', 'periodo'], name='idx_fact_enc_periodo'),
+            models.Index(fields=['company', 'tipo', 'fecha'], name='idx_fact_enc_tipo_fecha'),
+            models.Index(fields=['company', 'tercero_id'], name='idx_fact_enc_tercero'),
+            models.Index(fields=['company', 'salesman'], name='idx_fact_enc_salesman'),
+        ]
+        verbose_name = 'Factura encabezado'
+        verbose_name_plural = 'Facturas encabezado'
+        ordering = ['-fecha', '-number']
+
+    def __str__(self):
+        return f'[{self.tipo}] #{self.number} {self.tercero_nombre} ${self.total}'
+
+
+class FacturaDetalle(models.Model):
+    """
+    Espejo denormalizado de OEDET (líneas de factura).
+    READ-ONLY desde Saicloud: solo se escribe via sync desde el agente.
+    """
+    company = models.ForeignKey(
+        'companies.Company',
+        on_delete=models.CASCADE,
+        related_name='facturas_detalle',
+        db_index=True,
+    )
+    factura = models.ForeignKey(
+        FacturaEncabezado,
+        on_delete=models.CASCADE,
+        related_name='detalles',
+    )
+
+    conteo = models.IntegerField(help_text='PK del detalle en Firebird (OEDET.CONTEO)')
+
+    # Producto
+    item_codigo = models.CharField(max_length=30, db_index=True)
+    item_descripcion = models.CharField(max_length=120, blank=True, default='')
+    location = models.CharField(max_length=3, blank=True, default='')
+
+    # Cantidades
+    qty_order = models.DecimalField(max_digits=15, decimal_places=4, default=0)
+    qty_ship = models.DecimalField(max_digits=15, decimal_places=4, default=0)
+
+    # Precios
+    precio_unitario = models.DecimalField(max_digits=15, decimal_places=4, default=0)
+    precio_extendido = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    costo_unitario = models.DecimalField(max_digits=15, decimal_places=4, default=0)
+
+    # Impuestos y descuentos
+    valor_iva = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    porc_iva = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    descuento = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+
+    # Márgenes
+    margen_valor = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    margen_porcentaje = models.DecimalField(max_digits=7, decimal_places=2, default=0)
+
+    # Proyecto
+    proyecto_codigo = models.CharField(max_length=10, blank=True, default='')
+
+    # Metadata de sincronizacion
+    sincronizado_en = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'cont_factura_detalle'
+        unique_together = [('company', 'conteo')]
+        indexes = [
+            models.Index(fields=['company', 'item_codigo'], name='idx_fact_det_item'),
+        ]
+        verbose_name = 'Factura detalle'
+        verbose_name_plural = 'Facturas detalle'
+        ordering = ['conteo']
+
+    def __str__(self):
+        return f'[{self.conteo}] {self.item_codigo} x{self.qty_ship} ${self.precio_extendido}'
+
+
+class MovimientoCartera(models.Model):
+    """
+    Espejo de CARPRO — saldos de cuentas por cobrar y pagar.
+    READ-ONLY desde Saicloud: solo se escribe via sync desde el agente.
+    """
+    company = models.ForeignKey(
+        'companies.Company',
+        on_delete=models.CASCADE,
+        related_name='movimientos_cartera',
+        db_index=True,
+    )
+
+    conteo = models.IntegerField(help_text='PK del registro en Firebird (CARPRO.CONTEO)')
+
+    tercero_id = models.CharField(max_length=30, db_index=True)
+    tercero_nombre = models.CharField(max_length=120, blank=True, default='')
+
+    cuenta_contable = models.DecimalField(max_digits=18, decimal_places=4)
+    tipo = models.CharField(max_length=3, blank=True, default='')
+    batch = models.IntegerField(null=True, blank=True)
+    invc = models.CharField(max_length=15, blank=True, default='')
+    descripcion = models.CharField(max_length=120, blank=True, default='')
+
+    fecha = models.DateField(db_index=True)
+    duedate = models.DateField(null=True, blank=True)
+    periodo = models.CharField(max_length=7, db_index=True)
+
+    debito = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    credito = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    saldo = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+
+    departamento = models.SmallIntegerField(null=True, blank=True)
+    centro_costo = models.SmallIntegerField(null=True, blank=True)
+    proyecto_codigo = models.CharField(max_length=10, blank=True, default='')
+
+    tipo_cartera = models.CharField(
+        max_length=3,
+        choices=[('CXC', 'Cuentas por Cobrar'), ('CXP', 'Cuentas por Pagar')],
+        db_index=True,
+    )
+
+    # Metadata de sincronizacion
+    sincronizado_en = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'cont_movimiento_cartera'
+        unique_together = [('company', 'conteo')]
+        indexes = [
+            models.Index(
+                fields=['company', 'tercero_id', 'tipo_cartera'],
+                name='idx_cart_tercero_tipo',
+            ),
+            models.Index(fields=['company', 'periodo'], name='idx_cart_periodo'),
+            models.Index(fields=['company', 'duedate'], name='idx_cart_duedate'),
+        ]
+        verbose_name = 'Movimiento de cartera'
+        verbose_name_plural = 'Movimientos de cartera'
+        ordering = ['-fecha', '-conteo']
+
+    def __str__(self):
+        return f'[{self.tipo_cartera}] {self.tercero_nombre} D={self.debito} C={self.credito} S={self.saldo}'
+
+
+class MovimientoInventario(models.Model):
+    """
+    Espejo de ITEMACT — movimientos transaccionales de inventario.
+    READ-ONLY desde Saicloud: solo se escribe via sync desde el agente.
+    """
+    company = models.ForeignKey(
+        'companies.Company',
+        on_delete=models.CASCADE,
+        related_name='movimientos_inventario',
+        db_index=True,
+    )
+
+    conteo = models.IntegerField(help_text='PK del registro en Firebird (ITEMACT.CONTEO)')
+
+    item_codigo = models.CharField(max_length=30, db_index=True)
+    item_descripcion = models.CharField(max_length=120, blank=True, default='')
+    location = models.CharField(max_length=3, db_index=True, default='')
+
+    tercero_id = models.CharField(max_length=30, blank=True, default='')
+    tipo = models.CharField(max_length=3, blank=True, default='')
+    batch = models.IntegerField(null=True, blank=True)
+
+    fecha = models.DateField(db_index=True)
+    periodo = models.CharField(max_length=7, db_index=True)
+
+    cantidad = models.DecimalField(max_digits=15, decimal_places=4, default=0)
+    valor_unitario = models.DecimalField(max_digits=15, decimal_places=4, default=0)
+    costo_peps = models.DecimalField(max_digits=15, decimal_places=4, default=0)
+    total = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    saldo_unidades = models.DecimalField(max_digits=15, decimal_places=4, default=0)
+    saldo_pesos = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+
+    lote = models.CharField(max_length=30, blank=True, default='')
+    serie = models.CharField(max_length=50, blank=True, default='')
+    lote_vencimiento = models.DateField(null=True, blank=True)
+
+    # Metadata de sincronizacion
+    sincronizado_en = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'cont_movimiento_inventario'
+        unique_together = [('company', 'conteo')]
+        indexes = [
+            models.Index(
+                fields=['company', 'item_codigo', 'fecha'],
+                name='idx_inv_item_fecha',
+            ),
+            models.Index(fields=['company', 'location'], name='idx_inv_location'),
+            models.Index(fields=['company', 'periodo'], name='idx_inv_periodo'),
+        ]
+        verbose_name = 'Movimiento de inventario'
+        verbose_name_plural = 'Movimientos de inventario'
+        ordering = ['-fecha', '-conteo']
+
+    def __str__(self):
+        return f'[{self.periodo}] {self.item_codigo} qty={self.cantidad} ${self.total}'
+
+
 class TipdocSaiopen(models.Model):
     """
     Espejo de la tabla TIPDOC de Saiopen (catálogo de tipos de documento).

@@ -94,6 +94,13 @@ export const routes: Routes = [
                 loadChildren: () =>
                     import('./features/saidashboard/saidashboard.routes').then(m => m.SAIDASHBOARD_ROUTES),
             },
+            // Contabilidad GL — libro mayor
+            {
+                path: 'contabilidad',
+                canActivate: [noSuperAdminGuard],
+                loadChildren: () =>
+                    import('./features/contabilidad/contabilidad.routes').then(m => m.CONTABILIDAD_ROUTES),
+            },
             // Admin — gestión de empresa, usuarios y módulos
             {
                 path: 'admin',

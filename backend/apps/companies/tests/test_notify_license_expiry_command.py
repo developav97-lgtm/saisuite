@@ -18,7 +18,6 @@ def make_company(nit='900800001', name='Cmd Test Co'):
 def make_license(company, days_ahead=5, status='active'):
     return CompanyLicense.objects.create(
         company=company,
-        plan='starter',
         status=status,
         starts_at=date.today() - timedelta(days=1),
         expires_at=date.today() + timedelta(days=days_ahead),
@@ -117,7 +116,7 @@ class TestNotifyLicenseExpiryCommand:
         c = make_company('900800008')
         # status='expired' pero expires_at en 5 días (data inconsistente)
         CompanyLicense.objects.create(
-            company=c, plan='starter', status='expired',
+            company=c, status='expired',
             starts_at=date.today() - timedelta(days=30),
             expires_at=date.today() + timedelta(days=5),
         )

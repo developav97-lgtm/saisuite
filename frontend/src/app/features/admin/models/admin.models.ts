@@ -27,8 +27,8 @@ export type ModuleKey = 'crm' | 'soporte' | 'dashboard' | 'proyectos';
 export const MODULE_LABELS: Record<string, string | undefined> = {
   crm:         'CRM',
   soporte:     'Soporte',
-  dashboard:   'SaiDashboard',
-  saidashboard:'SaiDashboard',
+  dashboard:   'Reportes',
+  saidashboard:'Reportes',
   proyectos:   'SaiProyectos',
 };
 

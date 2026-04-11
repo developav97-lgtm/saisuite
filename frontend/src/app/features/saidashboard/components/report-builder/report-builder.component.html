@@ -1,0 +1,101 @@
+@if (loading() && !previewResult()) {
+  <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+}
+
+<div class="report-builder">
+  <!-- Toolbar -->
+  <div class="report-builder__toolbar">
+    <button mat-icon-button (click)="goBack()" matTooltip="Volver a reportes">
+      <mat-icon>arrow_back</mat-icon>
+    </button>
+
+    <mat-form-field appearance="outline" class="report-builder__title-field" subscriptSizing="dynamic">
+      <input matInput placeholder="Nombre del reporte" [ngModel]="titulo()" (ngModelChange)="titulo.set($event)">
+    </mat-form-field>
+
+    <div class="report-builder__actions">
+      <app-export-menu
+        [data]="previewResult()"
+        [title]="titulo()"
+        [reportId]="reportId()">
+      </app-export-menu>
+
+      <button mat-stroked-button color="primary"
+              [disabled]="!canPreview() || loading()"
+              (click)="preview()">
+        <mat-icon>play_arrow</mat-icon>
+        Vista previa
+      </button>
+
+      <button mat-flat-button color="primary"
+              [disabled]="!canSave() || saving()"
+              (click)="save()">
+        <mat-icon>save</mat-icon>
+        {{ editMode() ? 'Actualizar' : 'Guardar' }}
+      </button>
+    </div>
+  </div>
+
+  <!-- Source selector -->
+  <app-source-selector
+    [selected]="selectedSources()"
+    (selectionChange)="onSourcesChange($event)">
+  </app-source-selector>
+
+  <!-- Main layout: sidebar + preview -->
+  @if (selectedSources().length > 0) {
+    <div class="report-builder__layout">
+      <!-- Left sidebar: fields + filters -->
+      <aside class="report-builder__sidebar">
+        <app-field-panel
+          [sources]="selectedSources()"
+          [selectedFields]="selectedFields()"
+          (fieldsChange)="onFieldsChange($event)">
+        </app-field-panel>
+
+        <app-filter-builder
+          [sources]="selectedSources()"
+          [filters]="filters()"
+          (filtersChange)="onFiltersChange($event)">
+        </app-filter-builder>
+      </aside>
+
+      <!-- Right: viz selector + preview -->
+      <main class="report-builder__main">
+        <div class="report-builder__viz-bar">
+          <span class="report-builder__viz-label">Visualización:</span>
+          <mat-button-toggle-group
+            [value]="visualization()"
+            (change)="onVisualizationChange($event.value)"
+            hideSingleSelectionIndicator>
+            @for (opt of vizOptions; track opt.value) {
+              <mat-button-toggle [value]="opt.value" [matTooltip]="opt.label">
+                <mat-icon>{{ opt.icon }}</mat-icon>
+              </mat-button-toggle>
+            }
+          </mat-button-toggle-group>
+        </div>
+
+        <!-- Conditional visualization -->
+        @if (isTable()) {
+          <app-data-table
+            [data]="tableResult()"
+            [loading]="loading()">
+          </app-data-table>
+        } @else if (isPivot()) {
+          <app-pivot-table
+            [data]="pivotResult()"
+            [loading]="loading()">
+          </app-pivot-table>
+        } @else if (isChart()) {
+          <app-chart-renderer
+            [data]="previewResult()"
+            [visualization]="visualization()"
+            [fields]="selectedFields()"
+            [loading]="loading()">
+          </app-chart-renderer>
+        }
+      </main>
+    </div>
+  }
+</div>

@@ -69,9 +69,9 @@
   padding: 3px 10px;
   border-radius: 12px;
 
-  &--pending  { background: #fff8e1; color: #f57f17; }
-  &--approved { background: #e8f5e9; color: #2e7d32; }
-  &--rejected { background: #ffebee; color: #c62828; }
+  &--pending  { background: var(--sc-warning-bg, #fff8e1); color: var(--sc-warning, #f57f17); }
+  &--approved { background: var(--sc-success-bg, #e8f5e9); color: var(--sc-success, #2e7d32); }
+  &--rejected { background: var(--sc-error-bg, #ffebee);   color: var(--sc-error, #c62828); }
 }
 
 .lr-request-body {

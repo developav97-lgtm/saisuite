@@ -75,8 +75,9 @@ export class SidebarComponent implements OnInit, OnDestroy {
       sectionLabel: 'Módulos',
       items: [
         { label: 'Proyectos',       icon: 'engineering',          route: '/proyectos' },
-        { label: 'SaiDashboard',    icon: 'bar_chart',            route: '/saidashboard' },
+        { label: 'Reportes',         icon: 'bar_chart',            route: '/saidashboard' },
         { label: 'CRM Ventas',      icon: 'contacts_product',     route: '/crm' },
+        { label: 'Contabilidad GL', icon: 'receipt_long',         route: '/contabilidad' },
         { label: 'Terceros',        icon: 'contacts',             route: '/terceros' },
         { label: 'Administración',  icon: 'admin_panel_settings', route: '/admin/usuarios' },
       ],
@@ -90,10 +91,11 @@ export class SidebarComponent implements OnInit, OnDestroy {
       ],
     },
     {
-      sectionLabel: 'SaiDashboard',
+      sectionLabel: 'Reportes',
       items: [
         { label: 'Mis Dashboards', icon: 'bar_chart',    route: '/saidashboard', exact: true },
         { label: 'Nuevo Dashboard', icon: 'add_chart',   route: '/saidashboard/nuevo' },
+        { label: 'Reportes BI',    icon: 'query_stats',  route: '/saidashboard/reportes' },
       ],
     },
   ];
@@ -303,6 +305,20 @@ export class SidebarComponent implements OnInit, OnDestroy {
     },
   ];
 
+  private readonly CONTABILIDAD_NAV: NavSection[] = [
+    {
+      items: [
+        { label: 'Módulos', icon: 'apps', route: '/dashboard' },
+      ],
+    },
+    {
+      sectionLabel: 'Contabilidad GL',
+      items: [
+        { label: 'Libro Mayor', icon: 'receipt_long', route: '/contabilidad', exact: true },
+      ],
+    },
+  ];
+
   // ── Ciclo de vida ────────────────────────────────────────────
 
   ngOnInit(): void {
@@ -344,8 +360,9 @@ export class SidebarComponent implements OnInit, OnDestroy {
       case 'admin':        sections = this.ADMIN_NAV;        break;
       case 'terceros':     sections = this.TERCEROS_NAV;     break;
       case 'saidashboard': sections = this.SAIDASHBOARD_NAV; break;
-      case 'crm':          sections = this.CRM_NAV;          break;
-      default:             sections = this.HOME_NAV;
+      case 'crm':           sections = this.CRM_NAV;           break;
+      case 'contabilidad':  sections = this.CONTABILIDAD_NAV;  break;
+      default:              sections = this.HOME_NAV;
     }
 
     // Filtrar ítems que requieren permiso que el usuario no tiene
@@ -370,7 +387,8 @@ export class SidebarComponent implements OnInit, OnDestroy {
     if (url.startsWith('/admin'))        return 'admin';
     if (url.startsWith('/terceros'))     return 'terceros';
     if (url.startsWith('/saidashboard')) return 'saidashboard';
-    if (url.startsWith('/crm'))          return 'crm';
+    if (url.startsWith('/crm'))           return 'crm';
+    if (url.startsWith('/contabilidad')) return 'contabilidad';
     return 'home';
   }
 

@@ -1,0 +1,167 @@
+<div class="gl-page">
+  <header class="page-header">
+    <h1 class="page-title">
+      <mat-icon>receipt_long</mat-icon>
+      Libro Mayor (GL)
+    </h1>
+    @if (totalCount() > 0) {
+      <mat-chip-set>
+        <mat-chip highlighted color="primary">{{ totalCount() }} movimientos</mat-chip>
+      </mat-chip-set>
+    }
+  </header>
+
+  <!-- Filtros -->
+  <mat-card class="filters-card">
+    <mat-card-content>
+      <form [formGroup]="form" class="filters-form">
+        <mat-form-field appearance="outline" class="f-periodo">
+          <mat-label>Periodo</mat-label>
+          <input matInput formControlName="periodo" placeholder="2025-01">
+          <mat-icon matSuffix>calendar_month</mat-icon>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="f-titulo">
+          <mat-label>Clase de cuenta</mat-label>
+          <mat-select formControlName="titulo_codigo">
+            @for (t of titulos; track t.value) {
+              <mat-option [value]="t.value">{{ t.label }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="f-fecha">
+          <mat-label>Fecha inicio</mat-label>
+          <input matInput formControlName="fecha_inicio" type="date">
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="f-fecha">
+          <mat-label>Fecha fin</mat-label>
+          <input matInput formControlName="fecha_fin" type="date">
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="f-search">
+          <mat-label>Buscar cuenta, tercero o descripción</mat-label>
+          <input matInput formControlName="search" placeholder="Buscar...">
+          <mat-icon matSuffix>search</mat-icon>
+        </mat-form-field>
+
+        <button mat-stroked-button type="button" (click)="limpiar()" class="btn-clear">
+          <mat-icon>clear</mat-icon> Limpiar
+        </button>
+      </form>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Loading -->
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+  }
+
+  <!-- Tabla -->
+  <div class="table-responsive">
+    <table mat-table [dataSource]="movimientos()" class="gl-table">
+
+      <ng-container matColumnDef="fecha">
+        <th mat-header-cell *matHeaderCellDef>Fecha</th>
+        <td mat-cell *matCellDef="let m">{{ m.fecha }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="auxiliar">
+        <th mat-header-cell *matHeaderCellDef>Cuenta</th>
+        <td mat-cell *matCellDef="let m">
+          <span class="cuenta-codigo">{{ m.auxiliar }}</span>
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="tercero_nombre">
+        <th mat-header-cell *matHeaderCellDef>Tercero</th>
+        <td mat-cell *matCellDef="let m">
+          <div class="tercero-cell">
+            <span>{{ m.tercero_nombre || '—' }}</span>
+            @if (m.tercero_id) {
+              <span class="tercero-id">{{ m.tercero_id }}</span>
+            }
+          </div>
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="descripcion">
+        <th mat-header-cell *matHeaderCellDef>Descripción</th>
+        <td mat-cell *matCellDef="let m">
+          <span class="descripcion" [matTooltip]="m.descripcion">{{ m.descripcion || '—' }}</span>
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="tipo">
+        <th mat-header-cell *matHeaderCellDef>Tipo</th>
+        <td mat-cell *matCellDef="let m">
+          @if (m.tipo) {
+            <span class="tipo-badge">{{ m.tipo }}</span>
+          } @else {
+            <span>—</span>
+          }
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="debito">
+        <th mat-header-cell *matHeaderCellDef class="money-col">Débito</th>
+        <td mat-cell *matCellDef="let m" class="money-col">
+          @if (+m.debito > 0) {
+            <span class="debito">{{ formatMoney(m.debito) }}</span>
+          } @else {
+            <span class="zero">—</span>
+          }
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="credito">
+        <th mat-header-cell *matHeaderCellDef class="money-col">Crédito</th>
+        <td mat-cell *matCellDef="let m" class="money-col">
+          @if (+m.credito > 0) {
+            <span class="credito">{{ formatMoney(m.credito) }}</span>
+          } @else {
+            <span class="zero">—</span>
+          }
+        </td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+      <tr mat-row *matRowDef="let row; columns: displayedColumns;" class="gl-row"></tr>
+
+      <!-- Empty state -->
+      <tr class="mat-row" *matNoDataRow>
+        <td [attr.colspan]="displayedColumns.length">
+          <div class="empty-state">
+            <mat-icon>receipt_long</mat-icon>
+            <p>No se encontraron movimientos con los filtros aplicados.</p>
+          </div>
+        </td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- Totales -->
+  @if (movimientos().length > 0) {
+    <mat-card class="totals-card">
+      <mat-card-content class="totals-row">
+        <span class="totals-label">
+          {{ movimientos().length }} de {{ totalCount() }} registros
+        </span>
+        <span class="totals-spacer"></span>
+        <span class="total-item">
+          <span class="total-name">Total Débito:</span>
+          <span class="total-value debito">{{ formatMoney(totalDebito()) }}</span>
+        </span>
+        <span class="total-item">
+          <span class="total-name">Total Crédito:</span>
+          <span class="total-value credito">{{ formatMoney(totalCredito()) }}</span>
+        </span>
+        <span class="total-item balance" [class.balanced]="Math.abs(totalDebito() - totalCredito()) < 1">
+          <span class="total-name">Balance:</span>
+          <span class="total-value">{{ formatMoney(totalDebito() - totalCredito()) }}</span>
+        </span>
+      </mat-card-content>
+    </mat-card>
+  }
+</div>

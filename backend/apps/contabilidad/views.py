@@ -15,8 +15,10 @@ from apps.contabilidad.serializers import (
     ACCTBatchSerializer,
     SyncStatusSerializer,
     SyncResultSerializer,
+    MovimientoContableSerializer,
 )
 from apps.contabilidad.services import SyncService
+from apps.contabilidad.models import MovimientoContable
 
 logger = logging.getLogger(__name__)
 
@@ -98,3 +100,65 @@ class SyncStatusView(APIView):
 
         out = SyncStatusSerializer(result)
         return Response(out.data, status=status.HTTP_200_OK)
+
+
+class GLMovimientoListView(APIView):
+    """
+    GET /api/v1/contabilidad/movimientos/
+
+    Lista movimientos contables de la empresa del usuario autenticado.
+    Filtros opcionales via query params:
+      - periodo (YYYY-MM)
+      - titulo_codigo (int: 1=Activo, 2=Pasivo, 3=Patrimonio, 4=Ingresos, 5=Gastos, 6=Costos)
+      - tercero_id (string)
+      - tipo (string)
+      - fecha_inicio / fecha_fin (YYYY-MM-DD)
+      - search (busca en auxiliar_nombre, tercero_nombre, descripcion)
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        company = getattr(request.user, 'effective_company', None) or request.user.company
+        if not company:
+            return Response({'error': 'Usuario sin empresa'}, status=status.HTTP_400_BAD_REQUEST)
+
+        qs = MovimientoContable.objects.filter(company=company)
+
+        periodo = request.query_params.get('periodo')
+        if periodo:
+            qs = qs.filter(periodo=periodo)
+
+        titulo_codigo = request.query_params.get('titulo_codigo')
+        if titulo_codigo:
+            qs = qs.filter(titulo_codigo=titulo_codigo)
+
+        tercero_id = request.query_params.get('tercero_id')
+        if tercero_id:
+            qs = qs.filter(tercero_id=tercero_id)
+
+        tipo = request.query_params.get('tipo')
+        if tipo:
+            qs = qs.filter(tipo=tipo)
+
+        fecha_inicio = request.query_params.get('fecha_inicio')
+        if fecha_inicio:
+            qs = qs.filter(fecha__gte=fecha_inicio)
+
+        fecha_fin = request.query_params.get('fecha_fin')
+        if fecha_fin:
+            qs = qs.filter(fecha__lte=fecha_fin)
+
+        search = request.query_params.get('search')
+        if search:
+            from django.db.models import Q
+            qs = qs.filter(
+                Q(auxiliar_nombre__icontains=search) |
+                Q(tercero_nombre__icontains=search) |
+                Q(descripcion__icontains=search)
+            )
+
+        # Limit for performance; full export handled separately if needed
+        qs = qs.order_by('-fecha', '-conteo')[:500]
+
+        data = MovimientoContableSerializer(qs, many=True).data
+        return Response({'count': len(data), 'results': data})

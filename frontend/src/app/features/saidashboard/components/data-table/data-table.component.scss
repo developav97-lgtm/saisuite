@@ -1,0 +1,25 @@
+.data-table {
+  width: 100%;
+
+  &__cell--numeric {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.table-responsive {
+  overflow-x: auto;
+}
+
+.sc-empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  color: var(--sc-text-disabled);
+  font-size: 14px;
+}
+
+th.mat-mdc-header-cell {
+  white-space: nowrap;
+}

@@ -1,0 +1,82 @@
+<div class="filter-builder">
+  <div class="filter-builder__header">
+    <h3 class="filter-builder__title">
+      <mat-icon>filter_list</mat-icon>
+      Filtros
+      @if (activeFilterCount > 0) {
+        <span class="filter-builder__badge">{{ activeFilterCount }}</span>
+      }
+    </h3>
+    @if (activeFilterCount > 0) {
+      <button mat-button color="primary" (click)="clearAll()">Limpiar</button>
+    }
+  </div>
+
+  @if (availableFilters().length === 0) {
+    <p class="filter-builder__empty">Selecciona una fuente de datos para ver filtros disponibles.</p>
+  }
+
+  <div class="filter-builder__fields">
+    @for (filterDef of availableFilters(); track filterDef.field) {
+      <div class="filter-field">
+        @switch (filterDef.type) {
+          @case ('date_range') {
+            <mat-form-field appearance="outline" class="filter-field__control">
+              <mat-label>{{ filterDef.label }}</mat-label>
+              <input
+                matInput
+                type="date"
+                [ngModel]="getFilterValue(filterDef.field)"
+                (ngModelChange)="updateFilter(filterDef.field, $event)">
+              @if (getFilterValue(filterDef.field)) {
+                <button matSuffix mat-icon-button (click)="clearFilter(filterDef.field)">
+                  <mat-icon>close</mat-icon>
+                </button>
+              }
+            </mat-form-field>
+          }
+          @case ('text') {
+            <mat-form-field appearance="outline" class="filter-field__control">
+              <mat-label>{{ filterDef.label }}</mat-label>
+              <input
+                matInput
+                [ngModel]="getFilterValue(filterDef.field)"
+                (ngModelChange)="updateFilter(filterDef.field, $event)">
+              @if (getFilterValue(filterDef.field)) {
+                <button matSuffix mat-icon-button (click)="clearFilter(filterDef.field)">
+                  <mat-icon>close</mat-icon>
+                </button>
+              }
+            </mat-form-field>
+          }
+          @case ('boolean') {
+            <mat-form-field appearance="outline" class="filter-field__control">
+              <mat-label>{{ filterDef.label }}</mat-label>
+              <mat-select
+                [ngModel]="getFilterValue(filterDef.field)"
+                (ngModelChange)="updateFilter(filterDef.field, $event)">
+                <mat-option [value]="null">Todos</mat-option>
+                <mat-option [value]="true">Sí</mat-option>
+                <mat-option [value]="false">No</mat-option>
+              </mat-select>
+            </mat-form-field>
+          }
+          @default {
+            <mat-form-field appearance="outline" class="filter-field__control">
+              <mat-label>{{ filterDef.label }}</mat-label>
+              <input
+                matInput
+                [ngModel]="getFilterValue(filterDef.field)"
+                (ngModelChange)="updateFilter(filterDef.field, $event)">
+              @if (getFilterValue(filterDef.field)) {
+                <button matSuffix mat-icon-button (click)="clearFilter(filterDef.field)">
+                  <mat-icon>close</mat-icon>
+                </button>
+              }
+            </mat-form-field>
+          }
+        }
+      </div>
+    }
+  </div>
+</div>

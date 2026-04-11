@@ -21,8 +21,11 @@ from apps.dashboard.models import (
     DashboardCard,
     DashboardShare,
     ModuleTrial,
+    ReportBI,
+    ReportBIShare,
 )
 from apps.dashboard.report_engine import ReportEngine
+from apps.dashboard.bi_engine import BIQueryEngine
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +33,7 @@ _TRIAL_DURATION_DAYS = 14
 _MODULE_CODE = 'dashboard'
 
 _report_engine = ReportEngine()
+_bi_engine = BIQueryEngine()
 
 
 # ──────────────────────────────────────────────
@@ -666,6 +670,297 @@ class ReportService:
 
 
 # ──────────────────────────────────────────────
+# Report BI Service
+# ──────────────────────────────────────────────
+
+class ReportBIService:
+    """Servicio para operaciones CRUD y ejecución de reportes BI."""
+
+    @staticmethod
+    def list_reports(user, company_id) -> QuerySet:
+        """Lista reportes del usuario + compartidos."""
+        own = ReportBI.all_objects.filter(user=user, company_id=company_id)
+        shared_ids = ReportBIShare.objects.filter(
+            compartido_con=user,
+            reporte__company_id=company_id,
+        ).values_list('reporte_id', flat=True)
+        return ReportBI.all_objects.filter(
+            Q(id__in=own.values_list('id', flat=True))
+            | Q(id__in=shared_ids)
+        ).select_related('user').distinct()
+
+    @staticmethod
+    def list_templates(company_id) -> QuerySet:
+        """Lista reportes template disponibles."""
+        return ReportBI.all_objects.filter(
+            company_id=company_id,
+            es_template=True,
+        ).select_related('user')
+
+    @staticmethod
+    def get_template_catalog() -> list[dict]:
+        """Retorna el catálogo estático de 12 templates predefinidos (sin BD)."""
+        from apps.dashboard.bi_templates import REPORT_TEMPLATES
+        return [
+            {
+                'titulo': t['titulo'],
+                'descripcion': t['descripcion'],
+                'fuentes': t['fuentes'],
+                'tipo_visualizacion': t['tipo_visualizacion'],
+            }
+            for t in REPORT_TEMPLATES
+        ]
+
+    @staticmethod
+    def create_report(user, company_id, data: dict) -> ReportBI:
+        """Crea un nuevo reporte BI."""
+        report = ReportBI(
+            user=user,
+            company_id=company_id,
+            titulo=data['titulo'],
+            descripcion=data.get('descripcion', ''),
+            es_privado=data.get('es_privado', True),
+            fuentes=data['fuentes'],
+            campos_config=data.get('campos_config', []),
+            tipo_visualizacion=data.get('tipo_visualizacion', 'table'),
+            viz_config=data.get('viz_config', {}),
+            filtros=data.get('filtros', {}),
+            orden_config=data.get('orden_config', []),
+            limite_registros=data.get('limite_registros'),
+        )
+        template_id = data.get('template_origen')
+        if template_id:
+            report.template_origen_id = template_id
+        report.save()
+
+        logger.info(
+            'report_bi_created',
+            extra={
+                'report_id': str(report.id),
+                'user_id': str(user.id),
+                'company_id': str(company_id),
+            },
+        )
+        return report
+
+    @staticmethod
+    def get_report(report_id, user) -> ReportBI:
+        """Obtiene un reporte por ID. Verifica acceso."""
+        try:
+            report = ReportBI.all_objects.select_related('user').get(id=report_id)
+        except ReportBI.DoesNotExist:
+            raise NotFound('Reporte no encontrado.')
+
+        if report.user_id == user.id:
+            return report
+
+        if ReportBIShare.objects.filter(reporte=report, compartido_con=user).exists():
+            return report
+
+        if getattr(user, 'is_staff', False) or getattr(user, 'is_superadmin', False):
+            return report
+
+        raise PermissionDenied('No tienes acceso a este reporte.')
+
+    @staticmethod
+    def update_report(report_id, user, data: dict) -> ReportBI:
+        """Actualiza un reporte BI. Solo dueño o con permiso de edición."""
+        report = ReportBIService.get_report(report_id, user)
+
+        if report.user_id != user.id:
+            share = ReportBIShare.objects.filter(
+                reporte=report, compartido_con=user,
+            ).first()
+            if not share or not share.puede_editar:
+                raise PermissionDenied('No tienes permiso para editar este reporte.')
+
+        updatable = (
+            'titulo', 'descripcion', 'es_privado', 'es_favorito',
+            'fuentes', 'campos_config', 'tipo_visualizacion',
+            'viz_config', 'filtros', 'orden_config', 'limite_registros',
+        )
+        for field in updatable:
+            if field in data:
+                setattr(report, field, data[field])
+
+        report.save()
+
+        logger.info(
+            'report_bi_updated',
+            extra={'report_id': str(report_id), 'user_id': str(user.id)},
+        )
+        return report
+
+    @staticmethod
+    def delete_report(report_id, user) -> None:
+        """Elimina un reporte BI. Solo el dueño."""
+        report = ReportBIService.get_report(report_id, user)
+        if report.user_id != user.id:
+            raise PermissionDenied('Solo el creador puede eliminar el reporte.')
+        report.delete()
+        logger.info(
+            'report_bi_deleted',
+            extra={'report_id': str(report_id), 'user_id': str(user.id)},
+        )
+
+    @staticmethod
+    def toggle_favorite(report_id, user) -> ReportBI:
+        """Alterna favorito."""
+        report = ReportBIService.get_report(report_id, user)
+        report.es_favorito = not report.es_favorito
+        report.save(update_fields=['es_favorito', 'updated_at'])
+        return report
+
+    @staticmethod
+    def execute_report(report, company_id) -> dict:
+        """Ejecuta el motor BI para un reporte guardado."""
+        if report.tipo_visualizacion == 'pivot':
+            return _bi_engine.execute_pivot(report, company_id)
+        return _bi_engine.execute(report, company_id)
+
+    @staticmethod
+    def execute_preview(data: dict, company_id) -> dict:
+        """
+        Ejecuta una preview ad-hoc sin guardar.
+        Construye un objeto temporal con la config recibida.
+        """
+        class _AdHocReport:
+            pass
+
+        r = _AdHocReport()
+        r.fuentes = data.get('fuentes', [])
+        r.campos_config = data.get('campos_config', [])
+        r.tipo_visualizacion = data.get('tipo_visualizacion', 'table')
+        r.viz_config = data.get('viz_config', {})
+        r.filtros = data.get('filtros', {})
+        r.orden_config = data.get('orden_config', [])
+        r.limite_registros = data.get('limite_registros')
+
+        if r.tipo_visualizacion == 'pivot':
+            return _bi_engine.execute_pivot(r, company_id)
+        return _bi_engine.execute(r, company_id)
+
+    @staticmethod
+    def share_report(report_id, user, target_user_id, puede_editar=False) -> ReportBIShare:
+        """Comparte un reporte con otro usuario."""
+        report = ReportBIService.get_report(report_id, user)
+
+        if report.user_id != user.id:
+            raise PermissionDenied('Solo el creador puede compartir el reporte.')
+
+        if str(target_user_id) == str(user.id):
+            raise ValidationError('No puedes compartir un reporte contigo mismo.')
+
+        from apps.users.models import User
+        try:
+            target_user = User.objects.get(id=target_user_id)
+        except User.DoesNotExist:
+            raise NotFound('Usuario no encontrado.')
+
+        if target_user.company_id != report.company_id:
+            raise ValidationError('Solo puedes compartir con usuarios de la misma empresa.')
+
+        share, is_new = ReportBIShare.objects.get_or_create(
+            reporte=report,
+            compartido_con=target_user,
+            defaults={
+                'compartido_por': user,
+                'puede_editar': puede_editar,
+            },
+        )
+        if not is_new:
+            share.puede_editar = puede_editar
+            share.save(update_fields=['puede_editar'])
+
+        logger.info(
+            'report_bi_shared',
+            extra={
+                'report_id': str(report_id),
+                'target_user_id': str(target_user_id),
+            },
+        )
+        return share
+
+    @staticmethod
+    def revoke_share(report_id, share_user_id) -> None:
+        """Revoca un share."""
+        deleted, _ = ReportBIShare.objects.filter(
+            reporte_id=report_id,
+            compartido_con_id=share_user_id,
+        ).delete()
+        if deleted == 0:
+            raise NotFound('Share no encontrado.')
+
+    @staticmethod
+    def export_pdf(report, company_id) -> bytes:
+        """Genera un PDF simple con los datos del reporte."""
+        import io
+        from reportlab.lib import colors
+        from reportlab.lib.pagesizes import A4, landscape
+        from reportlab.lib.styles import getSampleStyleSheet
+        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+
+        result = ReportBIService.execute_report(report, company_id)
+        buf = io.BytesIO()
+        doc = SimpleDocTemplate(buf, pagesize=landscape(A4))
+        elements = []
+        styles = getSampleStyleSheet()
+
+        # Title
+        elements.append(Paragraph(report.titulo, styles['Title']))
+        if report.descripcion:
+            elements.append(Paragraph(report.descripcion, styles['Normal']))
+        elements.append(Spacer(1, 12))
+
+        if 'columns' in result and 'rows' in result:
+            # Table result
+            cols = result['columns']
+            header = [c if isinstance(c, str) else c.get('label', c.get('field', '')) for c in cols]
+            col_keys = [c if isinstance(c, str) else c.get('field', '') for c in cols]
+            table_data = [header]
+            for row in result['rows'][:500]:
+                table_data.append([
+                    str(row.get(k, '')) for k in col_keys
+                ])
+            t = Table(table_data, repeatRows=1)
+            t.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1565c0')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('FONTSIZE', (0, 0), (-1, -1), 8),
+                ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f5f5f5')]),
+            ]))
+            elements.append(t)
+        elif 'row_headers' in result:
+            # Pivot result
+            elements.append(Paragraph('Tabla dinámica exportada.', styles['Normal']))
+
+        doc.build(elements)
+        return buf.getvalue()
+
+    @staticmethod
+    def get_sources():
+        """Retorna fuentes disponibles."""
+        return _bi_engine.get_available_sources()
+
+    @staticmethod
+    def get_fields(source: str):
+        """Retorna campos disponibles para una fuente."""
+        fields = _bi_engine.get_available_fields(source)
+        if not fields:
+            raise ValidationError(f'Fuente no válida: {source}')
+        return fields
+
+    @staticmethod
+    def get_filters(source: str):
+        """Retorna filtros aplicables a una fuente."""
+        filters = _bi_engine.get_available_filters(source)
+        if not filters:
+            raise ValidationError(f'Fuente no válida: {source}')
+        return filters
+
+
+# ──────────────────────────────────────────────
 # CFO Virtual Service
 # ──────────────────────────────────────────────
 
@@ -837,3 +1132,101 @@ class CfoVirtualService:
             'Margen_operacional_pct': round(margen_operacional, 1),
         }
         return context
+
+    @staticmethod
+    def suggest_report(question: str, company, user=None) -> dict:
+        """
+        Analiza una pregunta del usuario y sugiere un template de reporte BI.
+        Usa OpenAI para mapear la intención a uno de los 12 templates predefinidos.
+        Retorna: {template_titulo, explanation, config} o None si no aplica.
+        """
+        import json as json_module
+        from apps.companies.services import AIUsageService
+        from apps.dashboard.bi_templates import REPORT_TEMPLATES
+
+        quota = AIUsageService.check_quota(company)
+        if not quota['allowed']:
+            raise ValidationError('Has alcanzado el límite de uso de IA este mes.')
+
+        openai_api_key = getattr(settings, 'OPENAI_API_KEY', '')
+        if not openai_api_key:
+            raise ValidationError('El asistente de IA no está configurado.')
+
+        template_names = [t['titulo'] for t in REPORT_TEMPLATES]
+        template_catalog = json_module.dumps(
+            [{'titulo': t['titulo'], 'descripcion': t['descripcion'], 'fuentes': t['fuentes']}
+             for t in REPORT_TEMPLATES],
+            ensure_ascii=False,
+        )
+
+        system_prompt = (
+            'Eres un asistente BI que sugiere reportes predefinidos basado en preguntas del usuario. '
+            'Tienes estos templates disponibles:\n'
+            f'{template_catalog}\n\n'
+            'Responde SOLO con JSON válido: '
+            '{"template_titulo": "nombre exacto del template", '
+            '"explanation": "explicación breve de por qué este reporte responde la pregunta"}\n'
+            'Si ningún template aplica, responde: {"template_titulo": null, "explanation": "razón"}'
+        )
+
+        payload = {
+            'model': 'gpt-4o-mini',
+            'max_tokens': 256,
+            'messages': [
+                {'role': 'system', 'content': system_prompt},
+                {'role': 'user', 'content': question},
+            ],
+        }
+
+        try:
+            resp = requests.post(
+                'https://api.openai.com/v1/chat/completions',
+                json=payload,
+                headers={
+                    'Authorization': f'Bearer {openai_api_key}',
+                    'Content-Type': 'application/json',
+                },
+                timeout=15,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            response_text = data['choices'][0]['message']['content']
+
+            usage = data.get('usage', {})
+            if user:
+                AIUsageService.record_usage(
+                    company=company,
+                    user=user,
+                    request_type='bi_suggest',
+                    module_context='dashboard',
+                    prompt_tokens=usage.get('prompt_tokens', 0),
+                    completion_tokens=usage.get('completion_tokens', 0),
+                    model_used=data.get('model', 'gpt-4o-mini'),
+                    question_preview=question[:200],
+                )
+
+            parsed = json_module.loads(response_text)
+            titulo = parsed.get('template_titulo')
+            explanation = parsed.get('explanation', '')
+
+            if not titulo:
+                return {'template_titulo': None, 'explanation': explanation, 'config': None}
+
+            template = next(
+                (t for t in REPORT_TEMPLATES if t['titulo'] == titulo),
+                None,
+            )
+            if not template:
+                return {'template_titulo': None, 'explanation': explanation, 'config': None}
+
+            return {
+                'template_titulo': titulo,
+                'explanation': explanation,
+                'config': template,
+            }
+        except requests.exceptions.Timeout:
+            logger.warning('bi_suggest_timeout', extra={'company_id': str(company.id)})
+            raise ValidationError('El asistente tardó demasiado. Intenta de nuevo.')
+        except (requests.exceptions.RequestException, json_module.JSONDecodeError) as exc:
+            logger.error('bi_suggest_error', extra={'error': str(exc), 'company_id': str(company.id)})
+            raise ValidationError('No se pudo obtener la sugerencia del asistente.')

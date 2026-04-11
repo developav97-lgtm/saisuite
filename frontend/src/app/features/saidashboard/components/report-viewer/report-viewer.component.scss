@@ -1,0 +1,64 @@
+.report-viewer {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 16px 24px;
+  max-width: 1400px;
+  margin: 0 auto;
+
+  &__header {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  &__title-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  &__title-block {
+    flex: 1;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 600;
+  }
+
+  &__description {
+    margin: 4px 0 0;
+    font-size: 14px;
+    color: var(--sc-text-secondary);
+  }
+
+  &__actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  &__buttons {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  &__content {
+    min-height: 300px;
+  }
+
+  &__footer {
+    padding: 12px 0;
+    border-top: 1px solid var(--sc-border);
+  }
+
+  &__meta {
+    font-size: 12px;
+    color: var(--sc-text-secondary);
+  }
+}

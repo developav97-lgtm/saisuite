@@ -10,6 +10,8 @@ from apps.dashboard.models import (
     DashboardCard,
     DashboardShare,
     ModuleTrial,
+    ReportBI,
+    ReportBIShare,
 )
 
 logger = logging.getLogger(__name__)
@@ -230,3 +232,138 @@ class ModuleTrialSerializer(serializers.ModelSerializer):
 
     def get_dias_restantes(self, obj) -> int:
         return obj.dias_restantes()
+
+
+# ──────────────────────────────────────────────
+# Report BI
+# ──────────────────────────────────────────────
+
+class ReportBIListSerializer(serializers.ModelSerializer):
+    """Serializer de listado de reportes BI -- campos mínimos."""
+    user_email = serializers.CharField(source='user.email', read_only=True)
+
+    class Meta:
+        model = ReportBI
+        fields = [
+            'id', 'titulo', 'descripcion', 'es_privado',
+            'es_favorito', 'es_template', 'fuentes',
+            'tipo_visualizacion', 'user_email',
+            'created_at', 'updated_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+
+class ReportBIDetailSerializer(serializers.ModelSerializer):
+    """Serializer de detalle de reporte BI -- incluye config completa."""
+    user = UserSummarySerializer(read_only=True)
+    shares = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ReportBI
+        fields = [
+            'id', 'titulo', 'descripcion', 'es_privado',
+            'es_favorito', 'es_template', 'fuentes',
+            'campos_config', 'tipo_visualizacion', 'viz_config',
+            'filtros', 'orden_config', 'limite_registros',
+            'template_origen', 'user', 'shares',
+            'created_at', 'updated_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+    def get_shares(self, obj) -> list:
+        return [
+            {
+                'user_id': str(share.compartido_con_id),
+                'email': share.compartido_con.email,
+                'full_name': share.compartido_con.full_name,
+                'puede_editar': share.puede_editar,
+                'creado_en': share.creado_en.isoformat(),
+            }
+            for share in obj.shares.select_related('compartido_con').all()
+        ]
+
+
+class ReportBICreateSerializer(serializers.Serializer):
+    """Serializer de escritura para crear un reporte BI."""
+    titulo = serializers.CharField(max_length=200)
+    descripcion = serializers.CharField(required=False, default='')
+    es_privado = serializers.BooleanField(default=True)
+    fuentes = serializers.ListField(
+        child=serializers.CharField(max_length=30),
+        min_length=1,
+    )
+    campos_config = serializers.ListField(
+        child=serializers.DictField(),
+        required=False,
+        default=list,
+    )
+    tipo_visualizacion = serializers.ChoiceField(
+        choices=ReportBI.TipoVisualizacion.choices,
+        default='table',
+    )
+    viz_config = serializers.DictField(required=False, default=dict)
+    filtros = serializers.DictField(required=False, default=dict)
+    orden_config = serializers.ListField(
+        child=serializers.DictField(),
+        required=False,
+        default=list,
+    )
+    limite_registros = serializers.IntegerField(required=False, allow_null=True)
+    template_origen = serializers.UUIDField(required=False, allow_null=True)
+
+
+class ReportBIUpdateSerializer(serializers.Serializer):
+    """Serializer de escritura para actualizar un reporte BI."""
+    titulo = serializers.CharField(max_length=200, required=False)
+    descripcion = serializers.CharField(required=False)
+    es_privado = serializers.BooleanField(required=False)
+    es_favorito = serializers.BooleanField(required=False)
+    fuentes = serializers.ListField(
+        child=serializers.CharField(max_length=30),
+        required=False,
+    )
+    campos_config = serializers.ListField(
+        child=serializers.DictField(),
+        required=False,
+    )
+    tipo_visualizacion = serializers.ChoiceField(
+        choices=ReportBI.TipoVisualizacion.choices,
+        required=False,
+    )
+    viz_config = serializers.DictField(required=False)
+    filtros = serializers.DictField(required=False)
+    orden_config = serializers.ListField(
+        child=serializers.DictField(),
+        required=False,
+    )
+    limite_registros = serializers.IntegerField(required=False, allow_null=True)
+
+
+class ReportBIExecuteSerializer(serializers.Serializer):
+    """Serializer para ejecutar un reporte (preview o guardado)."""
+    fuentes = serializers.ListField(
+        child=serializers.CharField(max_length=30),
+        min_length=1,
+    )
+    campos_config = serializers.ListField(
+        child=serializers.DictField(),
+        min_length=1,
+    )
+    tipo_visualizacion = serializers.ChoiceField(
+        choices=ReportBI.TipoVisualizacion.choices,
+        default='table',
+    )
+    viz_config = serializers.DictField(required=False, default=dict)
+    filtros = serializers.DictField(required=False, default=dict)
+    orden_config = serializers.ListField(
+        child=serializers.DictField(),
+        required=False,
+        default=list,
+    )
+    limite_registros = serializers.IntegerField(required=False, allow_null=True)
+
+
+class ReportBIShareCreateSerializer(serializers.Serializer):
+    """Serializer para compartir un reporte BI."""
+    user_id = serializers.UUIDField()
+    puede_editar = serializers.BooleanField(default=False)

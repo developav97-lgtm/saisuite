@@ -236,7 +236,7 @@ export const MODULE_LABELS: Record<string, string> = {
   proyectos: 'SaiProyectos',
   crm:       'CRM',
   soporte:   'Soporte',
-  dashboard: 'SaiDashboard',
+  dashboard: 'Reportes',
 };
 
 // ── LicensePackage (catálogo global) ─────────────────────────────────────

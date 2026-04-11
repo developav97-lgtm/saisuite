@@ -25,6 +25,40 @@ export const SAIDASHBOARD_ROUTES: Routes = [
         m => m.DashboardBuilderComponent,
       ),
   },
+  // ── Reportes BI ──────────────────────────────────────────
+  {
+    path: 'reportes',
+    canActivate: [dashboardLicenseGuard],
+    loadComponent: () =>
+      import('./components/report-list/report-list.component').then(
+        m => m.ReportListComponent,
+      ),
+  },
+  {
+    path: 'reportes/nuevo',
+    canActivate: [dashboardLicenseGuard],
+    loadComponent: () =>
+      import('./components/report-builder/report-builder.component').then(
+        m => m.ReportBuilderComponent,
+      ),
+  },
+  {
+    path: 'reportes/:id/edit',
+    canActivate: [dashboardLicenseGuard],
+    loadComponent: () =>
+      import('./components/report-builder/report-builder.component').then(
+        m => m.ReportBuilderComponent,
+      ),
+  },
+  {
+    path: 'reportes/:id',
+    canActivate: [dashboardLicenseGuard],
+    loadComponent: () =>
+      import('./components/report-viewer/report-viewer.component').then(
+        m => m.ReportViewerComponent,
+      ),
+  },
+  // ── Dashboards (catch-all para :id debe ir al final) ───
   {
     path: ':id',
     canActivate: [dashboardLicenseGuard],

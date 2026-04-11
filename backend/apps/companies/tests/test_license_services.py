@@ -17,7 +17,6 @@ def make_company(nit='900500001', name='Svc Test'):
 def make_license(company, status='active', days_ahead=30):
     return CompanyLicense.objects.create(
         company=company,
-        plan='starter',
         status=status,
         starts_at=date.today() - timedelta(days=1),
         expires_at=date.today() + timedelta(days=days_ahead),
@@ -60,19 +59,19 @@ class TestCompanyServiceGet:
 class TestCompanyServiceCreate:
 
     def test_crea_empresa_correctamente(self):
-        data = {'name': 'Nueva SA', 'nit': '900500030', 'plan': 'starter'}
+        data = {'name': 'Nueva SA', 'nit': '900500030'}
         c = CompanyService.create_company(data)
         assert c.id is not None
         assert c.name == 'Nueva SA'
 
     def test_nit_duplicado_lanza_error(self):
         make_company('900500031')
-        data = {'name': 'Otra', 'nit': '900500031', 'plan': 'starter'}
+        data = {'name': 'Otra', 'nit': '900500031'}
         with pytest.raises(ValidationError, match='NIT'):
             CompanyService.create_company(data)
 
     def test_is_active_true_por_defecto(self):
-        data = {'name': 'Nueva', 'nit': '900500032', 'plan': 'professional'}
+        data = {'name': 'Nueva', 'nit': '900500032'}
         c = CompanyService.create_company(data)
         assert c.is_active is True
 
@@ -85,10 +84,10 @@ class TestCompanyServiceUpdate:
         updated = CompanyService.update_company(c, {'name': 'Actualizado'})
         assert updated.name == 'Actualizado'
 
-    def test_actualiza_plan(self):
+    def test_actualiza_saiopen_enabled(self):
         c = make_company('900500041')
-        updated = CompanyService.update_company(c, {'plan': 'enterprise'})
-        assert updated.plan == 'enterprise'
+        updated = CompanyService.update_company(c, {'saiopen_enabled': True})
+        assert updated.saiopen_enabled is True
 
     def test_nit_no_se_actualiza(self):
         c = make_company('900500042')
@@ -108,14 +107,14 @@ class TestCompanyServiceModules:
 
     def test_activa_modulo_nuevo(self):
         c = make_company('900500050')
-        obj = CompanyService.activate_module(c, 'ventas')
+        obj = CompanyService.activate_module(c, 'crm')
         assert obj.is_active is True
-        assert obj.module == 'ventas'
+        assert obj.module == 'crm'
 
     def test_reactiva_modulo_inactivo(self):
         c = make_company('900500051')
-        m = CompanyModule.objects.create(company=c, module='cobros', is_active=False)
-        result = CompanyService.activate_module(c, 'cobros')
+        CompanyModule.objects.create(company=c, module='proyectos', is_active=False)
+        result = CompanyService.activate_module(c, 'proyectos')
         assert result.is_active is True
 
     def test_modulo_invalido_lanza_error(self):
@@ -125,9 +124,9 @@ class TestCompanyServiceModules:
 
     def test_desactiva_modulo(self):
         c = make_company('900500053')
-        CompanyModule.objects.create(company=c, module='ventas', is_active=True)
-        CompanyService.deactivate_module(c, 'ventas')
-        assert CompanyModule.objects.get(company=c, module='ventas').is_active is False
+        CompanyModule.objects.create(company=c, module='crm', is_active=True)
+        CompanyService.deactivate_module(c, 'crm')
+        assert CompanyModule.objects.get(company=c, module='crm').is_active is False
 
     def test_desactivar_modulo_invalido_lanza_error(self):
         c = make_company('900500054')
@@ -136,11 +135,11 @@ class TestCompanyServiceModules:
 
     def test_get_active_modules_lista(self):
         c = make_company('900500055')
-        CompanyModule.objects.create(company=c, module='ventas', is_active=True)
-        CompanyModule.objects.create(company=c, module='cobros', is_active=False)
+        CompanyModule.objects.create(company=c, module='crm', is_active=True)
+        CompanyModule.objects.create(company=c, module='dashboard', is_active=False)
         activos = CompanyService.get_active_modules(c)
-        assert 'ventas' in activos
-        assert 'cobros' not in activos
+        assert 'crm' in activos
+        assert 'dashboard' not in activos
 
     def test_get_active_modules_vacio(self):
         c = make_company('900500056')
@@ -195,7 +194,6 @@ class TestLicenseServiceCreate:
         c = make_company('900600020')
         data = {
             'company': c,
-            'plan': 'starter',
             'status': 'active',
             'starts_at': date.today() - timedelta(days=1),
             'expires_at': date.today() + timedelta(days=30),
@@ -209,7 +207,6 @@ class TestLicenseServiceCreate:
         make_license(c)
         data = {
             'company': c,
-            'plan': 'starter',
             'status': 'active',
             'starts_at': date.today(),
             'expires_at': date.today() + timedelta(days=30),
@@ -290,7 +287,7 @@ class TestLicenseServiceGetExpiringSoon:
     def test_no_retorna_licencias_suspendidas(self):
         c = make_company('900600052')
         CompanyLicense.objects.create(
-            company=c, plan='starter', status='suspended',
+            company=c, status='suspended',
             starts_at=date.today() - timedelta(days=1),
             expires_at=date.today() + timedelta(days=5),
         )
@@ -300,7 +297,7 @@ class TestLicenseServiceGetExpiringSoon:
     def test_no_retorna_licencias_expiradas(self):
         c = make_company('900600053')
         CompanyLicense.objects.create(
-            company=c, plan='starter', status='expired',
+            company=c, status='expired',
             starts_at=date.today() - timedelta(days=60),
             expires_at=date.today() + timedelta(days=5),
         )

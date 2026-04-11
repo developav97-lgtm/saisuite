@@ -1,0 +1,76 @@
+@if (loading()) {
+  <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+}
+
+<div class="table-responsive">
+  @if (hasData()) {
+    <table class="pivot-table">
+      <!-- Header row: dimension labels + column headers + Total -->
+      <thead>
+        <tr>
+          @for (dim of rowDimFields(); track dim) {
+            <th class="pivot-table__dim-header">{{ dim }}</th>
+          }
+          @for (label of colLabels(); track $index) {
+            <th class="pivot-table__col-header">{{ label }}</th>
+          }
+          <th class="pivot-table__col-header pivot-table__col-header--total">Total</th>
+        </tr>
+      </thead>
+
+      <!-- Data rows -->
+      <tbody>
+        @for (row of rowData(); track row.key) {
+          <tr>
+            @for (dim of rowDimFields(); track dim) {
+              <td class="pivot-table__dim-cell">{{ row.headers[dim] }}</td>
+            }
+            @for (ck of colKeys(); track ck) {
+              <td class="pivot-table__value-cell"
+                  [class.pivot-table__value-cell--clickable]="getCellValue(row.key, ck) !== null"
+                  (click)="onCellClick(row.key, ck, getCellValue(row.key, ck))">
+                @if (getCellValue(row.key, ck) !== null) {
+                  {{ getCellValue(row.key, ck) | number:'1.0-2' }}
+                } @else {
+                  —
+                }
+              </td>
+            }
+            <td class="pivot-table__value-cell pivot-table__value-cell--total">
+              @if (getRowTotal(row.key) !== null) {
+                {{ getRowTotal(row.key) | number:'1.0-2' }}
+              }
+            </td>
+          </tr>
+        }
+      </tbody>
+
+      <!-- Column totals footer -->
+      <tfoot>
+        <tr class="pivot-table__totals-row">
+          @for (dim of rowDimFields(); track dim; let first = $first) {
+            <td class="pivot-table__dim-cell pivot-table__dim-cell--total">
+              @if (first) { Total }
+            </td>
+          }
+          @for (ck of colKeys(); track ck) {
+            <td class="pivot-table__value-cell pivot-table__value-cell--total">
+              @if (getColTotal(ck) !== null) {
+                {{ getColTotal(ck) | number:'1.0-2' }}
+              }
+            </td>
+          }
+          <td class="pivot-table__value-cell pivot-table__value-cell--grand-total">
+            @if (getGrandTotal() !== null) {
+              {{ getGrandTotal() | number:'1.0-2' }}
+            }
+          </td>
+        </tr>
+      </tfoot>
+    </table>
+  } @else if (!loading()) {
+    <div class="sc-empty-state">
+      <p>No hay datos pivot para mostrar. Configura filas, columnas y valores.</p>
+    </div>
+  }
+</div>

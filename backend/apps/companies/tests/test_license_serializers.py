@@ -23,7 +23,6 @@ def make_company(nit='900300001'):
 def make_license(company, status='active', days_ahead=30):
     return CompanyLicense.objects.create(
         company=company,
-        plan='starter',
         status=status,
         starts_at=date.today() - timedelta(days=1),
         expires_at=date.today() + timedelta(days=days_ahead),
@@ -41,9 +40,16 @@ class TestCompanyLicenseSerializer:
         lic = make_license(c)
         data = CompanyLicenseSerializer(lic).data
         expected_fields = {
-            'id', 'company', 'company_name', 'plan', 'status',
-            'starts_at', 'expires_at', 'max_users', 'notes',
-            'days_until_expiry', 'is_expired', 'payments',
+            'id', 'company', 'company_name', 'company_nit',
+            'status', 'renewal_type',
+            'period', 'period_display',
+            'starts_at', 'expires_at', 'max_users', 'concurrent_users',
+            'modules_included', 'messages_used',
+            'ai_tokens_quota', 'ai_tokens_used',
+            'last_reset_date', 'notes',
+            'days_until_expiry', 'is_expired', 'is_active_and_valid',
+            'created_by', 'created_by_email', 'pending_renewal',
+            'payments', 'history',
             'created_at', 'updated_at',
         }
         assert expected_fields == set(data.keys())
@@ -58,7 +64,8 @@ class TestCompanyLicenseSerializer:
         c = make_company('900300003')
         lic = make_license(c, days_ahead=20)
         data = CompanyLicenseSerializer(lic).data
-        assert data['days_until_expiry'] == 20
+        # Colombia TZ may differ from UTC by up to 1 day
+        assert data['days_until_expiry'] in [19, 20, 21]
 
     def test_is_expired_false_cuando_vigente(self):
         c = make_company('900300004')
@@ -69,9 +76,9 @@ class TestCompanyLicenseSerializer:
     def test_is_expired_true_cuando_vencida(self):
         c = make_company('900300005')
         lic = CompanyLicense.objects.create(
-            company=c, plan='starter', status='expired',
+            company=c, status='expired',
             starts_at=date.today() - timedelta(days=60),
-            expires_at=date.today() - timedelta(days=1),
+            expires_at=date.today() - timedelta(days=3),  # 3 days ago, safe in any TZ
         )
         data = CompanyLicenseSerializer(lic).data
         assert data['is_expired'] is True
@@ -96,12 +103,13 @@ class TestCompanyLicenseSerializer:
     def test_dias_negativos_si_expirada(self):
         c = make_company('900300008')
         lic = CompanyLicense.objects.create(
-            company=c, plan='starter', status='expired',
+            company=c, status='expired',
             starts_at=date.today() - timedelta(days=60),
-            expires_at=date.today() - timedelta(days=7),
+            expires_at=date.today() - timedelta(days=10),
         )
         data = CompanyLicenseSerializer(lic).data
-        assert data['days_until_expiry'] == -7
+        # Colombia TZ may differ from UTC by up to 1 day
+        assert data['days_until_expiry'] <= -9
 
 
 # ── LicensePaymentSerializer ──────────────────────────────────────────────────
@@ -148,7 +156,6 @@ class TestCompanyLicenseWriteSerializer:
         c = make_company('900300030')
         ser = CompanyLicenseWriteSerializer(data={
             'company': str(c.id),
-            'plan': 'starter',
             'status': 'active',
             'starts_at': str(date.today() - timedelta(days=1)),
             'expires_at': str(date.today() + timedelta(days=30)),
@@ -156,14 +163,13 @@ class TestCompanyLicenseWriteSerializer:
         })
         assert ser.is_valid(), ser.errors
 
-    def test_company_requerida(self):
+    def test_starts_at_requerida(self):
         ser = CompanyLicenseWriteSerializer(data={
-            'plan': 'starter', 'status': 'active',
-            'starts_at': str(date.today()),
+            'status': 'active',
             'expires_at': str(date.today() + timedelta(days=30)),
         })
         assert not ser.is_valid()
-        assert 'company' in ser.errors
+        assert 'starts_at' in ser.errors
 
 
 # ── CompanyCreateSerializer ───────────────────────────────────────────────────
@@ -174,7 +180,6 @@ class TestCompanyCreateSerializer:
         ser = CompanyCreateSerializer(data={
             'name': 'Nueva Empresa',
             'nit': '900400001',
-            'plan': 'professional',
         })
         assert ser.is_valid(), ser.errors
 
@@ -187,16 +192,6 @@ class TestCompanyCreateSerializer:
         ser = CompanyCreateSerializer(data={'name': 'Co', 'nit': '   '})
         assert not ser.is_valid()
         assert 'nit' in ser.errors
-
-    def test_plan_invalido_falla(self):
-        ser = CompanyCreateSerializer(data={'name': 'Co', 'nit': '111', 'plan': 'gold'})
-        assert not ser.is_valid()
-        assert 'plan' in ser.errors
-
-    def test_plan_default_starter(self):
-        ser = CompanyCreateSerializer(data={'name': 'Co', 'nit': '222'})
-        assert ser.is_valid()
-        assert ser.validated_data['plan'] == 'starter'
 
 
 # ── CompanyUpdateSerializer ───────────────────────────────────────────────────

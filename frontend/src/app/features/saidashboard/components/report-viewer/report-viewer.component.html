@@ -1,0 +1,93 @@
+@if (loading() || executing()) {
+  <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+}
+
+@if (report(); as rpt) {
+  <div class="report-viewer">
+    <!-- Header -->
+    <div class="report-viewer__header">
+      <div class="report-viewer__title-row">
+        <button mat-icon-button (click)="goBack()" matTooltip="Volver a reportes">
+          <mat-icon>arrow_back</mat-icon>
+        </button>
+        <div class="report-viewer__title-block">
+          <h1 class="report-viewer__title">{{ rpt.titulo }}</h1>
+          @if (rpt.descripcion) {
+            <p class="report-viewer__description">{{ rpt.descripcion }}</p>
+          }
+        </div>
+      </div>
+
+      <div class="report-viewer__actions">
+        <mat-chip-set>
+          <mat-chip>
+            <mat-icon matChipAvatar>{{ vizIcon() }}</mat-icon>
+            {{ vizLabel() }}
+          </mat-chip>
+          @for (src of sourceLabels(); track src) {
+            <mat-chip>{{ src }}</mat-chip>
+          }
+        </mat-chip-set>
+
+        <div class="report-viewer__buttons">
+          <button mat-icon-button (click)="toggleFavorite()"
+                  [matTooltip]="rpt.es_favorito ? 'Quitar de favoritos' : 'Agregar a favoritos'">
+            <mat-icon>{{ rpt.es_favorito ? 'star' : 'star_border' }}</mat-icon>
+          </button>
+          <button mat-icon-button (click)="execute()" matTooltip="Refrescar datos"
+                  [disabled]="executing()">
+            <mat-icon>refresh</mat-icon>
+          </button>
+          <app-export-menu
+            [data]="result()"
+            [title]="rpt.titulo"
+            [reportId]="rpt.id">
+          </app-export-menu>
+          <button mat-icon-button (click)="openShareDialog()" matTooltip="Compartir">
+            <mat-icon>share</mat-icon>
+          </button>
+          <button mat-stroked-button (click)="goEdit()">
+            <mat-icon>edit</mat-icon>
+            Editar
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Visualization -->
+    <div class="report-viewer__content">
+      @if (isTable()) {
+        <app-data-table
+          [data]="tableResult()"
+          [loading]="executing()"
+          (cellClick)="onTableCellClick($event)">
+        </app-data-table>
+      } @else if (isPivot()) {
+        <app-pivot-table
+          [data]="pivotResult()"
+          [loading]="executing()"
+          (cellClick)="onPivotCellClick($event)">
+        </app-pivot-table>
+      } @else if (isChart()) {
+        <app-chart-renderer
+          [data]="result()"
+          [visualization]="rpt.tipo_visualizacion"
+          [fields]="rpt.campos_config"
+          [loading]="executing()"
+          (chartClick)="onChartClick($event)">
+        </app-chart-renderer>
+      }
+    </div>
+
+    <!-- Metadata footer -->
+    <div class="report-viewer__footer">
+      <span class="report-viewer__meta">Creado por {{ rpt.user.email }} · {{ rpt.updated_at | date:'short' }}</span>
+    </div>
+  </div>
+
+  <!-- Drill-down panel -->
+  <app-drill-down-panel
+    [data]="drillDown()"
+    (close)="closeDrillDown()">
+  </app-drill-down-panel>
+}

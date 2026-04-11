@@ -1,0 +1,40 @@
+<div class="field-panel">
+  <h3 class="field-panel__title">Campos</h3>
+
+  @if (fieldsByCategory().length === 0) {
+    <p class="field-panel__empty">Selecciona una fuente de datos para ver los campos disponibles.</p>
+  }
+
+  <mat-accordion multi>
+    @for (group of fieldsByCategory(); track group.category + group.source) {
+      <mat-expansion-panel>
+        <mat-expansion-panel-header>
+          <mat-panel-title>{{ group.category }}</mat-panel-title>
+        </mat-expansion-panel-header>
+
+        @for (field of group.fields; track field.field) {
+          <div class="field-item">
+            <mat-checkbox
+              [checked]="isFieldSelected(group.source, field.field)"
+              (change)="toggleField(group.source, field)"
+              color="primary">
+              {{ field.label }}
+            </mat-checkbox>
+
+            @if (isFieldSelected(group.source, field.field) && field.role === 'metric') {
+              <mat-form-field class="field-item__agg" appearance="outline" subscriptSizing="dynamic">
+                <mat-select
+                  [value]="getFieldConfig(group.source, field.field)?.aggregation ?? 'SUM'"
+                  (selectionChange)="onAggregationChange(group.source, field.field, $event.value)">
+                  @for (agg of aggregations; track agg.value) {
+                    <mat-option [value]="agg.value">{{ agg.label }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+            }
+          </div>
+        }
+      </mat-expansion-panel>
+    }
+  </mat-accordion>
+</div>

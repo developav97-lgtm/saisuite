@@ -24,13 +24,13 @@ export interface ReviewDialogData {
     MatIconModule,
   ],
   template: `
-    <h2 mat-dialog-title [style.color]="data.action === 'approve' ? '#2e7d32' : '#c62828'">
+    <h2 mat-dialog-title [class]="'review-title review-title--' + data.action">
       <mat-icon>{{ data.action === 'approve' ? 'check_circle' : 'cancel' }}</mat-icon>
       {{ data.action === 'approve' ? 'Aprobar solicitud' : 'Rechazar solicitud' }}
     </h2>
 
     <mat-dialog-content>
-      <p style="font-size:0.9rem; color:#555; margin:0 0 16px;">
+      <p class="review-desc">
         {{ data.action === 'approve' ? 'Aprobarás' : 'Rechazarás' }}
         la solicitud de <strong>{{ data.companyName }}</strong>
         para el paquete <strong>{{ data.packageName }}</strong>.
@@ -58,10 +58,18 @@ export interface ReviewDialogData {
     </mat-dialog-actions>
   `,
   styles: [`
-    h2[mat-dialog-title] {
+    :host { display: block; min-width: min(420px, 90vw); }
+    .review-title {
       display: flex;
       align-items: center;
       gap: 8px;
+      &--approve { color: var(--sc-success, #2e7d32); }
+      &--reject  { color: var(--sc-error, #c62828); }
+    }
+    .review-desc {
+      font-size: 0.9rem;
+      color: var(--sc-text-secondary);
+      margin: 0 0 16px;
     }
   `],
 })
