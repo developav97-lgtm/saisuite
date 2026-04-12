@@ -101,6 +101,26 @@ type CustBatchData struct {
 	TotalChunks int         `json:"total_chunks"`
 }
 
+// ── Transactional table types ─────────────────────────────────────────────────
+
+// OEBatchPayload is the top-level payload for an OE (invoice header) batch sync.
+type OEBatchPayload struct {
+	Type      string      `json:"type"`
+	CompanyID string      `json:"company_id"`
+	ConnID    string      `json:"conn_id"`
+	Timestamp string      `json:"timestamp"`
+	Data      interface{} `json:"data"` // {"records": [...]}
+}
+
+// OEDetBatchPayload is the top-level payload for an OEDET (invoice line) batch sync.
+type OEDetBatchPayload = OEBatchPayload
+
+// CARPROBatchPayload is the top-level payload for a CARPRO batch sync.
+type CARPROBatchPayload = OEBatchPayload
+
+// ITEMACTBatchPayload is the top-level payload for an ITEMACT batch sync.
+type ITEMACTBatchPayload = OEBatchPayload
+
 // APIError represents an error response from the Saicloud API.
 type APIError struct {
 	StatusCode int
@@ -157,6 +177,30 @@ func (c *Client) HealthCheck() error {
 func (c *Client) PostGLBatch(payload GLBatchPayload) error {
 	url := c.baseURL + "/api/v1/contabilidad/sync/gl-batch/"
 	return c.postJSON(url, payload)
+}
+
+// PostOEBatch sends a batch of OE (invoice header) records.
+// Endpoint: POST /api/v1/contabilidad/sync/oe-batch/
+func (c *Client) PostOEBatch(payload OEBatchPayload) error {
+	return c.postJSON(c.baseURL+"/api/v1/contabilidad/sync/oe-batch/", payload)
+}
+
+// PostOEDetBatch sends a batch of OEDET (invoice line) records.
+// Endpoint: POST /api/v1/contabilidad/sync/oedet-batch/
+func (c *Client) PostOEDetBatch(payload OEBatchPayload) error {
+	return c.postJSON(c.baseURL+"/api/v1/contabilidad/sync/oedet-batch/", payload)
+}
+
+// PostCARPROBatch sends a batch of CARPRO (A/R & A/P movement) records.
+// Endpoint: POST /api/v1/contabilidad/sync/carpro-batch/
+func (c *Client) PostCARPROBatch(payload OEBatchPayload) error {
+	return c.postJSON(c.baseURL+"/api/v1/contabilidad/sync/carpro-batch/", payload)
+}
+
+// PostITEMACTBatch sends a batch of ITEMACT (inventory movement) records.
+// Endpoint: POST /api/v1/contabilidad/sync/itemact-batch/
+func (c *Client) PostITEMACTBatch(payload OEBatchPayload) error {
+	return c.postJSON(c.baseURL+"/api/v1/contabilidad/sync/itemact-batch/", payload)
 }
 
 // PostReference sends a full reference table sync to the Saicloud API.

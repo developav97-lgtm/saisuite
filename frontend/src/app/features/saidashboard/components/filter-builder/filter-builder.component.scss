@@ -47,6 +47,26 @@
     flex-direction: column;
     gap: 4px;
   }
+
+  &__clear-btn {
+    align-self: flex-start;
+    margin-top: 4px;
+  }
+
+  // Modo horizontal: grid de filtros en filas
+  &--horizontal {
+    .filter-builder__fields {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 8px 16px;
+      align-items: start;
+    }
+
+    .filter-builder__clear-btn {
+      grid-column: 1 / -1;
+      margin-top: 0;
+    }
+  }
 }
 
 .filter-field {
@@ -57,5 +77,57 @@
       min-height: 36px;
       padding: 6px 0;
     }
+  }
+
+  // Chip de tercero: truncar nombre largo
+  &__tercero-chip {
+    max-width: 200px;
+
+    .mat-mdc-chip-action-label {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      min-width: 0;
+    }
+  }
+
+  &__tercero-chip-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 160px;
+    display: block;
+  }
+
+  // Opción de autocomplete: nombre + NIT en dos líneas
+  &__tercero-option {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.3;
+    height: auto !important;
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+
+  &__tercero-name {
+    font-size: 14px;
+    color: var(--sc-text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__tercero-id {
+    font-size: 11px;
+    color: var(--sc-text-secondary);
+  }
+}
+
+// Opciones de autocomplete de tercero en el overlay
+::ng-deep .mat-mdc-autocomplete-panel {
+  .filter-field__tercero-option {
+    height: auto !important;
+    padding-top: 6px !important;
+    padding-bottom: 6px !important;
   }
 }

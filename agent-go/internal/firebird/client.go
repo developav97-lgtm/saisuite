@@ -17,9 +17,10 @@ import (
 // Client wraps a Firebird database connection with methods for extracting
 // Saiopen data tables.
 type Client struct {
-	dsn    string
-	db     *sql.DB
-	logger *slog.Logger
+	dsn      string
+	db       *sql.DB
+	logger   *slog.Logger
+	oeColMap map[string]string // detected column names for OE/OEDET variant fields
 }
 
 // GLRecord represents a single denormalized General Ledger record
@@ -59,18 +60,18 @@ type GLRecord struct {
 
 // AcctRecord represents a chart of accounts entry from the ACCT table.
 type AcctRecord struct {
-	Acct           float64 `json:"acct"`
-	Descripcion    string  `json:"descripcion"`
-	Tipo           string  `json:"tipo"`
-	Class          string  `json:"class"`
-	Nvel           int     `json:"nvel"`
-	CdgoTtl        int     `json:"cdgo_ttl"`
-	CdgoGrpo       int     `json:"cdgo_grpo"`
-	CdgoCnta       int     `json:"cdgo_cnta"`
-	CdgoSbCnta     int     `json:"cdgo_sbcnta"`
-	DprtmntoCsto   string  `json:"dprtmnto_csto"`
-	Jbno           string  `json:"jbno"`
-	Activo         string  `json:"activo"`
+	Acct         float64 `json:"acct"`
+	Descripcion  string  `json:"descripcion"`
+	Tipo         string  `json:"tipo"`
+	Class        string  `json:"class"`
+	Nvel         int     `json:"nvel"`
+	CdgoTtl      int     `json:"cdgo_ttl"`
+	CdgoGrpo     int     `json:"cdgo_grpo"`
+	CdgoCnta     int     `json:"cdgo_cnta"`
+	CdgoSbCnta   int     `json:"cdgo_sbcnta"`
+	DprtmntoCsto string  `json:"dprtmnto_csto"`
+	Jbno         string  `json:"jbno"`
+	Activo       string  `json:"activo"`
 }
 
 // CustRecord represents a third-party entity from the CUST table.
@@ -150,11 +151,101 @@ type ProyectoRecord struct {
 
 // ActividadRecord represents an activity from the ACTIVIDADES table.
 type ActividadRecord struct {
-	Codigo      string  `json:"codigo"`
-	Descripcion string  `json:"descripcion"`
-	Proyecto    string  `json:"proyecto"`
-	DP          int     `json:"dp"`
-	CC          int     `json:"cc"`
+	Codigo      string `json:"codigo"`
+	Descripcion string `json:"descripcion"`
+	Proyecto    string `json:"proyecto"`
+	DP          int    `json:"dp"`
+	CC          int    `json:"cc"`
+}
+
+// OERecord represents an invoice header from the OE table.
+type OERecord struct {
+	Conteo          int64  `json:"conteo,omitempty"` // global sequential counter (when available)
+	Number          int    `json:"number"`
+	Tipo            string `json:"tipo"`
+	IDSucursal      int    `json:"id_sucursal"`
+	TerceroID       string `json:"tercero_id"`
+	TerceroNombre   string `json:"tercero_nombre"`
+	Salesman        int    `json:"salesman"`
+	SalesmanNombre  string `json:"salesman_nombre"`
+	Fecha           string `json:"fecha"`
+	DueDate         string `json:"duedate"`
+	Periodo         string `json:"periodo"`
+	Subtotal        string `json:"subtotal"`
+	Costo           string `json:"costo"`
+	IVA             string `json:"iva"`
+	DescuentoGlobal string `json:"descuento_global"`
+	Total           string `json:"total"`
+	Posted          bool   `json:"posted"`
+	Closed          bool   `json:"closed"`
+	CodMoneda       string `json:"cod_moneda"`
+	Comentarios     string `json:"comentarios"`
+}
+
+// OEDetRecord represents an invoice line from the OEDET table.
+type OEDetRecord struct {
+	Conteo            int64  `json:"conteo"`
+	FacturaNumber     int    `json:"factura_number"`
+	FacturaTipo       string `json:"factura_tipo"`
+	FacturaIDSucursal int    `json:"factura_id_sucursal"`
+	ItemCodigo        string `json:"item_codigo"`
+	ItemDescripcion   string `json:"item_descripcion"`
+	Location          string `json:"location"`
+	QtyOrder          string `json:"qty_order"`
+	QtyShip           string `json:"qty_ship"`
+	PrecioUnitario    string `json:"precio_unitario"`
+	PrecioExtendido   string `json:"precio_extendido"`
+	CostoUnitario     string `json:"costo_unitario"`
+	ValorIVA          string `json:"valor_iva"`
+	PorcIVA           string `json:"porc_iva"`
+	Descuento         string `json:"descuento"`
+	MargenValor       string `json:"margen_valor"`
+	MargenPorcentaje  string `json:"margen_porcentaje"`
+	ProyectoCodigo    string `json:"proyecto_codigo"`
+}
+
+// CARPRORecord represents an accounts receivable/payable movement from CARPRO.
+type CARPRORecord struct {
+	Conteo         int64  `json:"conteo"`
+	TerceroID      string `json:"tercero_id"`
+	TerceroNombre  string `json:"tercero_nombre"`
+	CuentaContable string `json:"cuenta_contable"`
+	Tipo           string `json:"tipo"`
+	Batch          int    `json:"batch"`
+	Invc           string `json:"invc"`
+	Descripcion    string `json:"descripcion"`
+	Fecha          string `json:"fecha"`
+	DueDate        string `json:"duedate"`
+	Periodo        string `json:"periodo"`
+	Debito         string `json:"debito"`
+	Credito        string `json:"credito"`
+	Saldo          string `json:"saldo"`
+	Departamento   int    `json:"departamento"`
+	CentroCosto    int    `json:"centro_costo"`
+	ProyectoCodigo string `json:"proyecto_codigo"`
+	TipoCartera    string `json:"tipo_cartera"` // derived: CXC (acct ~13xx) or CXP (acct ~22xx)
+}
+
+// ITEMACTRecord represents an inventory movement from the ITEMACT table.
+type ITEMACTRecord struct {
+	Conteo          int64  `json:"conteo"`
+	ItemCodigo      string `json:"item_codigo"`
+	ItemDescripcion string `json:"item_descripcion"`
+	Location        string `json:"location"`
+	TerceroID       string `json:"tercero_id"`
+	Tipo            string `json:"tipo"`
+	Batch           int    `json:"batch"`
+	Fecha           string `json:"fecha"`
+	Periodo         string `json:"periodo"`
+	Cantidad        string `json:"cantidad"`
+	ValorUnitario   string `json:"valor_unitario"`
+	CostoPEPS       string `json:"costo_peps"`
+	Total           string `json:"total"`
+	SaldoUnidades   string `json:"saldo_unidades"`
+	SaldoPesos      string `json:"saldo_pesos"`
+	Lote            string `json:"lote"`
+	Serie           string `json:"serie"`
+	LoteVencimiento string `json:"lote_vencimiento"` // "YYYY-MM-DD" or ""
 }
 
 // TipdocRecord represents a document type from the TIPDOC table.
@@ -200,7 +291,103 @@ func (c *Client) Connect() error {
 
 	c.db = db
 	c.logger.Info("firebird connection established", "dsn", maskDSN(c.dsn))
+
+	// Detect variant column names for OE/OEDET once at connect time.
+	c.oeColMap = c.detectOEColumns()
+	c.logger.Info("OE variant columns detected", "cols", c.oeColMap)
+
 	return nil
+}
+
+// detectColumn returns the first matching column name found in the given Firebird table,
+// or "" if none of the candidates exist.
+func (c *Client) detectColumn(tableName string, candidates []string) string {
+	for _, col := range candidates {
+		row := c.db.QueryRow(
+			`SELECT COUNT(*) FROM RDB$RELATION_FIELDS
+			 WHERE RDB$RELATION_NAME = ? AND TRIM(RDB$FIELD_NAME) = ?`,
+			tableName, col,
+		)
+		var count int
+		if err := row.Scan(&count); err == nil && count > 0 {
+			return col
+		}
+	}
+	return ""
+}
+
+// detectOEColumns queries the Firebird system catalog to find the actual names
+// of columns that differ across Saiopen versions in OE, OEDET and ITEM tables.
+// Each key is a logical name; value is the real column name (or "" if not found).
+func (c *Client) detectOEColumns() map[string]string {
+	// OE columns (queried against the OE table)
+	oeVariants := map[string][]string{
+		"sucursal": {"ID_SUCURSAL", "IDSUCURSAL", "IDSUC", "SUCURSAL", "ID_SUC", "BRANCH"},
+		"salesman": {"SALESMAN", "SLSMN", "SLSMAN", "VENDEDOR", "ID_VEND"},
+		"period":   {"PERIOD", "PERIODO", "PER", "PERIODOOE"},
+		"duedate":  {"DUEDATE", "FECHAVEN", "FECHA_VEN", "FECVEN"},
+		"subtotal": {"SUBTOTAL", "SUB_TOTAL", "BASE"},
+		"costo":    {"COSTO", "COST", "COSTOOE"},
+		"iva":      {"IVA", "IMPUESTO", "TAX"},
+		"disc1":    {"DISC1", "DESCUENTO", "DISC"},
+		"posted":   {"POSTED", "CONTABILIZADO", "POST"},
+		"closed":   {"CLOSED", "CERRADO", "CLOSE"},
+		"moneda":   {"CODMONEDA", "COD_MONEDA", "MONEDA", "CURRENCY"},
+		"comment":  {"COMMENT1", "COMENTARIO", "NOTAS", "COMMENT"},
+	}
+
+	result := make(map[string]string)
+	for key, candidates := range oeVariants {
+		result[key] = c.detectColumn("OE", candidates)
+	}
+
+	// OE global sequential counter (exists in most Saiopen versions).
+	// If present, use it as watermark instead of NUMBER (which is per document type).
+	result["oe_conteo"] = c.detectColumn("OE", []string{"CONTEO", "CONT", "SEQ", "SECUENCIA"})
+
+	// Item code column candidates (shared across OEDET, ITEMACT, and ITEM tables).
+	// "ITEM" is the most common PK/FK name in Saiopen 2.x+; listed first so it wins quickly.
+	itemCandidates := []string{"ITEM", "ITEMNO", "ITEM_NO", "COD_ITEM", "CODIGO", "ID_ITEM"}
+	// ITEM table may use additional key names in some Saiopen versions.
+	itemPKCandidates := append(itemCandidates, "CLAVE", "NUMITEM", "CODIGO_ITEM", "ITEM_CODE", "CODIGOITEM")
+	result["oedet_itemno"]   = c.detectColumn("OEDET",   itemCandidates)
+	// ITEMACT may use additional item code names in some Saiopen versions.
+	itemactItemCandidates := append(itemCandidates, "CODITEM", "COD_ITEM2", "REFERENCIA", "COD_PROD", "PRODUCTO")
+	result["itemact_itemno"] = c.detectColumn("ITEMACT", itemactItemCandidates)
+	result["item_itemno"]   = c.detectColumn("ITEM",    itemPKCandidates)
+
+	// ITEM: description column
+	result["item_desc"] = c.detectColumn("ITEM", []string{"DESCRIPCION", "DESCRIPN", "DESC", "NOMBRE", "DESCRIP"})
+
+	// OEDET: other potentially-variant columns
+	result["oedet_period"] = c.detectColumn("OEDET", []string{"PERIOD", "PERIODO", "PER"})
+	result["oedet_price"]  = c.detectColumn("OEDET", []string{"PRICE", "PRECIO", "UNITPRICE"})
+	result["oedet_extended"] = c.detectColumn("OEDET", []string{"EXTENDED", "EXTENDIDO", "TOTAL", "EXTENDED_PRICE"})
+	result["oedet_cost"]   = c.detectColumn("OEDET", []string{"COST", "COSTO", "COSTODET"})
+	result["oedet_ivalr"]  = c.detectColumn("OEDET", []string{"IVALR", "IVA", "IMPUESTO", "TAX"})
+	result["oedet_ivapct"] = c.detectColumn("OEDET", []string{"IVAPCT", "IVAPCT", "PORC_IVA", "TAXRATE"})
+	result["oedet_disc1"]  = c.detectColumn("OEDET", []string{"DISC1", "DESCUENTO", "DISC"})
+	result["oedet_proyecto"] = c.detectColumn("OEDET", []string{"PROYECTO", "PROJECT", "COD_PROYECTO"})
+	result["oedet_location"] = c.detectColumn("OEDET", []string{"LOCATION", "BODEGA", "UBICACION", "LOC"})
+	result["oedet_qtyorder"] = c.detectColumn("OEDET", []string{"QTYORDER", "QTY_ORDER", "CANTPEDIDA", "CANT_PED"})
+	result["oedet_qtyship"]  = c.detectColumn("OEDET", []string{"QTYSHIP", "QTY_SHIP", "CANTDESP", "CANT_DES"})
+
+	// ITEMACT: all potentially-variant columns
+	result["itemact_period"]     = c.detectColumn("ITEMACT", []string{"PERIOD", "PERIODO", "PER"})
+	result["itemact_location"]   = c.detectColumn("ITEMACT", []string{"LOCATION", "BODEGA", "UBICACION", "LOC"})
+	result["itemact_idn"]        = c.detectColumn("ITEMACT", []string{"ID_N", "IDN", "TERCERO", "ID_TERCERO", "NUMER"})
+	result["itemact_batch"]      = c.detectColumn("ITEMACT", []string{"BATCH", "LOTE_INT", "LOTEINT", "NUMBATCH"})
+	result["itemact_qty"]        = c.detectColumn("ITEMACT", []string{"QTY", "CANTIDAD", "CANT", "UNIDADES"})
+	result["itemact_cost"]       = c.detectColumn("ITEMACT", []string{"COST", "COSTO", "PRECIO_COSTO"})
+	result["itemact_costpeps"]   = c.detectColumn("ITEMACT", []string{"COSTPEPS", "COSTO_PEPS", "CPEPS"})
+	result["itemact_total"]      = c.detectColumn("ITEMACT", []string{"TOTAL", "VALOR", "IMPORTE"})
+	result["itemact_saldouds"]   = c.detectColumn("ITEMACT", []string{"SALDOUDS", "SALDO_UDS", "SALDOCANT", "SALDO_CANT"})
+	result["itemact_saldopesos"] = c.detectColumn("ITEMACT", []string{"SALDOPESOS", "SALDO_PESOS", "SALDOVALOR", "SALDO_VALOR"})
+	result["itemact_lote"]       = c.detectColumn("ITEMACT", []string{"LOTE", "LOT", "NUM_LOTE"})
+	result["itemact_serie"]      = c.detectColumn("ITEMACT", []string{"SERIE", "SERIAL", "NUM_SERIE"})
+	result["itemact_lote_ven"]   = c.detectColumn("ITEMACT", []string{"LOTE_VEN", "VENCIMIENTO", "FECHA_VEN", "LOTE_VENCIMIENTO"})
+
+	return result
 }
 
 // Close closes the Firebird database connection.
@@ -960,6 +1147,575 @@ func (c *Client) QueryAllTipdoc() ([]TipdocRecord, error) {
 	return records, nil
 }
 
+// QueryOETipos returns all document type codes (CLASE) defined in TIPDOC.
+// OE.TIPO = TIPDOC.CLASE, so this gives the complete list of types that can
+// appear in OE. Querying TIPDOC ensures new types are picked up automatically.
+func (c *Client) QueryOETipos() ([]string, error) {
+	if c.db == nil {
+		return nil, fmt.Errorf("database not connected")
+	}
+	rows, err := c.db.Query(`SELECT DISTINCT CLASE FROM TIPDOC WHERE CLASE IS NOT NULL ORDER BY CLASE`)
+	if err != nil {
+		return nil, fmt.Errorf("TIPDOC CLASE query failed: %w", err)
+	}
+	defer rows.Close()
+	var tipos []string
+	for rows.Next() {
+		var clase string
+		if err := rows.Scan(&clase); err != nil {
+			return nil, fmt.Errorf("TIPDOC CLASE scan failed: %w", err)
+		}
+		tipos = append(tipos, strings.TrimSpace(clase))
+	}
+	return tipos, rows.Err()
+}
+
+// QueryOEIncremental fetches OE (invoice header) records for a specific document type (tipo),
+// with NUMBER > lastNumber, ordered by NUMBER ASC.
+//
+// Watermark: NUMBER is per document type — each TIPDOC.CLASE sequence is independent.
+// The caller iterates over all tipos (from QueryOETipos) and maintains a separate
+// watermark per tipo in LastOEWatermarks.
+func (c *Client) QueryOEIncremental(tipo string, lastNumber int64, batchSize int) ([]OERecord, error) {
+	if c.db == nil {
+		return nil, fmt.Errorf("database not connected")
+	}
+
+	// Build SELECT dynamically — every optional column is only included if detected.
+	type optCol struct {
+		key   string
+		alias string
+		table string
+	}
+	optCols := []optCol{
+		{"sucursal", "SUCURSAL",  "O"},
+		{"salesman", "SALESMAN",  "O"},
+		{"duedate",  "DUEDATE",   "O"},
+		{"period",   "PERIOD",    "O"},
+		{"subtotal", "SUBTOTAL",  "O"},
+		{"costo",    "COSTO",     "O"},
+		{"iva",      "IVA",       "O"},
+		{"disc1",    "DISC1",     "O"},
+		{"posted",   "POSTED",    "O"},
+		{"closed",   "CLOSED",    "O"},
+		{"moneda",   "CODMONEDA", "O"},
+		{"comment",  "COMMENT1",  "O"},
+	}
+
+	var extraSelect string
+	for _, oc := range optCols {
+		if col := c.oeColMap[oc.key]; col != "" {
+			extraSelect += fmt.Sprintf(", %s.%s AS %s", oc.table, col, oc.alias)
+		}
+	}
+
+	query := fmt.Sprintf(`
+		SELECT O.NUMBER, O.TIPO, O.ID_N, C.COMPANY AS TERCERO_NOMBRE, O.FECHA, O.TOTAL%s
+		FROM OE O
+		LEFT JOIN CUST C ON C.ID_N = O.ID_N
+		WHERE O.TIPO = ? AND O.NUMBER > ?
+		ORDER BY O.NUMBER ASC
+		ROWS 1 TO ?`, extraSelect)
+
+	rows, err := c.db.Query(query, tipo, lastNumber, batchSize)
+	if err != nil {
+		return nil, fmt.Errorf("OE query failed (tipo=%s): %w", tipo, err)
+	}
+	defer rows.Close()
+
+	var records []OERecord
+	for rows.Next() {
+		var r OERecord
+		var tipoVal, idN, terceroNombre sql.NullString
+		var fecha sql.NullTime
+		var total sql.NullFloat64
+
+		// Optional vars
+		var sucursal, salesman sql.NullInt64
+		var duedate sql.NullTime
+		var period, posted, closed, codMoneda, comment sql.NullString
+		var subtotal, costo, iva, disc1 sql.NullFloat64
+
+		scanArgs := []interface{}{&r.Number, &tipoVal, &idN, &terceroNombre, &fecha, &total}
+		for _, oc := range optCols {
+			if c.oeColMap[oc.key] == "" {
+				continue
+			}
+			switch oc.key {
+			case "sucursal":
+				scanArgs = append(scanArgs, &sucursal)
+			case "salesman":
+				scanArgs = append(scanArgs, &salesman)
+			case "duedate":
+				scanArgs = append(scanArgs, &duedate)
+			case "period":
+				scanArgs = append(scanArgs, &period)
+			case "subtotal":
+				scanArgs = append(scanArgs, &subtotal)
+			case "costo":
+				scanArgs = append(scanArgs, &costo)
+			case "iva":
+				scanArgs = append(scanArgs, &iva)
+			case "disc1":
+				scanArgs = append(scanArgs, &disc1)
+			case "posted":
+				scanArgs = append(scanArgs, &posted)
+			case "closed":
+				scanArgs = append(scanArgs, &closed)
+			case "moneda":
+				scanArgs = append(scanArgs, &codMoneda)
+			case "comment":
+				scanArgs = append(scanArgs, &comment)
+			}
+		}
+
+		if err := rows.Scan(scanArgs...); err != nil {
+			return nil, fmt.Errorf("OE row scan failed (tipo=%s): %w", tipo, err)
+		}
+
+		r.Tipo = trimString(tipoVal)
+		if sucursal.Valid {
+			r.IDSucursal = int(sucursal.Int64)
+		} else {
+			r.IDSucursal = 1
+		}
+		r.TerceroID = trimString(idN)
+		r.TerceroNombre = trimString(terceroNombre)
+		if salesman.Valid {
+			r.Salesman = int(salesman.Int64)
+		}
+		if fecha.Valid {
+			r.Fecha = fecha.Time.Format("2006-01-02")
+		}
+		if duedate.Valid {
+			r.DueDate = duedate.Time.Format("2006-01-02")
+		}
+		r.Periodo = trimString(period)
+		r.Subtotal = formatMoney(subtotal)
+		r.Costo = formatMoney(costo)
+		r.IVA = formatMoney(iva)
+		r.DescuentoGlobal = formatMoney(disc1)
+		r.Total = formatMoney(total)
+		r.Posted = trimString(posted) == "Y"
+		r.Closed = trimString(closed) == "Y"
+		r.CodMoneda = trimString(codMoneda)
+		if r.CodMoneda == "" {
+			r.CodMoneda = "COP"
+		}
+		r.Comentarios = trimString(comment)
+
+		records = append(records, r)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("OE rows iteration error (tipo=%s): %w", tipo, err)
+	}
+	c.logger.Debug("OE query returned records", "tipo", tipo, "count", len(records))
+	return records, nil
+}
+
+// QueryOEDetIncremental fetches OEDET (invoice line) records for a specific document type (tipo),
+// where NUMBER > lastNumber, ordered by NUMBER ASC, CONTEO ASC.
+// OEDET.CONTEO is the line sequence within a single invoice (1, 2, 3…), NOT a global counter.
+// NUMBER (FK to OE header) is the correct incremental key, and it is per document type —
+// so a separate watermark per tipo must be maintained (same as OE).
+// All other column names are resolved dynamically from oeColMap.
+func (c *Client) QueryOEDetIncremental(tipo string, lastNumber int64, batchSize int) ([]OEDetRecord, error) {
+	if c.db == nil {
+		return nil, fmt.Errorf("database not connected")
+	}
+
+	// Resolve detected column names (fall back to empty string = omit from SELECT).
+	sucursalCol  := c.oeColMap["sucursal"]
+	itemnoDetCol := c.oeColMap["oedet_itemno"]   // item code col in OEDET
+	itemnoItemCol := c.oeColMap["item_itemno"]   // item code col in ITEM (for JOIN)
+	itemDescCol  := c.oeColMap["item_desc"]
+	locationCol  := c.oeColMap["oedet_location"]
+	qtyOrderCol  := c.oeColMap["oedet_qtyorder"]
+	qtyShipCol   := c.oeColMap["oedet_qtyship"]
+	priceCol     := c.oeColMap["oedet_price"]
+	extendedCol  := c.oeColMap["oedet_extended"]
+	costCol      := c.oeColMap["oedet_cost"]
+	ivalrCol     := c.oeColMap["oedet_ivalr"]
+	ivapctCol    := c.oeColMap["oedet_ivapct"]
+	disc1Col     := c.oeColMap["oedet_disc1"]
+	proyectoCol  := c.oeColMap["oedet_proyecto"]
+
+	// JOIN to ITEM is only possible when both sides have a matching item code column.
+	joinActive := itemnoDetCol != "" && itemnoItemCol != ""
+
+	// itemdesc lives on table I — only include it when the JOIN is active.
+	activeItemDescCol := itemDescCol
+	if !joinActive {
+		activeItemDescCol = ""
+	}
+
+	// Build optional SELECT expressions.
+	type optDet struct{ key, col, alias, tbl string }
+	opts := []optDet{
+		{"sucursal",  sucursalCol,        "SUCURSAL",   "D"},
+		{"itemno",    itemnoDetCol,        "ITEMNO",      "D"},
+		{"itemdesc",  activeItemDescCol,   "ITEMDESC",    "I"},
+		{"location",  locationCol,   "LOCATION",    "D"},
+		{"qtyorder",  qtyOrderCol,   "QTYORDER",    "D"},
+		{"qtyship",   qtyShipCol,    "QTYSHIP",     "D"},
+		{"price",     priceCol,      "PRICE",       "D"},
+		{"extended",  extendedCol,   "EXTENDED",    "D"},
+		{"cost",      costCol,       "COST",        "D"},
+		{"ivalr",     ivalrCol,      "IVALR",       "D"},
+		{"ivapct",    ivapctCol,     "IVAPCT",      "D"},
+		{"disc1",     disc1Col,      "DISC1",       "D"},
+		{"proyecto",  proyectoCol,   "PROYECTO",    "D"},
+	}
+
+	var extraSelect string
+	for _, o := range opts {
+		if o.col != "" {
+			extraSelect += fmt.Sprintf(", %s.%s AS %s", o.tbl, o.col, o.alias)
+		}
+	}
+
+	// Build JOIN to ITEM only if both item code columns are detected.
+	var itemJoin string
+	if joinActive {
+		itemJoin = fmt.Sprintf("LEFT JOIN ITEM I ON I.%s = D.%s", itemnoItemCol, itemnoDetCol)
+	}
+
+	query := fmt.Sprintf(`
+		SELECT D.NUMBER, D.CONTEO, D.TIPO%s
+		FROM OEDET D %s
+		WHERE D.TIPO = ? AND D.NUMBER > ?
+		ORDER BY D.NUMBER ASC, D.CONTEO ASC
+		ROWS 1 TO ?`, extraSelect, itemJoin)
+
+	rows, err := c.db.Query(query, tipo, lastNumber, batchSize)
+	if err != nil {
+		return nil, fmt.Errorf("OEDET query failed (tipo=%s): %w", tipo, err)
+	}
+	defer rows.Close()
+
+	var records []OEDetRecord
+	for rows.Next() {
+		var r OEDetRecord
+		var tipoVal sql.NullString
+		var sucursal sql.NullInt64
+		var itemno, itemDesc, location, proyecto sql.NullString
+		var qtyOrder, qtyShip, price, extended, cost sql.NullFloat64
+		var ivalr, ivapct, disc1 sql.NullFloat64
+
+		scanArgs := []interface{}{&r.FacturaNumber, &r.Conteo, &tipoVal}
+		for _, o := range opts {
+			if o.col == "" {
+				continue
+			}
+			switch o.key {
+			case "sucursal":
+				scanArgs = append(scanArgs, &sucursal)
+			case "itemno":
+				scanArgs = append(scanArgs, &itemno)
+			case "itemdesc":
+				scanArgs = append(scanArgs, &itemDesc)
+			case "location":
+				scanArgs = append(scanArgs, &location)
+			case "qtyorder":
+				scanArgs = append(scanArgs, &qtyOrder)
+			case "qtyship":
+				scanArgs = append(scanArgs, &qtyShip)
+			case "price":
+				scanArgs = append(scanArgs, &price)
+			case "extended":
+				scanArgs = append(scanArgs, &extended)
+			case "cost":
+				scanArgs = append(scanArgs, &cost)
+			case "ivalr":
+				scanArgs = append(scanArgs, &ivalr)
+			case "ivapct":
+				scanArgs = append(scanArgs, &ivapct)
+			case "disc1":
+				scanArgs = append(scanArgs, &disc1)
+			case "proyecto":
+				scanArgs = append(scanArgs, &proyecto)
+			}
+		}
+
+		if err := rows.Scan(scanArgs...); err != nil {
+			return nil, fmt.Errorf("OEDET row scan failed: %w", err)
+		}
+
+		r.FacturaTipo = trimString(tipoVal)
+		if sucursal.Valid {
+			r.FacturaIDSucursal = int(sucursal.Int64)
+		} else {
+			r.FacturaIDSucursal = 1
+		}
+		r.ItemCodigo      = trimString(itemno)
+		r.ItemDescripcion = trimString(itemDesc)
+		r.Location        = trimString(location)
+		r.QtyOrder        = formatQty(qtyOrder)
+		r.QtyShip         = formatQty(qtyShip)
+		r.PrecioUnitario  = formatQty(price)
+		r.PrecioExtendido = formatMoney(extended)
+		r.CostoUnitario   = formatQty(cost)
+		r.ValorIVA        = formatMoney(ivalr)
+		r.PorcIVA         = formatMoney(ivapct)
+		r.Descuento       = formatMoney(disc1)
+		r.ProyectoCodigo  = trimString(proyecto)
+		// Margin fields are not stored in OEDET — default to "0" to avoid
+		// Decimal parse errors on the Django side.
+		r.MargenValor = "0"
+		r.MargenPorcentaje = "0"
+
+		records = append(records, r)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("OEDET rows iteration error: %w", err)
+	}
+	c.logger.Debug("OEDET query returned records", "count", len(records))
+	return records, nil
+}
+
+// QueryCARPROIncremental fetches CARPRO (A/R + A/P movements) records with CONTEO > lastConteo.
+func (c *Client) QueryCARPROIncremental(lastConteo int64, batchSize int) ([]CARPRORecord, error) {
+	if c.db == nil {
+		return nil, fmt.Errorf("database not connected")
+	}
+
+	query := `
+		SELECT CP.CONTEO, CP.ID_N, C.COMPANY AS TERCERO_NOMBRE,
+			CP.ACCT, CP.TIPO, CP.BATCH, CP.INVC,
+			CP.DESCRIPCION, CP.FECHA, CP.DUEDATE, CP.PERIOD,
+			CP.DEBIT, CP.CREDIT, CP.SALDO,
+			CP.DEPTO, CP.CCOST, CP.PROYECTO
+		FROM CARPRO CP
+		LEFT JOIN CUST C ON C.ID_N = CP.ID_N
+		WHERE CP.CONTEO > ?
+		ORDER BY CP.CONTEO ASC
+		ROWS 1 TO ?`
+
+	rows, err := c.db.Query(query, lastConteo, batchSize)
+	if err != nil {
+		return nil, fmt.Errorf("CARPRO query failed: %w", err)
+	}
+	defer rows.Close()
+
+	var records []CARPRORecord
+	for rows.Next() {
+		var r CARPRORecord
+		var idN, terceroNombre, tipo, invc, desc, period, proyecto sql.NullString
+		var acct sql.NullFloat64
+		var batch, depto, ccost sql.NullInt64
+		var fecha, duedate sql.NullTime
+		var debit, credit, saldo sql.NullFloat64
+
+		err := rows.Scan(
+			&r.Conteo, &idN, &terceroNombre,
+			&acct, &tipo, &batch, &invc,
+			&desc, &fecha, &duedate, &period,
+			&debit, &credit, &saldo,
+			&depto, &ccost, &proyecto,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("CARPRO row scan failed: %w", err)
+		}
+
+		r.TerceroID = trimString(idN)
+		r.TerceroNombre = trimString(terceroNombre)
+		if acct.Valid {
+			r.CuentaContable = fmt.Sprintf("%.4f", acct.Float64)
+			// Derive tipo_cartera from account prefix
+			acctInt := int64(acct.Float64)
+			switch {
+			case acctInt >= 1300000000 && acctInt < 1400000000:
+				r.TipoCartera = "CXC"
+			case acctInt >= 2200000000 && acctInt < 2300000000:
+				r.TipoCartera = "CXP"
+			default:
+				r.TipoCartera = "CXC"
+			}
+		}
+		r.Tipo = trimString(tipo)
+		if batch.Valid {
+			r.Batch = int(batch.Int64)
+		}
+		r.Invc = trimString(invc)
+		r.Descripcion = trimString(desc)
+		if fecha.Valid {
+			r.Fecha = fecha.Time.Format("2006-01-02")
+		}
+		if duedate.Valid {
+			r.DueDate = duedate.Time.Format("2006-01-02")
+		}
+		r.Periodo = trimString(period)
+		r.Debito = formatMoney(debit)
+		r.Credito = formatMoney(credit)
+		r.Saldo = formatMoney(saldo)
+		if depto.Valid {
+			r.Departamento = int(depto.Int64)
+		}
+		if ccost.Valid {
+			r.CentroCosto = int(ccost.Int64)
+		}
+		r.ProyectoCodigo = trimString(proyecto)
+
+		records = append(records, r)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("CARPRO rows iteration error: %w", err)
+	}
+	c.logger.Debug("CARPRO query returned records", "count", len(records))
+	return records, nil
+}
+
+// QueryITEMACTIncremental fetches ITEMACT (inventory movement) records with CONTEO > lastConteo.
+// All column names are resolved dynamically from oeColMap to handle Saiopen schema variants.
+// Fixed columns: CONTEO, FECHA, TIPO. Everything else is optional.
+func (c *Client) QueryITEMACTIncremental(lastConteo int64, batchSize int) ([]ITEMACTRecord, error) {
+	if c.db == nil {
+		return nil, fmt.Errorf("database not connected")
+	}
+
+	itemactItemnoCol := c.oeColMap["itemact_itemno"]
+	itemItemnoCol    := c.oeColMap["item_itemno"]
+	itemDescCol      := c.oeColMap["item_desc"]
+	joinActive       := itemactItemnoCol != "" && itemItemnoCol != ""
+
+	// activeItemDescCol: only non-empty when the ITEM JOIN is active.
+	activeItemDescCol := itemDescCol
+	if !joinActive {
+		activeItemDescCol = ""
+	}
+
+	type optIA struct{ key, col, alias, tbl string }
+	opts := []optIA{
+		{"itemno",     itemactItemnoCol,                        "ITEMNO",      "I"},
+		{"itemdesc",   activeItemDescCol,                       "ITEM_DESC",   "IT"},
+		{"location",   c.oeColMap["itemact_location"],          "LOCATION",    "I"},
+		{"idn",        c.oeColMap["itemact_idn"],               "ID_N",        "I"},
+		{"batch",      c.oeColMap["itemact_batch"],             "BATCH",       "I"},
+		{"qty",        c.oeColMap["itemact_qty"],               "QTY",         "I"},
+		{"cost",       c.oeColMap["itemact_cost"],              "COST",        "I"},
+		{"costpeps",   c.oeColMap["itemact_costpeps"],          "COSTPEPS",    "I"},
+		{"total",      c.oeColMap["itemact_total"],             "TOTAL",       "I"},
+		{"saldouds",   c.oeColMap["itemact_saldouds"],          "SALDOUDS",    "I"},
+		{"saldopesos", c.oeColMap["itemact_saldopesos"],        "SALDOPESOS",  "I"},
+		{"lote",       c.oeColMap["itemact_lote"],              "LOTE",        "I"},
+		{"serie",      c.oeColMap["itemact_serie"],             "SERIE",       "I"},
+		{"lote_ven",   c.oeColMap["itemact_lote_ven"],          "LOTE_VEN",    "I"},
+		{"period",     c.oeColMap["itemact_period"],            "PERIOD",      "I"},
+	}
+
+	var extraSelect string
+	for _, o := range opts {
+		if o.col != "" {
+			extraSelect += fmt.Sprintf(", %s.%s AS %s", o.tbl, o.col, o.alias)
+		}
+	}
+
+	var itemJoin string
+	if joinActive {
+		itemJoin = fmt.Sprintf("LEFT JOIN ITEM IT ON IT.%s = I.%s", itemItemnoCol, itemactItemnoCol)
+	}
+
+	query := fmt.Sprintf(`
+		SELECT I.CONTEO, I.FECHA, I.TIPO%s
+		FROM ITEMACT I %s
+		WHERE I.CONTEO > ?
+		ORDER BY I.CONTEO ASC
+		ROWS 1 TO ?`, extraSelect, itemJoin)
+
+	rows, err := c.db.Query(query, lastConteo, batchSize)
+	if err != nil {
+		return nil, fmt.Errorf("ITEMACT query failed: %w", err)
+	}
+	defer rows.Close()
+
+	var records []ITEMACTRecord
+	for rows.Next() {
+		var r ITEMACTRecord
+		var fecha sql.NullTime
+
+		scanArgs := []interface{}{&r.Conteo, &fecha, &r.Tipo}
+
+		// Optional scan vars
+		var itemno, itemDesc, location, idN, lote, serie sql.NullString
+		var batch sql.NullInt64
+		var loteVen sql.NullTime
+		var qty, cost, costPEPS, total, saldoUds, saldoPesos sql.NullFloat64
+		var period sql.NullString
+
+		for _, o := range opts {
+			if o.col == "" {
+				continue
+			}
+			switch o.key {
+			case "itemno":
+				scanArgs = append(scanArgs, &itemno)
+			case "itemdesc":
+				scanArgs = append(scanArgs, &itemDesc)
+			case "location":
+				scanArgs = append(scanArgs, &location)
+			case "idn":
+				scanArgs = append(scanArgs, &idN)
+			case "batch":
+				scanArgs = append(scanArgs, &batch)
+			case "qty":
+				scanArgs = append(scanArgs, &qty)
+			case "cost":
+				scanArgs = append(scanArgs, &cost)
+			case "costpeps":
+				scanArgs = append(scanArgs, &costPEPS)
+			case "total":
+				scanArgs = append(scanArgs, &total)
+			case "saldouds":
+				scanArgs = append(scanArgs, &saldoUds)
+			case "saldopesos":
+				scanArgs = append(scanArgs, &saldoPesos)
+			case "lote":
+				scanArgs = append(scanArgs, &lote)
+			case "serie":
+				scanArgs = append(scanArgs, &serie)
+			case "lote_ven":
+				scanArgs = append(scanArgs, &loteVen)
+			case "period":
+				scanArgs = append(scanArgs, &period)
+			}
+		}
+
+		if err := rows.Scan(scanArgs...); err != nil {
+			return nil, fmt.Errorf("ITEMACT row scan failed: %w", err)
+		}
+
+		if fecha.Valid {
+			r.Fecha = fecha.Time.Format("2006-01-02")
+		}
+		r.ItemCodigo      = trimString(itemno)
+		r.ItemDescripcion = trimString(itemDesc)
+		r.Location        = trimString(location)
+		r.TerceroID       = trimString(idN)
+		if batch.Valid {
+			r.Batch = int(batch.Int64)
+		}
+		r.Periodo       = trimString(period)
+		r.Cantidad      = formatQty(qty)
+		r.ValorUnitario = formatQty(cost)
+		r.CostoPEPS     = formatQty(costPEPS)
+		r.Total         = formatMoney(total)
+		r.SaldoUnidades = formatQty(saldoUds)
+		r.SaldoPesos    = formatMoney(saldoPesos)
+		r.Lote          = trimString(lote)
+		r.Serie         = trimString(serie)
+		if loteVen.Valid {
+			r.LoteVencimiento = loteVen.Time.Format("2006-01-02")
+		}
+
+		records = append(records, r)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("ITEMACT rows iteration error: %w", err)
+	}
+	c.logger.Debug("ITEMACT query returned records", "count", len(records))
+	return records, nil
+}
+
 // CountGL returns the total number of GL records and the max CONTEO value.
 func (c *Client) CountGL() (total int64, maxConteo int64, err error) {
 	if c.db == nil {
@@ -990,6 +1746,15 @@ func formatMoney(nf sql.NullFloat64) string {
 		return "0.00"
 	}
 	return fmt.Sprintf("%.2f", nf.Float64)
+}
+
+// formatQty formats a nullable float as a string with 4 decimal places.
+// Used for quantity and unit price fields (NUMERIC 15,4).
+func formatQty(nf sql.NullFloat64) string {
+	if !nf.Valid {
+		return "0.0000"
+	}
+	return fmt.Sprintf("%.4f", nf.Float64)
 }
 
 // maskDSN masks the password in a DSN string for safe logging.

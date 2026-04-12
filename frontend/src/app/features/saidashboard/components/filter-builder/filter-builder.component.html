@@ -1,82 +1,133 @@
-<div class="filter-builder">
-  <div class="filter-builder__header">
-    <h3 class="filter-builder__title">
-      <mat-icon>filter_list</mat-icon>
-      Filtros
-      @if (activeFilterCount > 0) {
-        <span class="filter-builder__badge">{{ activeFilterCount }}</span>
-      }
-    </h3>
-    @if (activeFilterCount > 0) {
-      <button mat-button color="primary" (click)="clearAll()">Limpiar</button>
-    }
-  </div>
+<div class="filter-builder" [class.filter-builder--horizontal]="layout() === 'horizontal'">
 
-  @if (availableFilters().length === 0) {
+  @if (layout() === 'sidebar') {
+    <div class="filter-builder__header">
+      <h3 class="filter-builder__title">
+        <mat-icon>filter_list</mat-icon>
+        Filtros
+        @if (activeFilterCount > 0) {
+          <span class="filter-builder__badge">{{ activeFilterCount }}</span>
+        }
+      </h3>
+      @if (activeFilterCount > 0) {
+        <button mat-button color="primary" (click)="clearAll()">Limpiar</button>
+      }
+    </div>
+  }
+
+  @if (availableFilters().length === 0 && layout() === 'sidebar') {
     <p class="filter-builder__empty">Selecciona una fuente de datos para ver filtros disponibles.</p>
   }
 
   <div class="filter-builder__fields">
-    @for (filterDef of availableFilters(); track filterDef.field) {
+    @for (filterDef of availableFilters(); track filterDef.key) {
       <div class="filter-field">
         @switch (filterDef.type) {
-          @case ('date_range') {
+
+          @case ('date') {
             <mat-form-field appearance="outline" class="filter-field__control">
               <mat-label>{{ filterDef.label }}</mat-label>
               <input
                 matInput
-                type="date"
-                [ngModel]="getFilterValue(filterDef.field)"
-                (ngModelChange)="updateFilter(filterDef.field, $event)">
-              @if (getFilterValue(filterDef.field)) {
-                <button matSuffix mat-icon-button (click)="clearFilter(filterDef.field)">
+                [matDatepicker]="picker"
+                [value]="getFilterDate(filterDef.key)"
+                (dateChange)="updateFilterDate(filterDef.key, $event.value)">
+              <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
+              <mat-datepicker #picker></mat-datepicker>
+              @if (getFilterValue(filterDef.key)) {
+                <button matSuffix mat-icon-button (click)="clearFilter(filterDef.key)">
                   <mat-icon>close</mat-icon>
                 </button>
               }
             </mat-form-field>
           }
-          @case ('text') {
+
+          @case ('multi_select') {
             <mat-form-field appearance="outline" class="filter-field__control">
               <mat-label>{{ filterDef.label }}</mat-label>
-              <input
-                matInput
-                [ngModel]="getFilterValue(filterDef.field)"
-                (ngModelChange)="updateFilter(filterDef.field, $event)">
-              @if (getFilterValue(filterDef.field)) {
-                <button matSuffix mat-icon-button (click)="clearFilter(filterDef.field)">
-                  <mat-icon>close</mat-icon>
-                </button>
-              }
+              <mat-select
+                multiple
+                [value]="getFilterArray(filterDef.key)"
+                (selectionChange)="updateFilter(filterDef.key, $event.value)">
+                @for (opt of getOptions(filterDef.key); track opt.value) {
+                  <mat-option [value]="opt.value">{{ opt.label }}</mat-option>
+                }
+                @if (getOptions(filterDef.key).length === 0) {
+                  <mat-option disabled>Cargando opciones...</mat-option>
+                }
+              </mat-select>
             </mat-form-field>
           }
+
+          @case ('autocomplete_multi') {
+            <!-- Terceros: chips + búsqueda con autocomplete -->
+            <mat-form-field appearance="outline" class="filter-field__control">
+              <mat-label>{{ filterDef.label }}</mat-label>
+              <mat-chip-grid #chipGridTercero>
+                @for (val of getFilterArray(filterDef.key); track val) {
+                  <mat-chip class="filter-field__tercero-chip" (removed)="removeTercero(filterDef.key, val)">
+                    <span class="filter-field__tercero-chip-label">{{ getTerceroLabel(val) }}</span>
+                    <button matChipRemove><mat-icon>cancel</mat-icon></button>
+                  </mat-chip>
+                }
+                <input
+                  #terceroInput
+                  placeholder="Buscar nombre o NIT..."
+                  [matChipInputFor]="chipGridTercero"
+                  [matAutocomplete]="autoTercero"
+                  (input)="onTerceroSearch($any($event.target).value)">
+              </mat-chip-grid>
+              <mat-autocomplete #autoTercero="matAutocomplete"
+                (optionSelected)="addTercero(filterDef.key, $event.option.value); terceroInput.value = ''">
+                @for (opt of terceroOptions(); track opt.value) {
+                  <mat-option [value]="opt" class="filter-field__tercero-option">
+                    <span class="filter-field__tercero-name">{{ opt.label.split(' (')[0] }}</span>
+                    @if (opt.label.includes('(')) {
+                      <span class="filter-field__tercero-id">{{ '(' + opt.label.split('(')[1] }}</span>
+                    }
+                  </mat-option>
+                }
+              </mat-autocomplete>
+            </mat-form-field>
+          }
+
           @case ('boolean') {
             <mat-form-field appearance="outline" class="filter-field__control">
               <mat-label>{{ filterDef.label }}</mat-label>
               <mat-select
-                [ngModel]="getFilterValue(filterDef.field)"
-                (ngModelChange)="updateFilter(filterDef.field, $event)">
+                [ngModel]="getFilterValue(filterDef.key)"
+                (ngModelChange)="updateFilter(filterDef.key, $event)">
                 <mat-option [value]="null">Todos</mat-option>
                 <mat-option [value]="true">Sí</mat-option>
                 <mat-option [value]="false">No</mat-option>
               </mat-select>
             </mat-form-field>
           }
+
           @default {
             <mat-form-field appearance="outline" class="filter-field__control">
               <mat-label>{{ filterDef.label }}</mat-label>
               <input
                 matInput
-                [ngModel]="getFilterValue(filterDef.field)"
-                (ngModelChange)="updateFilter(filterDef.field, $event)">
-              @if (getFilterValue(filterDef.field)) {
-                <button matSuffix mat-icon-button (click)="clearFilter(filterDef.field)">
+                [ngModel]="getFilterValue(filterDef.key)"
+                (ngModelChange)="updateFilter(filterDef.key, $event)">
+              @if (getFilterValue(filterDef.key)) {
+                <button matSuffix mat-icon-button (click)="clearFilter(filterDef.key)">
                   <mat-icon>close</mat-icon>
                 </button>
               }
             </mat-form-field>
           }
+
         }
       </div>
+    }
+
+    @if (layout() === 'horizontal' && activeFilterCount > 0) {
+      <button mat-stroked-button color="warn" class="filter-builder__clear-btn" (click)="clearAll()">
+        <mat-icon>clear_all</mat-icon>
+        Limpiar filtros
+      </button>
     }
   </div>
 </div>

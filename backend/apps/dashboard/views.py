@@ -409,6 +409,55 @@ class FilterPeriodosView(APIView):
         return Response(result)
 
 
+class FilterTiposDocView(APIView):
+    """GET /api/v1/dashboard/filters/tipos-doc/?source=gl"""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        company = _get_company(request)
+        if not company:
+            return Response(
+                {'error': 'Usuario sin empresa asignada'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        source = request.query_params.get('source', 'gl')
+        result = FilterService.get_available_tipos_doc(company.id, source)
+        return Response(result)
+
+
+class FilterCentrosCostoView(APIView):
+    """GET /api/v1/dashboard/filters/centros-costo/"""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        company = _get_company(request)
+        if not company:
+            return Response(
+                {'error': 'Usuario sin empresa asignada'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        result = FilterService.get_available_centros_costo(company.id)
+        return Response(result)
+
+
+class FilterActividadesView(APIView):
+    """GET /api/v1/dashboard/filters/actividades/"""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        company = _get_company(request)
+        if not company:
+            return Response(
+                {'error': 'Usuario sin empresa asignada'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        result = FilterService.get_available_actividades(company.id)
+        return Response(result)
+
+
 # ──────────────────────────────────────────────
 # Trial
 # ──────────────────────────────────────────────

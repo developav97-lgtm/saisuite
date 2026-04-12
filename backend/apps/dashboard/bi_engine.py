@@ -3,7 +3,9 @@ SaiSuite -- Dashboard: BI Query Engine
 Motor que traduce la configuración JSON de un ReportBI a queries Django ORM.
 Seguridad: company_id obligatorio en todas las queries. Sin SQL crudo.
 """
+import ast
 import logging
+import operator as _op
 from collections import OrderedDict
 from decimal import Decimal
 
@@ -15,6 +17,70 @@ from django.db.models import (
 from django.db.models.functions import Coalesce
 
 logger = logging.getLogger(__name__)
+
+
+def _normalize_dim_value(v):
+    """
+    Convierte un valor de dimensión a su representación JSON-safe, de forma que
+    str(resultado) coincida exactamente con String(valor_json) en el frontend.
+
+    Problema original: Decimal('23351501.0000') → str = '23351501.0000'
+    pero DRF serializa el Decimal y Angular lo muestra como 23351501 (sin decimales).
+    Esto causaba mismatch en las claves del pivot.
+
+    Solución: convertir Decimal a int cuando el valor es entero, o a float si tiene decimales.
+    """
+    if isinstance(v, Decimal):
+        f = float(v)
+        return int(f) if f == int(f) else f
+    return v
+
+
+_SAFE_OPS = {
+    ast.Add: _op.add,
+    ast.Sub: _op.sub,
+    ast.Mult: _op.mul,
+    ast.Div: _op.truediv,
+    ast.UAdd: _op.pos,
+    ast.USub: _op.neg,
+}
+
+
+def _eval_node(node, ctx):
+    """Evalúa un nodo AST restringido a aritmética simple + variables de ctx."""
+    if isinstance(node, ast.Constant) and isinstance(node.value, (int, float)):
+        return float(node.value)
+    if isinstance(node, ast.Name):
+        return float(ctx[node.id])  # KeyError si variable desconocida → capturado arriba
+    if isinstance(node, ast.BinOp):
+        left = _eval_node(node.left, ctx)
+        right = _eval_node(node.right, ctx)
+        fn = _SAFE_OPS.get(type(node.op))
+        if fn is None:
+            raise ValueError(f'Operador no permitido: {type(node.op).__name__}')
+        return fn(left, right)
+    if isinstance(node, ast.UnaryOp):
+        operand = _eval_node(node.operand, ctx)
+        fn = _SAFE_OPS.get(type(node.op))
+        if fn is None:
+            raise ValueError(f'Operador unario no permitido: {type(node.op).__name__}')
+        return fn(operand)
+    raise ValueError(f'Nodo AST no permitido: {type(node).__name__}')
+
+
+def _safe_eval_formula(formula: str, context: dict) -> float | None:
+    """
+    Evalúa una fórmula aritmética simple con variables del contexto.
+    Solo permite: constantes numéricas, variables conocidas, +, -, *, /.
+    No permite llamadas a funciones, atributos, ni imports.
+    Retorna None si la fórmula es inválida o hay división por cero.
+    """
+    try:
+        tree = ast.parse(formula.strip(), mode='eval')
+        return _eval_node(tree.body, context)
+    except (ZeroDivisionError, KeyError, ValueError, TypeError, SyntaxError):
+        return None
+
 
 _AGGREGATION_MAP = {
     'SUM': Sum,
@@ -31,6 +97,7 @@ SOURCE_MODEL_MAP = {
     'facturacion_detalle': 'contabilidad.FacturaDetalle',
     'cartera': 'contabilidad.MovimientoCartera',
     'inventario': 'contabilidad.MovimientoInventario',
+    'terceros': 'terceros.Tercero',
 }
 
 # Definición de campos disponibles por fuente, organizados por categoría
@@ -192,6 +259,25 @@ SOURCE_FIELDS = {
             {'field': 'lote_vencimiento', 'label': 'Vencimiento lote', 'type': 'date', 'role': 'dimension'},
         ],
     },
+    'terceros': {
+        'Identificación': [
+            {'field': 'codigo', 'label': 'Código', 'type': 'text', 'role': 'dimension'},
+            {'field': 'tipo_identificacion', 'label': 'Tipo ID', 'type': 'text', 'role': 'dimension'},
+            {'field': 'numero_identificacion', 'label': 'Número ID', 'type': 'text', 'role': 'dimension'},
+            {'field': 'nombre_completo', 'label': 'Nombre completo', 'type': 'text', 'role': 'dimension'},
+            {'field': 'tipo_persona', 'label': 'Tipo persona', 'type': 'text', 'role': 'dimension'},
+            {'field': 'tipo_tercero', 'label': 'Tipo tercero', 'type': 'text', 'role': 'dimension'},
+        ],
+        'Contacto': [
+            {'field': 'email', 'label': 'Email', 'type': 'text', 'role': 'dimension'},
+            {'field': 'telefono', 'label': 'Teléfono', 'type': 'text', 'role': 'dimension'},
+            {'field': 'celular', 'label': 'Celular', 'type': 'text', 'role': 'dimension'},
+        ],
+        'Estado': [
+            {'field': 'activo', 'label': 'Activo', 'type': 'boolean', 'role': 'dimension'},
+            {'field': 'saiopen_synced', 'label': 'Sincronizado con Saiopen', 'type': 'boolean', 'role': 'dimension'},
+        ],
+    },
 }
 
 # Filtros aplicables por fuente
@@ -207,6 +293,7 @@ SOURCE_FILTERS = {
         {'key': 'proyecto_codigos', 'label': 'Proyectos', 'type': 'multi_select', 'field': 'proyecto_codigo__in'},
         {'key': 'departamento_codigos', 'label': 'Departamentos', 'type': 'multi_select', 'field': 'departamento_codigo__in'},
         {'key': 'centro_costo_codigos', 'label': 'Centros de costo', 'type': 'multi_select', 'field': 'centro_costo_codigo__in'},
+        {'key': 'actividad_codigos', 'label': 'Actividades', 'type': 'multi_select', 'field': 'actividad_codigo__in'},
     ],
     'facturacion': [
         {'key': 'fecha_desde', 'label': 'Fecha desde', 'type': 'date', 'field': 'fecha__gte'},
@@ -242,6 +329,12 @@ SOURCE_FILTERS = {
         {'key': 'location', 'label': 'Bodega', 'type': 'select', 'field': 'location'},
         {'key': 'tipo_doc', 'label': 'Tipo documento', 'type': 'multi_select', 'field': 'tipo__in'},
     ],
+    'terceros': [
+        {'key': 'tipo_tercero', 'label': 'Tipo tercero', 'type': 'select', 'field': 'tipo_tercero'},
+        {'key': 'tipo_persona', 'label': 'Tipo persona', 'type': 'select', 'field': 'tipo_persona'},
+        {'key': 'tipo_identificacion', 'label': 'Tipo ID', 'type': 'select', 'field': 'tipo_identificacion'},
+        {'key': 'activo', 'label': 'Solo activos', 'type': 'boolean', 'field': 'activo'},
+    ],
 }
 
 # Metadatos de fuentes para el selector
@@ -275,6 +368,12 @@ SOURCE_META = [
         'label': 'Inventario',
         'icon': 'inventory_2',
         'description': 'Entradas, salidas, saldos, rotación',
+    },
+    {
+        'key': 'terceros',
+        'label': 'Terceros',
+        'icon': 'people',
+        'description': 'Clientes, proveedores y contactos con información de identificación y contacto',
     },
 ]
 
@@ -334,27 +433,37 @@ class BIQueryEngine:
         # Aplicar filtros
         qs = self._apply_filters(qs, report.filtros or {}, source)
 
-        # Separar dimensiones y métricas
+        # Separar dimensiones, métricas y campos calculados
         dimensions = []
         metrics = []
+        calc_fields_table = []   # [{field_alias, formula, label}]
+        field_to_alias = {}       # field_name → alias (para evaluar fórmulas)
         columns = []
         for campo in (report.campos_config or []):
             field_name = campo.get('field', '')
+            label = campo.get('label', field_name)
+            if campo.get('is_calculated'):
+                formula = campo.get('formula', '')
+                if field_name and formula:
+                    calc_fields_table.append({'field_alias': field_name, 'formula': formula, 'label': label})
+                    columns.append({'field': field_name, 'label': label, 'type': 'metric'})
+                continue
             if field_name not in valid_fields:
                 continue
             role = campo.get('role', 'dimension')
-            label = campo.get('label', field_name)
             if role == 'metric':
                 agg = campo.get('aggregation', 'SUM').upper()
                 if agg not in _AGGREGATION_MAP:
                     agg = 'SUM'
+                alias = f"{field_name}_{agg.lower()}"
                 metrics.append({'field': field_name, 'aggregation': agg, 'label': label})
-                columns.append({'field': f'{field_name}_{agg.lower()}', 'label': label, 'type': 'metric'})
+                field_to_alias[field_name] = alias
+                columns.append({'field': alias, 'label': label, 'type': 'metric'})
             else:
                 dimensions.append(field_name)
                 columns.append({'field': field_name, 'label': label, 'type': 'dimension'})
 
-        if not dimensions and not metrics:
+        if not dimensions and not metrics and not calc_fields_table:
             return {'columns': [], 'rows': [], 'total_count': 0}
 
         # Si hay métricas con agregación, agrupar por dimensiones
@@ -377,6 +486,10 @@ class BIQueryEngine:
             row = {}
             for key, val in result.items():
                 row[key] = float(val) if val is not None else 0
+            if calc_fields_table:
+                ctx = {f: row.get(a, 0) for f, a in field_to_alias.items()}
+                for cf in calc_fields_table:
+                    row[cf['field_alias']] = _safe_eval_formula(cf['formula'], ctx) or 0
             return {'columns': columns, 'rows': [row], 'total_count': 1}
         else:
             # Solo dimensiones, sin agregación
@@ -402,11 +515,18 @@ class BIQueryEngine:
         limit = min(limit, _MAX_PAGE_SIZE)
         rows = list(qs[:limit])
 
-        # Serializar Decimals a float para JSON
+        # Normalizar Decimals: enteros como int, decimales como float
         for row in rows:
             for key, val in row.items():
                 if isinstance(val, Decimal):
-                    row[key] = float(val)
+                    row[key] = _normalize_dim_value(val)
+
+        # Evaluar campos calculados sobre cada fila
+        if calc_fields_table:
+            for row in rows:
+                ctx = {f: float(row.get(a) or 0) for f, a in field_to_alias.items()}
+                for cf in calc_fields_table:
+                    row[cf['field_alias']] = _safe_eval_formula(cf['formula'], ctx) or 0
 
         return {
             'columns': columns,
@@ -446,17 +566,25 @@ class BIQueryEngine:
         group_fields = row_fields + col_fields
         qs = qs.values(*group_fields)
 
-        # Anotar valores
+        # Separar métricas normales de calculadas
         annotations = {}
+        calc_fields = []          # [{alias, formula}]
+        field_to_alias = {}       # field_name → alias (para evaluar fórmulas)
+
         for vc in value_configs:
             field = vc.get('field', '')
-            agg = vc.get('aggregation', 'SUM').upper()
-            if field not in valid_fields or agg not in _AGGREGATION_MAP:
-                continue
-            alias = f"{field}_{agg.lower()}"
-            annotations[alias] = _AGGREGATION_MAP[agg](field)
+            if vc.get('is_calculated'):
+                formula = vc.get('formula', '')
+                if field and formula:
+                    calc_fields.append({'alias': field, 'formula': formula})
+            else:
+                agg = vc.get('aggregation', 'SUM').upper()
+                if field in valid_fields and agg in _AGGREGATION_MAP:
+                    alias = f"{field}_{agg.lower()}"
+                    annotations[alias] = _AGGREGATION_MAP[agg](field)
+                    field_to_alias[field] = alias
 
-        if not annotations:
+        if not annotations and not calc_fields:
             return self._empty_pivot()
 
         qs = qs.annotate(**annotations)
@@ -467,25 +595,35 @@ class BIQueryEngine:
         col_keys = OrderedDict()
         cells = {}
 
-        for row in data_rows:
-            rk = tuple(row.get(f) for f in row_fields)
-            ck = tuple(row.get(f) for f in col_fields) if col_fields else ('total',)
+        no_col = not col_fields
 
-            row_key_str = '|'.join(str(v) for v in rk)
-            col_key_str = '|'.join(str(v) for v in ck)
+        for row in data_rows:
+            # Normalizar valores de dimensión para que str() coincida con String() del frontend
+            rk = tuple(_normalize_dim_value(row.get(f)) for f in row_fields)
+            ck = tuple(_normalize_dim_value(row.get(f)) for f in col_fields) if col_fields else ('Total',)
+
+            row_key_str = '|'.join('' if v is None else str(v) for v in rk)
+            col_key_str = '|'.join('' if v is None else str(v) for v in ck)
 
             if row_key_str not in row_keys:
-                row_keys[row_key_str] = {f: row.get(f) for f in row_fields}
+                # Guardar los valores normalizados para que la serialización JSON sea consistente con la clave
+                row_keys[row_key_str] = {f: _normalize_dim_value(row.get(f)) for f in row_fields}
             if col_key_str not in col_keys:
-                col_keys[col_key_str] = {f: row.get(f) for f in col_fields} if col_fields else {'total': 'Total'}
+                col_keys[col_key_str] = {f: _normalize_dim_value(row.get(f)) for f in col_fields} if col_fields else {'_total': 'Total'}
 
             cell_values = {}
             for alias in annotations:
                 val = row.get(alias)
                 cell_values[alias] = float(val) if isinstance(val, Decimal) else (val or 0)
+
+            # Evaluar campos calculados sobre los valores de la celda
+            ctx = {f: cell_values.get(a, 0) for f, a in field_to_alias.items()}
+            for cf in calc_fields:
+                cell_values[cf['alias']] = _safe_eval_formula(cf['formula'], ctx) or 0
+
             cells[f'{row_key_str}___{col_key_str}'] = cell_values
 
-        # Calcular totales de fila y columna
+        # Calcular totales de fila y columna (solo métricas normales primero)
         row_totals = {}
         col_totals = {}
         grand_total = {alias: 0 for alias in annotations}
@@ -497,6 +635,10 @@ class BIQueryEngine:
                 for alias in annotations:
                     val = cell.get(alias, 0)
                     row_totals[rk_str][alias] += val
+            # Evaluar campos calculados sobre los totales de fila
+            ctx = {f: row_totals[rk_str].get(a, 0) for f, a in field_to_alias.items()}
+            for cf in calc_fields:
+                row_totals[rk_str][cf['alias']] = _safe_eval_formula(cf['formula'], ctx) or 0
 
         for ck_str in col_keys:
             col_totals[ck_str] = {alias: 0 for alias in annotations}
@@ -506,6 +648,30 @@ class BIQueryEngine:
                     val = cell.get(alias, 0)
                     col_totals[ck_str][alias] += val
                     grand_total[alias] += val
+            # Evaluar campos calculados sobre los totales de columna
+            ctx = {f: col_totals[ck_str].get(a, 0) for f, a in field_to_alias.items()}
+            for cf in calc_fields:
+                col_totals[ck_str][cf['alias']] = _safe_eval_formula(cf['formula'], ctx) or 0
+
+        # Totales generales (grand_total) para campos calculados
+        ctx_grand = {f: grand_total.get(a, 0) for f, a in field_to_alias.items()}
+        for cf in calc_fields:
+            grand_total[cf['alias']] = _safe_eval_formula(cf['formula'], ctx_grand) or 0
+
+        # Construir etiquetas de métricas desde campos_config
+        value_labels = {}
+        campos = getattr(report, 'campos_config', []) or []
+        for campo in campos:
+            if campo.get('role') == 'metric':
+                if campo.get('is_calculated'):
+                    alias = campo.get('field', '')
+                else:
+                    field_name = campo.get('field', '')
+                    agg = (campo.get('aggregation') or 'SUM').upper()
+                    alias = f"{field_name}_{agg.lower()}"
+                value_labels[alias] = campo.get('label', alias)
+
+        all_aliases = list(annotations.keys()) + [cf['alias'] for cf in calc_fields]
 
         return {
             'row_headers': list(row_keys.values()),
@@ -514,7 +680,9 @@ class BIQueryEngine:
             'row_totals': row_totals,
             'col_totals': col_totals,
             'grand_total': grand_total,
-            'value_aliases': list(annotations.keys()),
+            'value_aliases': all_aliases,
+            'no_column_mode': no_col,
+            'value_labels': value_labels,
         }
 
     def get_available_sources(self) -> list:
@@ -539,4 +707,6 @@ class BIQueryEngine:
             'col_totals': {},
             'grand_total': {},
             'value_aliases': [],
+            'no_column_mode': False,
+            'value_labels': {},
         }

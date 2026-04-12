@@ -1,3 +1,13 @@
+.chart-axis-selector {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+
+  &__field {
+    width: 220px;
+  }
+}
+
 .chart-container {
   position: relative;
   width: 100%;

@@ -28,6 +28,8 @@ from django.conf import settings
 
 from apps.contabilidad.services import SyncService
 
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -44,6 +46,30 @@ def _handle_acct_full(company_id: str, data: dict) -> dict:
     records = data.get('records', [])
     logger.info('acct_full_received', extra={'record_count': len(records), 'data_keys': list(data.keys())})
     return SyncService.process_acct_full(company_id=company_id, records=records)
+
+
+def _handle_oe_batch(company_id: str, data: dict) -> dict:
+    """Procesa un batch de encabezados de factura (OE)."""
+    records = data.get('records', [])
+    return SyncService.process_oe_batch(company_id=company_id, records=records)
+
+
+def _handle_oedet_batch(company_id: str, data: dict) -> dict:
+    """Procesa un batch de líneas de factura (OEDET)."""
+    records = data.get('records', [])
+    return SyncService.process_oedet_batch(company_id=company_id, records=records)
+
+
+def _handle_carpro_batch(company_id: str, data: dict) -> dict:
+    """Procesa un batch de movimientos de cartera (CARPRO)."""
+    records = data.get('records', [])
+    return SyncService.process_carpro_batch(company_id=company_id, records=records)
+
+
+def _handle_itemact_batch(company_id: str, data: dict) -> dict:
+    """Procesa un batch de movimientos de inventario (ITEMACT)."""
+    records = data.get('records', [])
+    return SyncService.process_itemact_batch(company_id=company_id, records=records)
 
 
 def _handle_reference(table: str, company_id: str, data: dict) -> dict:
@@ -79,6 +105,14 @@ def _dispatch(msg_type: str, company_id: str, data: dict) -> dict:
         return _handle_gl_batch(company_id, data)
     if msg_type == 'acct_full':
         return _handle_acct_full(company_id, data)
+    if msg_type == 'oe_batch':
+        return _handle_oe_batch(company_id, data)
+    if msg_type == 'oedet_batch':
+        return _handle_oedet_batch(company_id, data)
+    if msg_type == 'carpro_batch':
+        return _handle_carpro_batch(company_id, data)
+    if msg_type == 'itemact_batch':
+        return _handle_itemact_batch(company_id, data)
     if msg_type in _REFERENCE_TYPE_MAP:
         return _handle_reference(_REFERENCE_TYPE_MAP[msg_type], company_id, data)
     raise ValueError(f'Unknown message type: {msg_type}')

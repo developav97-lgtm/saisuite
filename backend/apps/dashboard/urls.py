@@ -31,6 +31,9 @@ from apps.dashboard.views import (
     FilterProyectosView,
     FilterDepartamentosView,
     FilterPeriodosView,
+    FilterTiposDocView,
+    FilterCentrosCostoView,
+    FilterActividadesView,
     # Trial
     TrialActivateView,
     TrialStatusView,
@@ -83,6 +86,9 @@ urlpatterns = [
     path('filters/proyectos/', FilterProyectosView.as_view(), name='filter-proyectos'),
     path('filters/departamentos/', FilterDepartamentosView.as_view(), name='filter-departamentos'),
     path('filters/periodos/', FilterPeriodosView.as_view(), name='filter-periodos'),
+    path('filters/tipos-doc/', FilterTiposDocView.as_view(), name='filter-tipos-doc'),
+    path('filters/centros-costo/', FilterCentrosCostoView.as_view(), name='filter-centros-costo'),
+    path('filters/actividades/', FilterActividadesView.as_view(), name='filter-actividades'),
 
     # ── Trial ──
     path('trial/activate/', TrialActivateView.as_view(), name='trial-activate'),

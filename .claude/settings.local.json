@@ -333,7 +333,9 @@
       "Bash(python manage.py makemigrations users chat)",
       "Bash(aws --version)",
       "Bash(aws sts:*)",
-      "Bash(python manage.py makemigrations companies --name=\"remove_plan_add_renewal_type_add_module_trial\")"
+      "Bash(python manage.py makemigrations companies --name=\"remove_plan_add_renewal_type_add_module_trial\")",
+      "Bash(docker-compose stop:*)",
+      "Bash(docker-compose rm:*)"
     ]
   }
 }

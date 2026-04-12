@@ -13,6 +13,7 @@ Reglas detalladas por área están en `.claude/rules/` (se cargan automáticamen
 **BD:** company_id en TODO, UUID v4, dinero `NUMERIC(15,2)`, Firebird `sai_key` + `unique_together`.
 **Tests:** Junto con código. Backend services ≥80%. Frontend services =100%, components ≥70%.
 **Commits:** `<tipo>(<scope>): <desc>`. Nunca `.env` en git.
+**Idioma:** SIEMPRE responder en español. Planes, documentos y respuestas en español. El código fuente puede estar en inglés.
 
 Reglas completas: `.claude/rules/backend/django.md`, `.claude/rules/frontend/angular.md`
 

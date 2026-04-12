@@ -16,6 +16,19 @@
     }
   </div>
 } @else if (isChart()) {
+  <!-- Selector de Eje X (solo si hay ≥2 dimensiones) -->
+  @if (dimensions().length > 1) {
+    <div class="chart-axis-selector">
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="chart-axis-selector__field">
+        <mat-label>Eje X</mat-label>
+        <mat-select [ngModel]="xAxisField()" (ngModelChange)="xAxisField.set($event)">
+          @for (dim of dimensions(); track dim.field) {
+            <mat-option [value]="dim.field">{{ dim.label }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    </div>
+  }
   <div class="chart-container">
     @if (chartConfig(); as config) {
       <canvas baseChart

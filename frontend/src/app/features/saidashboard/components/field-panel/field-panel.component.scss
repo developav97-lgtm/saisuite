@@ -13,23 +13,337 @@
   }
 }
 
+// ── Orden de campos (drag-and-drop) ─────────────────────────────
+.field-order {
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--sc-border, #e0e0e0);
+
+  &__title {
+    margin: 0 0 6px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--sc-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  &__list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  &__item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 6px;
+    border-radius: 6px;
+    background: var(--sc-surface-variant, #f5f5f5);
+    cursor: default;
+
+    &.cdk-drag-preview {
+      box-shadow: 0 4px 12px rgba(0, 0, 0, .15);
+      border-radius: 6px;
+      background: var(--sc-surface-variant, #f5f5f5);
+    }
+
+    &.cdk-drag-animating {
+      transition: transform 250ms ease;
+    }
+  }
+
+  &__handle {
+    cursor: grab;
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    color: var(--sc-text-disabled);
+    flex-shrink: 0;
+  }
+
+  &__label {
+    flex: 1;
+    font-size: 12px;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__role {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--sc-text-secondary);
+    flex-shrink: 0;
+  }
+
+  &__placeholder {
+    height: 32px;
+    border: 1px dashed var(--sc-primary);
+    border-radius: 6px;
+    background: var(--sc-primary-light, #e3f2fd);
+  }
+}
+
+// ── Ítem de campo ────────────────────────────────────────────────
 .field-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 4px 0;
+  gap: 6px;
+  padding: 3px 0;
+  min-height: 36px;
 
-  &__agg {
-    width: 120px;
-    font-size: 12px;
+  &__checkbox {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
 
-    ::ng-deep .mat-mdc-form-field-infix {
-      min-height: 32px;
-      padding: 4px 0;
+    // Truncar nombre largo
+    ::ng-deep .mdc-label {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-size: 13px;
+    }
+  }
+
+  &__controls {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+
+  // Botón compacto de control (Rol / Agg / Formato)
+  &__ctrl-btn {
+    height: 28px !important;
+    line-height: 28px !important;
+    padding: 0 6px !important;
+    font-size: 11px !important;
+    font-weight: 600;
+    min-width: unset !important;
+    border-radius: 6px !important;
+    display: flex !important;
+    align-items: center;
+    gap: 0;
+
+    mat-icon {
+      font-size: 16px;
+      width: 16px;
+      height: 16px;
+      margin-left: -2px;
+    }
+
+    &--fmt {
+      color: var(--sc-primary);
+      border-color: var(--sc-primary);
+      min-width: 44px !important;
     }
   }
 }
 
+// Ítem activo en el menú
+::ng-deep .field-item__menu-active {
+  font-weight: 600;
+  color: var(--sc-primary) !important;
+}
+
 mat-expansion-panel {
   margin-bottom: 4px;
+}
+
+// ── Campo calculado ───────────────────────────────────────────────
+.calc-field {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--sc-border, #e0e0e0);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  &__title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--sc-text-secondary);
+
+    mat-icon {
+      font-size: 16px;
+      width: 16px;
+      height: 16px;
+    }
+  }
+
+  &__input {
+    width: 100%;
+  }
+
+  &__chips-label {
+    font-size: 11px;
+    color: var(--sc-text-secondary);
+    margin-bottom: 4px;
+  }
+
+  &__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: 4px;
+  }
+
+  &__chip {
+    cursor: pointer;
+    font-size: 11px;
+    height: 24px !important;
+    font-family: monospace;
+  }
+}
+
+// ── Campos calculados activos ─────────────────────────────────────
+.calc-active {
+  background: var(--sc-surface-variant, #f5f5f5);
+  border-radius: 8px;
+  padding: 8px;
+
+  &__label {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--sc-text-secondary);
+    margin-bottom: 6px;
+  }
+
+  &__item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 0;
+
+    &:not(:last-child) {
+      border-bottom: 1px solid var(--sc-border, #e0e0e0);
+      margin-bottom: 3px;
+    }
+  }
+
+  &__icon {
+    font-size: 14px;
+    width: 14px;
+    height: 14px;
+    color: var(--sc-primary);
+    flex-shrink: 0;
+  }
+
+  &__name {
+    font-size: 12px;
+    font-weight: 500;
+    flex-shrink: 0;
+  }
+
+  &__formula {
+    font-size: 11px;
+    color: var(--sc-text-secondary);
+    font-family: monospace;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin: 0 4px;
+  }
+
+  &__remove {
+    width: 24px !important;
+    height: 24px !important;
+    flex-shrink: 0;
+
+    mat-icon {
+      font-size: 14px;
+      width: 14px;
+      height: 14px;
+    }
+  }
+}
+
+// ── Plantillas guardadas ──────────────────────────────────────────
+.calc-templates {
+  border-top: 1px dashed var(--sc-border, #e0e0e0);
+  padding-top: 8px;
+
+  &__label {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--sc-text-secondary);
+    margin-bottom: 6px;
+  }
+
+  &__item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 6px;
+    border-radius: 6px;
+    transition: background 150ms;
+
+    &:hover {
+      background: var(--sc-surface-variant, #f5f5f5);
+    }
+  }
+
+  &__icon {
+    font-size: 14px;
+    width: 14px;
+    height: 14px;
+    color: var(--sc-text-secondary);
+    flex-shrink: 0;
+  }
+
+  &__info {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+    gap: 1px;
+  }
+
+  &__name {
+    font-size: 12px;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__formula {
+    font-size: 10px;
+    color: var(--sc-text-secondary);
+    font-family: monospace;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__add,
+  &__delete {
+    width: 28px !important;
+    height: 28px !important;
+    flex-shrink: 0;
+
+    mat-icon {
+      font-size: 16px;
+      width: 16px;
+      height: 16px;
+    }
+  }
+
+  &__delete {
+    color: var(--sc-error, #f44336);
+  }
 }

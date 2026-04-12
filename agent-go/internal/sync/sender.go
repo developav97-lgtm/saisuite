@@ -15,6 +15,10 @@ import (
 type Sender interface {
 	PostGLBatch(payload api.GLBatchPayload) error
 	PostReference(table string, payload api.ReferencePayload) error
+	PostOEBatch(payload api.OEBatchPayload) error
+	PostOEDetBatch(payload api.OEBatchPayload) error
+	PostCARPROBatch(payload api.OEBatchPayload) error
+	PostITEMACTBatch(payload api.OEBatchPayload) error
 }
 
 // ── HTTP sender (wraps api.Client) ───────────────────────────────────────────
@@ -34,6 +38,22 @@ func (s *httpSender) PostGLBatch(payload api.GLBatchPayload) error {
 
 func (s *httpSender) PostReference(table string, payload api.ReferencePayload) error {
 	return s.client.PostReference(table, payload)
+}
+
+func (s *httpSender) PostOEBatch(payload api.OEBatchPayload) error {
+	return s.client.PostOEBatch(payload)
+}
+
+func (s *httpSender) PostOEDetBatch(payload api.OEBatchPayload) error {
+	return s.client.PostOEDetBatch(payload)
+}
+
+func (s *httpSender) PostCARPROBatch(payload api.OEBatchPayload) error {
+	return s.client.PostCARPROBatch(payload)
+}
+
+func (s *httpSender) PostITEMACTBatch(payload api.OEBatchPayload) error {
+	return s.client.PostITEMACTBatch(payload)
 }
 
 // ── SQS sender (wraps sqs.Publisher) ─────────────────────────────────────────
@@ -79,4 +99,39 @@ func (s *sqsSender) PostReference(table string, payload api.ReferencePayload) er
 		Data:      payload.Data,
 	}
 	return s.pub.Publish(context.Background(), msg)
+}
+
+func (s *sqsSender) postTransactional(payload api.OEBatchPayload) error {
+	data, err := json.Marshal(payload.Data)
+	if err != nil {
+		return fmt.Errorf("sqsSender: marshal transactional data: %w", err)
+	}
+	var rawData interface{}
+	if err := json.Unmarshal(data, &rawData); err != nil {
+		return fmt.Errorf("sqsSender: unmarshal transactional data: %w", err)
+	}
+	msg := sqs.Message{
+		Type:      payload.Type,
+		CompanyID: payload.CompanyID,
+		ConnID:    payload.ConnID,
+		Timestamp: payload.Timestamp,
+		Data:      rawData,
+	}
+	return s.pub.Publish(context.Background(), msg)
+}
+
+func (s *sqsSender) PostOEBatch(payload api.OEBatchPayload) error {
+	return s.postTransactional(payload)
+}
+
+func (s *sqsSender) PostOEDetBatch(payload api.OEBatchPayload) error {
+	return s.postTransactional(payload)
+}
+
+func (s *sqsSender) PostCARPROBatch(payload api.OEBatchPayload) error {
+	return s.postTransactional(payload)
+}
+
+func (s *sqsSender) PostITEMACTBatch(payload api.OEBatchPayload) error {
+	return s.postTransactional(payload)
 }

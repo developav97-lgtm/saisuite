@@ -180,6 +180,7 @@ func (o *Orchestrator) runWorker(ctx context.Context, conn config.Connection) {
 	// Run immediately on startup, then on ticker
 	o.doGLSync(conn, logger)
 	o.doCustSync(conn, logger)
+	o.doTransactionalSync(conn, logger)
 	o.doReferenceSync(conn, logger)
 
 	for {
@@ -190,6 +191,7 @@ func (o *Orchestrator) runWorker(ctx context.Context, conn config.Connection) {
 		case <-glTicker.C:
 			o.doGLSync(conn, logger)
 			o.doCustSync(conn, logger)
+			o.doTransactionalSync(conn, logger)
 		case <-refTicker.C:
 			o.doReferenceSync(conn, logger)
 		}
@@ -206,6 +208,10 @@ func (o *Orchestrator) syncOnce(conn config.Connection) error {
 
 	if err := o.doCustSync(conn, logger); err != nil {
 		return fmt.Errorf("CUST sync failed: %w", err)
+	}
+
+	if err := o.doTransactionalSync(conn, logger); err != nil {
+		return fmt.Errorf("transactional sync failed: %w", err)
 	}
 
 	if err := o.doReferenceSync(conn, logger); err != nil {
@@ -257,6 +263,26 @@ func (o *Orchestrator) doCustSync(conn config.Connection, logger *slog.Logger) e
 	syncer := NewReferenceSync(o.cfg, fbClient, sender, logger)
 	if err := syncer.SyncCustIncremental(conn); err != nil {
 		logger.Error("CUST incremental sync failed", "conn_id", conn.ID, "error", err)
+		return err
+	}
+	return nil
+}
+
+// doTransactionalSync runs OE → OEDET → CARPRO → ITEMACT incremental sync.
+func (o *Orchestrator) doTransactionalSync(conn config.Connection, logger *slog.Logger) error {
+	logger.Info("starting transactional sync cycle")
+
+	fbClient := firebird.New(conn.Firebird.DSN(), logger)
+	if err := fbClient.Connect(); err != nil {
+		logger.Error("firebird connection failed for transactional sync", "error", err)
+		return err
+	}
+	defer fbClient.Close()
+
+	sender := o.buildSender(conn, logger)
+	syncer := NewTransactionalSync(o.cfg, fbClient, sender, logger)
+	if err := syncer.SyncAll(conn); err != nil {
+		logger.Error("transactional sync failed", "conn_id", conn.ID, "error", err)
 		return err
 	}
 	return nil

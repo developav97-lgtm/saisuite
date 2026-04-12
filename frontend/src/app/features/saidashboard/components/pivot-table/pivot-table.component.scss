@@ -27,6 +27,13 @@
     }
   }
 
+  &__metric-subheader {
+    font-size: 11px;
+    font-weight: 500;
+    font-style: italic;
+    min-width: 90px;
+  }
+
   &__dim-cell {
     background: var(--sc-surface, #fff);
     font-weight: 500;

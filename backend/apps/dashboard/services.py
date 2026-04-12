@@ -577,6 +577,52 @@ class FilterService:
         )
         return [{'periodo': p} for p in periodos]
 
+    @staticmethod
+    def get_available_tipos_doc(company_id, source: str = 'gl') -> list[dict]:
+        """Retorna tipos de documento únicos disponibles para la fuente indicada."""
+        # Por ahora solo GL (MovimientoContable); se puede extender a otras fuentes
+        tipos = (
+            MovimientoContable.objects.filter(
+                company_id=company_id,
+            )
+            .exclude(tipo__isnull=True)
+            .exclude(tipo='')
+            .values_list('tipo', flat=True)
+            .distinct()
+            .order_by('tipo')
+        )
+        return [{'tipo': t} for t in tipos]
+
+    @staticmethod
+    def get_available_centros_costo(company_id) -> list[dict]:
+        """Retorna centros de costo únicos disponibles."""
+        centros = (
+            MovimientoContable.objects.filter(
+                company_id=company_id,
+            )
+            .exclude(centro_costo_codigo__isnull=True)
+            .exclude(centro_costo_codigo=0)
+            .values('centro_costo_codigo', 'centro_costo_nombre')
+            .distinct()
+            .order_by('centro_costo_codigo')
+        )
+        return list(centros)
+
+    @staticmethod
+    def get_available_actividades(company_id) -> list[dict]:
+        """Retorna actividades únicas disponibles."""
+        actividades = (
+            MovimientoContable.objects.filter(
+                company_id=company_id,
+            )
+            .exclude(actividad_codigo__isnull=True)
+            .exclude(actividad_codigo='')
+            .values_list('actividad_codigo', flat=True)
+            .distinct()
+            .order_by('actividad_codigo')
+        )
+        return [{'actividad_codigo': a} for a in actividades]
+
 
 # ──────────────────────────────────────────────
 # Catalog Service

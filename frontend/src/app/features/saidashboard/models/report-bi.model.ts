@@ -118,9 +118,16 @@ export interface ReportBIExecuteRequest {
   limite_registros?: number | null;
 }
 
+/** Columna de resultado — tal como la devuelve el backend. */
+export interface ReportBIColumn {
+  field: string;
+  label: string;
+  type: 'dimension' | 'metric';
+}
+
 /** Resultado de ejecución — tabla plana. */
 export interface ReportBITableResult {
-  columns: string[];
+  columns: ReportBIColumn[];
   rows: Record<string, unknown>[];
   total_count: number;
 }
@@ -134,6 +141,8 @@ export interface ReportBIPivotResult {
   col_totals: Record<string, Record<string, number>>;
   grand_total: Record<string, number>;
   value_aliases: string[];
+  no_column_mode: boolean;
+  value_labels: Record<string, string>;
 }
 
 /** Resultado unificado de ejecución de reporte. */

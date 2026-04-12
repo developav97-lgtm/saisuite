@@ -191,7 +191,7 @@ export class ReportViewerComponent implements OnInit {
             this.drillDown.set({
               title: `Detalle: ${Object.values(event.rowHeaders).join(' / ')} × ${Object.values(event.colHeaders).join(' / ')}`,
               filters: { ...event.rowHeaders, ...event.colHeaders },
-              columns: res.columns,
+              columns: res.columns.map(c => c.field),
               rows: res.rows,
               loading: false,
             });
@@ -242,7 +242,7 @@ export class ReportViewerComponent implements OnInit {
             this.drillDown.set({
               title: `Detalle: ${event.label}`,
               filters: { [filterField]: event.label },
-              columns: res.columns,
+              columns: res.columns.map(c => c.field),
               rows: res.rows,
               loading: false,
             });

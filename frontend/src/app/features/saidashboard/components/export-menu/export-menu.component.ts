@@ -7,8 +7,8 @@ import {
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { utils, writeFileXLSX } from 'xlsx';
+
 import { saveAs } from 'file-saver';
 import {
   ReportBIExecuteResult,
@@ -16,13 +16,13 @@ import {
   isTableResult,
   isPivotResult,
 } from '../../models/report-bi.model';
-import { ReportBIService } from '../../services/report-bi.service';
+import { BIFieldConfig } from '../../models/bi-field.model';
 import { ToastService } from '../../../../core/services/toast.service';
 
 @Component({
   selector: 'app-export-menu',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [MatButtonModule, MatIconModule, MatMenuModule, MatProgressSpinnerModule],
+  imports: [MatButtonModule, MatIconModule, MatMenuModule],
   template: `
     <button mat-stroked-button [matMenuTriggerFor]="exportMenu" [disabled]="!data()">
       <mat-icon>download</mat-icon>
@@ -37,20 +37,16 @@ import { ToastService } from '../../../../core/services/toast.service';
         <mat-icon>description</mat-icon>
         CSV (.csv)
       </button>
-      <button mat-menu-item (click)="exportPdf()">
-        <mat-icon>picture_as_pdf</mat-icon>
-        PDF
-      </button>
     </mat-menu>
   `,
 })
 export class ExportMenuComponent {
-  private readonly reportService = inject(ReportBIService);
   private readonly toast = inject(ToastService);
 
   readonly data = input<ReportBIExecuteResult | null>(null);
   readonly title = input('Reporte');
   readonly reportId = input<string | null>(null);
+  readonly fieldConfigs = input<BIFieldConfig[]>([]);
 
   exportExcel(): void {
     const d = this.data();
@@ -59,7 +55,46 @@ export class ExportMenuComponent {
     const wb = utils.book_new();
 
     if (isTableResult(d)) {
-      const ws = utils.json_to_sheet(d.rows, { header: d.columns });
+      // Construir mapa de formato por campo
+      const formatMap = new Map<string, string>();
+      for (const fc of this.fieldConfigs()) {
+        if (fc.format === 'currency' || fc.format === 'number') {
+          formatMap.set(fc.field, '#,##0.00');
+        } else if (fc.format === 'date') {
+          formatMap.set(fc.field, 'DD/MM/YYYY');
+        }
+      }
+
+      // Construir filas con tipos correctos
+      const headers = d.columns.map(c => c.label);
+      const dataRows = d.rows.map(row =>
+        d.columns.map(col => {
+          const val = row[col.field];
+          const fmt = formatMap.get(col.field);
+          // Si tiene formato numérico, convertir a número para que Excel pueda sumar
+          if (fmt && fmt.includes('#') && val !== null && val !== undefined) {
+            const num = Number(val);
+            return isNaN(num) ? String(val ?? '') : num;
+          }
+          return String(val ?? '');
+        }),
+      );
+
+      const ws = utils.aoa_to_sheet([headers, ...dataRows]);
+
+      // Aplicar numFmt a celdas numéricas
+      d.columns.forEach((col, ci) => {
+        const fmt = formatMap.get(col.field);
+        if (!fmt) return;
+        for (let ri = 1; ri <= dataRows.length; ri++) {
+          const cellRef = utils.encode_cell({ r: ri, c: ci });
+          const cell = ws[cellRef] as Record<string, unknown> | undefined;
+          if (cell && (cell['t'] === 'n' || typeof cell['v'] === 'number')) {
+            cell['z'] = fmt;
+          }
+        }
+      });
+
       utils.book_append_sheet(wb, ws, 'Datos');
     } else if (isPivotResult(d)) {
       const ws = this.pivotToSheet(d);
@@ -77,10 +112,10 @@ export class ExportMenuComponent {
       return;
     }
 
-    const header = d.columns.join(',');
+    const header = d.columns.map(c => c.label).join(',');
     const rows = d.rows.map(row =>
       d.columns.map(col => {
-        const val = row[col];
+        const val = row[col.field];
         if (val === null || val === undefined) return '';
         const str = String(val);
         return str.includes(',') || str.includes('"') ? `"${str.replace(/"/g, '""')}"` : str;
@@ -91,22 +126,6 @@ export class ExportMenuComponent {
     const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
     saveAs(blob, `${this.sanitizeFilename(this.title())}.csv`);
     this.toast.success('Archivo CSV descargado.');
-  }
-
-  exportPdf(): void {
-    const id = this.reportId();
-    if (!id) {
-      this.toast.error('Guarda el reporte antes de exportar a PDF.');
-      return;
-    }
-
-    this.reportService.exportPdf(id).subscribe({
-      next: (blob) => {
-        saveAs(blob, `${this.sanitizeFilename(this.title())}.pdf`);
-        this.toast.success('PDF descargado.');
-      },
-      error: () => this.toast.error('Error al generar el PDF.'),
-    });
   }
 
   private pivotToSheet(d: ReportBIPivotResult) {
@@ -128,7 +147,7 @@ export class ExportMenuComponent {
       rows.push(row);
     }
 
-    // Totals row
+    // Fila de totales
     const totalRow: Record<string, unknown> = {};
     rowDims.forEach((dim, i) => { totalRow[dim] = i === 0 ? 'Total' : ''; });
     for (let ci = 0; ci < d.col_headers.length; ci++) {

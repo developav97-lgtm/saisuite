@@ -1,14 +1,30 @@
-.data-table {
-  width: 100%;
+.scroll-track-top {
+  overflow-x: auto;
+  overflow-y: hidden;
+  height: 14px;
+  margin-bottom: 2px;
 
-  &__cell--numeric {
-    text-align: right;
-    font-variant-numeric: tabular-nums;
-  }
+  &::-webkit-scrollbar { height: 8px; }
+}
+
+.scroll-track-spacer {
+  height: 1px;
+  min-width: 100%;
 }
 
 .table-responsive {
   overflow-x: auto;
+}
+
+.data-table {
+  width: max-content;
+  min-width: 100%;
+
+  &__cell--numeric,
+  &__header--numeric {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
 }
 
 .sc-empty-state {

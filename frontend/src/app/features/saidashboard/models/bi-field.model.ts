@@ -18,6 +18,8 @@ export interface BIFieldCategory {
   fields: BIFieldDef[];
 }
 
+export type BIFieldFormat = 'string' | 'number' | 'currency' | 'date';
+
 /** A field selected by the user for a report, with config. */
 export interface BIFieldConfig {
   source: string;
@@ -25,13 +27,23 @@ export interface BIFieldConfig {
   role: BIFieldRole | 'column';
   aggregation?: BIAggregation;
   label: string;
+  format?: BIFieldFormat;
+  /** Campo calculado: true si es el resultado de una fórmula. */
+  is_calculated?: boolean;
+  /** Fórmula aritmética usando nombres de campos métricos, ej: "debito - credito". */
+  formula?: string;
 }
 
-/** Filter definition from /meta/filters/ endpoint. */
+/** Filter definition from /meta/filters/ endpoint.
+ *  Backend returns: { key, label, type, field } where:
+ *  - key:  semantic identifier used in filtros payload (e.g. 'fecha_desde')
+ *  - field: ORM lookup — backend-only (e.g. 'fecha__gte')
+ */
 export interface BIFilterDef {
+  key: string;
   field: string;
   label: string;
-  type: 'date_range' | 'multi_select' | 'text' | 'boolean' | 'select';
+  type: 'date' | 'multi_select' | 'autocomplete_multi' | 'select' | 'text' | 'boolean' | 'decimal';
 }
 
 /** Sort config for a report. */

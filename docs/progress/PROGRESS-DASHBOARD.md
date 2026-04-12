@@ -34,6 +34,7 @@
 | DASH-004 | FEATURE | Fase D — Pivot table, chart renderer (6 tipos), drill-down, export (Excel/CSV/PDF), report viewer | ✅ COMPLETADO | DEV |
 | DASH-005 | FEATURE | Fase E — 12 templates predefinidos, report-share-dialog, CFO Virtual suggest-report IA, tests | ✅ COMPLETADO | DEV |
 | DASH-006 | QA | Fase F — Validación 4x4, Django Admin (ReportBI + 4 modelos contab), RAG-CHUNKS, cierre módulo | ✅ COMPLETADO | QA |
+| DASH-007 | BUGFIX | filter-builder: tipo 'date' sin datepicker, multi_select/select sin control, filtros duplicados por dedup incorrecto, filtros nunca llegaban al backend | ✅ COMPLETADO | DEV |
 
 ---
 
@@ -310,6 +311,7 @@
 | 04 | 2026-04-11 | DASH-004 | Fase D: 5 nuevos componentes (pivot-table, chart-renderer, drill-down-panel, export-menu, report-viewer), 8 viz types, export Excel/CSV/PDF, backend PDF endpoint, 38 nuevos tests. |
 | 05 | 2026-04-11 | DASH-005 | Fase E: 12 templates predefinidos, seed command, report-share-dialog, CFO suggest-report IA, 19 nuevos tests. |
 | 06 | 2026-04-11 | DASH-006 | Fase F: Validación 4x4 QA, Django Admin para ReportBI+ReportBIShare+4 modelos contab, RAG-CHUNKS.md, cierre módulo. |
+| 07 | 2026-04-11 | DASH-007 | BUGFIX filtros: BIFilterDef +key, dedup por key, updateFilter usa key semántico, cases html date→datepicker, multi_select/autocomplete_multi→chips, select→MatSelect, date_range→date. |
 
 ---
 

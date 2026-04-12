@@ -17,7 +17,8 @@
       <app-export-menu
         [data]="previewResult()"
         [title]="titulo()"
-        [reportId]="reportId()">
+        [reportId]="reportId()"
+        [fieldConfigs]="selectedFields()">
       </app-export-menu>
 
       <button mat-stroked-button color="primary"
@@ -36,31 +37,48 @@
     </div>
   </div>
 
-  <!-- Source selector -->
+  <!-- Fuente de datos -->
   <app-source-selector
     [selected]="selectedSources()"
     (selectionChange)="onSourcesChange($event)">
   </app-source-selector>
 
-  <!-- Main layout: sidebar + preview -->
+  <!-- Panel de filtros + layout principal -->
   @if (selectedSources().length > 0) {
+
+    <!-- Filtros arriba: panel colapsable -->
+    <mat-expansion-panel class="report-builder__filter-panel">
+      <mat-expansion-panel-header>
+        <mat-panel-title class="report-builder__filter-title">
+          <mat-icon>filter_list</mat-icon>
+          Filtros
+          @if (activeFilterCount() > 0) {
+            <span class="report-builder__filter-badge">{{ activeFilterCount() }}</span>
+          }
+        </mat-panel-title>
+      </mat-expansion-panel-header>
+
+      <app-filter-builder
+        [sources]="selectedSources()"
+        [filters]="filters()"
+        [layout]="'horizontal'"
+        (filtersChange)="onFiltersChange($event)">
+      </app-filter-builder>
+    </mat-expansion-panel>
+
+    <!-- Layout: campos | visualización -->
     <div class="report-builder__layout">
-      <!-- Left sidebar: fields + filters -->
+      <!-- Sidebar: solo campos -->
       <aside class="report-builder__sidebar">
         <app-field-panel
           [sources]="selectedSources()"
           [selectedFields]="selectedFields()"
+          [visualization]="visualization()"
           (fieldsChange)="onFieldsChange($event)">
         </app-field-panel>
-
-        <app-filter-builder
-          [sources]="selectedSources()"
-          [filters]="filters()"
-          (filtersChange)="onFiltersChange($event)">
-        </app-filter-builder>
       </aside>
 
-      <!-- Right: viz selector + preview -->
+      <!-- Principal: selector de viz + datos -->
       <main class="report-builder__main">
         <div class="report-builder__viz-bar">
           <span class="report-builder__viz-label">Visualización:</span>
@@ -76,16 +94,18 @@
           </mat-button-toggle-group>
         </div>
 
-        <!-- Conditional visualization -->
+        <!-- Visualización condicional -->
         @if (isTable()) {
           <app-data-table
             [data]="tableResult()"
-            [loading]="loading()">
+            [loading]="loading()"
+            [fieldConfigs]="selectedFields()">
           </app-data-table>
         } @else if (isPivot()) {
           <app-pivot-table
             [data]="pivotResult()"
-            [loading]="loading()">
+            [loading]="loading()"
+            [fieldConfigs]="selectedFields()">
           </app-pivot-table>
         } @else if (isChart()) {
           <app-chart-renderer

@@ -2,25 +2,45 @@
   <mat-progress-bar mode="indeterminate"></mat-progress-bar>
 }
 
-<div class="table-responsive">
-  @if (hasData()) {
-    <table mat-table [dataSource]="dataSource" matSort class="data-table">
-      @for (col of columns(); track col) {
-        <ng-container [matColumnDef]="col">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ col }}</th>
-          <td mat-cell *matCellDef="let row" (click)="onCellClick(row, col)"
-              [class.data-table__cell--numeric]="isNumeric(row[col])">
-            @if (isNumeric(row[col])) {
-              {{ row[col] | number:'1.0-2' }}
-            } @else {
-              {{ row[col] }}
+<!-- Scroll superior sincronizado -->
+@if (columnFields().length > 0) {
+  <div class="scroll-track-top" #topTrack (scroll)="onTopScroll()">
+    <div class="scroll-track-spacer" #topSpacer></div>
+  </div>
+}
+
+<div class="table-responsive" #tableWrap (scroll)="onTableScroll()">
+  @if (columnFields().length > 0) {
+    <table mat-table [dataSource]="dataSource" class="data-table">
+
+      @for (field of columnFields(); track field) {
+        <ng-container [matColumnDef]="field">
+          <th mat-header-cell *matHeaderCellDef
+              [class.data-table__header--numeric]="isNumericFormat(field)">
+            {{ getLabel(field) }}
+          </th>
+          <td mat-cell *matCellDef="let row" (click)="onCellClick(row, field)"
+              [class.data-table__cell--numeric]="isNumericFormat(field)">
+            @switch (getFormat(field)) {
+              @case ('currency') {
+                $ {{ (row[field] | number:'1.0-2') ?? '' }}
+              }
+              @case ('number') {
+                {{ (row[field] | number:'1.0-2') ?? '' }}
+              }
+              @case ('date') {
+                {{ (row[field] | date:'dd/MM/yyyy') ?? '' }}
+              }
+              @default {
+                {{ row[field] }}
+              }
             }
           </td>
         </ng-container>
       }
 
-      <tr mat-header-row *matHeaderRowDef="columns()"></tr>
-      <tr mat-row *matRowDef="let row; columns: columns()"></tr>
+      <tr mat-header-row *matHeaderRowDef="columnFields()"></tr>
+      <tr mat-row *matRowDef="let row; columns: columnFields()"></tr>
     </table>
 
     <mat-paginator
@@ -28,6 +48,7 @@
       [pageSize]="50"
       showFirstLastButtons>
     </mat-paginator>
+
   } @else if (!loading()) {
     <div class="sc-empty-state">
       <p>No hay datos para mostrar. Selecciona campos y ejecuta el reporte.</p>

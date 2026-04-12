@@ -157,6 +157,41 @@ class ConfiguracionContable(models.Model):
         null=True, blank=True,
         help_text='Fecha/hora de la ultima sincronizacion de ACCT exitosa',
     )
+
+    # ── Watermarks tablas transaccionales ────────────────────────────────────
+    ultimo_conteo_oe = models.BigIntegerField(
+        default=0,
+        help_text='Ultimo conteo OE sincronizado (watermark incremental)',
+    )
+    ultima_sync_oe = models.DateTimeField(
+        null=True, blank=True,
+        help_text='Fecha/hora de la ultima sincronizacion de OE exitosa',
+    )
+    ultimo_conteo_oedet = models.BigIntegerField(
+        default=0,
+        help_text='Ultimo conteo OEDET sincronizado (watermark incremental)',
+    )
+    ultima_sync_oedet = models.DateTimeField(
+        null=True, blank=True,
+        help_text='Fecha/hora de la ultima sincronizacion de OEDET exitosa',
+    )
+    ultimo_conteo_carpro = models.BigIntegerField(
+        default=0,
+        help_text='Ultimo conteo CARPRO sincronizado (watermark incremental)',
+    )
+    ultima_sync_carpro = models.DateTimeField(
+        null=True, blank=True,
+        help_text='Fecha/hora de la ultima sincronizacion de CARPRO exitosa',
+    )
+    ultimo_conteo_itemact = models.BigIntegerField(
+        default=0,
+        help_text='Ultimo conteo ITEMACT sincronizado (watermark incremental)',
+    )
+    ultima_sync_itemact = models.DateTimeField(
+        null=True, blank=True,
+        help_text='Fecha/hora de la ultima sincronizacion de ITEMACT exitosa',
+    )
+
     sync_activo = models.BooleanField(
         default=False,
         help_text='True si la sincronizacion esta configurada y activa',
@@ -585,7 +620,7 @@ class FacturaDetalle(models.Model):
 
     class Meta:
         db_table = 'cont_factura_detalle'
-        unique_together = [('company', 'conteo')]
+        unique_together = [('company', 'factura', 'conteo')]
         indexes = [
             models.Index(fields=['company', 'item_codigo'], name='idx_fact_det_item'),
         ]

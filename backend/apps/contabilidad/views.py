@@ -13,6 +13,10 @@ from rest_framework.views import APIView
 from apps.contabilidad.serializers import (
     GLBatchSerializer,
     ACCTBatchSerializer,
+    OEBatchSerializer,
+    OEDetBatchSerializer,
+    CARPROBatchSerializer,
+    ITEMACTBatchSerializer,
     SyncStatusSerializer,
     SyncResultSerializer,
     MovimientoContableSerializer,
@@ -162,3 +166,115 @@ class GLMovimientoListView(APIView):
 
         data = MovimientoContableSerializer(qs, many=True).data
         return Response({'count': len(data), 'results': data})
+
+
+class OEBatchSyncView(APIView):
+    """
+    POST /api/v1/contabilidad/sync/oe-batch/
+
+    Recibe un batch de encabezados de factura (OE) desde el agente de sync.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        company = getattr(request.user, 'effective_company', None) or request.user.company
+        if not company:
+            return Response(
+                {'error': 'Usuario sin empresa asignada'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        serializer = OEBatchSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        result = SyncService.process_oe_batch(
+            company_id=company.id,
+            records=serializer.validated_data['records'],
+        )
+
+        out = SyncResultSerializer(result)
+        return Response(out.data, status=status.HTTP_200_OK)
+
+
+class OEDetBatchSyncView(APIView):
+    """
+    POST /api/v1/contabilidad/sync/oedet-batch/
+
+    Recibe un batch de líneas de factura (OEDET) desde el agente de sync.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        company = getattr(request.user, 'effective_company', None) or request.user.company
+        if not company:
+            return Response(
+                {'error': 'Usuario sin empresa asignada'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        serializer = OEDetBatchSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        result = SyncService.process_oedet_batch(
+            company_id=company.id,
+            records=serializer.validated_data['records'],
+        )
+
+        out = SyncResultSerializer(result)
+        return Response(out.data, status=status.HTTP_200_OK)
+
+
+class CARPROBatchSyncView(APIView):
+    """
+    POST /api/v1/contabilidad/sync/carpro-batch/
+
+    Recibe un batch de movimientos de cartera (CARPRO) desde el agente de sync.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        company = getattr(request.user, 'effective_company', None) or request.user.company
+        if not company:
+            return Response(
+                {'error': 'Usuario sin empresa asignada'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        serializer = CARPROBatchSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        result = SyncService.process_carpro_batch(
+            company_id=company.id,
+            records=serializer.validated_data['records'],
+        )
+
+        out = SyncResultSerializer(result)
+        return Response(out.data, status=status.HTTP_200_OK)
+
+
+class ITEMACTBatchSyncView(APIView):
+    """
+    POST /api/v1/contabilidad/sync/itemact-batch/
+
+    Recibe un batch de movimientos de inventario (ITEMACT) desde el agente de sync.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        company = getattr(request.user, 'effective_company', None) or request.user.company
+        if not company:
+            return Response(
+                {'error': 'Usuario sin empresa asignada'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        serializer = ITEMACTBatchSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        result = SyncService.process_itemact_batch(
+            company_id=company.id,
+            records=serializer.validated_data['records'],
+        )
+
+        out = SyncResultSerializer(result)
+        return Response(out.data, status=status.HTTP_200_OK)

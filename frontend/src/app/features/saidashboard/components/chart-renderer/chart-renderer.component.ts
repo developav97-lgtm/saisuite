@@ -4,9 +4,14 @@ import {
   computed,
   input,
   output,
+  signal,
+  effect,
 } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
+import { MatSelectModule } from '@angular/material/select';
+import { MatFormFieldModule } from '@angular/material/form-field';
 import { BaseChartDirective } from 'ng2-charts';
 import { ChartConfiguration, ChartType } from 'chart.js';
 import {
@@ -26,7 +31,7 @@ const CHART_COLORS = [
 @Component({
   selector: 'app-chart-renderer',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DecimalPipe, MatIconModule, BaseChartDirective],
+  imports: [DecimalPipe, FormsModule, MatIconModule, MatSelectModule, MatFormFieldModule, BaseChartDirective],
   templateUrl: './chart-renderer.component.html',
   styleUrl: './chart-renderer.component.scss',
 })
@@ -37,21 +42,42 @@ export class ChartRendererComponent {
   readonly loading = input(false);
   readonly chartClick = output<{ label: string; datasetIndex: number; index: number }>();
 
+  /** Campo seleccionado para el Eje X (dimensión). Por defecto: primera dimensión. */
+  readonly xAxisField = signal<string>('');
+
+  readonly dimensions = computed(() => this.fields().filter(f => f.role === 'dimension'));
+
   readonly isKpi = computed(() => this.visualization() === 'kpi');
   readonly isChart = computed(() => !this.isKpi() && this.visualization() !== 'table' && this.visualization() !== 'pivot');
 
-  /** KPI data for kpi visualization */
+  constructor() {
+    // Cuando cambian los campos disponibles, resetear xAxisField si el campo ya no existe
+    effect(() => {
+      const dims = this.dimensions();
+      if (dims.length > 0 && !dims.find(d => d.field === this.xAxisField())) {
+        this.xAxisField.set(dims[0].field);
+      }
+    });
+  }
+
+  /** KPI data: suma TODOS los valores de todas las filas (no solo rows[0]) */
   readonly kpiData = computed(() => {
     const d = this.data();
     if (!d || !isTableResult(d) || d.rows.length === 0) return [];
     const metrics = this.fields().filter(f => f.role === 'metric');
-    const row = d.rows[0];
-    return metrics.map((m, i) => ({
-      label: m.label,
-      value: row[m.field] as number ?? row[`${m.field}_${(m.aggregation ?? 'sum').toLowerCase()}`] as number ?? 0,
-      icon: this.kpiIcon(i),
-      color: CHART_COLORS[i % CHART_COLORS.length],
-    }));
+    return metrics.map((m, i) => {
+      const aggKey = `${m.field}_${(m.aggregation ?? 'sum').toLowerCase()}`;
+      const total = d.rows.reduce((sum, row) => {
+        const val = ((row[aggKey] ?? row[m.field]) as number) || 0;
+        return sum + val;
+      }, 0);
+      return {
+        label: m.label,
+        value: total,
+        icon: this.kpiIcon(i),
+        color: CHART_COLORS[i % CHART_COLORS.length],
+      };
+    });
   });
 
   /** Chart.js config for bar/line/pie/area/waterfall */
@@ -61,11 +87,11 @@ export class ChartRendererComponent {
     if (!d || !isTableResult(d) || d.rows.length === 0) return null;
     if (viz === 'kpi' || viz === 'table' || viz === 'pivot') return null;
 
-    const dimensions = this.fields().filter(f => f.role === 'dimension');
+    const dimensions = this.dimensions();
     const metrics = this.fields().filter(f => f.role === 'metric');
     if (dimensions.length === 0 || metrics.length === 0) return null;
 
-    const labelField = dimensions[0].field;
+    const labelField = this.xAxisField() || dimensions[0].field;
     const labels = d.rows.map(r => String(r[labelField] ?? ''));
 
     if (viz === 'pie') {

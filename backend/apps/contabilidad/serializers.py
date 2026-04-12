@@ -76,6 +76,117 @@ class ACCTBatchSerializer(serializers.Serializer):
     records = ACCTRecordSerializer(many=True)
 
 
+class OERecordSerializer(serializers.Serializer):
+    """Serializer para un registro de encabezado de factura (OE)."""
+    number = serializers.IntegerField()
+    tipo = serializers.CharField(max_length=3, default='')
+    id_sucursal = serializers.IntegerField(default=1)
+    tercero_id = serializers.CharField(max_length=30, default='')
+    tercero_nombre = serializers.CharField(max_length=120, required=False, default='')
+    salesman = serializers.IntegerField(required=False, allow_null=True, default=None)
+    salesman_nombre = serializers.CharField(max_length=60, required=False, default='')
+    fecha = serializers.DateField()
+    duedate = serializers.DateField(required=False, allow_null=True, default=None)
+    periodo = serializers.CharField(max_length=7, default='')
+    subtotal = serializers.DecimalField(max_digits=15, decimal_places=2, default=0)
+    costo = serializers.DecimalField(max_digits=15, decimal_places=2, default=0)
+    iva = serializers.DecimalField(max_digits=15, decimal_places=2, default=0)
+    descuento_global = serializers.DecimalField(max_digits=15, decimal_places=2, default=0)
+    total = serializers.DecimalField(max_digits=15, decimal_places=2, default=0)
+    posted = serializers.BooleanField(default=False)
+    closed = serializers.BooleanField(default=False)
+    cod_moneda = serializers.CharField(max_length=5, required=False, default='COP')
+    comentarios = serializers.CharField(required=False, default='')
+
+
+class OEBatchSerializer(serializers.Serializer):
+    """Serializer para el batch de encabezados OE."""
+    records = OERecordSerializer(many=True)
+
+
+class OEDetRecordSerializer(serializers.Serializer):
+    """Serializer para una línea de factura (OEDET)."""
+    conteo = serializers.IntegerField()
+    # Referencia al encabezado para resolver FK
+    factura_number = serializers.IntegerField()
+    factura_tipo = serializers.CharField(max_length=3, default='')
+    factura_id_sucursal = serializers.IntegerField(default=1)
+    # Campos del detalle
+    item_codigo = serializers.CharField(max_length=30, default='')
+    item_descripcion = serializers.CharField(max_length=120, required=False, default='')
+    location = serializers.CharField(max_length=3, required=False, default='')
+    qty_order = serializers.DecimalField(max_digits=15, decimal_places=4, default=0)
+    qty_ship = serializers.DecimalField(max_digits=15, decimal_places=4, default=0)
+    precio_unitario = serializers.DecimalField(max_digits=15, decimal_places=4, default=0)
+    precio_extendido = serializers.DecimalField(max_digits=15, decimal_places=2, default=0)
+    costo_unitario = serializers.DecimalField(max_digits=15, decimal_places=4, default=0)
+    valor_iva = serializers.DecimalField(max_digits=15, decimal_places=2, default=0)
+    porc_iva = serializers.DecimalField(max_digits=5, decimal_places=2, default=0)
+    descuento = serializers.DecimalField(max_digits=15, decimal_places=2, default=0)
+    margen_valor = serializers.DecimalField(max_digits=15, decimal_places=2, default=0)
+    margen_porcentaje = serializers.DecimalField(max_digits=7, decimal_places=2, default=0)
+    proyecto_codigo = serializers.CharField(max_length=10, required=False, default='')
+
+
+class OEDetBatchSerializer(serializers.Serializer):
+    """Serializer para el batch de líneas OEDET."""
+    records = OEDetRecordSerializer(many=True)
+
+
+class CARPRORecordSerializer(serializers.Serializer):
+    """Serializer para un movimiento de cartera (CARPRO)."""
+    conteo = serializers.IntegerField()
+    tercero_id = serializers.CharField(max_length=30, default='')
+    tercero_nombre = serializers.CharField(max_length=120, required=False, default='')
+    cuenta_contable = serializers.DecimalField(max_digits=18, decimal_places=4)
+    tipo = serializers.CharField(max_length=3, required=False, default='')
+    batch = serializers.IntegerField(required=False, allow_null=True, default=None)
+    invc = serializers.CharField(max_length=15, required=False, default='')
+    descripcion = serializers.CharField(max_length=120, required=False, default='')
+    fecha = serializers.DateField()
+    duedate = serializers.DateField(required=False, allow_null=True, default=None)
+    periodo = serializers.CharField(max_length=7, default='')
+    debito = serializers.DecimalField(max_digits=15, decimal_places=2, default=0)
+    credito = serializers.DecimalField(max_digits=15, decimal_places=2, default=0)
+    saldo = serializers.DecimalField(max_digits=15, decimal_places=2, default=0)
+    departamento = serializers.IntegerField(required=False, allow_null=True, default=None)
+    centro_costo = serializers.IntegerField(required=False, allow_null=True, default=None)
+    proyecto_codigo = serializers.CharField(max_length=10, required=False, default='')
+    tipo_cartera = serializers.ChoiceField(choices=['CXC', 'CXP'], default='CXC')
+
+
+class CARPROBatchSerializer(serializers.Serializer):
+    """Serializer para el batch de movimientos CARPRO."""
+    records = CARPRORecordSerializer(many=True)
+
+
+class ITEMACTRecordSerializer(serializers.Serializer):
+    """Serializer para un movimiento de inventario (ITEMACT)."""
+    conteo = serializers.IntegerField()
+    item_codigo = serializers.CharField(max_length=30, default='')
+    item_descripcion = serializers.CharField(max_length=120, required=False, default='')
+    location = serializers.CharField(max_length=3, required=False, default='')
+    tercero_id = serializers.CharField(max_length=30, required=False, default='')
+    tipo = serializers.CharField(max_length=3, required=False, default='')
+    batch = serializers.IntegerField(required=False, allow_null=True, default=None)
+    fecha = serializers.DateField()
+    periodo = serializers.CharField(max_length=7, default='')
+    cantidad = serializers.DecimalField(max_digits=15, decimal_places=4, default=0)
+    valor_unitario = serializers.DecimalField(max_digits=15, decimal_places=4, default=0)
+    costo_peps = serializers.DecimalField(max_digits=15, decimal_places=4, default=0)
+    total = serializers.DecimalField(max_digits=15, decimal_places=2, default=0)
+    saldo_unidades = serializers.DecimalField(max_digits=15, decimal_places=4, default=0)
+    saldo_pesos = serializers.DecimalField(max_digits=15, decimal_places=2, default=0)
+    lote = serializers.CharField(max_length=30, required=False, default='')
+    serie = serializers.CharField(max_length=50, required=False, default='')
+    lote_vencimiento = serializers.DateField(required=False, allow_null=True, default=None)
+
+
+class ITEMACTBatchSerializer(serializers.Serializer):
+    """Serializer para el batch de movimientos ITEMACT."""
+    records = ITEMACTRecordSerializer(many=True)
+
+
 # ──────────────────────────────────────────────
 # Read Serializers (output)
 # ──────────────────────────────────────────────

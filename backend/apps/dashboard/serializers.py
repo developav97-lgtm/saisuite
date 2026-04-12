@@ -140,7 +140,7 @@ class DashboardDetailSerializer(serializers.ModelSerializer):
 class DashboardCreateSerializer(serializers.Serializer):
     """Serializer de escritura para crear un dashboard."""
     titulo = serializers.CharField(max_length=120)
-    descripcion = serializers.CharField(required=False, default='')
+    descripcion = serializers.CharField(required=False, default='', allow_blank=True)
     es_privado = serializers.BooleanField(default=True)
     orientacion = serializers.ChoiceField(
         choices=Dashboard.Orientacion.choices,
@@ -286,7 +286,7 @@ class ReportBIDetailSerializer(serializers.ModelSerializer):
 class ReportBICreateSerializer(serializers.Serializer):
     """Serializer de escritura para crear un reporte BI."""
     titulo = serializers.CharField(max_length=200)
-    descripcion = serializers.CharField(required=False, default='')
+    descripcion = serializers.CharField(required=False, default='', allow_blank=True)
     es_privado = serializers.BooleanField(default=True)
     fuentes = serializers.ListField(
         child=serializers.CharField(max_length=30),

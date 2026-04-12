@@ -19,6 +19,10 @@ from apps.contabilidad.models import (
     ProyectoSaiopen,
     ActividadSaiopen,
     TipdocSaiopen,
+    FacturaEncabezado,
+    FacturaDetalle,
+    MovimientoCartera,
+    MovimientoInventario,
 )
 
 logger = logging.getLogger(__name__)
@@ -653,3 +657,392 @@ class SyncService:
             'total_movimientos': total_movimientos,
             'total_cuentas': total_cuentas,
         }
+
+    # ── OE (FacturaEncabezado) ────────────────────────────────────────────────
+
+    _OE_UPDATE_FIELDS = [
+        'tercero_id', 'tercero_nombre',
+        'salesman', 'salesman_nombre',
+        'fecha', 'duedate', 'periodo',
+        'subtotal', 'costo', 'iva', 'descuento_global', 'total',
+        'posted', 'closed', 'cod_moneda', 'comentarios',
+    ]
+
+    @staticmethod
+    def process_oe_batch(company_id, records: list[dict]) -> dict:
+        """
+        Upsert masivo de encabezados de factura (OE).
+        unique_fields = ['company', 'number', 'tipo', 'id_sucursal']
+        Actualiza watermark ultimo_conteo_oe.
+        """
+        if not records:
+            return {'inserted': 0, 'updated': 0, 'errors': []}
+
+        errors = []
+        objects_to_upsert = []
+        max_number = 0
+
+        for idx, record in enumerate(records):
+            try:
+                number = int(record['number'])
+                if number > max_number:
+                    max_number = number
+
+                obj = FacturaEncabezado(
+                    company_id=company_id,
+                    number=number,
+                    tipo=record.get('tipo', ''),
+                    id_sucursal=int(record.get('id_sucursal', 1)),
+                    tercero_id=record.get('tercero_id', ''),
+                    tercero_nombre=record.get('tercero_nombre', ''),
+                    salesman=record.get('salesman') or None,
+                    salesman_nombre=record.get('salesman_nombre', ''),
+                    fecha=record['fecha'],
+                    duedate=record.get('duedate') or None,
+                    periodo=record.get('periodo', ''),
+                    subtotal=Decimal(str(record.get('subtotal', 0))),
+                    costo=Decimal(str(record.get('costo', 0))),
+                    iva=Decimal(str(record.get('iva', 0))),
+                    descuento_global=Decimal(str(record.get('descuento_global', 0))),
+                    total=Decimal(str(record.get('total', 0))),
+                    posted=bool(record.get('posted', False)),
+                    closed=bool(record.get('closed', False)),
+                    cod_moneda=record.get('cod_moneda', 'COP'),
+                    comentarios=record.get('comentarios', ''),
+                )
+                objects_to_upsert.append(obj)
+            except (KeyError, ValueError, TypeError) as exc:
+                errors.append(f'Record {idx}: {exc}')
+
+        if not objects_to_upsert:
+            return {'inserted': 0, 'updated': 0, 'errors': errors}
+
+        existing_keys = set(
+            FacturaEncabezado.objects.filter(
+                company_id=company_id,
+                number__in=[o.number for o in objects_to_upsert],
+                tipo__in=list({o.tipo for o in objects_to_upsert}),
+            ).values_list('number', 'tipo', 'id_sucursal')
+        )
+
+        with transaction.atomic():
+            FacturaEncabezado.objects.bulk_create(
+                objects_to_upsert,
+                update_conflicts=True,
+                unique_fields=['company', 'number', 'tipo', 'id_sucursal'],
+                update_fields=SyncService._OE_UPDATE_FIELDS,
+            )
+
+            config, _ = ConfiguracionContable.objects.get_or_create(company_id=company_id)
+            if max_number > config.ultimo_conteo_oe:
+                config.ultimo_conteo_oe = max_number
+            config.ultima_sync_oe = timezone.now()
+            config.save(update_fields=['ultimo_conteo_oe', 'ultima_sync_oe'])
+
+        inserted = len(objects_to_upsert) - len(existing_keys)
+        updated = len(existing_keys)
+        logger.info('oe_batch_processed', extra={
+            'company_id': str(company_id),
+            'inserted': inserted, 'updated': updated,
+            'error_count': len(errors), 'max_number': max_number,
+        })
+        return {'inserted': inserted, 'updated': updated, 'errors': errors}
+
+    # ── OEDET (FacturaDetalle) ────────────────────────────────────────────────
+
+    _OEDET_UPDATE_FIELDS = [
+        'item_codigo', 'item_descripcion', 'location',
+        'qty_order', 'qty_ship',
+        'precio_unitario', 'precio_extendido', 'costo_unitario',
+        'valor_iva', 'porc_iva', 'descuento',
+        'margen_valor', 'margen_porcentaje',
+        'proyecto_codigo',
+    ]
+
+    @staticmethod
+    def process_oedet_batch(company_id, records: list[dict]) -> dict:
+        """
+        Upsert masivo de líneas de factura (OEDET).
+        unique_fields = ['company', 'conteo']
+        Cada registro debe incluir factura_number, factura_tipo, factura_id_sucursal
+        para resolver la FK a FacturaEncabezado.
+        """
+        if not records:
+            return {'inserted': 0, 'updated': 0, 'errors': []}
+
+        errors = []
+        objects_to_upsert = []
+        max_conteo = 0
+
+        # Prefetch facturas para resolver FKs en bulk
+        factura_keys_needed = set()
+        for record in records:
+            try:
+                factura_keys_needed.add((
+                    int(record['factura_number']),
+                    record.get('factura_tipo', ''),
+                    int(record.get('factura_id_sucursal', 1)),
+                ))
+            except (KeyError, ValueError, TypeError):
+                pass
+
+        facturas_by_key: dict[tuple, int] = {}
+        if factura_keys_needed:
+            qs = FacturaEncabezado.objects.filter(
+                company_id=company_id,
+                number__in=[k[0] for k in factura_keys_needed],
+            ).values('id', 'number', 'tipo', 'id_sucursal')
+            for row in qs:
+                facturas_by_key[(row['number'], row['tipo'], row['id_sucursal'])] = row['id']
+
+        for idx, record in enumerate(records):
+            try:
+                conteo = int(record['conteo'])
+                if conteo > max_conteo:
+                    max_conteo = conteo
+
+                factura_key = (
+                    int(record['factura_number']),
+                    record.get('factura_tipo', ''),
+                    int(record.get('factura_id_sucursal', 1)),
+                )
+                factura_id = facturas_by_key.get(factura_key)
+                if factura_id is None:
+                    errors.append(
+                        f'Record {idx}: factura {factura_key} no encontrada para company {company_id}'
+                    )
+                    continue
+
+                obj = FacturaDetalle(
+                    company_id=company_id,
+                    factura_id=factura_id,
+                    conteo=conteo,
+                    item_codigo=record.get('item_codigo', ''),
+                    item_descripcion=record.get('item_descripcion', ''),
+                    location=record.get('location', ''),
+                    qty_order=Decimal(str(record.get('qty_order') or 0)),
+                    qty_ship=Decimal(str(record.get('qty_ship') or 0)),
+                    precio_unitario=Decimal(str(record.get('precio_unitario') or 0)),
+                    precio_extendido=Decimal(str(record.get('precio_extendido') or 0)),
+                    costo_unitario=Decimal(str(record.get('costo_unitario') or 0)),
+                    valor_iva=Decimal(str(record.get('valor_iva') or 0)),
+                    porc_iva=Decimal(str(record.get('porc_iva') or 0)),
+                    descuento=Decimal(str(record.get('descuento') or 0)),
+                    margen_valor=Decimal(str(record.get('margen_valor') or 0)),
+                    margen_porcentaje=Decimal(str(record.get('margen_porcentaje') or 0)),
+                    proyecto_codigo=record.get('proyecto_codigo', ''),
+                )
+                objects_to_upsert.append(obj)
+            except (KeyError, ValueError, TypeError) as exc:
+                errors.append(f'Record {idx}: {exc}')
+
+        if not objects_to_upsert:
+            return {'inserted': 0, 'updated': 0, 'errors': errors}
+
+        existing_conteos = set(
+            FacturaDetalle.objects.filter(
+                company_id=company_id,
+                conteo__in=[o.conteo for o in objects_to_upsert],
+            ).values_list('conteo', flat=True)
+        )
+
+        with transaction.atomic():
+            FacturaDetalle.objects.bulk_create(
+                objects_to_upsert,
+                update_conflicts=True,
+                unique_fields=['company', 'factura', 'conteo'],
+                update_fields=SyncService._OEDET_UPDATE_FIELDS,
+            )
+
+            config, _ = ConfiguracionContable.objects.get_or_create(company_id=company_id)
+            if max_conteo > config.ultimo_conteo_oedet:
+                config.ultimo_conteo_oedet = max_conteo
+            config.ultima_sync_oedet = timezone.now()
+            config.save(update_fields=['ultimo_conteo_oedet', 'ultima_sync_oedet'])
+
+        inserted = len(objects_to_upsert) - len(existing_conteos)
+        updated = len(existing_conteos)
+        logger.info('oedet_batch_processed', extra={
+            'company_id': str(company_id),
+            'inserted': inserted, 'updated': updated,
+            'error_count': len(errors), 'max_conteo': max_conteo,
+        })
+        return {'inserted': inserted, 'updated': updated, 'errors': errors}
+
+    # ── CARPRO (MovimientoCartera) ─────────────────────────────────────────────
+
+    _CARPRO_UPDATE_FIELDS = [
+        'tercero_id', 'tercero_nombre',
+        'cuenta_contable', 'tipo', 'batch', 'invc', 'descripcion',
+        'fecha', 'duedate', 'periodo',
+        'debito', 'credito', 'saldo',
+        'departamento', 'centro_costo', 'proyecto_codigo',
+        'tipo_cartera',
+    ]
+
+    @staticmethod
+    def process_carpro_batch(company_id, records: list[dict]) -> dict:
+        """
+        Upsert masivo de movimientos de cartera (CARPRO).
+        unique_fields = ['company', 'conteo']
+        Actualiza watermark ultimo_conteo_carpro.
+        """
+        if not records:
+            return {'inserted': 0, 'updated': 0, 'errors': []}
+
+        errors = []
+        objects_to_upsert = []
+        max_conteo = 0
+
+        for idx, record in enumerate(records):
+            try:
+                conteo = int(record['conteo'])
+                if conteo > max_conteo:
+                    max_conteo = conteo
+
+                obj = MovimientoCartera(
+                    company_id=company_id,
+                    conteo=conteo,
+                    tercero_id=record.get('tercero_id', ''),
+                    tercero_nombre=record.get('tercero_nombre', ''),
+                    cuenta_contable=Decimal(str(record.get('cuenta_contable', 0))),
+                    tipo=record.get('tipo', ''),
+                    batch=record.get('batch') or None,
+                    invc=record.get('invc', ''),
+                    descripcion=record.get('descripcion', ''),
+                    fecha=record['fecha'],
+                    duedate=record.get('duedate') or None,
+                    periodo=record.get('periodo', ''),
+                    debito=Decimal(str(record.get('debito', 0))),
+                    credito=Decimal(str(record.get('credito', 0))),
+                    saldo=Decimal(str(record.get('saldo', 0))),
+                    departamento=record.get('departamento') or None,
+                    centro_costo=record.get('centro_costo') or None,
+                    proyecto_codigo=record.get('proyecto_codigo', ''),
+                    tipo_cartera=record.get('tipo_cartera', 'CXC'),
+                )
+                objects_to_upsert.append(obj)
+            except (KeyError, ValueError, TypeError) as exc:
+                errors.append(f'Record {idx}: {exc}')
+
+        if not objects_to_upsert:
+            return {'inserted': 0, 'updated': 0, 'errors': errors}
+
+        existing_conteos = set(
+            MovimientoCartera.objects.filter(
+                company_id=company_id,
+                conteo__in=[o.conteo for o in objects_to_upsert],
+            ).values_list('conteo', flat=True)
+        )
+
+        with transaction.atomic():
+            MovimientoCartera.objects.bulk_create(
+                objects_to_upsert,
+                update_conflicts=True,
+                unique_fields=['company', 'conteo'],
+                update_fields=SyncService._CARPRO_UPDATE_FIELDS,
+            )
+
+            config, _ = ConfiguracionContable.objects.get_or_create(company_id=company_id)
+            if max_conteo > config.ultimo_conteo_carpro:
+                config.ultimo_conteo_carpro = max_conteo
+            config.ultima_sync_carpro = timezone.now()
+            config.save(update_fields=['ultimo_conteo_carpro', 'ultima_sync_carpro'])
+
+        inserted = len(objects_to_upsert) - len(existing_conteos)
+        updated = len(existing_conteos)
+        logger.info('carpro_batch_processed', extra={
+            'company_id': str(company_id),
+            'inserted': inserted, 'updated': updated,
+            'error_count': len(errors), 'max_conteo': max_conteo,
+        })
+        return {'inserted': inserted, 'updated': updated, 'errors': errors}
+
+    # ── ITEMACT (MovimientoInventario) ────────────────────────────────────────
+
+    _ITEMACT_UPDATE_FIELDS = [
+        'item_codigo', 'item_descripcion', 'location',
+        'tercero_id', 'tipo', 'batch',
+        'fecha', 'periodo',
+        'cantidad', 'valor_unitario', 'costo_peps', 'total',
+        'saldo_unidades', 'saldo_pesos',
+        'lote', 'serie', 'lote_vencimiento',
+    ]
+
+    @staticmethod
+    def process_itemact_batch(company_id, records: list[dict]) -> dict:
+        """
+        Upsert masivo de movimientos de inventario (ITEMACT).
+        unique_fields = ['company', 'conteo']
+        Actualiza watermark ultimo_conteo_itemact.
+        """
+        if not records:
+            return {'inserted': 0, 'updated': 0, 'errors': []}
+
+        errors = []
+        objects_to_upsert = []
+        max_conteo = 0
+
+        for idx, record in enumerate(records):
+            try:
+                conteo = int(record['conteo'])
+                if conteo > max_conteo:
+                    max_conteo = conteo
+
+                obj = MovimientoInventario(
+                    company_id=company_id,
+                    conteo=conteo,
+                    item_codigo=record.get('item_codigo', ''),
+                    item_descripcion=record.get('item_descripcion', ''),
+                    location=record.get('location', ''),
+                    tercero_id=record.get('tercero_id', ''),
+                    tipo=record.get('tipo', ''),
+                    batch=record.get('batch') or None,
+                    fecha=record['fecha'],
+                    periodo=record.get('periodo', ''),
+                    cantidad=Decimal(str(record.get('cantidad', 0))),
+                    valor_unitario=Decimal(str(record.get('valor_unitario', 0))),
+                    costo_peps=Decimal(str(record.get('costo_peps', 0))),
+                    total=Decimal(str(record.get('total', 0))),
+                    saldo_unidades=Decimal(str(record.get('saldo_unidades', 0))),
+                    saldo_pesos=Decimal(str(record.get('saldo_pesos', 0))),
+                    lote=record.get('lote', ''),
+                    serie=record.get('serie', ''),
+                    lote_vencimiento=record.get('lote_vencimiento') or None,
+                )
+                objects_to_upsert.append(obj)
+            except (KeyError, ValueError, TypeError) as exc:
+                errors.append(f'Record {idx}: {exc}')
+
+        if not objects_to_upsert:
+            return {'inserted': 0, 'updated': 0, 'errors': errors}
+
+        existing_conteos = set(
+            MovimientoInventario.objects.filter(
+                company_id=company_id,
+                conteo__in=[o.conteo for o in objects_to_upsert],
+            ).values_list('conteo', flat=True)
+        )
+
+        with transaction.atomic():
+            MovimientoInventario.objects.bulk_create(
+                objects_to_upsert,
+                update_conflicts=True,
+                unique_fields=['company', 'conteo'],
+                update_fields=SyncService._ITEMACT_UPDATE_FIELDS,
+            )
+
+            config, _ = ConfiguracionContable.objects.get_or_create(company_id=company_id)
+            if max_conteo > config.ultimo_conteo_itemact:
+                config.ultimo_conteo_itemact = max_conteo
+            config.ultima_sync_itemact = timezone.now()
+            config.save(update_fields=['ultimo_conteo_itemact', 'ultima_sync_itemact'])
+
+        inserted = len(objects_to_upsert) - len(existing_conteos)
+        updated = len(existing_conteos)
+        logger.info('itemact_batch_processed', extra={
+            'company_id': str(company_id),
+            'inserted': inserted, 'updated': updated,
+            'error_count': len(errors), 'max_conteo': max_conteo,
+        })
+        return {'inserted': inserted, 'updated': updated, 'errors': errors}

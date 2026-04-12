@@ -116,4 +116,47 @@ export class ReportBIService {
     const params = new HttpParams().set('source', source);
     return this.http.get<BIFilterDef[]>(`${this.baseUrl}/meta/filters/`, { params });
   }
+
+  // ── Opciones de filtros ──────────────────────────────────────
+
+  private readonly filtersBase = '/api/v1/dashboard/filters';
+
+  getFilterPeriodos(): Observable<{ periodo: string }[]> {
+    return this.http.get<{ periodo: string }[]>(`${this.filtersBase}/periodos/`);
+  }
+
+  getFilterTerceros(q: string): Observable<{ id: string; nombre: string; identificacion?: string }[]> {
+    const params = new HttpParams().set('q', q);
+    return this.http.get<{ id: string; nombre: string; identificacion?: string }[]>(
+      `${this.filtersBase}/terceros/`,
+      { params },
+    );
+  }
+
+  getFilterProyectos(): Observable<{ proyecto_codigo: string; proyecto_nombre: string }[]> {
+    return this.http.get<{ proyecto_codigo: string; proyecto_nombre: string }[]>(
+      `${this.filtersBase}/proyectos/`,
+    );
+  }
+
+  getFilterDepartamentos(): Observable<{ departamento_codigo: string; departamento_nombre: string }[]> {
+    return this.http.get<{ departamento_codigo: string; departamento_nombre: string }[]>(
+      `${this.filtersBase}/departamentos/`,
+    );
+  }
+
+  getFilterCentrosCosto(): Observable<{ centro_costo_codigo: number | string; centro_costo_nombre?: string }[]> {
+    return this.http.get<{ centro_costo_codigo: number | string; centro_costo_nombre?: string }[]>(
+      `${this.filtersBase}/centros-costo/`,
+    );
+  }
+
+  getFilterTiposDoc(source: string): Observable<{ tipo: string }[]> {
+    const params = new HttpParams().set('source', source);
+    return this.http.get<{ tipo: string }[]>(`${this.filtersBase}/tipos-doc/`, { params });
+  }
+
+  getFilterActividades(): Observable<{ actividad_codigo: string }[]> {
+    return this.http.get<{ actividad_codigo: string }[]>(`${this.filtersBase}/actividades/`);
+  }
 }

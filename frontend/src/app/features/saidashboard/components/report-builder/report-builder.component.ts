@@ -17,6 +17,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatExpansionModule } from '@angular/material/expansion';
 import { ReportBIService } from '../../services/report-bi.service';
 import { BIFieldConfig } from '../../models/bi-field.model';
 import {
@@ -49,6 +50,7 @@ import { ToastService } from '../../../../core/services/toast.service';
     MatProgressBarModule,
     MatButtonToggleModule,
     MatTooltipModule,
+    MatExpansionModule,
     SourceSelectorComponent,
     FieldPanelComponent,
     FilterBuilderComponent,
@@ -82,14 +84,16 @@ export class ReportBuilderComponent implements OnInit {
 
   readonly previewResult = signal<ReportBIExecuteResult | null>(null);
 
+  readonly activeFilterCount = computed(() => Object.keys(this.filters()).length);
+
   readonly vizOptions: { value: ReportBIVisualization; label: string; icon: string }[] = [
-    { value: 'table', label: VISUALIZATION_LABELS['table'], icon: VISUALIZATION_ICONS['table'] },
-    { value: 'pivot', label: VISUALIZATION_LABELS['pivot'], icon: VISUALIZATION_ICONS['pivot'] },
-    { value: 'bar',   label: VISUALIZATION_LABELS['bar'],   icon: VISUALIZATION_ICONS['bar'] },
-    { value: 'line',  label: VISUALIZATION_LABELS['line'],  icon: VISUALIZATION_ICONS['line'] },
-    { value: 'pie',   label: VISUALIZATION_LABELS['pie'],   icon: VISUALIZATION_ICONS['pie'] },
-    { value: 'area',  label: VISUALIZATION_LABELS['area'],  icon: VISUALIZATION_ICONS['area'] },
-    { value: 'kpi',   label: VISUALIZATION_LABELS['kpi'],   icon: VISUALIZATION_ICONS['kpi'] },
+    { value: 'table',     label: VISUALIZATION_LABELS['table'],     icon: VISUALIZATION_ICONS['table'] },
+    { value: 'pivot',     label: VISUALIZATION_LABELS['pivot'],     icon: VISUALIZATION_ICONS['pivot'] },
+    { value: 'bar',       label: VISUALIZATION_LABELS['bar'],       icon: VISUALIZATION_ICONS['bar'] },
+    { value: 'line',      label: VISUALIZATION_LABELS['line'],      icon: VISUALIZATION_ICONS['line'] },
+    { value: 'pie',       label: VISUALIZATION_LABELS['pie'],       icon: VISUALIZATION_ICONS['pie'] },
+    { value: 'area',      label: VISUALIZATION_LABELS['area'],      icon: VISUALIZATION_ICONS['area'] },
+    { value: 'kpi',       label: VISUALIZATION_LABELS['kpi'],       icon: VISUALIZATION_ICONS['kpi'] },
     { value: 'waterfall', label: VISUALIZATION_LABELS['waterfall'], icon: VISUALIZATION_ICONS['waterfall'] },
   ];
 
@@ -101,9 +105,9 @@ export class ReportBuilderComponent implements OnInit {
     this.titulo().trim().length > 0 && this.canPreview(),
   );
 
-  readonly isTable = computed(() => this.visualization() === 'table');
-  readonly isPivot = computed(() => this.visualization() === 'pivot');
-  readonly isChart = computed(() => {
+  readonly isTable  = computed(() => this.visualization() === 'table');
+  readonly isPivot  = computed(() => this.visualization() === 'pivot');
+  readonly isChart  = computed(() => {
     const v = this.visualization();
     return v !== 'table' && v !== 'pivot';
   });
@@ -118,14 +122,16 @@ export class ReportBuilderComponent implements OnInit {
     return r && isPivotResult(r) ? r : null;
   });
 
-  /** Build viz_config for pivot from selected fields */
   private readonly pivotVizConfig = computed(() => {
     const fields = this.selectedFields();
-    const rows = fields.filter(f => f.role === 'dimension').map(f => f.field);
-    const cols = fields.filter(f => f.role === 'column').map(f => f.field);
+    const rows   = fields.filter(f => f.role === 'dimension').map(f => f.field);
+    const cols   = fields.filter(f => f.role === 'column').map(f => f.field);
     const values = fields.filter(f => f.role === 'metric').map(f => ({
       field: f.field,
-      aggregation: f.aggregation ?? 'SUM',
+      aggregation: f.is_calculated ? undefined : (f.aggregation ?? 'SUM'),
+      is_calculated: f.is_calculated,
+      formula: f.formula,
+      label: f.label,
     }));
     return { rows, columns: cols, values };
   });
@@ -136,6 +142,30 @@ export class ReportBuilderComponent implements OnInit {
       this.reportId.set(id);
       this.editMode.set(true);
       this.loadReport(id);
+      return;
+    }
+
+    // Cargar preset desde query param ?preset= (sugerencias de IA)
+    const presetParam = this.route.snapshot.queryParamMap.get('preset');
+    if (presetParam) {
+      try {
+        const preset = JSON.parse(presetParam) as {
+          titulo?: string;
+          descripcion?: string;
+          fuentes?: string[];
+          campos_config?: BIFieldConfig[];
+          tipo_visualizacion?: ReportBIVisualization;
+          filtros?: Record<string, unknown>;
+        };
+        if (preset.titulo)              this.titulo.set(preset.titulo);
+        if (preset.descripcion)         this.descripcion.set(preset.descripcion);
+        if (preset.fuentes?.length)     this.selectedSources.set(preset.fuentes);
+        if (preset.campos_config?.length) this.selectedFields.set(preset.campos_config);
+        if (preset.tipo_visualizacion)  this.visualization.set(preset.tipo_visualizacion);
+        if (preset.filtros)             this.filters.set(preset.filtros);
+      } catch {
+        // JSON inválido → ignorar preset
+      }
     }
   }
 
@@ -164,9 +194,7 @@ export class ReportBuilderComponent implements OnInit {
 
   onSourcesChange(sources: string[]): void {
     this.selectedSources.set(sources);
-    this.selectedFields.update(fields =>
-      fields.filter(f => sources.includes(f.source)),
-    );
+    this.selectedFields.update(fields => fields.filter(f => sources.includes(f.source)));
   }
 
   onFieldsChange(fields: BIFieldConfig[]): void {

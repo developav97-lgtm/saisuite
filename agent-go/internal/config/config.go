@@ -83,6 +83,17 @@ type SyncConfig struct {
 	LastSyncProyectos      *time.Time `json:"last_sync_proyectos"`
 	LastSyncActividades    *time.Time `json:"last_sync_actividades"`
 	LastSyncTipdoc         *time.Time `json:"last_sync_tipdoc"`
+
+	// Transactional table watermarks (CARPRO/ITEMACT — single global CONTEO)
+	LastConteoCARPRO  int64 `json:"last_conteo_carpro"`
+	LastConteoITEMACT int64 `json:"last_conteo_itemact"`
+
+	// OE / OEDET watermarks: keyed by document type (TIPDOC.CLASE = OE.TIPO).
+	// Each type has its own consecutive number sequence, so a single global
+	// watermark would miss new documents of types with lower numbers.
+	// Map is auto-populated on first sync by querying TIPDOC.
+	LastOEWatermarks   map[string]int64 `json:"last_oe_watermarks,omitempty"`
+	LastOEDetWatermarks map[string]int64 `json:"last_oedet_watermarks,omitempty"`
 }
 
 // configFileName is the name of the configuration file placed next to the binary.
@@ -301,6 +312,62 @@ func (cfg *AgentConfig) UpdateWatermark(connID string, lastConteo int64) error {
 	for i := range cfg.Connections {
 		if cfg.Connections[i].ID == connID {
 			cfg.Connections[i].Sync.LastConteoGL = lastConteo
+			cfg.mu.Unlock()
+			return Save(cfg)
+		}
+	}
+	cfg.mu.Unlock()
+	return fmt.Errorf("connection '%s' not found", connID)
+}
+
+// UpdateTransactionalWatermark updates the incremental watermark for CARPRO or ITEMACT
+// (single global CONTEO). OE and OEDET use UpdateOEWatermarks instead.
+func (cfg *AgentConfig) UpdateTransactionalWatermark(connID string, table string, lastConteo int64) error {
+	cfg.mu.Lock()
+	for i := range cfg.Connections {
+		if cfg.Connections[i].ID == connID {
+			switch table {
+			case "carpro":
+				cfg.Connections[i].Sync.LastConteoCARPRO = lastConteo
+			case "itemact":
+				cfg.Connections[i].Sync.LastConteoITEMACT = lastConteo
+			default:
+				cfg.mu.Unlock()
+				return fmt.Errorf("unknown transactional table: %s", table)
+			}
+			cfg.mu.Unlock()
+			return Save(cfg)
+		}
+	}
+	cfg.mu.Unlock()
+	return fmt.Errorf("connection '%s' not found", connID)
+}
+
+// UpdateOEWatermarks updates the per-TIPO watermarks for OE or OEDET and persists the config.
+// table must be "oe" or "oedet". watermarks is a map[tipo]lastNumber.
+func (cfg *AgentConfig) UpdateOEWatermarks(connID string, table string, watermarks map[string]int64) error {
+	cfg.mu.Lock()
+	for i := range cfg.Connections {
+		if cfg.Connections[i].ID == connID {
+			switch table {
+			case "oe":
+				if cfg.Connections[i].Sync.LastOEWatermarks == nil {
+					cfg.Connections[i].Sync.LastOEWatermarks = make(map[string]int64)
+				}
+				for tipo, num := range watermarks {
+					cfg.Connections[i].Sync.LastOEWatermarks[tipo] = num
+				}
+			case "oedet":
+				if cfg.Connections[i].Sync.LastOEDetWatermarks == nil {
+					cfg.Connections[i].Sync.LastOEDetWatermarks = make(map[string]int64)
+				}
+				for tipo, num := range watermarks {
+					cfg.Connections[i].Sync.LastOEDetWatermarks[tipo] = num
+				}
+			default:
+				cfg.mu.Unlock()
+				return fmt.Errorf("UpdateOEWatermarks: unknown table %s", table)
+			}
 			cfg.mu.Unlock()
 			return Save(cfg)
 		}
