@@ -1,24 +1,23 @@
 <div class="source-selector">
-  <h3 class="source-selector__title">Seleccionar fuente de datos</h3>
-  <div class="source-selector__grid">
-    @for (source of sources; track source.code) {
-      <div
-        class="source-card"
-        [class.source-card--selected]="isSelected(source.code)"
+  <div class="source-selector__carousel">
+    @for (source of allSources; track source.code) {
+      <button
+        class="source-chip"
+        [class.source-chip--selected]="isSelected(source.code)"
         matRipple
+        type="button"
+        [attr.aria-pressed]="isSelected(source.code)"
+        [matTooltip]="source.description"
+        matTooltipPosition="below"
         (click)="toggle(source.code)"
-        role="checkbox"
-        [attr.aria-checked]="isSelected(source.code)"
-        tabindex="0"
         (keydown.enter)="toggle(source.code)"
         (keydown.space)="toggle(source.code); $event.preventDefault()">
-        <mat-icon class="source-card__icon">{{ source.icon }}</mat-icon>
-        <span class="source-card__label">{{ source.label }}</span>
-        <span class="source-card__desc">{{ source.description }}</span>
+        <mat-icon class="source-chip__icon">{{ source.icon }}</mat-icon>
+        <span class="source-chip__label">{{ source.label }}</span>
         @if (isSelected(source.code)) {
-          <mat-icon class="source-card__check">check_circle</mat-icon>
+          <mat-icon class="source-chip__check">check</mat-icon>
         }
-      </div>
+      </button>
     }
   </div>
 </div>

@@ -72,7 +72,11 @@ class MovimientoContable(models.Model):
     batch = models.IntegerField(null=True, blank=True)
     invc = models.CharField(
         max_length=15, blank=True, default='',
-        help_text='Numero de factura/documento',
+        help_text='Numero del cruce (GL.INVC)',
+    )
+    cruce = models.CharField(
+        max_length=3, blank=True, default='',
+        help_text='Tipo de cruce (GL.CRUCE)',
     )
     descripcion = models.CharField(max_length=120, blank=True, default='')
 
@@ -523,10 +527,14 @@ class FacturaEncabezado(models.Model):
     # Tercero
     tercero_id = models.CharField(max_length=30, db_index=True)
     tercero_nombre = models.CharField(max_length=120, blank=True, default='')
+    tercero_razon_social = models.CharField(max_length=120, blank=True, default='')
 
     # Vendedor
     salesman = models.SmallIntegerField(null=True, blank=True)
     salesman_nombre = models.CharField(max_length=60, blank=True, default='')
+
+    # Tipo de documento (denormalizado desde TIPDOC)
+    tipo_descripcion = models.CharField(max_length=60, blank=True, default='')
 
     # Fechas
     fecha = models.DateField(db_index=True)
@@ -538,7 +546,15 @@ class FacturaEncabezado(models.Model):
     costo = models.DecimalField(max_digits=15, decimal_places=2, default=0)
     iva = models.DecimalField(max_digits=15, decimal_places=2, default=0)
     descuento_global = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    destotal = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    otroscargos = models.DecimalField(max_digits=15, decimal_places=2, default=0)
     total = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+
+    # Retenciones (denormalizadas desde OE y RETEN de Saiopen)
+    porcrtfte = models.DecimalField(max_digits=7, decimal_places=4, default=0)
+    reteica = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    porcentaje_reteica = models.DecimalField(max_digits=7, decimal_places=4, default=0)
+    reteiva = models.DecimalField(max_digits=15, decimal_places=2, default=0)
 
     # Estado
     posted = models.BooleanField(default=False)
@@ -607,13 +623,17 @@ class FacturaDetalle(models.Model):
     valor_iva = models.DecimalField(max_digits=15, decimal_places=2, default=0)
     porc_iva = models.DecimalField(max_digits=5, decimal_places=2, default=0)
     descuento = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    total_descuento = models.DecimalField(max_digits=15, decimal_places=2, default=0)
 
     # Márgenes
     margen_valor = models.DecimalField(max_digits=15, decimal_places=2, default=0)
     margen_porcentaje = models.DecimalField(max_digits=7, decimal_places=2, default=0)
 
-    # Proyecto
+    # Dimensiones contables
     proyecto_codigo = models.CharField(max_length=10, blank=True, default='')
+    departamento_codigo = models.CharField(max_length=10, blank=True, default='')
+    centro_costo_codigo = models.CharField(max_length=10, blank=True, default='')
+    actividad_codigo = models.CharField(max_length=10, blank=True, default='')
 
     # Metadata de sincronizacion
     sincronizado_en = models.DateTimeField(auto_now_add=True)
@@ -710,7 +730,6 @@ class MovimientoInventario(models.Model):
     conteo = models.IntegerField(help_text='PK del registro en Firebird (ITEMACT.CONTEO)')
 
     item_codigo = models.CharField(max_length=30, db_index=True)
-    item_descripcion = models.CharField(max_length=120, blank=True, default='')
     location = models.CharField(max_length=3, db_index=True, default='')
 
     tercero_id = models.CharField(max_length=30, blank=True, default='')
@@ -722,10 +741,8 @@ class MovimientoInventario(models.Model):
 
     cantidad = models.DecimalField(max_digits=15, decimal_places=4, default=0)
     valor_unitario = models.DecimalField(max_digits=15, decimal_places=4, default=0)
-    costo_peps = models.DecimalField(max_digits=15, decimal_places=4, default=0)
+    costo_promedio = models.DecimalField(max_digits=15, decimal_places=4, default=0)
     total = models.DecimalField(max_digits=15, decimal_places=2, default=0)
-    saldo_unidades = models.DecimalField(max_digits=15, decimal_places=4, default=0)
-    saldo_pesos = models.DecimalField(max_digits=15, decimal_places=2, default=0)
 
     lote = models.CharField(max_length=30, blank=True, default='')
     serie = models.CharField(max_length=50, blank=True, default='')
@@ -751,6 +768,35 @@ class MovimientoInventario(models.Model):
 
     def __str__(self):
         return f'[{self.periodo}] {self.item_codigo} qty={self.cantidad} ${self.total}'
+
+
+class VendedorSaiopen(models.Model):
+    """
+    Espejo de la tabla VENDEDOR de Saiopen (catálogo de vendedores/comerciales).
+    PK Firebird: IDVEND (SMALLINT). READ-ONLY desde Saicloud.
+    """
+    company   = models.ForeignKey(
+        'companies.Company',
+        on_delete=models.CASCADE,
+        related_name='vendedores_saiopen',
+        db_index=True,
+    )
+    sai_key   = models.CharField(max_length=10, help_text='IDVEND como string')
+    codigo    = models.SmallIntegerField(help_text='VENDEDOR.IDVEND')
+    nombre    = models.CharField(max_length=30, blank=True, default='')
+    telefono  = models.CharField(max_length=16, blank=True, default='')
+    activo    = models.BooleanField(default=True)
+    sincronizado_en = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table        = 'cont_vendedor_saiopen'
+        unique_together = [('company', 'sai_key')]
+        verbose_name    = 'Vendedor Saiopen'
+        verbose_name_plural = 'Vendedores Saiopen'
+        ordering        = ['codigo']
+
+    def __str__(self):
+        return f'[{self.codigo}] {self.nombre}'
 
 
 class TipdocSaiopen(models.Model):

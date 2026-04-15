@@ -1,10 +1,27 @@
 .scroll-track-top {
   overflow-x: auto;
   overflow-y: hidden;
-  height: 14px;
-  margin-bottom: 2px;
+  height: 12px;
+  margin-bottom: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.25) transparent;
 
-  &::-webkit-scrollbar { height: 8px; }
+  &::-webkit-scrollbar {
+    height: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.25);
+    border-radius: 4px;
+
+    &:hover {
+      background: rgba(0, 0, 0, 0.4);
+    }
+  }
 }
 
 .scroll-track-spacer {
@@ -38,4 +55,5 @@
 
 th.mat-mdc-header-cell {
   white-space: nowrap;
+  text-transform: none;
 }

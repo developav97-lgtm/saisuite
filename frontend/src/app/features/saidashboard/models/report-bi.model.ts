@@ -1,6 +1,41 @@
 /** Report BI models — mirrors backend ReportBI serializers exactly. */
 
-import { BIFieldConfig, BISortConfig } from './bi-field.model';
+import { BIFieldConfig, BIFilterV2, BISortConfig } from './bi-field.model';
+
+export type ReportBICategory =
+  | 'contabilidad'
+  | 'cuentas_pagar'
+  | 'cuentas_cobrar'
+  | 'ventas'
+  | 'inventario'
+  | 'costos'
+  | 'proyectos'
+  | 'tributario'
+  | 'gerencial';
+
+export const REPORT_BI_CATEGORY_LABELS: Record<ReportBICategory, string> = {
+  contabilidad:   'Contabilidad',
+  cuentas_pagar:  'Cuentas por Pagar',
+  cuentas_cobrar: 'Cuentas por Cobrar',
+  ventas:         'Ventas',
+  inventario:     'Inventario',
+  costos:         'Costos y Gastos',
+  proyectos:      'Proyectos',
+  tributario:     'Tributario',
+  gerencial:      'Gerencial / KPIs',
+};
+
+export const REPORT_BI_CATEGORY_ICONS: Record<ReportBICategory, string> = {
+  contabilidad:   'account_balance',
+  cuentas_pagar:  'payments',
+  cuentas_cobrar: 'receipt_long',
+  ventas:         'store',
+  inventario:     'inventory_2',
+  costos:         'analytics',
+  proyectos:      'folder_special',
+  tributario:     'gavel',
+  gerencial:      'leaderboard',
+};
 
 export type ReportBIVisualization = 'table' | 'pivot' | 'bar' | 'line' | 'pie' | 'area' | 'kpi' | 'waterfall';
 
@@ -44,12 +79,12 @@ export interface ReportBIShare {
 export interface ReportBIListItem {
   id: string;
   titulo: string;
-  descripcion: string;
   es_privado: boolean;
   es_favorito: boolean;
   es_template: boolean;
   fuentes: string[];
   tipo_visualizacion: ReportBIVisualization;
+  categoria_galeria: ReportBICategory | null;
   user_email: string;
   created_at: string;
   updated_at: string;
@@ -59,15 +94,16 @@ export interface ReportBIListItem {
 export interface ReportBIDetail {
   id: string;
   titulo: string;
-  descripcion: string;
   es_privado: boolean;
   es_favorito: boolean;
   es_template: boolean;
   fuentes: string[];
+  categoria_galeria: ReportBICategory | null;
   campos_config: BIFieldConfig[];
   tipo_visualizacion: ReportBIVisualization;
   viz_config: Record<string, unknown>;
-  filtros: Record<string, unknown>;
+  /** V2: array de filtros con operadores. V1 (legacy): dict key→value. */
+  filtros: BIFilterV2[] | Record<string, unknown>;
   orden_config: BISortConfig[];
   limite_registros: number | null;
   template_origen: string | null;
@@ -80,13 +116,12 @@ export interface ReportBIDetail {
 /** Payload para crear reporte. */
 export interface ReportBICreateRequest {
   titulo: string;
-  descripcion?: string;
   es_privado?: boolean;
   fuentes: string[];
   campos_config?: BIFieldConfig[];
   tipo_visualizacion?: ReportBIVisualization;
   viz_config?: Record<string, unknown>;
-  filtros?: Record<string, unknown>;
+  filtros?: BIFilterV2[];
   orden_config?: BISortConfig[];
   limite_registros?: number | null;
   template_origen?: string | null;
@@ -95,27 +130,32 @@ export interface ReportBICreateRequest {
 /** Payload para actualizar reporte. */
 export interface ReportBIUpdateRequest {
   titulo?: string;
-  descripcion?: string;
   es_privado?: boolean;
   es_favorito?: boolean;
   fuentes?: string[];
   campos_config?: BIFieldConfig[];
   tipo_visualizacion?: ReportBIVisualization;
   viz_config?: Record<string, unknown>;
-  filtros?: Record<string, unknown>;
+  filtros?: BIFilterV2[];
   orden_config?: BISortConfig[];
   limite_registros?: number | null;
 }
 
-/** Payload para ejecutar/preview. */
+/** Payload para ejecutar/preview.
+ *  filtros: V2 array (nuevo) o dict V1 (legacy drill-down). Backend acepta ambos. */
 export interface ReportBIExecuteRequest {
   fuentes: string[];
   campos_config: BIFieldConfig[];
   tipo_visualizacion?: ReportBIVisualization;
   viz_config?: Record<string, unknown>;
-  filtros?: Record<string, unknown>;
+  filtros?: BIFilterV2[] | Record<string, unknown>;
   orden_config?: BISortConfig[];
   limite_registros?: number | null;
+}
+
+/** Payload para duplicar reporte. */
+export interface ReportBIDuplicateRequest {
+  titulo: string;
 }
 
 /** Columna de resultado — tal como la devuelve el backend. */
@@ -157,11 +197,35 @@ export function isTableResult(r: ReportBIExecuteResult): r is ReportBITableResul
   return 'columns' in r && 'rows' in r;
 }
 
+/** Grupo de galería — categoría + lista de reportes. */
+export interface ReportBIGalleryGroup {
+  categoria: ReportBICategory;
+  categoria_label: string;
+  reportes: ReportBIListItem[];
+}
+
 /** Resultado de sugerencia IA de reporte. */
 export interface BISuggestResult {
   template_titulo: string | null;
   explanation: string;
   config: ReportBICreateRequest | null;
+}
+
+/**
+ * Template estático del catálogo del sistema (viene de bi_templates.py vía /catalogo/).
+ * Global: disponible a todos los tenants sin seeding.
+ */
+export interface StaticTemplate {
+  titulo: string;
+  descripcion?: string;
+  fuentes: string[];
+  campos_config: BIFieldConfig[];
+  tipo_visualizacion: ReportBIVisualization;
+  viz_config?: Record<string, unknown>;
+  filtros?: BIFilterV2[] | Record<string, unknown>;
+  orden_config?: BISortConfig[];
+  limite_registros?: number | null;
+  categoria_galeria?: string;
 }
 
 /** Payload para compartir. */

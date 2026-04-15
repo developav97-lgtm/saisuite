@@ -1,12 +1,12 @@
 """
 SaiSuite -- Dashboard: BI Report Templates
-12 predefined report templates matching PRD section F7.
+Predefined report templates with categoria_galeria for the public gallery.
 Each template is a dict matching ReportBI field structure.
 """
 
 REPORT_TEMPLATES = [
     # ──────────────────────────────────────────────
-    # 1. Balance de Comprobación
+    # CONTABILIDAD
     # ──────────────────────────────────────────────
     {
         'titulo': 'Balance de Comprobación',
@@ -23,10 +23,8 @@ REPORT_TEMPLATES = [
         'filtros': {},
         'orden_config': [{'field': 'auxiliar', 'direction': 'asc'}],
         'limite_registros': None,
+        'categoria_galeria': 'contabilidad',
     },
-    # ──────────────────────────────────────────────
-    # 2. Estado de Resultados
-    # ──────────────────────────────────────────────
     {
         'titulo': 'Estado de Resultados',
         'descripcion': 'Ingresos - Costos - Gastos = Utilidad. Vista cascada por título contable.',
@@ -42,9 +40,117 @@ REPORT_TEMPLATES = [
         'filtros': {},
         'orden_config': [{'field': 'titulo_codigo', 'direction': 'asc'}],
         'limite_registros': None,
+        'categoria_galeria': 'contabilidad',
+    },
+    {
+        'titulo': 'Movimientos por Período',
+        'descripcion': 'Resumen de débitos y créditos del GL agrupados por período contable.',
+        'fuentes': ['gl'],
+        'campos_config': [
+            {'source': 'gl', 'field': 'periodo', 'role': 'dimension', 'label': 'Período'},
+            {'source': 'gl', 'field': 'debito', 'role': 'metric', 'aggregation': 'SUM', 'label': 'Débito'},
+            {'source': 'gl', 'field': 'credito', 'role': 'metric', 'aggregation': 'SUM', 'label': 'Crédito'},
+        ],
+        'tipo_visualizacion': 'bar',
+        'viz_config': {},
+        'filtros': {},
+        'orden_config': [{'field': 'periodo', 'direction': 'asc'}],
+        'limite_registros': None,
+        'categoria_galeria': 'contabilidad',
+    },
+    {
+        'titulo': 'Libro Mayor por Cuenta',
+        'descripcion': 'Detalle de movimientos por cuenta contable (auxiliar). Útil para revisar una cuenta específica.',
+        'fuentes': ['gl'],
+        'campos_config': [
+            {'source': 'gl', 'field': 'auxiliar', 'role': 'dimension', 'label': 'Cuenta'},
+            {'source': 'gl', 'field': 'auxiliar_nombre', 'role': 'dimension', 'label': 'Nombre cuenta'},
+            {'source': 'gl', 'field': 'periodo', 'role': 'dimension', 'label': 'Período'},
+            {'source': 'gl', 'field': 'tercero_nombre', 'role': 'dimension', 'label': 'Tercero'},
+            {'source': 'gl', 'field': 'debito', 'role': 'metric', 'aggregation': 'SUM', 'label': 'Débito'},
+            {'source': 'gl', 'field': 'credito', 'role': 'metric', 'aggregation': 'SUM', 'label': 'Crédito'},
+        ],
+        'tipo_visualizacion': 'table',
+        'viz_config': {},
+        'filtros': {},
+        'orden_config': [{'field': 'auxiliar', 'direction': 'asc'}, {'field': 'periodo', 'direction': 'asc'}],
+        'limite_registros': None,
+        'categoria_galeria': 'contabilidad',
     },
     # ──────────────────────────────────────────────
-    # 3. Ventas por Vendedor
+    # CUENTAS POR COBRAR
+    # ──────────────────────────────────────────────
+    {
+        'titulo': 'CxC por Cliente',
+        'descripcion': 'Saldo de cuentas por cobrar agrupado por cliente.',
+        'fuentes': ['cartera'],
+        'campos_config': [
+            {'source': 'cartera', 'field': 'tercero_nombre', 'role': 'dimension', 'label': 'Cliente'},
+            {'source': 'cartera', 'field': 'tipo_cartera', 'role': 'dimension', 'label': 'Tipo'},
+            {'source': 'cartera', 'field': 'saldo', 'role': 'metric', 'aggregation': 'SUM', 'label': 'Saldo'},
+        ],
+        'tipo_visualizacion': 'table',
+        'viz_config': {},
+        'filtros': [{'source': 'cartera', 'field': 'tipo_cartera', 'operator': 'eq', 'value': 'CXC'}],
+        'orden_config': [{'field': 'saldo', 'direction': 'desc'}],
+        'limite_registros': None,
+        'categoria_galeria': 'cuentas_cobrar',
+    },
+    {
+        'titulo': 'Aging de CxC',
+        'descripcion': 'Vencimiento cuentas por cobrar: corriente, 1-30, 31-60, 61-90, >90 días.',
+        'fuentes': ['cartera'],
+        'campos_config': [
+            {'source': 'cartera', 'field': 'tercero_nombre', 'role': 'dimension', 'label': 'Tercero'},
+            {'source': 'cartera', 'field': 'tipo_cartera', 'role': 'dimension', 'label': 'Tipo cartera'},
+            {'source': 'cartera', 'field': 'duedate', 'role': 'dimension', 'label': 'Vencimiento'},
+            {'source': 'cartera', 'field': 'saldo', 'role': 'metric', 'aggregation': 'SUM', 'label': 'Saldo'},
+        ],
+        'tipo_visualizacion': 'table',
+        'viz_config': {},
+        'filtros': [{'source': 'cartera', 'field': 'tipo_cartera', 'operator': 'eq', 'value': 'CXC'}],
+        'orden_config': [{'field': 'saldo', 'direction': 'desc'}],
+        'limite_registros': None,
+        'categoria_galeria': 'cuentas_cobrar',
+    },
+    # ──────────────────────────────────────────────
+    # CUENTAS POR PAGAR
+    # ──────────────────────────────────────────────
+    {
+        'titulo': 'CxP por Proveedor',
+        'descripcion': 'Saldo de cuentas por pagar agrupado por proveedor.',
+        'fuentes': ['cartera'],
+        'campos_config': [
+            {'source': 'cartera', 'field': 'tercero_nombre', 'role': 'dimension', 'label': 'Proveedor'},
+            {'source': 'cartera', 'field': 'tipo_cartera', 'role': 'dimension', 'label': 'Tipo'},
+            {'source': 'cartera', 'field': 'saldo', 'role': 'metric', 'aggregation': 'SUM', 'label': 'Saldo'},
+        ],
+        'tipo_visualizacion': 'table',
+        'viz_config': {},
+        'filtros': [{'source': 'cartera', 'field': 'tipo_cartera', 'operator': 'eq', 'value': 'CXP'}],
+        'orden_config': [{'field': 'saldo', 'direction': 'desc'}],
+        'limite_registros': None,
+        'categoria_galeria': 'cuentas_pagar',
+    },
+    {
+        'titulo': 'Aging de CxP',
+        'descripcion': 'Vencimiento cuentas por pagar: corriente, 1-30, 31-60, 61-90, >90 días.',
+        'fuentes': ['cartera'],
+        'campos_config': [
+            {'source': 'cartera', 'field': 'tercero_nombre', 'role': 'dimension', 'label': 'Proveedor'},
+            {'source': 'cartera', 'field': 'tipo_cartera', 'role': 'dimension', 'label': 'Tipo cartera'},
+            {'source': 'cartera', 'field': 'duedate', 'role': 'dimension', 'label': 'Vencimiento'},
+            {'source': 'cartera', 'field': 'saldo', 'role': 'metric', 'aggregation': 'SUM', 'label': 'Saldo'},
+        ],
+        'tipo_visualizacion': 'table',
+        'viz_config': {},
+        'filtros': [{'source': 'cartera', 'field': 'tipo_cartera', 'operator': 'eq', 'value': 'CXP'}],
+        'orden_config': [{'field': 'saldo', 'direction': 'desc'}],
+        'limite_registros': None,
+        'categoria_galeria': 'cuentas_pagar',
+    },
+    # ──────────────────────────────────────────────
+    # VENTAS
     # ──────────────────────────────────────────────
     {
         'titulo': 'Ventas por Vendedor',
@@ -64,10 +170,8 @@ REPORT_TEMPLATES = [
         'filtros': {},
         'orden_config': [],
         'limite_registros': None,
+        'categoria_galeria': 'ventas',
     },
-    # ──────────────────────────────────────────────
-    # 4. Ventas por Producto (Top 20)
-    # ──────────────────────────────────────────────
     {
         'titulo': 'Ventas por Producto (Top 20)',
         'descripcion': 'Productos más vendidos por cantidad o valor. Gráfico de barras.',
@@ -82,50 +186,45 @@ REPORT_TEMPLATES = [
         'filtros': {},
         'orden_config': [{'field': 'precio_extendido', 'direction': 'desc'}],
         'limite_registros': 20,
+        'categoria_galeria': 'ventas',
     },
-    # ──────────────────────────────────────────────
-    # 5. Aging de Cartera CxC
-    # ──────────────────────────────────────────────
     {
-        'titulo': 'Aging de Cartera CxC',
-        'descripcion': 'Vencimiento cuentas por cobrar: corriente, 1-30, 31-60, 61-90, >90 días.',
-        'fuentes': ['cartera'],
+        'titulo': 'Ventas por Período',
+        'descripcion': 'Total de ventas agrupado por período contable. Visualización de tendencia.',
+        'fuentes': ['facturacion'],
         'campos_config': [
-            {'source': 'cartera', 'field': 'tercero_nombre', 'role': 'dimension', 'label': 'Tercero'},
-            {'source': 'cartera', 'field': 'tipo_cartera', 'role': 'dimension', 'label': 'Tipo cartera'},
-            {'source': 'cartera', 'field': 'duedate', 'role': 'dimension', 'label': 'Vencimiento'},
-            {'source': 'cartera', 'field': 'saldo', 'role': 'metric', 'aggregation': 'SUM', 'label': 'Saldo'},
+            {'source': 'facturacion', 'field': 'periodo', 'role': 'dimension', 'label': 'Período'},
+            {'source': 'facturacion', 'field': 'total', 'role': 'metric', 'aggregation': 'SUM', 'label': 'Total ventas'},
+        ],
+        'tipo_visualizacion': 'line',
+        'viz_config': {},
+        'filtros': {},
+        'orden_config': [{'field': 'periodo', 'direction': 'asc'}],
+        'limite_registros': None,
+        'categoria_galeria': 'ventas',
+    },
+    {
+        'titulo': 'Detalle de Facturación con Costo (Multi-tabla)',
+        'descripcion': 'Cruza facturación_detalle con inventario vía item+tipo+batch. Muestra precio, costo, margen por línea.',
+        'fuentes': ['facturacion_detalle', 'inventario'],
+        'campos_config': [
+            {'source': 'facturacion_detalle', 'field': 'item_codigo', 'role': 'dimension', 'label': 'Código'},
+            {'source': 'facturacion_detalle', 'field': 'item_descripcion', 'role': 'dimension', 'label': 'Producto'},
+            {'source': 'facturacion_detalle', 'field': 'departamento_codigo', 'role': 'dimension', 'label': 'Depto'},
+            {'source': 'facturacion_detalle', 'field': 'actividad_codigo', 'role': 'dimension', 'label': 'Actividad'},
+            {'source': 'facturacion_detalle', 'field': 'qty_ship', 'role': 'metric', 'aggregation': 'SUM', 'label': 'Cantidad'},
+            {'source': 'facturacion_detalle', 'field': 'precio_extendido', 'role': 'metric', 'aggregation': 'SUM', 'label': 'Venta'},
+            {'source': 'inventario', 'field': 'costo_promedio', 'role': 'metric', 'aggregation': 'AVG', 'label': 'Costo promedio'},
         ],
         'tipo_visualizacion': 'table',
         'viz_config': {},
-        'filtros': {'tipo_cartera': 'CXC'},
-        'orden_config': [{'field': 'saldo', 'direction': 'desc'}],
+        'filtros': {},
+        'orden_config': [{'field': 'precio_extendido', 'direction': 'desc'}],
         'limite_registros': None,
+        'categoria_galeria': 'ventas',
     },
-    # ──────────────────────────────────────────────
-    # 6. Aging de Cartera CxP
-    # ──────────────────────────────────────────────
     {
-        'titulo': 'Aging de Cartera CxP',
-        'descripcion': 'Vencimiento cuentas por pagar: corriente, 1-30, 31-60, 61-90, >90 días.',
-        'fuentes': ['cartera'],
-        'campos_config': [
-            {'source': 'cartera', 'field': 'tercero_nombre', 'role': 'dimension', 'label': 'Tercero'},
-            {'source': 'cartera', 'field': 'tipo_cartera', 'role': 'dimension', 'label': 'Tipo cartera'},
-            {'source': 'cartera', 'field': 'duedate', 'role': 'dimension', 'label': 'Vencimiento'},
-            {'source': 'cartera', 'field': 'saldo', 'role': 'metric', 'aggregation': 'SUM', 'label': 'Saldo'},
-        ],
-        'tipo_visualizacion': 'table',
-        'viz_config': {},
-        'filtros': {'tipo_cartera': 'CXP'},
-        'orden_config': [{'field': 'saldo', 'direction': 'desc'}],
-        'limite_registros': None,
-    },
-    # ──────────────────────────────────────────────
-    # 7. Margen por Producto
-    # ──────────────────────────────────────────────
-    {
-        'titulo': 'Margen por Producto',
+        'titulo': 'Margen Bruto por Producto',
         'descripcion': 'Precio vs Costo por producto. Margen absoluto y porcentaje.',
         'fuentes': ['facturacion_detalle'],
         'campos_config': [
@@ -141,51 +240,67 @@ REPORT_TEMPLATES = [
         'filtros': {},
         'orden_config': [{'field': 'margen_valor', 'direction': 'desc'}],
         'limite_registros': None,
+        'categoria_galeria': 'ventas',
     },
     # ──────────────────────────────────────────────
-    # 8. Rotación de Inventario
+    # INVENTARIO
     # ──────────────────────────────────────────────
     {
         'titulo': 'Rotación de Inventario',
-        'descripcion': 'Cantidad movida y saldo por producto. Identifica productos con baja rotación.',
+        'descripcion': 'Cantidad movida y valorización por producto. Identifica productos con baja rotación.',
         'fuentes': ['inventario'],
         'campos_config': [
             {'source': 'inventario', 'field': 'item_codigo', 'role': 'dimension', 'label': 'Código'},
-            {'source': 'inventario', 'field': 'item_descripcion', 'role': 'dimension', 'label': 'Producto'},
             {'source': 'inventario', 'field': 'location', 'role': 'dimension', 'label': 'Bodega'},
             {'source': 'inventario', 'field': 'cantidad', 'role': 'metric', 'aggregation': 'SUM', 'label': 'Movimiento'},
-            {'source': 'inventario', 'field': 'saldo_unidades', 'role': 'metric', 'aggregation': 'SUM', 'label': 'Saldo Uds'},
+            {'source': 'inventario', 'field': 'total', 'role': 'metric', 'aggregation': 'SUM', 'label': 'Total'},
         ],
         'tipo_visualizacion': 'table',
         'viz_config': {},
         'filtros': {},
         'orden_config': [{'field': 'cantidad', 'direction': 'desc'}],
         'limite_registros': None,
+        'categoria_galeria': 'inventario',
     },
-    # ──────────────────────────────────────────────
-    # 9. Compras por Proveedor
-    # ──────────────────────────────────────────────
     {
-        'titulo': 'Compras por Proveedor',
-        'descripcion': 'Tabla dinámica: Proveedor × Mes × Total compras.',
-        'fuentes': ['facturacion'],
+        'titulo': 'Inventario Valorizado',
+        'descripcion': 'Costo promedio y total por producto y bodega. Valorización del inventario.',
+        'fuentes': ['inventario'],
         'campos_config': [
-            {'source': 'facturacion', 'field': 'tercero_nombre', 'role': 'dimension', 'label': 'Proveedor'},
-            {'source': 'facturacion', 'field': 'periodo', 'role': 'dimension', 'label': 'Período'},
-            {'source': 'facturacion', 'field': 'total', 'role': 'metric', 'aggregation': 'SUM', 'label': 'Total'},
+            {'source': 'inventario', 'field': 'item_codigo', 'role': 'dimension', 'label': 'Código'},
+            {'source': 'inventario', 'field': 'location', 'role': 'dimension', 'label': 'Bodega'},
+            {'source': 'inventario', 'field': 'cantidad', 'role': 'metric', 'aggregation': 'SUM', 'label': 'Cantidad'},
+            {'source': 'inventario', 'field': 'costo_promedio', 'role': 'metric', 'aggregation': 'AVG', 'label': 'Costo promedio'},
+            {'source': 'inventario', 'field': 'total', 'role': 'metric', 'aggregation': 'SUM', 'label': 'Total'},
         ],
-        'tipo_visualizacion': 'pivot',
-        'viz_config': {
-            'row_fields': ['tercero_nombre'],
-            'col_fields': ['periodo'],
-            'value_fields': [{'field': 'total', 'aggregation': 'SUM'}],
-        },
-        'filtros': {'tipo_doc': ['OP', 'FA']},
-        'orden_config': [],
+        'tipo_visualizacion': 'table',
+        'viz_config': {},
+        'filtros': {},
+        'orden_config': [{'field': 'total', 'direction': 'desc'}],
         'limite_registros': None,
+        'categoria_galeria': 'inventario',
+    },
+    {
+        'titulo': 'Kardex por Producto (Multi-tabla)',
+        'descripcion': 'Movimientos de inventario con datos del producto (nombre, clase, grupo) vía JOIN.',
+        'fuentes': ['inventario', 'productos'],
+        'campos_config': [
+            {'source': 'inventario', 'field': 'item_codigo', 'role': 'dimension', 'label': 'Código'},
+            {'source': 'productos', 'field': 'nombre', 'role': 'dimension', 'label': 'Producto'},
+            {'source': 'productos', 'field': 'clase', 'role': 'dimension', 'label': 'Clase'},
+            {'source': 'inventario', 'field': 'fecha', 'role': 'dimension', 'label': 'Fecha'},
+            {'source': 'inventario', 'field': 'cantidad', 'role': 'metric', 'aggregation': 'SUM', 'label': 'Cantidad'},
+            {'source': 'inventario', 'field': 'total', 'role': 'metric', 'aggregation': 'SUM', 'label': 'Total'},
+        ],
+        'tipo_visualizacion': 'table',
+        'viz_config': {},
+        'filtros': {},
+        'orden_config': [{'field': 'fecha', 'direction': 'asc'}],
+        'limite_registros': None,
+        'categoria_galeria': 'inventario',
     },
     # ──────────────────────────────────────────────
-    # 10. Gastos por Centro de Costo
+    # COSTOS
     # ──────────────────────────────────────────────
     {
         'titulo': 'Gastos por Centro de Costo',
@@ -204,13 +319,103 @@ REPORT_TEMPLATES = [
             'col_fields': ['periodo'],
             'value_fields': [{'field': 'debito', 'aggregation': 'SUM'}],
         },
-        'filtros': {'cuenta_desde': 5, 'cuenta_hasta': 5999},
+        'filtros': {},
         'orden_config': [],
         'limite_registros': None,
+        'categoria_galeria': 'costos',
+    },
+    {
+        'titulo': 'Costos por Actividad (Multi-tabla)',
+        'descripcion': 'Movimientos GL con descripción de actividad vía JOIN. Útil para costeo por actividad.',
+        'fuentes': ['gl', 'actividades_saiopen'],
+        'campos_config': [
+            {'source': 'gl', 'field': 'actividad_codigo', 'role': 'dimension', 'label': 'Código actividad'},
+            {'source': 'actividades_saiopen', 'field': 'descripcion', 'role': 'dimension', 'label': 'Actividad'},
+            {'source': 'gl', 'field': 'periodo', 'role': 'dimension', 'label': 'Período'},
+            {'source': 'gl', 'field': 'debito', 'role': 'metric', 'aggregation': 'SUM', 'label': 'Costo'},
+        ],
+        'tipo_visualizacion': 'bar',
+        'viz_config': {},
+        'filtros': {},
+        'orden_config': [{'field': 'debito', 'direction': 'desc'}],
+        'limite_registros': None,
+        'categoria_galeria': 'costos',
     },
     # ──────────────────────────────────────────────
-    # 11. Flujo por Tercero
+    # PROYECTOS
     # ──────────────────────────────────────────────
+    {
+        'titulo': 'Ejecución Presupuestal por Proyecto (Multi-tabla)',
+        'descripcion': 'Costos del GL con descripción de proyecto vía JOIN. Seguimiento de ejecución por proyecto.',
+        'fuentes': ['gl', 'proyectos_saiopen'],
+        'campos_config': [
+            {'source': 'gl', 'field': 'proyecto_codigo', 'role': 'dimension', 'label': 'Código proyecto'},
+            {'source': 'proyectos_saiopen', 'field': 'descripcion', 'role': 'dimension', 'label': 'Proyecto'},
+            {'source': 'gl', 'field': 'periodo', 'role': 'dimension', 'label': 'Período'},
+            {'source': 'gl', 'field': 'debito', 'role': 'metric', 'aggregation': 'SUM', 'label': 'Costo'},
+            {'source': 'gl', 'field': 'credito', 'role': 'metric', 'aggregation': 'SUM', 'label': 'Crédito'},
+        ],
+        'tipo_visualizacion': 'table',
+        'viz_config': {},
+        'filtros': {},
+        'orden_config': [{'field': 'proyecto_codigo', 'direction': 'asc'}],
+        'limite_registros': None,
+        'categoria_galeria': 'proyectos',
+    },
+    # ──────────────────────────────────────────────
+    # GERENCIAL / KPIs
+    # ──────────────────────────────────────────────
+    {
+        'titulo': 'Top 10 Clientes por Facturación',
+        'descripcion': 'Clientes con mayor valor facturado. Barras descendentes.',
+        'fuentes': ['facturacion'],
+        'campos_config': [
+            {'source': 'facturacion', 'field': 'tercero_nombre', 'role': 'dimension', 'label': 'Cliente'},
+            {'source': 'facturacion', 'field': 'total', 'role': 'metric', 'aggregation': 'SUM', 'label': 'Total facturado'},
+        ],
+        'tipo_visualizacion': 'bar',
+        'viz_config': {},
+        'filtros': {},
+        'orden_config': [{'field': 'total', 'direction': 'desc'}],
+        'limite_registros': 10,
+        'categoria_galeria': 'gerencial',
+    },
+    {
+        'titulo': 'Compras por Proveedor',
+        'descripcion': 'Tabla dinámica: Proveedor × Mes × Total compras.',
+        'fuentes': ['facturacion'],
+        'campos_config': [
+            {'source': 'facturacion', 'field': 'tercero_nombre', 'role': 'dimension', 'label': 'Proveedor'},
+            {'source': 'facturacion', 'field': 'periodo', 'role': 'dimension', 'label': 'Período'},
+            {'source': 'facturacion', 'field': 'total', 'role': 'metric', 'aggregation': 'SUM', 'label': 'Total'},
+        ],
+        'tipo_visualizacion': 'pivot',
+        'viz_config': {
+            'row_fields': ['tercero_nombre'],
+            'col_fields': ['periodo'],
+            'value_fields': [{'field': 'total', 'aggregation': 'SUM'}],
+        },
+        'filtros': {},
+        'orden_config': [],
+        'limite_registros': None,
+        'categoria_galeria': 'gerencial',
+    },
+    {
+        'titulo': 'P&G Resumido',
+        'descripcion': 'Resumen de ingresos, costos y gastos por período. Vista ejecutiva del desempeño financiero.',
+        'fuentes': ['gl'],
+        'campos_config': [
+            {'source': 'gl', 'field': 'titulo_nombre', 'role': 'dimension', 'label': 'Rubro'},
+            {'source': 'gl', 'field': 'debito', 'role': 'metric', 'aggregation': 'SUM', 'label': 'Débito'},
+            {'source': 'gl', 'field': 'credito', 'role': 'metric', 'aggregation': 'SUM', 'label': 'Crédito'},
+        ],
+        'tipo_visualizacion': 'waterfall',
+        'viz_config': {},
+        'filtros': {},
+        'orden_config': [{'field': 'titulo_nombre', 'direction': 'asc'}],
+        'limite_registros': None,
+        'categoria_galeria': 'gerencial',
+    },
     {
         'titulo': 'Flujo por Tercero',
         'descripcion': 'Débitos, créditos y saldo neto por tercero. Identifica principales contrapartes.',
@@ -226,25 +431,102 @@ REPORT_TEMPLATES = [
         'filtros': {},
         'orden_config': [{'field': 'debito', 'direction': 'desc'}],
         'limite_registros': None,
+        'categoria_galeria': 'gerencial',
     },
     # ──────────────────────────────────────────────
-    # 12. Inventario Valorizado
+    # NUEVOS — RETENCIONES Y DIMENSIONES
     # ──────────────────────────────────────────────
     {
-        'titulo': 'Inventario Valorizado',
-        'descripcion': 'Saldo y valor por producto y bodega. Valorización del inventario actual.',
-        'fuentes': ['inventario'],
+        'titulo': 'Retenciones por Cliente',
+        'descripcion': 'Total retefuente, reteica y reteiva agrupado por cliente.',
+        'fuentes': ['facturacion'],
         'campos_config': [
-            {'source': 'inventario', 'field': 'item_codigo', 'role': 'dimension', 'label': 'Código'},
-            {'source': 'inventario', 'field': 'item_descripcion', 'role': 'dimension', 'label': 'Producto'},
-            {'source': 'inventario', 'field': 'location', 'role': 'dimension', 'label': 'Bodega'},
-            {'source': 'inventario', 'field': 'saldo_unidades', 'role': 'metric', 'aggregation': 'SUM', 'label': 'Saldo Uds'},
-            {'source': 'inventario', 'field': 'saldo_pesos', 'role': 'metric', 'aggregation': 'SUM', 'label': 'Saldo $'},
+            {'source': 'facturacion', 'field': 'tercero_nombre', 'role': 'dimension', 'label': 'Cliente'},
+            {'source': 'facturacion', 'field': 'tipo_descripcion', 'role': 'dimension', 'label': 'Tipo'},
+            {'source': 'facturacion', 'field': 'descuento_global', 'role': 'metric', 'aggregation': 'SUM', 'label': 'Retefuente'},
+            {'source': 'facturacion', 'field': 'porcrtfte', 'role': 'metric', 'aggregation': 'AVG', 'label': '% Retefuente'},
+            {'source': 'facturacion', 'field': 'reteica', 'role': 'metric', 'aggregation': 'SUM', 'label': 'Reteica'},
+            {'source': 'facturacion', 'field': 'reteiva', 'role': 'metric', 'aggregation': 'SUM', 'label': 'Reteiva'},
+            {'source': 'facturacion', 'field': 'total', 'role': 'metric', 'aggregation': 'SUM', 'label': 'Total facturado'},
         ],
         'tipo_visualizacion': 'table',
         'viz_config': {},
         'filtros': {},
-        'orden_config': [{'field': 'saldo_pesos', 'direction': 'desc'}],
+        'orden_config': [{'field': 'total', 'direction': 'desc'}],
+        'limite_registros': 50,
+        'categoria_galeria': 'ventas',
+    },
+    {
+        'titulo': 'Ventas por Tipo de Documento',
+        'descripcion': 'Subtotal, IVA, descuentos y total agrupado por tipo de documento (FAC, DEV, NC).',
+        'fuentes': ['facturacion'],
+        'campos_config': [
+            {'source': 'facturacion', 'field': 'tipo_descripcion', 'role': 'dimension', 'label': 'Tipo documento'},
+            {'source': 'facturacion', 'field': 'tipo', 'role': 'dimension', 'label': 'Código'},
+            {'source': 'facturacion', 'field': 'subtotal', 'role': 'metric', 'aggregation': 'SUM', 'label': 'Subtotal'},
+            {'source': 'facturacion', 'field': 'iva', 'role': 'metric', 'aggregation': 'SUM', 'label': 'IVA'},
+            {'source': 'facturacion', 'field': 'destotal', 'role': 'metric', 'aggregation': 'SUM', 'label': 'Descuento total'},
+            {'source': 'facturacion', 'field': 'total', 'role': 'metric', 'aggregation': 'SUM', 'label': 'Total'},
+        ],
+        'tipo_visualizacion': 'bar',
+        'viz_config': {},
+        'filtros': {},
+        'orden_config': [{'field': 'total', 'direction': 'desc'}],
         'limite_registros': None,
+        'categoria_galeria': 'ventas',
+    },
+    {
+        'titulo': 'Ventas por Departamento Contable',
+        'descripcion': 'Cantidad y valor de ventas agrupado por departamento contable vía JOIN.',
+        'fuentes': ['facturacion_detalle', 'departamentos'],
+        'campos_config': [
+            {'source': 'facturacion_detalle', 'field': 'departamento_codigo', 'role': 'dimension', 'label': 'Cód. Depto'},
+            {'source': 'departamentos', 'field': 'descripcion', 'role': 'dimension', 'label': 'Departamento'},
+            {'source': 'facturacion_detalle', 'field': 'qty_ship', 'role': 'metric', 'aggregation': 'SUM', 'label': 'Cantidad'},
+            {'source': 'facturacion_detalle', 'field': 'precio_extendido', 'role': 'metric', 'aggregation': 'SUM', 'label': 'Venta total'},
+            {'source': 'facturacion_detalle', 'field': 'margen_valor', 'role': 'metric', 'aggregation': 'SUM', 'label': 'Margen'},
+        ],
+        'tipo_visualizacion': 'bar',
+        'viz_config': {},
+        'filtros': {},
+        'orden_config': [{'field': 'precio_extendido', 'direction': 'desc'}],
+        'limite_registros': None,
+        'categoria_galeria': 'ventas',
+    },
+    {
+        'titulo': 'Análisis por Línea de Producto',
+        'descripcion': 'Ventas y margen agrupados por línea y grupo de producto (clasificación ITEM vía productos).',
+        'fuentes': ['facturacion_detalle', 'productos'],
+        'campos_config': [
+            {'source': 'productos', 'field': 'linea_descripcion', 'role': 'dimension', 'label': 'Línea'},
+            {'source': 'productos', 'field': 'grupo_descripcion', 'role': 'dimension', 'label': 'Grupo'},
+            {'source': 'facturacion_detalle', 'field': 'qty_ship', 'role': 'metric', 'aggregation': 'SUM', 'label': 'Cantidad'},
+            {'source': 'facturacion_detalle', 'field': 'precio_extendido', 'role': 'metric', 'aggregation': 'SUM', 'label': 'Venta'},
+            {'source': 'facturacion_detalle', 'field': 'margen_valor', 'role': 'metric', 'aggregation': 'SUM', 'label': 'Margen $'},
+        ],
+        'tipo_visualizacion': 'bar',
+        'viz_config': {},
+        'filtros': {},
+        'orden_config': [{'field': 'precio_extendido', 'direction': 'desc'}],
+        'limite_registros': None,
+        'categoria_galeria': 'ventas',
+    },
+    {
+        'titulo': 'Saldo de Cartera por Tercero y Período',
+        'descripcion': 'Movimientos de cartera (cargos, abonos, saldo) por tercero y período contable.',
+        'fuentes': ['cartera'],
+        'campos_config': [
+            {'source': 'cartera', 'field': 'tercero_nombre', 'role': 'dimension', 'label': 'Tercero'},
+            {'source': 'cartera', 'field': 'periodo', 'role': 'dimension', 'label': 'Período'},
+            {'source': 'cartera', 'field': 'debito', 'role': 'metric', 'aggregation': 'SUM', 'label': 'Cargos'},
+            {'source': 'cartera', 'field': 'credito', 'role': 'metric', 'aggregation': 'SUM', 'label': 'Abonos'},
+            {'source': 'cartera', 'field': 'saldo', 'role': 'metric', 'aggregation': 'SUM', 'label': 'Saldo'},
+        ],
+        'tipo_visualizacion': 'table',
+        'viz_config': {},
+        'filtros': {},
+        'orden_config': [{'field': 'saldo', 'direction': 'desc'}],
+        'limite_registros': None,
+        'categoria_galeria': 'cuentas_cobrar',
     },
 ]

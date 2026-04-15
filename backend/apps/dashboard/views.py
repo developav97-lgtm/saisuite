@@ -29,10 +29,13 @@ from apps.dashboard.serializers import (
     ReportBIUpdateSerializer,
     ReportBIExecuteSerializer,
     ReportBIShareCreateSerializer,
+    BiCardExecuteRequestSerializer,
+    BiSelectableReportSerializer,
 )
 from apps.dashboard.services import (
     DashboardService,
     CardService,
+    CardBIService,
     TrialService,
     FilterService,
     CatalogService,
@@ -755,6 +758,19 @@ class ReportBIShareRevokeView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+class ReportBIStaticCatalogView(APIView):
+    """
+    GET /api/v1/dashboard/reportes/catalogo/
+    Devuelve el catálogo estático de templates del sistema (bi_templates.py).
+    Global: no requiere seeding por empresa. Config completa para pre-llenar el builder.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from apps.dashboard.bi_templates import REPORT_TEMPLATES
+        return Response(REPORT_TEMPLATES)
+
+
 class ReportBITemplatesView(APIView):
     """GET /api/v1/dashboard/reportes/templates/"""
     permission_classes = [IsAuthenticated]
@@ -812,3 +828,68 @@ class BIFiltersView(APIView):
             )
         filters = ReportBIService.get_filters(source)
         return Response(filters)
+
+
+class BIJoinsView(APIView):
+    """GET /api/v1/dashboard/reportes/meta/joins/"""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        joins = ReportBIService.get_joins()
+        return Response(joins)
+
+
+class ReportBIDuplicateView(APIView):
+    """POST /api/v1/dashboard/reportes/{id}/duplicate/"""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, report_id):
+        titulo = request.data.get('titulo', '').strip()
+        if not titulo:
+            return Response({'titulo': 'El título es requerido.'}, status=status.HTTP_400_BAD_REQUEST)
+        report = ReportBIService.duplicate_report(report_id, request.user, titulo)
+        serializer = ReportBIDetailSerializer(report)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+# ── Sprint 4: bi_report cards ─────────────────────────────────────────────────
+
+
+class BiCardExecuteView(APIView):
+    """
+    POST /api/v1/dashboard/{dashboard_id}/cards/{card_id}/bi-execute/
+    Ejecuta el reporte BI de una tarjeta aplicando filtros en 3 capas.
+    Body: { "dashboard_filters": {...} }
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, dashboard_id, card_id):
+        serializer = BiCardExecuteRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        result = CardBIService.execute_bi_card(
+            card_id=card_id,
+            dashboard_filters=serializer.validated_data.get('dashboard_filters', {}),
+        )
+        return Response(result)
+
+
+class BiSelectableReportsView(APIView):
+    """
+    GET /api/v1/dashboard/reportes/seleccionables/
+    Lista reportes BI compatibles para usar como tarjeta de dashboard.
+    Solo tipos gráficos (bar, line, pie, area, waterfall, kpi, gauge).
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        company = _get_company(request)
+        if not company:
+            return Response(
+                {'error': 'Usuario sin empresa asignada'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        reports = CardBIService.get_selectable_reports(request.user, company.id)
+        serializer = BiSelectableReportSerializer(reports, many=True)
+        return Response(serializer.data)

@@ -1,4 +1,4 @@
-@if (loading() && !previewResult()) {
+@if (loading()) {
   <mat-progress-bar mode="indeterminate"></mat-progress-bar>
 }
 
@@ -66,6 +66,64 @@
       </app-filter-builder>
     </mat-expansion-panel>
 
+    <!-- Orden y límite -->
+    <mat-expansion-panel class="report-builder__filter-panel">
+      <mat-expansion-panel-header>
+        <mat-panel-title class="report-builder__filter-title">
+          <mat-icon>sort</mat-icon>
+          Orden y límite
+          @if (ordenConfig().length > 0 || limiteRegistros() !== null) {
+            <span class="report-builder__filter-badge">
+              {{ ordenConfig().length + (limiteRegistros() !== null ? 1 : 0) }}
+            </span>
+          }
+        </mat-panel-title>
+      </mat-expansion-panel-header>
+
+      <div class="order-config">
+        <!-- Límite de registros -->
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>Límite de registros</mat-label>
+          <mat-select [value]="limiteRegistros()" (selectionChange)="onLimiteChange($event.value)">
+            @for (opt of limitOptions; track opt.label) {
+              <mat-option [value]="opt.value">{{ opt.label }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <!-- Reglas de ordenamiento -->
+        @for (ord of ordenConfig(); track $index) {
+          <div class="order-row">
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="order-field-select">
+              <mat-label>Campo</mat-label>
+              <mat-select [value]="ord.field" (selectionChange)="updateOrdenField($index, $event.value)">
+                @for (f of selectedFieldsForOrder(); track f.field) {
+                  <mat-option [value]="f.field">{{ f.label }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+
+            <mat-button-toggle-group [value]="ord.direction" (change)="updateOrdenDir($index, $event.value)">
+              <mat-button-toggle value="asc">
+                <mat-icon>arrow_upward</mat-icon> ASC
+              </mat-button-toggle>
+              <mat-button-toggle value="desc">
+                <mat-icon>arrow_downward</mat-icon> DESC
+              </mat-button-toggle>
+            </mat-button-toggle-group>
+
+            <button mat-icon-button color="warn" (click)="removeOrden($index)" matTooltip="Quitar">
+              <mat-icon>delete_outline</mat-icon>
+            </button>
+          </div>
+        }
+
+        <button mat-stroked-button (click)="addOrden()" [disabled]="selectedFields().length === 0">
+          <mat-icon>add</mat-icon> Agregar orden
+        </button>
+      </div>
+    </mat-expansion-panel>
+
     <!-- Layout: campos | visualización -->
     <div class="report-builder__layout">
       <!-- Sidebar: solo campos -->
@@ -99,7 +157,8 @@
           <app-data-table
             [data]="tableResult()"
             [loading]="loading()"
-            [fieldConfigs]="selectedFields()">
+            [fieldConfigs]="selectedFields()"
+            [showPaginator]="false">
           </app-data-table>
         } @else if (isPivot()) {
           <app-pivot-table
@@ -114,6 +173,18 @@
             [fields]="selectedFields()"
             [loading]="loading()">
           </app-chart-renderer>
+        }
+
+        <!-- Aviso de vista previa -->
+        @if (previewResult()) {
+          <p class="builder-preview-hint">
+            Vista previa ·
+            @if (limiteRegistros() !== null) {
+              límite: {{ limiteRegistros() }} registros.
+            } @else {
+              máx. 30 registros en previsualización.
+            }
+          </p>
         }
       </main>
     </div>

@@ -1,11 +1,10 @@
 # PROGRESS: Reportes (SaiDashboard)
 
-**Estado:** ✅ COMPLETADO
-**Tipo:** FEATURE
-**Fase actual:** F — Validación 4x4 + QA (completada)
+**Estado:** ✅ COMPLETADO (V2 Sprint 5 completado)
+**Tipo:** FEATURE + IMPROVEMENT
+**Fase actual:** COMPLETADO — Todos los sprints entregados
 **Inicio:** 2026-04-10
-**Última sesión:** 2026-04-11
-**Fecha cierre:** 2026-04-11
+**Última sesión:** 2026-04-13
 **PRD:** docs/plans/PRD-REPORTES-BI.md
 **Module code:** `dashboard`
 
@@ -35,10 +34,297 @@
 | DASH-005 | FEATURE | Fase E — 12 templates predefinidos, report-share-dialog, CFO Virtual suggest-report IA, tests | ✅ COMPLETADO | DEV |
 | DASH-006 | QA | Fase F — Validación 4x4, Django Admin (ReportBI + 4 modelos contab), RAG-CHUNKS, cierre módulo | ✅ COMPLETADO | QA |
 | DASH-007 | BUGFIX | filter-builder: tipo 'date' sin datepicker, multi_select/select sin control, filtros duplicados por dedup incorrecto, filtros nunca llegaban al backend | ✅ COMPLETADO | DEV |
+| DASH-008 | IMPROVEMENT | **V2 Sprint 1** — BIQueryEngine v2: multi-fuente con JOINs automáticos (Subquery+OuterRef), SOURCE_JOINS_MAP con 15+ relaciones | ✅ COMPLETADO | DEV |
+| DASH-009 | IMPROVEMENT | **V2 Sprint 1** — Nuevas fuentes: terceros_saiopen, productos, cuentas_contables, proyectos_saiopen, actividades_saiopen, departamentos, centros_costo, tipos_documento, direcciones_envio, impuestos | ✅ COMPLETADO | DEV |
+| DASH-010 | IMPROVEMENT | **V2 Sprint 1** — FilterTranslator: 12 operadores (eq, neq, contains, between, in, is_true, is_false, etc.) con retrocompatibilidad filtros v1 | ✅ COMPLETADO | DEV |
+| DASH-011 | IMPROVEMENT | **V2 Sprint 1** — Endpoint GET /meta/joins/ + validación limite_registros | ✅ COMPLETADO | DEV |
+| DASH-012 | IMPROVEMENT | **V2 Sprint 1** — Tests (43 passing): FilterTranslator, JOINs, nuevas fuentes, límite, endpoint | ✅ COMPLETADO | QA |
+| DASH-013 | IMPROVEMENT | **V2 Sprint 2** — Frontend: field-panel rediseño, filter-builder operadores, source-selector nuevas fuentes, duplicate-dialog | ✅ COMPLETADO | DEV |
+| DASH-014 | IMPROVEMENT | **V2 Sprint 3** — Galería: categoria_galeria, templates multi-tabla, vista galería | ✅ COMPLETADO | DEV |
+| DASH-015 | IMPROVEMENT | **V2 Sprint 4** — Dashboard ↔ BI: bi_report FK, filtros 3 capas, card-filter-override | ✅ COMPLETADO | DEV |
+| DASH-016 | IMPROVEMENT | **V2 Sprint 5** — CFO Virtual actualización, validaciones integridad, documentación | ✅ COMPLETADO | DEV |
+| DASH-017 | BUGFIX | Fixes BI: labels duplicados (Tercero/Identificación, Nombre/Nombre tercero, Código/Descripción producto), EXTEND→0 en OEDET, campo orden_campo inválido en suggest-report | ✅ COMPLETADO | DEV |
+| DASH-018 | FEATURE | **V3 Sesión 15-Abr** — Campos nuevos: retenciones OE, clasificación OEDET→Productos, dimensiones OEDET; templates globales estáticos (28); ordenamiento+límite en builder; sugeridor IA con fechas y cuentas PUC; eliminación galería | ✅ COMPLETADO | DEV |
+
+---
+
+## Sesiones de Trabajo
+
+| Sesión | Fecha | Sprint | Resultado |
+|--------|-------|--------|-----------|
+| 1-9 | 2026-04-10 a 2026-04-11 | Sprints 1-3 | Módulo BI completo |
+| 10 | 2026-04-12 | Sprint 4 | Dashboard ↔ BI integration (DASH-015) |
+| 11 | 2026-04-13 | Sprint 5 | DASH-016: ReportBIValidator, CFO actualizado, tests +18, RAG+2 chunks |
+| 12 | 2026-04-15 | V3 | DASH-017+018: fixes labels, sync OEDET/OE nuevos campos, builder ordenamiento+límite, templates globales 28, sugeridor IA mejorado, galería eliminada |
 
 ---
 
 ## Detalle de implementación
+
+### Sprint 5 — CFO Virtual, Validaciones Integridad, Documentación (DASH-016)
+
+**Fecha:** 2026-04-13
+**Tests añadidos:** 20 backend (`TestReportBIValidator` + fix `CfoSuggestReportTest`) + corrección de 24 tests desactualizados
+**Total tests backend:** 74 passing (+ 1 skip por reportlab), 26 en contabilidad = 100 total
+
+**Archivos backend:**
+
+| Archivo | Cambios |
+|---------|---------|
+| `backend/apps/dashboard/services.py` | Nueva clase `ReportBIValidator` (validate_sources, validate_campos_config, validate_joins, validate_viz_config, validate_orden_config, validate_all); llamada desde `create_report()` y `update_report()`; `get_template_catalog()` ahora incluye `categoria_galeria`; `suggest_report()` system_prompt mejorado con categorías + retorna `categoria_galeria` |
+| `backend/apps/dashboard/tests/test_report_bi.py` | +`TestReportBIValidator` (20 tests); corrección de 24 tests desactualizados por v2 (fuentes 5→16, templates 12→23, campos_config sin source, template title inexistente) |
+| `docs/technical/reportes-bi/RAG-CHUNKS.md` | +CHUNK-016 actualizado, +CHUNK-017 (ReportBIValidator), +CHUNK-018 (CFO Virtual Sprint 5) |
+
+**ReportBIValidator — validaciones implementadas:**
+
+| Método | Qué valida | Error |
+|--------|-----------|-------|
+| `validate_sources` | Fuentes en SOURCE_FIELDS | "Fuentes no reconocidas: X" |
+| `validate_campos_config` | source en fuentes, field en SOURCE_FIELDS[source], role válido | "campos_config[i]: field 'X' no existe..." |
+| `validate_joins` | Para multi-fuente: JOIN en SOURCE_JOINS_MAP | "No existe JOIN desde 'A' hacia: B" |
+| `validate_viz_config` | Pivot: row/col/value fields en campos_config | "viz_config.row_fields: 'X' no está en campos_config" |
+| `validate_orden_config` | Campos de orden en campos_config, direction asc/desc | "orden_config[i]: 'X' no está en campos_config" |
+
+**CFO Virtual mejoras:**
+- `system_prompt` incluye categoría de cada template para matching más preciso
+- `suggest_report()` retorna `categoria_galeria` para navegación directa
+- `get_template_catalog()` incluye `categoria_galeria` en cada entrada
+
+---
+
+### Sesión 12 — V3: Campos sync, Builder mejorado, Templates globales, Sugeridor IA, Galería eliminada (DASH-017 + DASH-018)
+
+**Fecha:** 2026-04-15
+**Tests finales backend:** 206 passing (dashboard) + 177 passing (contabilidad+crm)
+
+---
+
+#### 1. Fixes de labels duplicados en BI (DASH-017)
+
+Cuando el usuario combina fuentes transaccionales con maestros, los mismos campos aparecían dos veces con nombres distintos.
+
+| Problema | Fix aplicado |
+|----------|-------------|
+| `facturacion_detalle.item_codigo` = "Código producto" ≠ `productos.codigo` = "Código" | Renombrado a "Código" en `facturacion_detalle` |
+| `facturacion_detalle.item_descripcion` = "Descripción producto" ≠ `productos.descripcion` = "Descripción" | Renombrado a "Descripción" |
+| `gl.tercero_id` = "Identificacion" ≠ `terceros_saiopen.id_n` = "Identificación" | Estandarizado a "Identificación" |
+| `gl/facturacion/cartera.tercero_nombre` = "Nombre tercero" ≠ `terceros_saiopen.nombre` = "Nombre" | Estandarizado a "Nombre" |
+| Categoría `terceros_saiopen` = "Identificación" no fusionaba con "Tercero" de GL | Renombrada a "Tercero" en `SOURCE_FIELDS` |
+
+**Archivos:** `backend/apps/dashboard/bi_engine.py`
+
+---
+
+#### 2. Fix agente Go — OEDET.EXTEND en cero (DASH-017)
+
+`precio_extendido` siempre llegaba en 0 porque `detectColumn("OEDET")` buscaba `"EXTENDED"` pero el campo real en Firebird es `"EXTEND"`.
+
+**Fix:** `agent-go/internal/firebird/client.go:390` — Agregado `"EXTEND"` como primer candidato.
+
+---
+
+#### 3. Nuevos campos sync — Agente Go + Django (DASH-018)
+
+##### Facturación Detalle (OEDET → `FacturaDetalle`)
+
+| Campo Django | Campo Firebird | Descripción |
+|-------------|---------------|-------------|
+| `total_descuento` | `OEDET.TOTALDCT` | Total descuento línea |
+| `departamento_codigo` | `OEDET.DPTO` | Departamento contable |
+| `centro_costo_codigo` | `OEDET.CCOST` | Centro de costo |
+| `actividad_codigo` | `OEDET.ACTIVIDAD` | Actividad económica |
+
+Campos de clasificación (`item_reffabrica`, `item_class`, `linea_*`, `grupo_*`, `subgrupo_*`) **movidos de `FacturaDetalle` a `CrmProducto`** — pertenecen al maestro ITEM, no al movimiento transaccional.
+
+Migraciones: `0012` (clasificación→detalle), `0013` (retenciones→encabezado), `0014` (dimensiones→detalle), `0015` (remove clasificación de detalle).
+
+##### Facturación Encabezado (OE → `FacturaEncabezado`)
+
+| Campo Django | Campo Firebird | Descripción |
+|-------------|---------------|-------------|
+| `tercero_razon_social` | `CUST.COMPANY_EXTENDIDO` | Nombre extendido del tercero |
+| `tipo_descripcion` | `TIPDOC.DESCRIPCION` (JOIN) | Descripción del tipo de documento |
+| `destotal` | `OE.DESTOTAL` | Descuento total factura |
+| `otroscargos` | `OE.OTROSCARGOS` | Otros cargos |
+| `porcrtfte` | `OE.PORCRTFTE` | % retención en la fuente |
+| `reteica` | `OE.DISC2` | Valor retención ICA |
+| `porcentaje_reteica` | `RETEN.PORCENTAJE` (JOIN) | % retención ICA |
+| `reteiva` | `OE.DISC3` | Valor retención IVA |
+
+Migración: `0013_add_retenciones_factura_encabezado`.
+
+##### Productos (ITEM → `CrmProducto`)
+
+| Campo Django | Campo Firebird | Descripción |
+|-------------|---------------|-------------|
+| `reffabrica` | `ITEM.REFFABRICA` | Referencia de fábrica |
+| `linea_codigo` | `ITEM.ITEMMSTR` | Código línea (PUC producto) |
+| `linea_descripcion` | `LINEA.DESCLINEA` (JOIN) | Descripción línea |
+| `grupo_descripcion` | `GRUPO.DESCGRUPO` (JOIN) | Descripción grupo |
+| `subgrupo_descripcion` | `SUBGRUPO.DESCSUBGRUPO` (JOIN) | Descripción subgrupo |
+
+`QueryAllItem` ahora hace LEFT JOINs condicionales a LINEA, GRUPO, SUBGRUPO.
+
+Migración: `crm.0003_add_clasificacion_crm_producto`.
+
+##### JOINs nuevos en SOURCE_JOINS_MAP
+
+```
+facturacion_detalle ↔ proyectos_saiopen  (proyecto_codigo → codigo)
+facturacion_detalle ↔ actividades_saiopen (actividad_codigo → codigo)
+facturacion_detalle ↔ departamentos      (departamento_codigo → codigo)
+facturacion_detalle ↔ centros_costo      (centro_costo_codigo → codigo)
+```
+
+---
+
+#### 4. Report Builder — Ordenamiento y Límite de registros (DASH-018)
+
+**Frontend `report-builder.component.ts/html`:**
+- Nuevas señales: `ordenConfig`, `limiteRegistros`
+- Preset (`?preset=`): ahora lee y aplica `orden_config` y `limite_registros`
+- Template BD (`?template=<id>`): ahora carga config completa vía `getById()`
+- `preview()` y `save()`: envían `orden_config` y `limite_registros`
+- UI nueva: panel colapsable "Orden y límite" con select de Top 10/20/50/100/200 + filas ASC/DESC por campo
+- Conversión filtros V1 dict → V2 array al leer preset
+
+---
+
+#### 5. Sugeridor IA — Filtros dinámicos y cuentas PUC (DASH-018)
+
+**Backend `dashboard/services.py` — `suggest_report()`:**
+
+| Mejora | Descripción |
+|--------|-------------|
+| Filtros de fecha | Extrae períodos de la pregunta → `filtros_extra` con op `between` |
+| Cuentas PUC | Detecta número de dígitos → campo correcto (1=titulo, 2=grupo, 4=cuenta, 6=subcuenta, 8+=auxiliar) |
+| Múltiples cuentas | Genera op `in` con array cuando el usuario menciona varias cuentas |
+| Validación campo orden | Si el LLM alucina un campo, usa la primera métrica del template |
+| Fusión de config | Template + filtros_extra + orden + límite del LLM se mezclan antes de devolver |
+| max_tokens | 400 → 500 para acomodar JSON enriquecido |
+
+Ejemplo: "movimientos período 2025 cuentas 11 y 13" →
+```json
+{
+  "grupo_codigo": {"op":"in","value":[11,13]},
+  "fecha": {"op":"between","value":["2025-01-01","2025-12-31"]}
+}
+```
+
+---
+
+#### 6. Templates globales estáticos — 28 templates sin seeding (DASH-018)
+
+**Antes:** Templates en BD por empresa → requería `seed_bi_templates <company_id>`.
+**Ahora:** Endpoint `GET /reportes/catalogo/` devuelve `REPORT_TEMPLATES` directo desde código → disponible a todos los tenants sin seeding.
+
+Frontend: tab "Templates" usa `getStaticCatalog()`, "Usar" navega con `?preset=<JSON>` (no `?template=<id>`).
+
+**Nuevos templates agregados (5):**
+- `Retenciones por Cliente` — retefuente, reteica, reteiva por cliente
+- `Ventas por Tipo de Documento` — FAC, DEV, NC con descuentos y totales
+- `Ventas por Departamento Contable` — JOIN `facturacion_detalle + departamentos`
+- `Análisis por Línea de Producto` — JOIN `facturacion_detalle + productos` con clasificación
+- `Saldo de Cartera por Tercero y Período` — cargos, abonos, saldo
+
+**Total templates: 28** (23 originales + 5 nuevos).
+
+---
+
+#### 7. Eliminación de Galería (DASH-018)
+
+La galería era redundante con los templates globales.
+
+**Removido:**
+- Frontend: botón "Galería", ruta `reportes/galeria`, `irGaleria()`, `getGallery()`
+- Backend: `ReportBIGalleryView`, `ReportBIGalleryGroupSerializer`, `list_gallery()`, URL `reportes/galeria/`
+- Tests: `ReportBIGalleryServiceTest`, `ReportBIGalleryEndpointTest`
+
+`categoria_galeria` conservado en modelo y templates (útil para categorizar en el tab estático).
+
+---
+
+#### 8. Documentación generada
+
+- `docs/technical/IA-COSTOS-Y-LIMITES.md` — análisis completo de costos por módulo IA (SaiBot + CFO Virtual), tarifas GPT-4o-mini, proyecciones, sistema de cuotas.
+
+---
+
+#### Archivos modificados (sesión 12)
+
+**Backend:**
+- `backend/apps/dashboard/bi_engine.py` — labels, SOURCE_FIELDS, SOURCE_JOINS_MAP
+- `backend/apps/dashboard/services.py` — `suggest_report` mejorado, `list_gallery` eliminado
+- `backend/apps/dashboard/views.py` — `ReportBIStaticCatalogView` agregado, `ReportBIGalleryView` eliminado
+- `backend/apps/dashboard/urls.py` — ruta `/catalogo/` agregada, `/galeria/` eliminada
+- `backend/apps/dashboard/serializers.py` — `ReportBIGalleryGroupSerializer` eliminado
+- `backend/apps/dashboard/bi_templates.py` — 5 templates nuevos, "Detalle Facturación" actualizado
+- `backend/apps/dashboard/management/commands/seed_bi_templates.py` — fix bug `descripcion`
+- `backend/apps/contabilidad/models.py` — `FacturaDetalle` +4 campos, `FacturaEncabezado` +8 campos (sin clasificación)
+- `backend/apps/contabilidad/services.py` — `process_oedet_batch`, `process_oe_batch`, `_*_UPDATE_FIELDS` actualizados
+- `backend/apps/contabilidad/admin.py` — admin actualizado
+- `backend/apps/contabilidad/migrations/` — migraciones 0012 a 0015
+- `backend/apps/crm/models.py` — `CrmProducto` +5 campos clasificación
+- `backend/apps/crm/producto_services.py` — `sync_from_payload` actualizado
+- `backend/apps/crm/migrations/0003_*` — migración CRM
+
+**Agente Go:**
+- `agent-go/internal/firebird/client.go` — `OERecord` +8 campos, `OEDetRecord` refactorizado, `QueryOEIncremental` con JOINs TIPDOC/RETEN/CUST, `QueryOEDetIncremental` con DPTO/CCOST/ACTIVIDAD/TOTALDCT, `QueryAllItem` con JOINs LINEA/GRUPO/SUBGRUPO
+- `agent-go/dist/saicloud-agent.exe` — recompilado para Windows
+
+**Frontend:**
+- `frontend/.../report-builder.component.ts/html/scss` — ordenamiento, límite, `?template=` fallback
+- `frontend/.../report-list.component.ts/html` — templates estáticos, `usarTemplate`, galería eliminada
+- `frontend/.../report-bi.service.ts` — `getStaticCatalog()`, `getGallery()` eliminado
+- `frontend/.../report-bi.model.ts` — `StaticTemplate` interface
+- `frontend/.../filter-builder.component.ts` — fix render op `in` con coma en chip
+- `frontend/.../saidashboard.routes.ts` — ruta galería eliminada
+
+---
+
+### Sprint 4 — Dashboard ↔ BI Integration (DASH-015)
+
+**Fecha:** 2026-04-12
+**Tests añadidos:** 15 (backend: `test_bi_v2.py`) + 6 (frontend: `bi-report-card.component.spec.ts`)
+
+**Archivos backend:**
+
+| Archivo | Cambios |
+|---------|---------|
+| `backend/apps/dashboard/models.py` | FK `bi_report` en `DashboardCard` (null/blank, SET_NULL) |
+| `backend/apps/dashboard/migrations/0005_dashboardcard_bi_report_fk.py` | Migración FK (creada manualmente por psycopg no disponible) |
+| `backend/apps/dashboard/services.py` | `CardService.add_card/update_card` → soporte `bi_report`; nuevo `CardBIService` con `get_selectable_reports`, `execute_bi_card`, `_apply_overrides`, `_apply_dashboard_global_filters` |
+| `backend/apps/dashboard/serializers.py` | `DashboardCardSerializer` con campos `bi_report_*`; `BiCardExecuteRequestSerializer`; `BiSelectableReportSerializer` |
+| `backend/apps/dashboard/views.py` | `BiCardExecuteView` + `BiSelectableReportsView` |
+| `backend/apps/dashboard/urls.py` | `<dashboard_id>/cards/<card_id>/bi-execute/` + `reportes/seleccionables/` |
+| `backend/apps/dashboard/tests/test_bi_v2.py` | 15 tests: `_apply_overrides` (5), `_apply_dashboard_global_filters` (7), `get_selectable_reports` (3) |
+
+**Archivos frontend:**
+
+| Archivo | Cambios |
+|---------|---------|
+| `frontend/.../models/dashboard.model.ts` | `DashboardCard.id: number`; campos `bi_report_*`; `BiFieldConfigItem`; `BiSelectableReport`; `DashboardCardCreate.bi_report_id`; `CardLayoutItem.id: number` |
+| `frontend/.../services/dashboard.service.ts` | `executeBiCard()`, `getSelectableReports()`, `updateCard/deleteCard` con `cardId: number \| string` |
+| `frontend/.../components/bi-report-card/` (nuevo) | `BiReportCardComponent` — renderiza ReportBI en dashboard card con `effect()` reactivo a filtros |
+| `frontend/.../components/bi-report-card/bi-report-card.component.spec.ts` (nuevo) | 6 tests |
+| `frontend/.../components/card-selector/card-selector.component.ts` | Tab "Reportes BI" con lazy load, búsqueda, selección |
+| `frontend/.../components/card-selector/card-selector.component.html` | Outer mat-tab-group: Catálogo + Reportes BI |
+| `frontend/.../components/card-selector/card-selector.component.scss` | Estilos `.cs-bi-*` para lista de reportes |
+| `frontend/.../components/dashboard-builder/dashboard-builder.component.ts` | `BuilderCard.id: number \| null`; `bi_report_id`; `addCard` con width=3 para BI; `saveCards` incluye `bi_report_id` |
+| `frontend/.../components/dashboard-viewer/dashboard-viewer.component.ts` | `BiReportCardComponent` importado; `biReportCards` computed; `dashboardFiltersMap` computed; `loadAllCardData` excluye bi_report |
+| `frontend/.../components/dashboard-viewer/dashboard-viewer.component.html` | Sección grid para tarjetas BI; empty-state actualizado |
+
+**Arquitectura filtros 3 capas:**
+
+```
+Layer 1: ReportBI.filtros (base del reporte)
+Layer 2: DashboardCard.filtros_config['bi_overrides'] (overrides por tarjeta)
+Layer 3: Dashboard.filtros_default + request.dashboard_filters (filtros globales)
+```
+
+Implementado en `CardBIService.execute_bi_card()` con proxy `SimpleNamespace` para no mutar el modelo Django.
+
+---
 
 ### Fase A — Modelos de datos y sync
 
@@ -305,6 +591,8 @@
 
 | Sesión | Fecha | Tickets | Resumen |
 |--------|-------|---------|---------|
+| 09 | 2026-04-12 | DASH-014 | Sprint 3: backend categoria_galeria field+migration, gallery service+endpoint, 22 templates multi-tabla (reescritura completa), report-gallery component (ts+html+scss+spec, 14 tests), rutas actualizadas, report-list galería button. Tests: 64 backend passing, 14 frontend nuevos. |
+| 08 | 2026-04-12 | DASH-013 | Sprint 2: backend duplicate endpoint, 15 fuentes frontend (10 nuevas), filter-builder V2 con operadores, field-panel JOIN indicator, duplicate-dialog. Tests: 16 backend nuevos, 18+ frontend nuevos. |
 | 01 | 2026-04-10 | DASH-001 | Fase A: 4 modelos contabilidad, migración 0005, 26 tests passing. |
 | 02 | 2026-04-10 | DASH-002 | Fase B: BIQueryEngine, ReportBI+ReportBIShare, 6 serializers, 11 views, 12 URLs, ReportBIService, 42 tests passing. |
 | 03 | 2026-04-10 | DASH-003 | Fase C: Renombramiento UI (5 archivos), 3 modelos TS, report-bi.service, 6 componentes (source-selector, field-panel, filter-builder, data-table, report-builder, report-list), 4 rutas nuevas, 3 specs (service 100%, components). |

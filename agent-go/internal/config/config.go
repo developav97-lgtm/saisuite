@@ -18,13 +18,21 @@ type SQSConfig struct {
 	AccessKeyID     string `json:"access_key_id"`
 	SecretAccessKey string `json:"secret_access_key"`
 	Region          string `json:"region"`
+	// QueueURL is the outbound queue (Sai → Cloud). Django reads from this.
 	QueueURL        string `json:"queue_url"`
+	// InboundQueueURL is the inbound queue (Cloud → Sai). This agent polls it.
+	// Each agent deployment should have its own dedicated queue so messages
+	// are not visible to other companies' agents.
+	InboundQueueURL string `json:"inbound_queue_url"`
 }
 
 // AgentConfig is the root configuration for the Saicloud Agent.
 type AgentConfig struct {
 	AgentVersion     string       `json:"agent_version"`
 	ConfiguratorPort int          `json:"configurator_port"`
+	// SyncServerPort is the port for the incoming sync HTTP server (SaiCloud → Sai direction).
+	// Default: 8766. Set to 0 to disable incoming sync.
+	SyncServerPort   int          `json:"sync_server_port"`
 	LogLevel         string       `json:"log_level"`
 	LogFile          string       `json:"log_file"`
 	// Transport selects the delivery mechanism: "http" (default) or "sqs".
@@ -83,6 +91,9 @@ type SyncConfig struct {
 	LastSyncProyectos      *time.Time `json:"last_sync_proyectos"`
 	LastSyncActividades    *time.Time `json:"last_sync_actividades"`
 	LastSyncTipdoc         *time.Time `json:"last_sync_tipdoc"`
+	LastSyncTaxAuth        *time.Time `json:"last_sync_taxauth"`
+	LastSyncItem           *time.Time `json:"last_sync_item"`
+	LastSyncVendedores     *time.Time `json:"last_sync_vendedores"`
 
 	// Transactional table watermarks (CARPRO/ITEMACT — single global CONTEO)
 	LastConteoCARPRO  int64 `json:"last_conteo_carpro"`
@@ -115,12 +126,14 @@ func Default() *AgentConfig {
 	return &AgentConfig{
 		AgentVersion:     "1.0.0",
 		ConfiguratorPort: 8765,
+		SyncServerPort:   8766,
 		LogLevel:         "info",
 		LogFile:          "C:/SaicloudAgent/logs/agent.log",
 		Transport:        "http",
 		SQS: SQSConfig{
-			Region:   "us-east-1",
-			QueueURL: "https://sqs.us-east-1.amazonaws.com/483772923781/saicloud-to-cloud-prod",
+			Region:          "us-east-1",
+			QueueURL:        "https://sqs.us-east-1.amazonaws.com/483772923781/saicloud-to-cloud-prod",
+			InboundQueueURL: "", // Cola compartida Cloud→Sai. Dejar vacío si no se usa push bidireccional.
 		},
 		Connections: []Connection{
 			{
@@ -396,6 +409,12 @@ func (cfg *AgentConfig) UpdateReferenceSyncTime(connID string, table string) err
 				cfg.Connections[i].Sync.LastSyncActividades = &now
 			case "tipdoc":
 				cfg.Connections[i].Sync.LastSyncTipdoc = &now
+			case "taxauth":
+				cfg.Connections[i].Sync.LastSyncTaxAuth = &now
+			case "item":
+				cfg.Connections[i].Sync.LastSyncItem = &now
+			case "vendedores":
+				cfg.Connections[i].Sync.LastSyncVendedores = &now
 			default:
 				cfg.mu.Unlock()
 				return fmt.Errorf("unknown reference table: %s", table)

@@ -5,15 +5,36 @@
     <p class="field-panel__empty">Selecciona una fuente de datos para ver los campos disponibles.</p>
   }
 
+  <!-- Indicador de relaciones JOIN activas -->
+  @if (activeJoins().length > 0) {
+    <div class="field-panel__joins">
+      <span class="field-panel__joins-label">
+        <mat-icon>link</mat-icon>
+        Relaciones activas
+      </span>
+      @for (join of activeJoins(); track join.source_a + join.source_b) {
+        <span
+          class="field-panel__join-chip"
+          [class.field-panel__join-chip--fk]="join.type === 'fk'"
+          [matTooltip]="getJoinDescription(join)">
+          {{ getJoinDescription(join) }}
+        </span>
+      }
+    </div>
+  }
+
   <!-- Orden de campos seleccionados (drag-and-drop) -->
   @if (selectedFields().length > 0) {
     <div class="field-order">
       <h4 class="field-order__title">Orden de campos</h4>
       <div cdkDropList (cdkDropListDropped)="onFieldReorder($event)" class="field-order__list">
-        @for (fc of selectedFields(); track fc.field + fc.source) {
+        @for (fc of selectedFieldsDisplay(); track fc.field + fc.source) {
           <div cdkDrag class="field-order__item">
             <mat-icon cdkDragHandle class="field-order__handle">drag_indicator</mat-icon>
             <span class="field-order__label">{{ fc.label }}</span>
+            @if (fc.showBadge) {
+              <span class="field-source-badge field-source-badge--order">{{ fc.shortSource }}</span>
+            }
             <span class="field-order__role">
               @if (fc.is_calculated) {
                 Calc
@@ -25,6 +46,12 @@
                 Fila
               }
             </span>
+            <button mat-icon-button
+              class="field-order__remove"
+              (click)="removeField(fc.source, fc.field)"
+              matTooltip="Quitar campo">
+              <mat-icon>close</mat-icon>
+            </button>
             <div *cdkDragPlaceholder class="field-order__placeholder"></div>
           </div>
         }
@@ -32,190 +59,139 @@
     </div>
   }
 
-  <!-- Categorías de campos disponibles -->
-  <mat-accordion multi>
-    @for (group of fieldsByCategory(); track group.category + group.source) {
-      <mat-expansion-panel>
-        <mat-expansion-panel-header>
-          <mat-panel-title>{{ group.category }}</mat-panel-title>
-        </mat-expansion-panel-header>
-
-        @for (field of group.fields; track field.field) {
-          <div class="field-item">
-            <mat-checkbox
-              [checked]="isFieldSelected(group.source, field.field)"
-              (change)="toggleField(group.source, field)"
-              color="primary"
-              class="field-item__checkbox">
-              {{ field.label }}
-            </mat-checkbox>
-
-            @if (isFieldSelected(group.source, field.field)) {
-              <div class="field-item__controls">
-
-                <!-- Rol (solo pivot + dimensión): Fila / Columna -->
-                @if (field.role === 'dimension' && isPivot()) {
-                  <button mat-stroked-button
-                    [matMenuTriggerFor]="roleMenu"
-                    class="field-item__ctrl-btn"
-                    [matTooltip]="'Tipo: ' + (getFieldConfig(group.source, field.field)?.role === 'column' ? 'Columna' : 'Fila')">
-                    {{ getFieldConfig(group.source, field.field)?.role === 'column' ? 'Col' : 'Fila' }}
-                    <mat-icon>arrow_drop_down</mat-icon>
-                  </button>
-                  <mat-menu #roleMenu>
-                    @for (r of dimensionRoles; track r.value) {
-                      <button mat-menu-item
-                        [class.field-item__menu-active]="getFieldConfig(group.source, field.field)?.role === r.value"
-                        (click)="onRoleChange(group.source, field.field, r.value)">
-                        {{ r.label }}
-                      </button>
-                    }
-                  </mat-menu>
-                }
-
-                <!-- Agregación (solo métricas): SUM / AVG / ... -->
-                @if (field.role === 'metric') {
-                  <button mat-stroked-button
-                    [matMenuTriggerFor]="aggMenu"
-                    class="field-item__ctrl-btn"
-                    [matTooltip]="'Agregación: ' + (getFieldConfig(group.source, field.field)?.aggregation ?? 'SUM')">
-                    {{ getFieldConfig(group.source, field.field)?.aggregation ?? 'SUM' }}
-                    <mat-icon>arrow_drop_down</mat-icon>
-                  </button>
-                  <mat-menu #aggMenu>
-                    @for (agg of aggregations; track agg.value) {
-                      <button mat-menu-item
-                        [class.field-item__menu-active]="(getFieldConfig(group.source, field.field)?.aggregation ?? 'SUM') === agg.value"
-                        (click)="onAggregationChange(group.source, field.field, agg.value)">
-                        {{ agg.label }}
-                      </button>
-                    }
-                  </mat-menu>
-                }
-
-                <!-- Formato: T / # / $ / D -->
-                <button mat-stroked-button
-                  [matMenuTriggerFor]="fmtMenu"
-                  class="field-item__ctrl-btn field-item__ctrl-btn--fmt"
-                  [matTooltip]="'Formato: ' + (getFieldConfig(group.source, field.field)?.format ?? defaultFormat(field))">
-                  {{ formatIcon(getFieldConfig(group.source, field.field)?.format ?? defaultFormat(field)) }}
-                  <mat-icon>arrow_drop_down</mat-icon>
-                </button>
-                <mat-menu #fmtMenu>
-                  @for (f of formatOptions; track f.value) {
-                    <button mat-menu-item
-                      [class.field-item__menu-active]="(getFieldConfig(group.source, field.field)?.format ?? defaultFormat(field)) === f.value"
-                      (click)="onFormatChange(group.source, field.field, f.value)">
-                      {{ f.label }}
-                    </button>
-                  }
-                </mat-menu>
-
-              </div>
-            }
-          </div>
-        }
-      </mat-expansion-panel>
-    }
-  </mat-accordion>
-
-  <!-- Campo calculado -->
+  <!-- Buscador + listado plano de campos -->
   @if (fieldsByCategory().length > 0) {
-    <div class="calc-field">
-      <h4 class="calc-field__title">
-        <mat-icon>calculate</mat-icon>
-        Campo calculado
-      </h4>
 
-      <!-- Campos calculados activos en este reporte -->
-      @if (activeCalcFields().length > 0) {
-        <div class="calc-active">
-          <div class="calc-active__label">Activos en este reporte:</div>
-          @for (fc of activeCalcFields(); track fc.field) {
-            <div class="calc-active__item">
-              <mat-icon class="calc-active__icon">calculate</mat-icon>
-              <span class="calc-active__name">{{ fc.label }}</span>
-              <span class="calc-active__formula">{{ fc.formula }}</span>
-              <button mat-icon-button
-                (click)="removeCalcField(fc.field)"
-                matTooltip="Quitar del reporte"
-                class="calc-active__remove">
-                <mat-icon>close</mat-icon>
-              </button>
+    <!-- Buscador -->
+    <div class="field-panel__search">
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="field-panel__search-input">
+        <mat-icon matPrefix>search</mat-icon>
+        <input matInput
+          [value]="searchTerm()"
+          (input)="onSearchInput($event)"
+          placeholder="Buscar campo...">
+        @if (searchTerm()) {
+          <button matSuffix mat-icon-button (click)="clearSearch()" aria-label="Limpiar búsqueda">
+            <mat-icon>close</mat-icon>
+          </button>
+        }
+      </mat-form-field>
+    </div>
+
+    <!-- Lista plana con scroll -->
+    <div class="field-panel__list">
+      @for (group of filteredFieldsByCategory(); track group.category) {
+        <div class="field-category">
+          <span class="field-category__label">{{ group.category }}</span>
+
+          @for (field of group.fields; track field.source + '.' + field.field) {
+            <div class="field-item">
+              <mat-checkbox
+                [checked]="isFieldSelected(field.source, field.field)"
+                (change)="toggleField(field.source, field)"
+                color="primary"
+                class="field-item__checkbox">
+                {{ field.label }}
+                @if (field.showBadge) {
+                  <span class="field-source-badge">{{ field.sourceLabel }}</span>
+                }
+              </mat-checkbox>
+
+              @if (isFieldSelected(field.source, field.field)) {
+                <div class="field-item__controls">
+
+                  @if (field.role === 'dimension' && isPivot()) {
+                    <button mat-stroked-button
+                      [matMenuTriggerFor]="roleMenu"
+                      class="field-item__ctrl-btn"
+                      [matTooltip]="'Tipo: ' + (getFieldConfig(field.source, field.field)?.role === 'column' ? 'Columna' : 'Fila')">
+                      {{ getFieldConfig(field.source, field.field)?.role === 'column' ? 'Col' : 'Fila' }}
+                      <mat-icon>arrow_drop_down</mat-icon>
+                    </button>
+                    <mat-menu #roleMenu>
+                      @for (r of dimensionRoles; track r.value) {
+                        <button mat-menu-item
+                          [class.field-item__menu-active]="getFieldConfig(field.source, field.field)?.role === r.value"
+                          (click)="onRoleChange(field.source, field.field, r.value)">
+                          {{ r.label }}
+                        </button>
+                      }
+                    </mat-menu>
+                  }
+
+                  @if (field.role === 'metric') {
+                    <button mat-stroked-button
+                      [matMenuTriggerFor]="aggMenu"
+                      class="field-item__ctrl-btn"
+                      [matTooltip]="'Agregación: ' + (getFieldConfig(field.source, field.field)?.aggregation ?? 'SUM')">
+                      {{ getFieldConfig(field.source, field.field)?.aggregation ?? 'SUM' }}
+                      <mat-icon>arrow_drop_down</mat-icon>
+                    </button>
+                    <mat-menu #aggMenu>
+                      @for (agg of aggregations; track agg.value) {
+                        <button mat-menu-item
+                          [class.field-item__menu-active]="(getFieldConfig(field.source, field.field)?.aggregation ?? 'SUM') === agg.value"
+                          (click)="onAggregationChange(field.source, field.field, agg.value)">
+                          {{ agg.label }}
+                        </button>
+                      }
+                    </mat-menu>
+                  }
+
+                  <button mat-stroked-button
+                    [matMenuTriggerFor]="fmtMenu"
+                    class="field-item__ctrl-btn field-item__ctrl-btn--fmt"
+                    [matTooltip]="'Formato: ' + (getFieldConfig(field.source, field.field)?.format ?? defaultFormat(field))">
+                    {{ formatIcon(getFieldConfig(field.source, field.field)?.format ?? defaultFormat(field)) }}
+                    <mat-icon>arrow_drop_down</mat-icon>
+                  </button>
+                  <mat-menu #fmtMenu>
+                    @for (f of formatOptions; track f.value) {
+                      <button mat-menu-item
+                        [class.field-item__menu-active]="(getFieldConfig(field.source, field.field)?.format ?? defaultFormat(field)) === f.value"
+                        (click)="onFormatChange(field.source, field.field, f.value)">
+                        {{ f.label }}
+                      </button>
+                    }
+                  </mat-menu>
+
+                </div>
+              }
             </div>
           }
         </div>
       }
 
-      <!-- Formulario para agregar nuevo campo calculado -->
-      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="calc-field__input">
-        <mat-label>Nombre</mat-label>
-        <input matInput [(ngModel)]="calcLabel" placeholder="ej: Saldo">
-      </mat-form-field>
-
-      <!-- Chips de campos disponibles para insertar en la fórmula -->
-      @if (availableMetrics().length > 0) {
-        <div class="calc-field__chips-label">Insertar campo:</div>
-        <mat-chip-set class="calc-field__chips">
-          @for (m of availableMetrics(); track m.field) {
-            <mat-chip (click)="insertFieldInFormula(m.field)"
-                      class="calc-field__chip"
-                      matTooltip="{{ m.label }}">
-              {{ m.field }}
-            </mat-chip>
-          }
-        </mat-chip-set>
-      }
-
-      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="calc-field__input">
-        <mat-label>Fórmula</mat-label>
-        <input matInput [(ngModel)]="calcFormula" placeholder="ej: debito - credito">
-        <mat-hint>Operadores: + - * /  con paréntesis si necesitas</mat-hint>
-      </mat-form-field>
-
-      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="calc-field__input">
-        <mat-label>Formato</mat-label>
-        <mat-select [(ngModel)]="calcFormat">
-          @for (f of formatOptions; track f.value) {
-            <mat-option [value]="f.value">{{ f.label }}</mat-option>
-          }
-        </mat-select>
-      </mat-form-field>
-
-      <button mat-stroked-button color="primary"
-              [disabled]="!calcLabel.trim() || !calcFormula.trim()"
-              (click)="addCalculatedField()">
-        <mat-icon>add</mat-icon>
-        Agregar y guardar
-      </button>
-
-      <!-- Plantillas guardadas de campos calculados -->
-      @if (savedTemplates().length > 0) {
-        <div class="calc-templates">
-          <div class="calc-templates__label">Mis plantillas:</div>
-          @for (tpl of savedTemplates(); track tpl.id) {
-            <div class="calc-templates__item">
-              <mat-icon class="calc-templates__icon">calculate</mat-icon>
-              <div class="calc-templates__info">
-                <span class="calc-templates__name">{{ tpl.label }}</span>
-                <span class="calc-templates__formula">{{ tpl.formula }}</span>
-              </div>
-              <button mat-icon-button
-                (click)="addTemplateToReport(tpl)"
-                matTooltip="Agregar al reporte"
-                class="calc-templates__add">
-                <mat-icon>add_circle_outline</mat-icon>
-              </button>
-              <button mat-icon-button
-                (click)="deleteTemplate(tpl)"
-                matTooltip="Eliminar plantilla"
-                class="calc-templates__delete">
-                <mat-icon>delete_outline</mat-icon>
-              </button>
-            </div>
-          }
-        </div>
+      @if (filteredFieldsByCategory().length === 0) {
+        <p class="field-panel__no-results">Sin resultados para "{{ searchTerm() }}"</p>
       }
     </div>
+
+    <!-- Campos calculados activos -->
+    @if (activeCalcFields().length > 0) {
+      <div class="calc-active">
+        <div class="calc-active__label">Campos calculados activos</div>
+        @for (fc of activeCalcFields(); track fc.field) {
+          <div class="calc-active__item">
+            <mat-icon class="calc-active__icon">calculate</mat-icon>
+            <span class="calc-active__name">{{ fc.label }}</span>
+            <span class="calc-active__formula">{{ fc.formula }}</span>
+            <button mat-icon-button
+              (click)="removeCalcField(fc.field)"
+              matTooltip="Quitar del reporte"
+              class="calc-active__remove">
+              <mat-icon>close</mat-icon>
+            </button>
+          </div>
+        }
+      </div>
+    }
+
+    <!-- Botón campo calculado -->
+    <button mat-stroked-button class="field-panel__calc-btn" (click)="openCalcDialog()">
+      <mat-icon>calculate</mat-icon>
+      Campo calculado
+    </button>
+
   }
 </div>

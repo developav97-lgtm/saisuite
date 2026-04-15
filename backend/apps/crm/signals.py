@@ -1,14 +1,17 @@
 """
 SaiSuite — CRM Signals
 Auto-genera eventos de timeline en cambios de estado.
+También sincroniza CrmProducto hacia Saiopen en modo bidireccional.
 
 Solo se usan signals para eventos que los services no cubren directamente:
 - Creación de oportunidad  → evento SISTEMA "Oportunidad creada"
 - Creación de actividad    → evento SISTEMA "Actividad programada: X"
+- Guardado de CrmProducto (saiopen_synced=False) → push al agente Go
 
 Los cambios de etapa (ganar/perder/mover) ya generan eventos en services.py.
 """
 import logging
+from django.db import transaction
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
@@ -47,6 +50,29 @@ def oportunidad_creada_timeline(sender, instance, created, **kwargs):
         logger.exception('crm_signal_oportunidad_creada_error', extra={
             'oportunidad_id': str(instance.id),
         })
+
+
+@receiver(post_save, sender='crm.CrmProducto')
+def producto_push_to_saiopen(sender, instance, **kwargs):
+    """
+    Cuando un CrmProducto se crea o actualiza manualmente (saiopen_synced=False),
+    intenta empujar el cambio al agente Go para que lo escriba en Firebird ITEM.
+    Si el producto viene de un sync de Saiopen (saiopen_synced=True), no se pushea
+    para evitar bucles infinitos.
+    """
+    if instance.saiopen_synced:
+        # Vino de Saiopen → no re-enviar al agente
+        return
+    if not instance.sai_key:
+        # Sin sai_key no hay registro ITEM al que escribir
+        return
+
+    from apps.crm.producto_services import ProductoSyncService
+
+    # Usar on_commit para que el push ocurra solo si la transacción fue exitosa.
+    transaction.on_commit(
+        lambda: ProductoSyncService.push_to_saiopen_async(instance.company, instance)
+    )
 
 
 @receiver(post_save, sender='crm.CrmActividad')

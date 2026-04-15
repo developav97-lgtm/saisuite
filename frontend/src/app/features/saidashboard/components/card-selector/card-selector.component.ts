@@ -19,8 +19,9 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { CardCatalogService } from '../../services/card-catalog.service';
+import { DashboardService } from '../../services/dashboard.service';
 import { CardCatalogItem, CategoryWithCards } from '../../models/card-catalog.model';
-import { ChartType } from '../../models/dashboard.model';
+import { ChartType, BiSelectableReport } from '../../models/dashboard.model';
 import { CustomRangoCuentasConfig } from '../../models/report-filter.model';
 import {
   CustomCardConfigComponent,
@@ -33,6 +34,8 @@ export interface CardSelectorResult {
   card: CardCatalogItem;
   chartType: ChartType;
   filtrosConfig?: Record<string, unknown>;
+  /** Solo presente cuando se selecciona un reporte BI */
+  bi_report_id?: string;
 }
 
 @Component({
@@ -55,6 +58,7 @@ export interface CardSelectorResult {
 })
 export class CardSelectorComponent implements OnInit {
   private readonly catalogService = inject(CardCatalogService);
+  private readonly dashboardService = inject(DashboardService);
   private readonly dialogRef = inject(MatDialogRef<CardSelectorComponent>);
   private readonly dialog = inject(MatDialog);
   private readonly destroyRef = inject(DestroyRef);
@@ -64,6 +68,22 @@ export class CardSelectorComponent implements OnInit {
   readonly searchText = signal('');
   readonly selectedCard = signal<CardCatalogItem | null>(null);
   readonly selectedChartType = signal<ChartType | null>(null);
+
+  // ── Tab Reportes BI ──────────────────────────────────────────
+  readonly biReports = signal<BiSelectableReport[]>([]);
+  readonly biLoading = signal(false);
+  readonly biSearchText = signal('');
+  readonly selectedBiReport = signal<BiSelectableReport | null>(null);
+  readonly activeMainTab = signal(0); // 0=Catálogo, 1=Reportes BI
+
+  readonly filteredBiReports = computed(() => {
+    const query = this.biSearchText().toLowerCase().trim();
+    const reports = this.biReports();
+    if (!query) return reports;
+    return reports.filter(
+      r => r.titulo.toLowerCase().includes(query),
+    );
+  });
 
   readonly filteredCategories = computed(() => {
     const cats = this.categories();
@@ -82,9 +102,12 @@ export class CardSelectorComponent implements OnInit {
       .filter(cat => cat.cards.length > 0);
   });
 
-  readonly canConfirm = computed(() =>
-    this.selectedCard() !== null && this.selectedChartType() !== null,
-  );
+  readonly canConfirm = computed(() => {
+    if (this.activeMainTab() === 1) {
+      return this.selectedBiReport() !== null;
+    }
+    return this.selectedCard() !== null && this.selectedChartType() !== null;
+  });
 
   ngOnInit(): void {
     this.catalogService.getCategories()
@@ -96,6 +119,34 @@ export class CardSelectorComponent implements OnInit {
         },
         error: () => this.loading.set(false),
       });
+  }
+
+  onMainTabChange(index: number): void {
+    this.activeMainTab.set(index);
+    if (index === 1 && this.biReports().length === 0 && !this.biLoading()) {
+      this.loadBiReports();
+    }
+  }
+
+  private loadBiReports(): void {
+    this.biLoading.set(true);
+    this.dashboardService.getSelectableReports()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: reports => {
+          this.biReports.set(reports);
+          this.biLoading.set(false);
+        },
+        error: () => this.biLoading.set(false),
+      });
+  }
+
+  selectBiReport(report: BiSelectableReport): void {
+    this.selectedBiReport.set(report);
+  }
+
+  isBiReportSelected(report: BiSelectableReport): boolean {
+    return this.selectedBiReport()?.id === report.id;
   }
 
   selectCard(card: CardCatalogItem): void {
@@ -112,6 +163,33 @@ export class CardSelectorComponent implements OnInit {
   }
 
   confirm(): void {
+    // ── Confirmación desde tab Reportes BI ────────────────────
+    if (this.activeMainTab() === 1) {
+      const biReport = this.selectedBiReport();
+      if (!biReport) return;
+
+      // Usamos un card ficticio para mantener el tipo de retorno
+      const biCard: CardCatalogItem = {
+        code: 'bi_report',
+        nombre: biReport.titulo,
+        descripcion: '',
+        categoria: 'bi',
+        icono: 'bar_chart',
+        color: '#1565c0',
+        chart_default: biReport.tipo_visualizacion as ChartType,
+        chart_types: [biReport.tipo_visualizacion as ChartType],
+        requiere: [],
+        requiere_config: false,
+      };
+      this.dialogRef.close({
+        card: biCard,
+        chartType: biReport.tipo_visualizacion as ChartType,
+        bi_report_id: biReport.id,
+      } as CardSelectorResult);
+      return;
+    }
+
+    // ── Confirmación desde tab Catálogo ───────────────────────
     const card = this.selectedCard();
     const chartType = this.selectedChartType();
     if (!card || !chartType) return;

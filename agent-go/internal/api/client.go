@@ -28,6 +28,7 @@ type GLRecord struct {
 	Fecha              string  `json:"fecha"`
 	DueDate            string  `json:"duedate"`
 	Invc               string  `json:"invc"`
+	Cruce              string  `json:"cruce"`
 	TerceroID          string  `json:"tercero_id"`
 	TerceroNombre      string  `json:"tercero_nombre"`
 	Auxiliar           float64 `json:"auxiliar"`

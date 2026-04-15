@@ -23,13 +23,16 @@
               [class.data-table__cell--numeric]="isNumericFormat(field)">
             @switch (getFormat(field)) {
               @case ('currency') {
-                $ {{ (row[field] | number:'1.0-2') ?? '' }}
+                $ {{ ((row[field] ?? 0) | number:'1.0-2') }}
               }
               @case ('number') {
                 {{ (row[field] | number:'1.0-2') ?? '' }}
               }
               @case ('date') {
                 {{ (row[field] | date:'dd/MM/yyyy') ?? '' }}
+              }
+              @case ('boolean') {
+                {{ row[field] === true ? 'Sí' : row[field] === false ? 'No' : '' }}
               }
               @default {
                 {{ row[field] }}
@@ -43,11 +46,13 @@
       <tr mat-row *matRowDef="let row; columns: columnFields()"></tr>
     </table>
 
-    <mat-paginator
-      [pageSizeOptions]="[25, 50, 100]"
-      [pageSize]="50"
-      showFirstLastButtons>
-    </mat-paginator>
+    @if (showPaginator()) {
+      <mat-paginator
+        [pageSizeOptions]="[25, 50, 100]"
+        [pageSize]="50"
+        showFirstLastButtons>
+      </mat-paginator>
+    }
 
   } @else if (!loading()) {
     <div class="sc-empty-state">

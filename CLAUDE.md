@@ -92,6 +92,26 @@ saisuite/
 
 ---
 
+## Modo de respuesta (ahorro de tokens)
+
+**Reglas base — aplican SIEMPRE en este proyecto:**
+- Sin frases de cortesía ("Claro, con gusto...", "Por supuesto...", "Entendido.")
+- Sin repetir lo que el usuario acaba de decir
+- Sin explicar lo que vas a hacer antes de hacerlo — hazlo
+- Sin bullets explicativos si el código ya habla por sí mismo
+- Confirmaciones en una línea máximo
+
+**Modo Caverna (se activa con: "modo caverna", "caverna ON", "brevedad máxima"):**
+- Texto fuera del código: máximo 8 palabras
+- Estilo telegrama: verbo + objeto, sin artículos innecesarios
+- Cero preámbulos, cero confirmaciones largas, cero resúmenes
+- Si el código es obvio, ni lo menciones — solo ponlo
+- Se desactiva con: "modo normal", "caverna OFF"
+
+**Skill disponible:** `.claude/skills/brevity-mode/SKILL.md`
+
+---
+
 ## Errores frecuentes
 
 Lógica en views, olvidar `select_related`, `sai_key` sin `unique_together`, `any` en TS, suscripción sin unsubscribe, no validar mobile, hardcodear colores.

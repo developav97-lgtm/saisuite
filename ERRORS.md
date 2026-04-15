@@ -1,3 +1,12 @@
+## [13 Abril 2026] ERROR: Tests `test_services.py` fallaban por campos obsoletos en modelos
+
+**Síntoma:** `TrialServiceTest::test_access_via_license` lanzaba `TypeError: CompanyLicense() got unexpected keyword arguments: 'plan'`. `FilterServiceTest::test_get_terceros_with_query` lanzaba `KeyError: 'tercero_nombre'`.
+**Causa:** 1) El campo `plan` fue eliminado de `CompanyLicense` (reemplazado por `renewal_type`) en sesión del 09 Abril, pero el test no fue actualizado. 2) `FilterService.get_available_terceros()` fue refactorizado para retornar `{'id', 'nombre', 'identificacion'}` normalizado (unificando Tercero + GL), pero el test seguía buscando la clave legacy `tercero_nombre`.
+**Fix:** `test_services.py`: 1) Remover `plan='professional'` del `CompanyLicense.objects.create()` en `test_access_via_license`. 2) Cambiar `t['tercero_nombre']` por `t['nombre']` en `test_get_terceros_with_query`.
+**Prevención:** Al eliminar/renombrar campos de modelos, buscar `grep -r "campo_viejo"` en tests antes de cerrar la sesión.
+
+---
+
 ## [09 Abril 2026] ERROR: KeyError en logger.info — clave 'created' reservada por Python logging
 
 **Síntoma:** `POST /api/v1/projects/{pk}/documents/sync/` retornaba 500. Traceback: `KeyError: "Attempt to overwrite 'created' in LogRecord"`.

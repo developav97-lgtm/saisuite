@@ -240,7 +240,6 @@ class MovimientoInventarioModelTest(TestCase):
             'company': company or self.company_a,
             'conteo': 1,
             'item_codigo': 'PROD001',
-            'item_descripcion': 'Producto de prueba',
             'location': '001',
             'tipo': 'FA',
             'fecha': date(2026, 3, 15),
@@ -248,8 +247,6 @@ class MovimientoInventarioModelTest(TestCase):
             'cantidad': Decimal('50.0000'),
             'valor_unitario': Decimal('10000.0000'),
             'total': Decimal('500000.00'),
-            'saldo_unidades': Decimal('100.0000'),
-            'saldo_pesos': Decimal('1000000.00'),
         }
         defaults.update(kwargs)
         return MovimientoInventario.objects.create(**defaults)
@@ -295,7 +292,7 @@ class MovimientoInventarioModelTest(TestCase):
     def test_default_values(self):
         """Valores por defecto se asignan correctamente."""
         mov = self._create_inventario()
-        self.assertEqual(mov.costo_peps, Decimal('0.0000'))
+        self.assertEqual(mov.costo_promedio, Decimal('0.0000'))
         self.assertEqual(mov.lote, '')
         self.assertEqual(mov.serie, '')
         self.assertIsNone(mov.lote_vencimiento)

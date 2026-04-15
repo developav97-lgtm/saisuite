@@ -2,8 +2,15 @@
   <mat-progress-bar mode="indeterminate"></mat-progress-bar>
 }
 
-<div class="table-responsive">
-  @if (hasData()) {
+@if (hasData()) {
+
+  <!-- Scroll espejo superior (sincronizado con la tabla) -->
+  <div #topBar class="scroll-mirror" (scroll)="onTopScroll($event)">
+    <div #phantom class="scroll-mirror__phantom"></div>
+  </div>
+
+  <!-- Tabla con scroll inferior -->
+  <div #tableWrap class="table-responsive" (scroll)="onTableScroll($event)">
 
     @if (noColumnMode()) {
       <!-- Modo sin dimensión de columna: una columna por métrica -->
@@ -11,7 +18,7 @@
         <thead>
           <tr>
             @for (dim of rowDimFields(); track dim) {
-              <th class="pivot-table__dim-header">{{ dim }}</th>
+              <th class="pivot-table__dim-header">{{ getDimLabel(dim) }}</th>
             }
             @for (alias of valueAliases(); track alias) {
               <th class="pivot-table__col-header">{{ getMetricLabel(alias) }}</th>
@@ -136,9 +143,10 @@
       </table>
     }
 
-  } @else if (!loading()) {
-    <div class="sc-empty-state">
-      <p>No hay datos pivot para mostrar. Configura filas, columnas y valores.</p>
-    </div>
-  }
-</div>
+  </div>
+
+} @else if (!loading()) {
+  <div class="sc-empty-state">
+    <p>No hay datos pivot para mostrar. Configura filas, columnas y valores.</p>
+  </div>
+}

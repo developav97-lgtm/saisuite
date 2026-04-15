@@ -938,10 +938,10 @@ class BotResponseService:
 class PresenceService:
     """
     Presencia en tiempo real usando Redis TTL.
-    online  = key existe en Redis (TTL 35s, heartbeat frontend cada 25s)
+    online  = key existe en Redis (TTL 90s, heartbeat frontend cada 60s)
     offline = key no existe
     """
-    TTL = 35
+    TTL = 90  # heartbeat frontend cada 60s
 
     @staticmethod
     def _get_redis():

@@ -202,13 +202,16 @@ Conecta el módulo Proyectos con los datos contables de Saiopen (Firebird/GL).
 
 ## Stack técnico activo
 
-- **Backend:** Django 5 + DRF — `http://localhost:8000`
-- **Frontend:** Angular 18 (signals, OnPush) — `http://localhost:4200`
-- **DB:** PostgreSQL 16 — `localhost:5432` (saisuite_dev)
-- **n8n:** `http://localhost:5678` (3 workflows importados, inactivos)
+- **Backend:** Django 5 + DRF — `http://localhost:8000` (Docker)
+- **Frontend:** Angular 18 (signals, OnPush) — `http://localhost:4200` (**LOCAL, no Docker** — `cd frontend && ng serve`)
+- **DB:** PostgreSQL 16 — `localhost:5432` (saisuite_dev) (Docker)
+- **n8n:** `http://localhost:5678` (Docker — 3 workflows importados, inactivos)
 - **Email:** Google Workspace SMTP — `juan@valmentech.com` + App Password
 - **Redis:** Upstash (WebSockets, caché)
 - **Storage:** Cloudflare R2 (logos empresa, archivos chat)
+
+> **Nota dev:** `docker compose up -d` levanta solo db, backend, sqs-worker y n8n.
+> El frontend NO está en Docker. Levantarlo con: `cd frontend && ng serve`
 
 ## Decisiones arquitectónicas vigentes
 

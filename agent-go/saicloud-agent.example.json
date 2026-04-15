@@ -1,14 +1,16 @@
 {
-  "agent_version": "1.0.0",
+  "agent_version": "1.2.0",
   "configurator_port": 8765,
+  "sync_server_port": 0,
   "log_level": "info",
   "log_file": "C:/SaicloudAgent/logs/agent.log",
   "transport": "sqs",
   "sqs": {
-    "access_key_id": "AKIAXBIY476C5BT4V2P4",
+    "access_key_id": "AKIAXXX",
     "secret_access_key": "REEMPLAZAR_CON_SECRET_KEY",
     "region": "us-east-1",
-    "queue_url": "https://sqs.us-east-1.amazonaws.com/483772923781/saicloud-to-cloud-prod"
+    "queue_url": "https://sqs.us-east-1.amazonaws.com/483772923781/saicloud-to-cloud-prod",
+    "inbound_queue_url": "https://sqs.us-east-1.amazonaws.com/483772923781/saicloud-to-sai-prod"
   },
   "connections": [
     {

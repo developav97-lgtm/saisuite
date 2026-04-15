@@ -23,10 +23,11 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatDialog } from '@angular/material/dialog';
 import { ReportBIService } from '../../services/report-bi.service';
-import { ReportBIListItem, VISUALIZATION_LABELS, VISUALIZATION_ICONS, BISuggestResult } from '../../models/report-bi.model';
+import { ReportBIListItem, VISUALIZATION_LABELS, VISUALIZATION_ICONS, BISuggestResult, StaticTemplate } from '../../models/report-bi.model';
 import { BI_SOURCES } from '../../models/bi-source.model';
 import { ConfirmDialogComponent } from '../../../../shared/components/confirm-dialog/confirm-dialog.component';
 import { ReportShareDialogComponent, ReportShareDialogData } from '../report-share-dialog/report-share-dialog.component';
+import { DuplicateDialogComponent, DuplicateDialogData, DuplicateDialogResult } from '../duplicate-dialog/duplicate-dialog.component';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { ToastService } from '../../../../core/services/toast.service';
 
@@ -61,7 +62,7 @@ export class ReportListComponent implements OnInit {
   // ── State ──────────────────────────────────────────────────
   readonly loading = signal(false);
   readonly reports = signal<ReportBIListItem[]>([]);
-  readonly templates = signal<ReportBIListItem[]>([]);
+  readonly templates = signal<StaticTemplate[]>([]);
   readonly searchText = signal('');
   readonly activeTab = signal(0);
   readonly suggesting = signal(false);
@@ -75,7 +76,7 @@ export class ReportListComponent implements OnInit {
     const all = this.reports();
     if (!query) return all;
     return all.filter(
-      r => r.titulo.toLowerCase().includes(query) || r.descripcion.toLowerCase().includes(query),
+      r => r.titulo.toLowerCase().includes(query),
     );
   });
 
@@ -103,10 +104,11 @@ export class ReportListComponent implements OnInit {
         },
       });
 
-    this.reportBIService.getTemplates()
+    this.reportBIService.getStaticCatalog()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: items => this.templates.set(items),
+        error: () => {},
       });
   }
 
@@ -140,9 +142,12 @@ export class ReportListComponent implements OnInit {
     this.router.navigate(['/saidashboard', 'reportes', id, 'edit']);
   }
 
-  usarTemplate(template: ReportBIListItem): void {
+  usarTemplate(template: StaticTemplate): void {
+    // Pasar config completa como preset — el builder la lee en ngOnInit.
+    // El título se deja vacío para que el usuario escriba el suyo.
+    const preset = { ...template, titulo: '' };
     this.router.navigate(['/saidashboard', 'reportes', 'nuevo'], {
-      queryParams: { template: template.id },
+      queryParams: { preset: JSON.stringify(preset) },
     });
   }
 
@@ -163,6 +168,28 @@ export class ReportListComponent implements OnInit {
         },
         error: () => this.toast.error('Error al cambiar favorito.'),
       });
+  }
+
+  duplicar(report: ReportBIListItem): void {
+    const ref = this.dialog.open(DuplicateDialogComponent, {
+      width: '460px',
+      data: { reportTitle: report.titulo } satisfies DuplicateDialogData,
+    });
+    ref.afterClosed().subscribe((result?: DuplicateDialogResult) => {
+      if (!result) return;
+      this.reportBIService.duplicate(report.id, { titulo: result.titulo })
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: duplicated => {
+            this.reports.update(list => [
+              { ...duplicated, es_template: false, user_email: duplicated.user.email } as unknown as ReportBIListItem,
+              ...list,
+            ]);
+            this.toast.success(`Reporte duplicado: "${duplicated.titulo}"`);
+          },
+          error: () => this.toast.error('No se pudo duplicar el reporte.'),
+        });
+    });
   }
 
   compartir(report: ReportBIListItem): void {

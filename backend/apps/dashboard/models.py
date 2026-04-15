@@ -108,6 +108,16 @@ class DashboardCard(models.Model):
     )
     orden = models.PositiveSmallIntegerField(default=0)
 
+    # ── Tarjeta de tipo bi_report ─────────────────────────────────────────
+    bi_report = models.ForeignKey(
+        'ReportBI',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='dashboard_cards',
+        help_text='Reporte BI referenciado. Solo aplica cuando card_type_code="bi_report".',
+    )
+
     class Meta:
         verbose_name = 'Tarjeta de dashboard'
         verbose_name_plural = 'Tarjetas de dashboard'
@@ -201,6 +211,17 @@ class ReportBI(BaseModel):
         KPI = 'kpi', 'KPI'
         WATERFALL = 'waterfall', 'Cascada'
 
+    class CategoriaGaleria(models.TextChoices):
+        CONTABILIDAD = 'contabilidad', 'Contabilidad'
+        CUENTAS_PAGAR = 'cuentas_pagar', 'Cuentas por Pagar'
+        CUENTAS_COBRAR = 'cuentas_cobrar', 'Cuentas por Cobrar'
+        VENTAS = 'ventas', 'Ventas'
+        INVENTARIO = 'inventario', 'Inventario'
+        COSTOS = 'costos', 'Costos y Gastos'
+        PROYECTOS = 'proyectos', 'Proyectos'
+        TRIBUTARIO = 'tributario', 'Tributario'
+        GERENCIAL = 'gerencial', 'Gerencial / KPIs'
+
     user = models.ForeignKey(
         'users.User',
         on_delete=models.CASCADE,
@@ -208,7 +229,6 @@ class ReportBI(BaseModel):
     )
 
     titulo = models.CharField(max_length=200)
-    descripcion = models.TextField(blank=True, default='')
     es_privado = models.BooleanField(default=True)
     es_favorito = models.BooleanField(default=False)
     es_template = models.BooleanField(
@@ -262,6 +282,15 @@ class ReportBI(BaseModel):
         blank=True,
         on_delete=models.SET_NULL,
         related_name='reportes_derivados',
+    )
+
+    # Galería pública
+    categoria_galeria = models.CharField(
+        max_length=30,
+        choices=CategoriaGaleria.choices,
+        null=True,
+        blank=True,
+        help_text='Categoría para la galería pública. Solo aplica si es_template=True.',
     )
 
     class Meta:

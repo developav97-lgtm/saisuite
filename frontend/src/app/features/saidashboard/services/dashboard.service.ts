@@ -10,6 +10,7 @@ import {
   CardLayoutRequest,
   ShareRequest,
   DashboardShare,
+  BiSelectableReport,
 } from '../models/dashboard.model';
 import { ReportFilter } from '../models/report-filter.model';
 
@@ -62,11 +63,11 @@ export class DashboardService {
     return this.http.post<DashboardCard>(`${this.baseUrl}/${dashboardId}/cards/`, card);
   }
 
-  updateCard(dashboardId: string, cardId: string, data: Partial<DashboardCardCreate>): Observable<DashboardCard> {
+  updateCard(dashboardId: string, cardId: number | string, data: Partial<DashboardCardCreate>): Observable<DashboardCard> {
     return this.http.put<DashboardCard>(`${this.baseUrl}/${dashboardId}/cards/${cardId}/`, data);
   }
 
-  deleteCard(dashboardId: string, cardId: string): Observable<void> {
+  deleteCard(dashboardId: string, cardId: number | string): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/${dashboardId}/cards/${cardId}/`);
   }
 
@@ -90,5 +91,32 @@ export class DashboardService {
     return this.http.put<DashboardDetail>(`${this.baseUrl}/${id}/filters/`, {
       filtros_default: filtros,
     });
+  }
+
+  // ── bi_report cards (Sprint 4) ───────────────────────────────
+
+  /**
+   * Ejecuta el reporte BI de una tarjeta aplicando filtros en 3 capas.
+   * @param dashboardId UUID del dashboard
+   * @param cardId ID entero de la tarjeta
+   * @param dashboardFilters Filtros globales del dashboard (fecha, periodo, terceros…)
+   */
+  executeBiCard(
+    dashboardId: string,
+    cardId: number,
+    dashboardFilters: Record<string, unknown> = {},
+  ): Observable<unknown> {
+    return this.http.post(
+      `${this.baseUrl}/${dashboardId}/cards/${cardId}/bi-execute/`,
+      { dashboard_filters: dashboardFilters },
+    );
+  }
+
+  /**
+   * Lista reportes BI del usuario compatibles para usar como tarjeta de dashboard.
+   * Solo tipos gráficos (bar, line, pie, area, waterfall, kpi, gauge).
+   */
+  getSelectableReports(): Observable<BiSelectableReport[]> {
+    return this.http.get<BiSelectableReport[]>(`${this.baseUrl}/reportes/seleccionables/`);
   }
 }

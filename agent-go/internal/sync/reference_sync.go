@@ -35,7 +35,11 @@ func NewReferenceSync(
 	}
 }
 
-// SyncAll runs full sync for all reference tables (ACCT, LISTA, PROYECTOS, ACTIVIDADES, TIPDOC).
+// itemChunkSize limits ITEM records per API message to stay under 256KB SQS limit.
+const itemChunkSize = 200
+
+// SyncAll runs full sync for all reference tables
+// (ACCT, LISTA, PROYECTOS, ACTIVIDADES, TIPDOC, TAXAUTH, ITEM, VENDEDOR).
 // CUST is NOT called here — it runs on the GL ticker via SyncCustIncremental.
 func (rs *ReferenceSync) SyncAll(conn config.Connection) error {
 	rs.logger.Info("reference sync starting", "conn_id", conn.ID)
@@ -65,6 +69,21 @@ func (rs *ReferenceSync) SyncAll(conn config.Connection) error {
 	if err := rs.syncTipdoc(conn); err != nil {
 		rs.logger.Error("TIPDOC sync failed", "conn_id", conn.ID, "error", err)
 		errs = append(errs, fmt.Errorf("TIPDOC: %w", err))
+	}
+
+	if err := rs.syncTaxAuth(conn); err != nil {
+		rs.logger.Error("TAXAUTH sync failed", "conn_id", conn.ID, "error", err)
+		errs = append(errs, fmt.Errorf("TAXAUTH: %w", err))
+	}
+
+	if err := rs.syncItem(conn); err != nil {
+		rs.logger.Error("ITEM sync failed", "conn_id", conn.ID, "error", err)
+		errs = append(errs, fmt.Errorf("ITEM: %w", err))
+	}
+
+	if err := rs.syncVendedores(conn); err != nil {
+		rs.logger.Error("VENDEDOR sync failed", "conn_id", conn.ID, "error", err)
+		errs = append(errs, fmt.Errorf("VENDEDOR: %w", err))
 	}
 
 	if len(errs) > 0 {
@@ -314,6 +333,117 @@ func (rs *ReferenceSync) syncActividades(conn config.Connection) error {
 	}
 
 	rs.logger.Info("ACTIVIDADES sync complete", "conn_id", conn.ID, "records", len(records))
+	return nil
+}
+
+// syncTaxAuth fetches and sends all tax authority records from TAXAUTH.
+// TAXAUTH is tiny (<20 rows) and changes rarely — full sync each cycle.
+func (rs *ReferenceSync) syncTaxAuth(conn config.Connection) error {
+	rs.logger.Info("syncing TAXAUTH", "conn_id", conn.ID)
+
+	records, err := rs.fbClient.QueryAllTaxAuth()
+	if err != nil {
+		return err
+	}
+
+	payload := api.ReferencePayload{
+		Type:      "taxauth_full",
+		CompanyID: conn.Saicloud.CompanyID,
+		ConnID:    conn.ID,
+		Timestamp: time.Now().UTC().Format(time.RFC3339),
+		Data: api.ReferenceData{
+			Records:    records,
+			TotalCount: len(records),
+		},
+	}
+
+	if err := rs.sender.PostReference("taxauth", payload); err != nil {
+		return err
+	}
+
+	if err := rs.cfg.UpdateReferenceSyncTime(conn.ID, "taxauth"); err != nil {
+		rs.logger.Warn("failed to update TAXAUTH sync time", "error", err)
+	}
+
+	rs.logger.Info("TAXAUTH sync complete", "conn_id", conn.ID, "records", len(records))
+	return nil
+}
+
+// syncItem fetches and sends all product records from ITEM in chunks.
+// The ITEM table can be large, so records are sent in itemChunkSize batches.
+func (rs *ReferenceSync) syncItem(conn config.Connection) error {
+	rs.logger.Info("syncing ITEM", "conn_id", conn.ID)
+
+	offset := 0
+	totalSent := 0
+
+	for {
+		records, err := rs.fbClient.QueryAllItem(offset, itemChunkSize)
+		if err != nil {
+			return fmt.Errorf("ITEM query at offset %d failed: %w", offset, err)
+		}
+		if len(records) == 0 {
+			break
+		}
+
+		payload := api.ReferencePayload{
+			Type:      "item_full",
+			CompanyID: conn.Saicloud.CompanyID,
+			ConnID:    conn.ID,
+			Timestamp: time.Now().UTC().Format(time.RFC3339),
+			Data: api.ReferenceData{
+				Records:    records,
+				TotalCount: len(records),
+			},
+		}
+
+		if err := rs.sender.PostReference("item", payload); err != nil {
+			return fmt.Errorf("ITEM chunk at offset %d send failed: %w", offset, err)
+		}
+
+		totalSent += len(records)
+		offset += len(records)
+
+		// If fewer records than chunkSize were returned, we've reached the end.
+		if len(records) < itemChunkSize {
+			break
+		}
+	}
+
+	if err := rs.cfg.UpdateReferenceSyncTime(conn.ID, "item"); err != nil {
+		rs.logger.Warn("failed to update ITEM sync time", "error", err)
+	}
+
+	rs.logger.Info("ITEM sync complete", "conn_id", conn.ID, "total_records", totalSent)
+	return nil
+}
+
+// syncVendedores fetches and sends all salesperson records from VENDEDOR.
+// VENDEDOR is tiny (usually <50 rows) and changes rarely — full sync each cycle.
+func (rs *ReferenceSync) syncVendedores(conn config.Connection) error {
+	rs.logger.Info("syncing VENDEDOR", "conn_id", conn.ID)
+
+	records, err := rs.fbClient.QueryAllVendedores()
+	if err != nil {
+		return err
+	}
+
+	payload := api.ReferencePayload{
+		Type:      "vendedores_full",
+		CompanyID: conn.Saicloud.CompanyID,
+		ConnID:    conn.ID,
+		Timestamp: time.Now().UTC().Format(time.RFC3339),
+		Data: api.ReferenceData{
+			Records:    records,
+			TotalCount: len(records),
+		},
+	}
+
+	if err := rs.sender.PostReference("vendedores", payload); err != nil {
+		return err
+	}
+
+	rs.logger.Info("VENDEDOR sync complete", "conn_id", conn.ID, "records", len(records))
 	return nil
 }
 

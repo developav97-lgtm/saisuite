@@ -48,10 +48,16 @@ from apps.dashboard.views import (
     ReportBIPreviewView,
     ReportBIShareView,
     ReportBIShareRevokeView,
+    ReportBIStaticCatalogView,
     ReportBITemplatesView,
     BISourcesView,
     BIFieldsView,
     BIFiltersView,
+    BIJoinsView,
+    ReportBIDuplicateView,
+    # Sprint 4: bi_report cards
+    BiCardExecuteView,
+    BiSelectableReportsView,
 )
 
 app_name = 'dashboard'
@@ -69,6 +75,7 @@ urlpatterns = [
     path('<uuid:dashboard_id>/cards/', DashboardCardListCreateView.as_view(), name='card-list-create'),
     path('<uuid:dashboard_id>/cards/layout/', DashboardCardLayoutView.as_view(), name='card-layout'),
     path('<uuid:dashboard_id>/cards/<int:card_id>/', DashboardCardDetailView.as_view(), name='card-detail'),
+    path('<uuid:dashboard_id>/cards/<int:card_id>/bi-execute/', BiCardExecuteView.as_view(), name='bi-card-execute'),
 
     # ── Share ──
     path('<uuid:dashboard_id>/share/', DashboardShareView.as_view(), name='share'),
@@ -101,14 +108,18 @@ urlpatterns = [
     # ── Report BI CRUD ──
     path('reportes/', ReportBIListCreateView.as_view(), name='report-bi-list-create'),
     path('reportes/preview/', ReportBIPreviewView.as_view(), name='report-bi-preview'),
+    path('reportes/catalogo/', ReportBIStaticCatalogView.as_view(), name='report-bi-static-catalog'),
     path('reportes/templates/', ReportBITemplatesView.as_view(), name='report-bi-templates'),
+    path('reportes/seleccionables/', BiSelectableReportsView.as_view(), name='bi-selectable-reports'),
     path('reportes/meta/sources/', BISourcesView.as_view(), name='bi-sources'),
     path('reportes/meta/fields/', BIFieldsView.as_view(), name='bi-fields'),
     path('reportes/meta/filters/', BIFiltersView.as_view(), name='bi-filters'),
+    path('reportes/meta/joins/', BIJoinsView.as_view(), name='bi-joins'),
     path('reportes/<uuid:report_id>/', ReportBIDetailView.as_view(), name='report-bi-detail'),
     path('reportes/<uuid:report_id>/toggle-favorite/', ReportBIToggleFavoriteView.as_view(), name='report-bi-toggle-favorite'),
     path('reportes/<uuid:report_id>/execute/', ReportBIExecuteView.as_view(), name='report-bi-execute'),
     path('reportes/<uuid:report_id>/export-pdf/', ReportBIExportPdfView.as_view(), name='report-bi-export-pdf'),
+    path('reportes/<uuid:report_id>/duplicate/', ReportBIDuplicateView.as_view(), name='report-bi-duplicate'),
     path('reportes/<uuid:report_id>/share/', ReportBIShareView.as_view(), name='report-bi-share'),
     path('reportes/<uuid:report_id>/share/<uuid:user_id>/', ReportBIShareRevokeView.as_view(), name='report-bi-share-revoke'),
 ]

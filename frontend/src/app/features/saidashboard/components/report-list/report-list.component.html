@@ -3,10 +3,12 @@
   <!-- Header -->
   <div class="sc-page-header report-list__header">
     <h1 class="sc-page-header__title">Reportes BI</h1>
-    <button mat-raised-button color="primary" (click)="nuevo()">
-      <mat-icon>add</mat-icon>
-      Nuevo Reporte
-    </button>
+    <div class="report-list__header-actions">
+      <button mat-raised-button color="primary" (click)="nuevo()">
+        <mat-icon>add</mat-icon>
+        Nuevo Reporte
+      </button>
+    </div>
   </div>
 
   @if (loading()) {
@@ -76,9 +78,6 @@
               <th mat-header-cell *matHeaderCellDef>Título</th>
               <td mat-cell *matCellDef="let row">
                 <span class="report-list__report-title">{{ row.titulo }}</span>
-                @if (row.descripcion) {
-                  <span class="report-list__report-desc">{{ row.descripcion }}</span>
-                }
               </td>
             </ng-container>
 
@@ -110,7 +109,7 @@
             <ng-container matColumnDef="acciones">
               <th mat-header-cell *matHeaderCellDef></th>
               <td mat-cell *matCellDef="let row">
-                <button mat-icon-button [matMenuTriggerFor]="menu">
+                <button mat-icon-button [matMenuTriggerFor]="menu" (click)="$event.stopPropagation()">
                   <mat-icon>more_vert</mat-icon>
                 </button>
                 <mat-menu #menu="matMenu">
@@ -121,6 +120,10 @@
                   <button mat-menu-item (click)="editar(row.id)">
                     <mat-icon>edit</mat-icon>
                     <span>Editar</span>
+                  </button>
+                  <button mat-menu-item (click)="duplicar(row)">
+                    <mat-icon>content_copy</mat-icon>
+                    <span>Duplicar</span>
                   </button>
                   <button mat-menu-item (click)="compartir(row)">
                     <mat-icon>share</mat-icon>
@@ -153,11 +156,10 @@
     <mat-tab label="Templates">
       @if (templates().length > 0) {
         <div class="report-list__templates">
-          @for (tpl of templates(); track tpl.id) {
+          @for (tpl of templates(); track tpl.titulo) {
             <div class="template-card" (click)="usarTemplate(tpl)">
               <mat-icon class="template-card__icon">{{ getVizIcon(tpl.tipo_visualizacion) }}</mat-icon>
               <span class="template-card__title">{{ tpl.titulo }}</span>
-              <span class="template-card__desc">{{ tpl.descripcion }}</span>
               <button mat-stroked-button color="primary" class="template-card__btn">Usar</button>
             </div>
           }

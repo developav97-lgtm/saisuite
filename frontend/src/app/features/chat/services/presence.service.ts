@@ -66,10 +66,10 @@ export class PresenceService implements OnDestroy {
 
   private startHeartbeat(): void {
     this.stopHeartbeat();
-    // Send heartbeat every 25s (server TTL is 35s)
+    // Send heartbeat every 60s (server TTL is 90s)
     this.heartbeatTimer = setInterval(() => {
       this.chatSocket.sendHeartbeat();
-    }, 25_000);
+    }, 60_000);
   }
 
   private stopHeartbeat(): void {

@@ -81,3 +81,7 @@ n8n/.n8n/
 scripts/*.bak
 .playwright-mcp/
 .claude/
+
+# Carpetas externas (no parte del proyecto)
+agency-agents/
+pixel-agents/

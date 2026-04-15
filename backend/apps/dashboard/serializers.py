@@ -33,13 +33,28 @@ class UserSummarySerializer(serializers.Serializer):
 # ──────────────────────────────────────────────
 
 class DashboardCardSerializer(serializers.ModelSerializer):
-    """Serializer de lectura para DashboardCard."""
+    """Serializer de lectura para DashboardCard. Incluye campos bi_report para tarjetas BI."""
+    bi_report_id = serializers.UUIDField(
+        source='bi_report.id', read_only=True, allow_null=True,
+    )
+    bi_report_titulo = serializers.CharField(
+        source='bi_report.titulo', read_only=True, allow_null=True,
+    )
+    bi_report_tipo_visualizacion = serializers.CharField(
+        source='bi_report.tipo_visualizacion', read_only=True, allow_null=True,
+    )
+    bi_report_campos_config = serializers.JSONField(
+        source='bi_report.campos_config', read_only=True, allow_null=True,
+    )
+
     class Meta:
         model = DashboardCard
         fields = [
             'id', 'card_type_code', 'chart_type',
             'pos_x', 'pos_y', 'width', 'height',
             'filtros_config', 'titulo_personalizado', 'orden',
+            'bi_report_id', 'bi_report_titulo',
+            'bi_report_tipo_visualizacion', 'bi_report_campos_config',
         ]
         read_only_fields = ['id']
 
@@ -55,18 +70,21 @@ class DashboardCardCreateSerializer(serializers.Serializer):
     filtros_config = serializers.DictField(required=False, default=dict)
     titulo_personalizado = serializers.CharField(max_length=100, required=False, default='')
     orden = serializers.IntegerField(default=0)
+    # Solo para card_type_code='bi_report'
+    bi_report_id = serializers.UUIDField(required=False, allow_null=True)
 
 
 class DashboardCardUpdateSerializer(serializers.Serializer):
     """Serializer de escritura para actualizar una tarjeta."""
-    chart_type = serializers.CharField(max_length=20, required=False)
+    chart_type = serializers.CharField(max_length=20, required=False, allow_blank=True)
     pos_x = serializers.IntegerField(required=False)
     pos_y = serializers.IntegerField(required=False)
     width = serializers.IntegerField(required=False)
     height = serializers.IntegerField(required=False)
     filtros_config = serializers.DictField(required=False)
-    titulo_personalizado = serializers.CharField(max_length=100, required=False)
+    titulo_personalizado = serializers.CharField(max_length=100, required=False, allow_blank=True)
     orden = serializers.IntegerField(required=False)
+    bi_report_id = serializers.UUIDField(required=False, allow_null=True)
 
 
 class CardLayoutItemSerializer(serializers.Serializer):
@@ -245,9 +263,9 @@ class ReportBIListSerializer(serializers.ModelSerializer):
     class Meta:
         model = ReportBI
         fields = [
-            'id', 'titulo', 'descripcion', 'es_privado',
+            'id', 'titulo', 'es_privado',
             'es_favorito', 'es_template', 'fuentes',
-            'tipo_visualizacion', 'user_email',
+            'tipo_visualizacion', 'categoria_galeria', 'user_email',
             'created_at', 'updated_at',
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
@@ -261,11 +279,11 @@ class ReportBIDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = ReportBI
         fields = [
-            'id', 'titulo', 'descripcion', 'es_privado',
+            'id', 'titulo', 'es_privado',
             'es_favorito', 'es_template', 'fuentes',
             'campos_config', 'tipo_visualizacion', 'viz_config',
             'filtros', 'orden_config', 'limite_registros',
-            'template_origen', 'user', 'shares',
+            'template_origen', 'categoria_galeria', 'user', 'shares',
             'created_at', 'updated_at',
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
@@ -286,8 +304,8 @@ class ReportBIDetailSerializer(serializers.ModelSerializer):
 class ReportBICreateSerializer(serializers.Serializer):
     """Serializer de escritura para crear un reporte BI."""
     titulo = serializers.CharField(max_length=200)
-    descripcion = serializers.CharField(required=False, default='', allow_blank=True)
     es_privado = serializers.BooleanField(default=True)
+    es_template = serializers.BooleanField(required=False, default=False)
     fuentes = serializers.ListField(
         child=serializers.CharField(max_length=30),
         min_length=1,
@@ -302,7 +320,9 @@ class ReportBICreateSerializer(serializers.Serializer):
         default='table',
     )
     viz_config = serializers.DictField(required=False, default=dict)
-    filtros = serializers.DictField(required=False, default=dict)
+    filtros = serializers.ListField(
+        child=serializers.DictField(), required=False, default=list,
+    )
     orden_config = serializers.ListField(
         child=serializers.DictField(),
         required=False,
@@ -310,14 +330,19 @@ class ReportBICreateSerializer(serializers.Serializer):
     )
     limite_registros = serializers.IntegerField(required=False, allow_null=True)
     template_origen = serializers.UUIDField(required=False, allow_null=True)
+    categoria_galeria = serializers.ChoiceField(
+        choices=ReportBI.CategoriaGaleria.choices,
+        required=False,
+        allow_null=True,
+    )
 
 
 class ReportBIUpdateSerializer(serializers.Serializer):
     """Serializer de escritura para actualizar un reporte BI."""
     titulo = serializers.CharField(max_length=200, required=False)
-    descripcion = serializers.CharField(required=False)
     es_privado = serializers.BooleanField(required=False)
     es_favorito = serializers.BooleanField(required=False)
+    es_template = serializers.BooleanField(required=False)
     fuentes = serializers.ListField(
         child=serializers.CharField(max_length=30),
         required=False,
@@ -331,12 +356,19 @@ class ReportBIUpdateSerializer(serializers.Serializer):
         required=False,
     )
     viz_config = serializers.DictField(required=False)
-    filtros = serializers.DictField(required=False)
+    filtros = serializers.ListField(
+        child=serializers.DictField(), required=False,
+    )
     orden_config = serializers.ListField(
         child=serializers.DictField(),
         required=False,
     )
     limite_registros = serializers.IntegerField(required=False, allow_null=True)
+    categoria_galeria = serializers.ChoiceField(
+        choices=ReportBI.CategoriaGaleria.choices,
+        required=False,
+        allow_null=True,
+    )
 
 
 class ReportBIExecuteSerializer(serializers.Serializer):
@@ -354,7 +386,9 @@ class ReportBIExecuteSerializer(serializers.Serializer):
         default='table',
     )
     viz_config = serializers.DictField(required=False, default=dict)
-    filtros = serializers.DictField(required=False, default=dict)
+    filtros = serializers.ListField(
+        child=serializers.DictField(), required=False, default=list,
+    )
     orden_config = serializers.ListField(
         child=serializers.DictField(),
         required=False,
@@ -367,3 +401,24 @@ class ReportBIShareCreateSerializer(serializers.Serializer):
     """Serializer para compartir un reporte BI."""
     user_id = serializers.UUIDField()
     puede_editar = serializers.BooleanField(default=False)
+
+
+# ── Sprint 4: bi_report cards ─────────────────────────────────────────────────
+
+
+class BiCardExecuteRequestSerializer(serializers.Serializer):
+    """Serializer para ejecutar una tarjeta de tipo bi_report con filtros de dashboard."""
+    dashboard_filters = serializers.DictField(required=False, default=dict)
+
+
+class BiSelectableReportSerializer(serializers.ModelSerializer):
+    """Serializer para reportes BI seleccionables como tarjetas de dashboard."""
+    user_email = serializers.EmailField(source='user.email', read_only=True)
+
+    class Meta:
+        model = ReportBI
+        fields = [
+            'id', 'titulo',
+            'tipo_visualizacion', 'fuentes',
+            'es_favorito', 'user_email',
+        ]

@@ -18,7 +18,7 @@ export interface BIFieldCategory {
   fields: BIFieldDef[];
 }
 
-export type BIFieldFormat = 'string' | 'number' | 'currency' | 'date';
+export type BIFieldFormat = 'string' | 'number' | 'currency' | 'date' | 'boolean';
 
 /** A field selected by the user for a report, with config. */
 export interface BIFieldConfig {
@@ -50,4 +50,92 @@ export interface BIFilterDef {
 export interface BISortConfig {
   field: string;
   direction: 'asc' | 'desc';
+}
+
+// ── V2 Filter types ───────────────────────────────────────────────────────────
+
+/** Operadores disponibles en el FilterTranslator v2 del backend. */
+export type BIFilterOperator =
+  | 'eq'         // igual a
+  | 'neq'        // diferente de
+  | 'contains'   // contiene (text)
+  | 'starts_with'// empieza con (text)
+  | 'ends_with'  // termina con (text)
+  | 'gt'         // mayor que
+  | 'gte'        // mayor o igual
+  | 'lt'         // menor que
+  | 'lte'        // menor o igual
+  | 'between'    // entre (rango)
+  | 'in'         // en lista
+  | 'is_true'    // es verdadero (boolean)
+  | 'is_false';  // es falso (boolean)
+
+/** Un filtro en formato v2 — estructura enviada al backend. */
+export interface BIFilterV2 {
+  source: string;
+  field: string;
+  operator: BIFilterOperator;
+  value: unknown;
+}
+
+/** Operadores disponibles según el tipo de campo. */
+export const OPERATORS_BY_TYPE: Record<BIFieldType, { value: BIFilterOperator; label: string }[]> = {
+  text: [
+    { value: 'eq',          label: 'Igual a' },
+    { value: 'neq',         label: 'Diferente de' },
+    { value: 'contains',    label: 'Contiene' },
+    { value: 'starts_with', label: 'Empieza con' },
+    { value: 'ends_with',   label: 'Termina con' },
+    { value: 'in',          label: 'En lista' },
+  ],
+  integer: [
+    { value: 'eq',      label: 'Igual a' },
+    { value: 'neq',     label: 'Diferente de' },
+    { value: 'gt',      label: 'Mayor que' },
+    { value: 'gte',     label: 'Mayor o igual' },
+    { value: 'lt',      label: 'Menor que' },
+    { value: 'lte',     label: 'Menor o igual' },
+    { value: 'between', label: 'Entre' },
+    { value: 'in',      label: 'En lista' },
+  ],
+  decimal: [
+    { value: 'eq',      label: 'Igual a' },
+    { value: 'neq',     label: 'Diferente de' },
+    { value: 'gt',      label: 'Mayor que' },
+    { value: 'gte',     label: 'Mayor o igual' },
+    { value: 'lt',      label: 'Menor que' },
+    { value: 'lte',     label: 'Menor o igual' },
+    { value: 'between', label: 'Entre' },
+    { value: 'in',      label: 'En lista' },
+  ],
+  date: [
+    { value: 'eq',      label: 'Igual a' },
+    { value: 'gt',      label: 'Después de' },
+    { value: 'gte',     label: 'Desde' },
+    { value: 'lt',      label: 'Antes de' },
+    { value: 'lte',     label: 'Hasta' },
+    { value: 'between', label: 'Entre' },
+  ],
+  boolean: [
+    { value: 'is_true',  label: 'Es verdadero' },
+    { value: 'is_false', label: 'Es falso' },
+  ],
+};
+
+/** Metadato de una relación JOIN entre fuentes, tal como retorna /meta/joins/. */
+export interface BIJoinInfo {
+  source_a: string;
+  source_b: string;
+  description: string;
+  type: 'fk' | 'subquery';
+}
+
+/** Flat field option for field selector (source + field merged). */
+export interface BIFieldOption {
+  source: string;
+  sourceLabel: string;
+  field: string;
+  label: string;
+  type: BIFieldType;
+  role: BIFieldRole;
 }

@@ -32,6 +32,7 @@ import { TrialStatus } from '../../models/trial.model';
 import { ModuleTrialStatus } from '../../../admin/models/tenant.model';
 import { ChartCardComponent } from '../chart-card/chart-card.component';
 import { KpiCardComponent } from '../kpi-card/kpi-card.component';
+import { BiReportCardComponent } from '../bi-report-card/bi-report-card.component';
 import { FilterPanelComponent } from '../filter-panel/filter-panel.component';
 import { TrialBannerComponent } from '../../../../shared/components/trial-banner/trial-banner.component';
 import { ShareDialogComponent, ShareDialogData } from '../share-dialog/share-dialog.component';
@@ -56,6 +57,7 @@ interface CardWithData {
     MatProgressBarModule,
     ChartCardComponent,
     KpiCardComponent,
+    BiReportCardComponent,
     FilterPanelComponent,
     TrialBannerComponent,
   ],
@@ -106,6 +108,23 @@ export class DashboardViewerComponent implements OnInit {
   // ── Computed ───────────────────────────────────────────────
   readonly title = computed(() => this.dashboard()?.titulo ?? 'Dashboard');
   readonly isFavorite = computed(() => this.dashboard()?.es_favorito ?? false);
+
+  /** Tarjetas BI (tipo bi_report) — cargan sus propios datos vía BiReportCardComponent. */
+  readonly biReportCards = computed(() =>
+    this.dashboard()?.cards.filter(c => c.card_type_code === 'bi_report') ?? [],
+  );
+
+  /** Filtros del dashboard actuales como Record para pasar a BiReportCardComponent. */
+  readonly dashboardFiltersMap = computed((): Record<string, unknown> => {
+    const f = this.currentFilter();
+    const result: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(f)) {
+      if (v !== null && v !== undefined) {
+        result[k] = v;
+      }
+    }
+    return result;
+  });
 
   readonly kpiCards = computed(() =>
     this.cardsWithData().filter(c =>
@@ -162,18 +181,21 @@ export class DashboardViewerComponent implements OnInit {
   }
 
   private loadAllCardData(cards: DashboardCard[]): void {
-    // Initialize cards with loading state
-    const initial: CardWithData[] = cards.map(card => ({
+    // bi_report cards manage their own data loading via BiReportCardComponent
+    const regularCards = cards.filter(c => c.card_type_code !== 'bi_report');
+
+    // Initialize regular cards with loading state
+    const initial: CardWithData[] = regularCards.map(card => ({
       card,
       data: null,
       loading: true,
     }));
     this.cardsWithData.set(initial);
 
-    if (cards.length === 0) return;
+    if (regularCards.length === 0) return;
 
     const filter = this.currentFilter();
-    const requests = cards.map(card =>
+    const requests = regularCards.map(card =>
       this.reportService.getCardData({
         card_type_code: card.card_type_code,
         filtros: filter,
@@ -185,7 +207,7 @@ export class DashboardViewerComponent implements OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: responses => {
-          const updated: CardWithData[] = cards.map((card, i) => ({
+          const updated: CardWithData[] = regularCards.map((card, i) => ({
             card,
             data: responses[i],
             loading: false,

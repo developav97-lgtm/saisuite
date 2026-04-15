@@ -15,10 +15,11 @@ describe('ReportBuilderComponent', () => {
   beforeEach(() => {
     serviceSpy = jasmine.createSpyObj('ReportBIService', [
       'list', 'getById', 'create', 'update', 'preview',
-      'getFields', 'getFilters', 'getSources',
+      'getFields', 'getFilters', 'getSources', 'getJoins',
     ]);
     serviceSpy.getFields.and.returnValue(of({}));
     serviceSpy.getFilters.and.returnValue(of([]));
+    serviceSpy.getJoins.and.returnValue(of([]));
 
     TestBed.configureTestingModule({
       imports: [
@@ -82,7 +83,7 @@ describe('ReportBuilderComponent', () => {
   });
 
   it('preview calls service with current config', () => {
-    serviceSpy.preview.and.returnValue(of({ columns: ['debito'], rows: [], total_count: 0 }));
+    serviceSpy.preview.and.returnValue(of({ columns: [{ field: 'debito', label: 'Débito', type: 'metric' }], rows: [], total_count: 0 } as any));
     component.selectedSources.set(['gl']);
     component.selectedFields.set([
       { source: 'gl', field: 'debito', role: 'metric', aggregation: 'SUM', label: 'Débito' },

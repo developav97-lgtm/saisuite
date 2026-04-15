@@ -1,3 +1,73 @@
+## DEC-067: Exportación BI = Excel + CSV únicamente (sin PDF)
+**Fecha:** 2026-04-12
+**Estado:** Decidido — Pendiente migrar frontend
+
+**Contexto:** El módulo de Reportes BI V2 necesita exportación. La exportación PDF fue implementada en V1.
+
+**Decisión:** Eliminar `export_pdf` del servicio BI para reportes BI. Solo Excel (.xlsx vía openpyxl) y CSV.
+
+**Razón:** Las tablas BI pueden tener cientos de columnas y miles de filas. PDF no es formato adecuado. El export-menu del frontend ya soporta Excel/CSV.
+
+**Consecuencia:** El endpoint `/export-pdf/` se mantiene en el router V1 hasta que se migre el frontend (2026-04-13: `report-bi.service.ts:73` aún llama al endpoint). Cuando se elimine del frontend, quitar de `urls.py` y `views.py`.
+
+---
+
+## DEC-066: Coexistencia ReportEngine + BIQueryEngine (migración gradual)
+**Fecha:** 2026-04-12
+**Estado:** Decidido
+
+**Contexto:** Las 31 tarjetas existentes usan `ReportEngine`. BIQueryEngine V2 agrega capacidades multi-fuente.
+
+**Decisión:** Las tarjetas legacy siguen usando `ReportEngine`. Solo el nuevo tipo `bi_report` usa `BIQueryEngine`. No se elimina ReportEngine.
+
+**Razón:** Migración no-destructiva. Las tarjetas legacy están probadas y funcionan. Migrar 30+ métodos hardcodeados es un proyecto separado.
+
+**Consecuencia:** Dos motores coexisten. `BIQueryEngine` es el motor futuro.
+
+---
+
+## DEC-065: Filtros en 3 capas para integración Dashboard ↔ BI
+**Fecha:** 2026-04-12
+**Estado:** Decidido
+
+**Contexto:** Sprint 4 necesita que tarjetas BI en dashboard hereden pero puedan sobrescribir filtros.
+
+**Decisión:** Capa 1 (ReportBI.filtros) → Capa 2 (DashboardCard.filtros_config override) → Capa 3 (Dashboard.filtros_default global). Nivel más externo gana para el mismo campo.
+
+**Razón:** Permite filtros independientes por tarjeta más filtros globales del dashboard de forma transparente.
+
+**Consecuencia:** El ReportBI original nunca se modifica. Los overrides son por tarjeta. Implementar en Sprint 4.
+
+---
+
+## DEC-064: JOINs multi-tabla vía Subquery + OuterRef (sin SQL crudo)
+**Fecha:** 2026-04-12
+**Estado:** Decidido
+
+**Contexto:** Los modelos espejo de contabilidad no tienen FK entre sí. El motor BI necesita unir datos de múltiples fuentes.
+
+**Decisión:** Los JOINs entre tablas sin FK Django se implementan con `Subquery(Model.objects.filter(company_id=OuterRef('company_id'), campo_join=OuterRef('campo_local')).values('campo')[:1])`.
+
+**Razón:** La regla del proyecto prohíbe SQL crudo. `Subquery` es la única alternativa en Django ORM puro.
+
+**Consecuencia:** Performance aceptable con índices existentes. Limitación: campos de fuente secundaria usados como dimensión (GROUP BY) requieren post-procesamiento en Python.
+
+---
+
+## DEC-063: Productos en BI = CrmProducto directamente
+**Fecha:** 2026-04-12
+**Estado:** Decidido
+
+**Contexto:** El BI engine necesita una fuente de productos. `CrmProducto` ya existe con sync desde ITEM de Saiopen.
+
+**Decisión:** Usar `crm.CrmProducto` como fuente en el BI engine sin crear modelo espejo `ItemSaiopen`.
+
+**Razón:** Ya tiene sync desde ITEM, company FK, campos necesarios (codigo, nombre, precio_base, clase, grupo). Crear un espejo duplicaría datos sin beneficio.
+
+**Consecuencia:** Import cross-app (`crm.CrmProducto`) desde `dashboard.bi_engine`. Aceptable porque es solo lectura.
+
+---
+
 ## DEC-062: sai_key cotizacion CRM = "{numero}_{tipo}_{empresa}_{sucursal}"
 **Fecha:** 2026-04-10
 **Estado:** Decidido

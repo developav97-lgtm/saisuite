@@ -27,6 +27,7 @@ from botocore.exceptions import ClientError
 from django.conf import settings
 
 from apps.contabilidad.services import SyncService
+from apps.crm.producto_services import ImpuestoSyncService, ProductoSyncService
 
 
 
@@ -87,6 +88,36 @@ def _handle_reference(table: str, company_id: str, data: dict) -> dict:
     )
 
 
+def _handle_vendedores_full(company_id: str, data: dict) -> dict:
+    """Procesa sync completo de vendedores (VENDEDOR) → VendedorSaiopen."""
+    records = data.get('records', [])
+    return SyncService.process_vendedores(company_id=company_id, records=records)
+
+
+def _handle_taxauth_full(company_id: str, data: dict) -> dict:
+    """Procesa sync completo de impuestos (TAXAUTH) → CrmImpuesto."""
+    from apps.companies.models import Company
+    records = data.get('records', [])
+    try:
+        company = Company.objects.get(id=company_id)
+        return ImpuestoSyncService.sync_from_payload(company, records)
+    except Company.DoesNotExist:
+        logger.error('taxauth_company_not_found', extra={'company_id': company_id})
+        return {'inserted': 0, 'updated': 0, 'errors': [f'Company {company_id} not found']}
+
+
+def _handle_item_full(company_id: str, data: dict) -> dict:
+    """Procesa sync de productos (ITEM) → CrmProducto."""
+    from apps.companies.models import Company
+    records = data.get('records', [])
+    try:
+        company = Company.objects.get(id=company_id)
+        return ProductoSyncService.sync_from_payload(company, records)
+    except Company.DoesNotExist:
+        logger.error('item_company_not_found', extra={'company_id': company_id})
+        return {'inserted': 0, 'updated': 0, 'errors': [f'Company {company_id} not found']}
+
+
 # Mapeo directo de msg_type → table name para el dispatcher
 # cust_full y cust_batch incluyen shipto+tributaria atómicamente
 _REFERENCE_TYPE_MAP = {
@@ -115,6 +146,12 @@ def _dispatch(msg_type: str, company_id: str, data: dict) -> dict:
         return _handle_itemact_batch(company_id, data)
     if msg_type in _REFERENCE_TYPE_MAP:
         return _handle_reference(_REFERENCE_TYPE_MAP[msg_type], company_id, data)
+    if msg_type == 'taxauth_full':
+        return _handle_taxauth_full(company_id, data)
+    if msg_type == 'item_full':
+        return _handle_item_full(company_id, data)
+    if msg_type == 'vendedores_full':
+        return _handle_vendedores_full(company_id, data)
     raise ValueError(f'Unknown message type: {msg_type}')
 
 

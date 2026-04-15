@@ -1,9 +1,16 @@
 """
 SaiSuite — CRM: Producto + Impuesto Sync Service
 Sincroniza ITEM y TAXAUTH desde Saiopen hacia CrmProducto y CrmImpuesto.
+También soporta push bidireccional: CrmProducto → Saiopen vía SQS (producción)
+o HTTP directo (LAN, opcional).
 """
+import json
 import logging
+import threading
+from datetime import datetime
+from datetime import timezone as dt_timezone
 from decimal import Decimal
+
 from django.db import transaction
 from django.utils import timezone
 
@@ -103,8 +110,13 @@ class ProductoSyncService:
                         'nombre':         str(record.get('descripcion', sai_key))[:200],
                         'precio_base':    Decimal(str(record.get('price', 0))),
                         'unidad_venta':   str(record.get('uofmsales', ''))[:20],
-                        'clase':          str(record.get('class', ''))[:10],
-                        'grupo':          str(record.get('grupo', ''))[:10],
+                        'clase':               str(record.get('class', ''))[:10],
+                        'grupo':               str(record.get('grupo', ''))[:10],
+                        'reffabrica':          str(record.get('reffabrica', ''))[:30],
+                        'linea_codigo':        str(record.get('linea_codigo', ''))[:10],
+                        'linea_descripcion':   str(record.get('linea_descripcion', ''))[:60],
+                        'grupo_descripcion':   str(record.get('grupo_descripcion', ''))[:60],
+                        'subgrupo_descripcion': str(record.get('subgrupo_descripcion', ''))[:60],
                         'impuesto':       impuesto,
                         'saiopen_synced': True,
                         'ultima_sync':    ahora,
@@ -126,6 +138,80 @@ class ProductoSyncService:
             'errores': len(errores),
         })
         return {'creados': creados, 'actualizados': actualizados, 'errores': errores}
+
+    @staticmethod
+    def push_to_saiopen(company, producto) -> bool:
+        """
+        Envía un CrmProducto a la cola SQS compartida Cloud→Sai (SQS_TO_SAI_URL).
+        El agente Go hace long-polling de esa cola y filtra por company_id.
+        No requiere IP pública ni cola dedicada por empresa.
+
+        Retorna True si el mensaje fue encolado, False si no hay cola configurada.
+        """
+        import boto3
+        from django.conf import settings
+
+        queue_url = getattr(settings, 'SQS_TO_SAI_URL', '')
+        if not queue_url:
+            logger.debug('crm_producto_push_skip: SQS_TO_SAI_URL not configured',
+                         extra={'company': str(company.id)})
+            return False
+
+        payload = {
+            'type': 'item_upsert',
+            'company_id': str(company.id),
+            'conn_id': '',
+            'timestamp': datetime.now(dt_timezone.utc).isoformat(),
+            'data': {'records': [ProductoSyncService._to_item_record(producto)]},
+        }
+
+        try:
+            sqs = boto3.client(
+                'sqs',
+                region_name=getattr(settings, 'AWS_DEFAULT_REGION', 'us-east-1'),
+                aws_access_key_id=getattr(settings, 'AWS_ACCESS_KEY_ID', ''),
+                aws_secret_access_key=getattr(settings, 'AWS_SECRET_ACCESS_KEY', ''),
+            )
+            sqs.send_message(QueueUrl=queue_url, MessageBody=json.dumps(payload))
+            logger.info('crm_producto_queued_to_saiopen', extra={
+                'company': str(company.id),
+                'sai_key': producto.sai_key,
+            })
+            return True
+        except Exception as e:
+            logger.warning('crm_producto_sqs_push_failed', extra={
+                'company': str(company.id),
+                'sai_key': producto.sai_key,
+                'error': str(e),
+            })
+            return False
+
+    @staticmethod
+    def _to_item_record(producto) -> dict:
+        """Convierte un CrmProducto al formato ItemRecord del Go agent."""
+        return {
+            'item':        producto.sai_key or producto.codigo,
+            'descripcion': producto.nombre,
+            'price':       float(producto.precio_base),
+            'uofmsales':   producto.unidad_venta,
+            'class':       producto.clase,
+            'grupo':       producto.grupo,
+            'impoventa':   producto.impuesto.nombre if producto.impuesto else '',
+            'estado':      str(producto.is_active),
+        }
+
+    @staticmethod
+    def push_to_saiopen_async(company, producto) -> None:
+        """
+        Versión asíncrona de push_to_saiopen que no bloquea el request.
+        Lanza un hilo daemon para el push — si falla, el cambio persiste en Django.
+        """
+        thread = threading.Thread(
+            target=ProductoSyncService.push_to_saiopen,
+            args=(company, producto),
+            daemon=True,
+        )
+        thread.start()
 
     @staticmethod
     def list(company, *, search='', grupo='', clase=''):

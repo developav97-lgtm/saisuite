@@ -330,7 +330,6 @@ class TrialServiceTest(TestCase):
         today = date.today()
         CompanyLicense.objects.create(
             company=self.company,
-            plan='professional',
             status='active',
             starts_at=today - timedelta(days=30),
             expires_at=today + timedelta(days=30),
@@ -373,7 +372,8 @@ class FilterServiceTest(TestCase):
     def test_get_terceros_with_query(self):
         """Busqueda de terceros por nombre."""
         terceros = FilterService.get_available_terceros(self.company.id, 'Cliente A')
-        self.assertTrue(any(t['tercero_nombre'] == 'Cliente A' for t in terceros))
+        # FilterService retorna {'id', 'nombre'} (normalizado desde GL o Tercero)
+        self.assertTrue(any(t['nombre'] == 'Cliente A' for t in terceros))
 
     def test_get_proyectos(self):
         """Retorna proyectos unicos."""

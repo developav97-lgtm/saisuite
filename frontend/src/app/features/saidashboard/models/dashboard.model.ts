@@ -17,7 +17,7 @@ export interface DashboardShare {
 }
 
 export interface DashboardCard {
-  id: string;
+  id: number;
   card_type_code: string;
   chart_type: ChartType;
   pos_x: number;
@@ -27,6 +27,33 @@ export interface DashboardCard {
   filtros_config: Record<string, unknown>;
   titulo_personalizado: string;
   orden: number;
+  // Campos para tarjetas de tipo 'bi_report' (null en otros tipos)
+  bi_report_id: string | null;
+  bi_report_titulo: string | null;
+  bi_report_tipo_visualizacion: string | null;
+  bi_report_campos_config: BiFieldConfigItem[] | null;
+}
+
+/** Estructura mínima de un campo BI para renderizar charts en tarjetas. */
+export interface BiFieldConfigItem {
+  source: string;
+  field: string;
+  role: 'dimension' | 'metric' | 'calculated';
+  label: string;
+  aggregation?: string;
+  formula?: string;
+  is_calculated?: boolean;
+}
+
+/** Reporte BI seleccionable para agregar como tarjeta de dashboard. */
+export interface BiSelectableReport {
+  id: string;
+  titulo: string;
+  descripcion: string;
+  tipo_visualizacion: string;
+  fuentes: string[];
+  es_favorito: boolean;
+  user_email: string;
 }
 
 export interface DashboardListItem {
@@ -77,10 +104,12 @@ export interface DashboardCardCreate {
   filtros_config?: Record<string, unknown>;
   titulo_personalizado?: string;
   orden?: number;
+  /** Solo para card_type_code='bi_report' */
+  bi_report_id?: string;
 }
 
 export interface CardLayoutItem {
-  id: string;
+  id: number;
   pos_x: number;
   pos_y: number;
   width: number;

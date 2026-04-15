@@ -604,3 +604,57 @@ h2[mat-dialog-title].dialog-title {
     padding: 0;
   }
 }
+
+// ── Material Tooltip — estilos globales SaiSuite ───────────────
+// Aplica a cualquier [matTooltip] en toda la app sin clase extra.
+@keyframes sc-tooltip-in {
+  from { opacity: 0; transform: scale(0.88) translateY(4px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0);   }
+}
+@keyframes sc-tooltip-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+.mdc-tooltip .mdc-tooltip__surface {
+  // Layout
+  padding: 8px 14px !important;
+  border-radius: 10px !important;
+  max-width: 280px !important;
+  min-height: unset !important;
+  white-space: normal !important;
+  text-align: center !important;
+  word-break: break-word !important;
+
+  // Tipografía
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+  font-size: 12.5px !important;
+  font-weight: 500 !important;
+  line-height: 1.5 !important;
+  letter-spacing: 0 !important;
+
+  // Color — fondo slate oscuro que contrasta en light y dark
+  background-color: #1e293b !important;
+  color: #e2e8f0 !important;
+
+  // Sombra premium
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2), 0 2px 8px rgba(0, 0, 0, 0.14) !important;
+}
+
+// Animación de entrada
+.mdc-tooltip--showing .mdc-tooltip__surface {
+  animation: sc-tooltip-in 0.16s cubic-bezier(0.2, 0, 0, 1.2) both !important;
+}
+
+// Animación de salida
+.mdc-tooltip--hide .mdc-tooltip__surface {
+  animation: sc-tooltip-out 0.1s ease both !important;
+}
+
+// Dark theme: el fondo ya es slate oscuro, solo ajustamos sombra
+body.dark-theme {
+  .mdc-tooltip .mdc-tooltip__surface {
+    background-color: #0f172a !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.35) !important;
+  }
+}

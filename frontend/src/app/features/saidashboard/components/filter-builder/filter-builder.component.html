@@ -9,125 +9,177 @@
           <span class="filter-builder__badge">{{ activeFilterCount }}</span>
         }
       </h3>
-      @if (activeFilterCount > 0) {
-        <button mat-button color="primary" (click)="clearAll()">Limpiar</button>
-      }
     </div>
   }
 
-  @if (availableFilters().length === 0 && layout() === 'sidebar') {
-    <p class="filter-builder__empty">Selecciona una fuente de datos para ver filtros disponibles.</p>
+  <!-- Aviso: sin filtros activos -->
+  @if (filters().length === 0 && sources().length > 0 && !addPanelOpen()) {
+    <div class="filter-builder__no-filter-hint">
+      <mat-icon>info_outline</mat-icon>
+      Sin filtros — se consultarán todos los registros
+    </div>
   }
 
-  <div class="filter-builder__fields">
-    @for (filterDef of availableFilters(); track filterDef.key) {
-      <div class="filter-field">
-        @switch (filterDef.type) {
-
-          @case ('date') {
-            <mat-form-field appearance="outline" class="filter-field__control">
-              <mat-label>{{ filterDef.label }}</mat-label>
-              <input
-                matInput
-                [matDatepicker]="picker"
-                [value]="getFilterDate(filterDef.key)"
-                (dateChange)="updateFilterDate(filterDef.key, $event.value)">
-              <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
-              <mat-datepicker #picker></mat-datepicker>
-              @if (getFilterValue(filterDef.key)) {
-                <button matSuffix mat-icon-button (click)="clearFilter(filterDef.key)">
-                  <mat-icon>close</mat-icon>
-                </button>
-              }
-            </mat-form-field>
-          }
-
-          @case ('multi_select') {
-            <mat-form-field appearance="outline" class="filter-field__control">
-              <mat-label>{{ filterDef.label }}</mat-label>
-              <mat-select
-                multiple
-                [value]="getFilterArray(filterDef.key)"
-                (selectionChange)="updateFilter(filterDef.key, $event.value)">
-                @for (opt of getOptions(filterDef.key); track opt.value) {
-                  <mat-option [value]="opt.value">{{ opt.label }}</mat-option>
-                }
-                @if (getOptions(filterDef.key).length === 0) {
-                  <mat-option disabled>Cargando opciones...</mat-option>
-                }
-              </mat-select>
-            </mat-form-field>
-          }
-
-          @case ('autocomplete_multi') {
-            <!-- Terceros: chips + búsqueda con autocomplete -->
-            <mat-form-field appearance="outline" class="filter-field__control">
-              <mat-label>{{ filterDef.label }}</mat-label>
-              <mat-chip-grid #chipGridTercero>
-                @for (val of getFilterArray(filterDef.key); track val) {
-                  <mat-chip class="filter-field__tercero-chip" (removed)="removeTercero(filterDef.key, val)">
-                    <span class="filter-field__tercero-chip-label">{{ getTerceroLabel(val) }}</span>
-                    <button matChipRemove><mat-icon>cancel</mat-icon></button>
-                  </mat-chip>
-                }
-                <input
-                  #terceroInput
-                  placeholder="Buscar nombre o NIT..."
-                  [matChipInputFor]="chipGridTercero"
-                  [matAutocomplete]="autoTercero"
-                  (input)="onTerceroSearch($any($event.target).value)">
-              </mat-chip-grid>
-              <mat-autocomplete #autoTercero="matAutocomplete"
-                (optionSelected)="addTercero(filterDef.key, $event.option.value); terceroInput.value = ''">
-                @for (opt of terceroOptions(); track opt.value) {
-                  <mat-option [value]="opt" class="filter-field__tercero-option">
-                    <span class="filter-field__tercero-name">{{ opt.label.split(' (')[0] }}</span>
-                    @if (opt.label.includes('(')) {
-                      <span class="filter-field__tercero-id">{{ '(' + opt.label.split('(')[1] }}</span>
-                    }
-                  </mat-option>
-                }
-              </mat-autocomplete>
-            </mat-form-field>
-          }
-
-          @case ('boolean') {
-            <mat-form-field appearance="outline" class="filter-field__control">
-              <mat-label>{{ filterDef.label }}</mat-label>
-              <mat-select
-                [ngModel]="getFilterValue(filterDef.key)"
-                (ngModelChange)="updateFilter(filterDef.key, $event)">
-                <mat-option [value]="null">Todos</mat-option>
-                <mat-option [value]="true">Sí</mat-option>
-                <mat-option [value]="false">No</mat-option>
-              </mat-select>
-            </mat-form-field>
-          }
-
-          @default {
-            <mat-form-field appearance="outline" class="filter-field__control">
-              <mat-label>{{ filterDef.label }}</mat-label>
-              <input
-                matInput
-                [ngModel]="getFilterValue(filterDef.key)"
-                (ngModelChange)="updateFilter(filterDef.key, $event)">
-              @if (getFilterValue(filterDef.key)) {
-                <button matSuffix mat-icon-button (click)="clearFilter(filterDef.key)">
-                  <mat-icon>close</mat-icon>
-                </button>
-              }
-            </mat-form-field>
-          }
-
+  <!-- Filtros activos como chips -->
+  @if (filters().length > 0) {
+    <div class="filter-builder__active">
+      <mat-chip-set>
+        @for (filter of filters(); track $index) {
+          <mat-chip
+            class="filter-chip"
+            [matTooltip]="getFilterSummary(filter)"
+            (removed)="removeFilter($index)">
+            {{ getFilterSummary(filter) }}
+            <button matChipRemove aria-label="Eliminar filtro">
+              <mat-icon>cancel</mat-icon>
+            </button>
+          </mat-chip>
         }
+      </mat-chip-set>
+      <button mat-button class="filter-builder__clear-btn" (click)="clearAll()">
+        <mat-icon>filter_alt_off</mat-icon>
+        Limpiar
+      </button>
+    </div>
+  }
+
+  <!-- Panel: Agregar filtro -->
+  <div class="filter-builder__add-section">
+    @if (!addPanelOpen()) {
+      <button
+        mat-stroked-button
+        class="filter-builder__add-btn"
+        [disabled]="sources().length === 0"
+        (click)="toggleAddPanel()">
+        <mat-icon>add_circle_outline</mat-icon>
+        Agregar filtro
+      </button>
+    } @else {
+      <div class="filter-builder__panel">
+        <div class="filter-builder__panel-header">
+          <span class="filter-builder__panel-title">Nuevo filtro</span>
+          <button mat-icon-button (click)="toggleAddPanel()" aria-label="Cerrar">
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+
+        <div class="filter-builder__panel-body">
+
+          <!-- Campo — autocomplete con búsqueda -->
+          <mat-form-field appearance="outline" class="filter-builder__field">
+            <mat-label>Campo</mat-label>
+            <input
+              #fieldInput
+              matInput
+              [matAutocomplete]="fieldAuto"
+              (focus)="onFieldFocus()"
+              (input)="onFieldInput($event)"
+              placeholder="Buscar campo...">
+            <mat-icon matSuffix>search</mat-icon>
+            <mat-autocomplete
+              #fieldAuto
+              [displayWith]="fieldDisplayFn"
+              (optionSelected)="onFieldOptionSelected($event.option.value)">
+              @for (opt of filteredFieldOptions(); track opt.source + '.' + opt.field) {
+                <mat-option [value]="opt">
+                  <span class="filter-field-opt">
+                    <span class="filter-field-opt__source">{{ opt.sourceLabel }}</span>
+                    <span class="filter-field-opt__label">{{ opt.label }}</span>
+                  </span>
+                </mat-option>
+              }
+              @if (filteredFieldOptions().length === 0) {
+                <mat-option disabled>Sin resultados</mat-option>
+              }
+            </mat-autocomplete>
+          </mat-form-field>
+
+          <!-- Operador -->
+          @if (pending().field) {
+            <mat-form-field appearance="outline" class="filter-builder__field">
+              <mat-label>Operador</mat-label>
+              <mat-select
+                [value]="pending().operator"
+                (selectionChange)="selectOperator($any($event.value))">
+                @for (op of availableOperators(); track op.value) {
+                  <mat-option [value]="op.value">{{ op.label }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+
+            <!-- Valor(es) según operador y tipo -->
+            @if (!isBoolOp()) {
+              @if (isRangeOp()) {
+                @if (isDateField()) {
+                  <mat-form-field appearance="outline" class="filter-builder__field filter-builder__field--half">
+                    <mat-label>Desde</mat-label>
+                    <input matInput [matDatepicker]="dpFrom"
+                      [value]="getDateValue(pending().valueFrom)"
+                      (dateChange)="setDateFrom($event.value)">
+                    <mat-datepicker-toggle matSuffix [for]="dpFrom"></mat-datepicker-toggle>
+                    <mat-datepicker #dpFrom></mat-datepicker>
+                  </mat-form-field>
+                  <mat-form-field appearance="outline" class="filter-builder__field filter-builder__field--half">
+                    <mat-label>Hasta</mat-label>
+                    <input matInput [matDatepicker]="dpTo"
+                      [value]="getDateValue(pending().valueTo)"
+                      (dateChange)="setDateTo($event.value)">
+                    <mat-datepicker-toggle matSuffix [for]="dpTo"></mat-datepicker-toggle>
+                    <mat-datepicker #dpTo></mat-datepicker>
+                  </mat-form-field>
+                } @else {
+                  <mat-form-field appearance="outline" class="filter-builder__field filter-builder__field--half">
+                    <mat-label>Desde</mat-label>
+                    <input matInput [value]="pending().valueFrom"
+                      (input)="onValueFromInput($event)">
+                  </mat-form-field>
+                  <mat-form-field appearance="outline" class="filter-builder__field filter-builder__field--half">
+                    <mat-label>Hasta</mat-label>
+                    <input matInput [value]="pending().valueTo"
+                      (input)="onValueToInput($event)">
+                  </mat-form-field>
+                }
+              } @else if (isListOp()) {
+                <mat-form-field appearance="outline" class="filter-builder__field">
+                  <mat-label>Valores (separados por coma)</mat-label>
+                  <input matInput [value]="pending().valueList" placeholder="ej: 1001, 1002"
+                    (input)="onValueListInput($event)">
+                  <mat-hint>Ingresa los valores separados por coma</mat-hint>
+                </mat-form-field>
+              } @else {
+                @if (isDateField()) {
+                  <mat-form-field appearance="outline" class="filter-builder__field">
+                    <mat-label>Valor</mat-label>
+                    <input matInput [matDatepicker]="dpScalar"
+                      [value]="getDateValue(pending().valueScalar)"
+                      (dateChange)="setDateScalar($event.value)">
+                    <mat-datepicker-toggle matSuffix [for]="dpScalar"></mat-datepicker-toggle>
+                    <mat-datepicker #dpScalar></mat-datepicker>
+                  </mat-form-field>
+                } @else {
+                  <mat-form-field appearance="outline" class="filter-builder__field">
+                    <mat-label>Valor</mat-label>
+                    <input matInput [value]="pending().valueScalar"
+                      (input)="onValueScalarInput($event)">
+                  </mat-form-field>
+                }
+              }
+            }
+          }
+        </div>
+
+        <div class="filter-builder__panel-footer">
+          <button mat-button (click)="toggleAddPanel()">Cancelar</button>
+          <button
+            mat-flat-button
+            color="primary"
+            [disabled]="!canAddFilter()"
+            (click)="addFilter()">
+            Agregar
+          </button>
+        </div>
       </div>
     }
-
-    @if (layout() === 'horizontal' && activeFilterCount > 0) {
-      <button mat-stroked-button color="warn" class="filter-builder__clear-btn" (click)="clearAll()">
-        <mat-icon>clear_all</mat-icon>
-        Limpiar filtros
-      </button>
-    }
   </div>
+
 </div>

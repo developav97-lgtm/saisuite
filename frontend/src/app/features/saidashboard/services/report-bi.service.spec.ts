@@ -160,4 +160,24 @@ describe('ReportBIService', () => {
     expect(req.request.method).toBe('GET');
     req.flush([{ field: 'periodo', label: 'Período', type: 'multi_select' }]);
   });
+
+  it('getJoins() — GET /meta/joins/', () => {
+    service.getJoins().subscribe(joins => {
+      expect(joins.length).toBe(1);
+      expect(joins[0].source_a).toBe('facturacion');
+    });
+    http.expectOne(`${base}/meta/joins/`).flush([
+      { source_a: 'facturacion', source_b: 'facturacion_detalle', description: 'FK', type: 'fk' },
+    ]);
+  });
+
+  it('duplicate() — POST /:id/duplicate/', () => {
+    service.duplicate('rep-id', { titulo: 'Mi copia' }).subscribe(r => {
+      expect(r.titulo).toBe('Mi copia');
+    });
+    const req = http.expectOne(`${base}/rep-id/duplicate/`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ titulo: 'Mi copia' });
+    req.flush({ id: 'new-id', titulo: 'Mi copia' });
+  });
 });

@@ -27,6 +27,24 @@ from apps.contabilidad.models import (
 
 logger = logging.getLogger(__name__)
 
+# Límite máximo para columnas NUMERIC(15,2): 13 dígitos enteros + 2 decimales.
+# Valores fuera de rango se recortan para no romper el bulk_create.
+_MAX_NUMERIC_15_2 = Decimal('9999999999999.99')
+
+
+def _clamp_decimal(value) -> Decimal:
+    """Convierte value a Decimal y lo recorta al rango válido de NUMERIC(15,2)."""
+    try:
+        d = Decimal(str(value or 0))
+    except Exception:
+        d = Decimal('0')
+    if d > _MAX_NUMERIC_15_2:
+        return _MAX_NUMERIC_15_2
+    if d < -_MAX_NUMERIC_15_2:
+        return -_MAX_NUMERIC_15_2
+    return d
+
+
 
 class SyncService:
     """Servicio de sincronizacion de datos contables desde Saiopen."""
@@ -40,7 +58,7 @@ class SyncService:
         'subcuenta_codigo', 'subcuenta_nombre',
         'tercero_id', 'tercero_nombre',
         'debito', 'credito',
-        'tipo', 'batch', 'invc', 'descripcion',
+        'tipo', 'batch', 'invc', 'cruce', 'descripcion',
         'fecha', 'duedate', 'periodo',
         'departamento_codigo', 'departamento_nombre',
         'centro_costo_codigo', 'centro_costo_nombre',
@@ -101,6 +119,7 @@ class SyncService:
                     tipo=record.get('tipo', ''),
                     batch=record.get('batch'),
                     invc=record.get('invc', ''),
+                    cruce=record.get('cruce', ''),
                     descripcion=record.get('descripcion', ''),
                     fecha=record['fecha'] or None,  # None triggers NOT NULL error caught below
                     duedate=record.get('duedate') or None,
@@ -661,10 +680,12 @@ class SyncService:
     # ── OE (FacturaEncabezado) ────────────────────────────────────────────────
 
     _OE_UPDATE_FIELDS = [
-        'tercero_id', 'tercero_nombre',
+        'tercero_id', 'tercero_nombre', 'tercero_razon_social',
         'salesman', 'salesman_nombre',
+        'tipo_descripcion',
         'fecha', 'duedate', 'periodo',
-        'subtotal', 'costo', 'iva', 'descuento_global', 'total',
+        'subtotal', 'costo', 'iva', 'descuento_global', 'destotal', 'otroscargos', 'total',
+        'porcrtfte', 'reteica', 'porcentaje_reteica', 'reteiva',
         'posted', 'closed', 'cod_moneda', 'comentarios',
     ]
 
@@ -695,16 +716,24 @@ class SyncService:
                     id_sucursal=int(record.get('id_sucursal', 1)),
                     tercero_id=record.get('tercero_id', ''),
                     tercero_nombre=record.get('tercero_nombre', ''),
+                    tercero_razon_social=record.get('tercero_razon_social', ''),
                     salesman=record.get('salesman') or None,
                     salesman_nombre=record.get('salesman_nombre', ''),
+                    tipo_descripcion=record.get('tipo_descripcion', ''),
                     fecha=record['fecha'],
                     duedate=record.get('duedate') or None,
                     periodo=record.get('periodo', ''),
-                    subtotal=Decimal(str(record.get('subtotal', 0))),
-                    costo=Decimal(str(record.get('costo', 0))),
-                    iva=Decimal(str(record.get('iva', 0))),
-                    descuento_global=Decimal(str(record.get('descuento_global', 0))),
-                    total=Decimal(str(record.get('total', 0))),
+                    subtotal=_clamp_decimal(record.get('subtotal', 0)),
+                    costo=_clamp_decimal(record.get('costo', 0)),
+                    iva=_clamp_decimal(record.get('iva', 0)),
+                    descuento_global=_clamp_decimal(record.get('descuento_global', 0)),
+                    destotal=_clamp_decimal(record.get('destotal', 0)),
+                    otroscargos=_clamp_decimal(record.get('otroscargos', 0)),
+                    total=_clamp_decimal(record.get('total', 0)),
+                    porcrtfte=_clamp_decimal(record.get('porcrtfte', 0)),
+                    reteica=_clamp_decimal(record.get('reteica', 0)),
+                    porcentaje_reteica=_clamp_decimal(record.get('porcentaje_reteica', 0)),
+                    reteiva=_clamp_decimal(record.get('reteiva', 0)),
                     posted=bool(record.get('posted', False)),
                     closed=bool(record.get('closed', False)),
                     cod_moneda=record.get('cod_moneda', 'COP'),
@@ -754,9 +783,10 @@ class SyncService:
         'item_codigo', 'item_descripcion', 'location',
         'qty_order', 'qty_ship',
         'precio_unitario', 'precio_extendido', 'costo_unitario',
-        'valor_iva', 'porc_iva', 'descuento',
+        'valor_iva', 'porc_iva', 'descuento', 'total_descuento',
         'margen_valor', 'margen_porcentaje',
         'proyecto_codigo',
+        'departamento_codigo', 'centro_costo_codigo', 'actividad_codigo',
     ]
 
     @staticmethod
@@ -820,17 +850,21 @@ class SyncService:
                     item_codigo=record.get('item_codigo', ''),
                     item_descripcion=record.get('item_descripcion', ''),
                     location=record.get('location', ''),
-                    qty_order=Decimal(str(record.get('qty_order') or 0)),
-                    qty_ship=Decimal(str(record.get('qty_ship') or 0)),
-                    precio_unitario=Decimal(str(record.get('precio_unitario') or 0)),
-                    precio_extendido=Decimal(str(record.get('precio_extendido') or 0)),
-                    costo_unitario=Decimal(str(record.get('costo_unitario') or 0)),
-                    valor_iva=Decimal(str(record.get('valor_iva') or 0)),
-                    porc_iva=Decimal(str(record.get('porc_iva') or 0)),
-                    descuento=Decimal(str(record.get('descuento') or 0)),
-                    margen_valor=Decimal(str(record.get('margen_valor') or 0)),
-                    margen_porcentaje=Decimal(str(record.get('margen_porcentaje') or 0)),
+                    qty_order=_clamp_decimal(record.get('qty_order') or 0),
+                    qty_ship=_clamp_decimal(record.get('qty_ship') or 0),
+                    precio_unitario=_clamp_decimal(record.get('precio_unitario') or 0),
+                    precio_extendido=_clamp_decimal(record.get('precio_extendido') or 0),
+                    costo_unitario=_clamp_decimal(record.get('costo_unitario') or 0),
+                    valor_iva=_clamp_decimal(record.get('valor_iva') or 0),
+                    porc_iva=_clamp_decimal(record.get('porc_iva') or 0),
+                    descuento=_clamp_decimal(record.get('descuento') or 0),
+                    total_descuento=_clamp_decimal(record.get('total_descuento') or 0),
+                    margen_valor=_clamp_decimal(record.get('margen_valor') or 0),
+                    margen_porcentaje=_clamp_decimal(record.get('margen_porcentaje') or 0),
                     proyecto_codigo=record.get('proyecto_codigo', ''),
+                    departamento_codigo=record.get('departamento_codigo', ''),
+                    centro_costo_codigo=record.get('centro_costo_codigo', ''),
+                    actividad_codigo=record.get('actividad_codigo', ''),
                 )
                 objects_to_upsert.append(obj)
             except (KeyError, ValueError, TypeError) as exc:
@@ -905,7 +939,7 @@ class SyncService:
                     conteo=conteo,
                     tercero_id=record.get('tercero_id', ''),
                     tercero_nombre=record.get('tercero_nombre', ''),
-                    cuenta_contable=Decimal(str(record.get('cuenta_contable', 0))),
+                    cuenta_contable=_clamp_decimal(record.get('cuenta_contable', 0)),
                     tipo=record.get('tipo', ''),
                     batch=record.get('batch') or None,
                     invc=record.get('invc', ''),
@@ -913,9 +947,9 @@ class SyncService:
                     fecha=record['fecha'],
                     duedate=record.get('duedate') or None,
                     periodo=record.get('periodo', ''),
-                    debito=Decimal(str(record.get('debito', 0))),
-                    credito=Decimal(str(record.get('credito', 0))),
-                    saldo=Decimal(str(record.get('saldo', 0))),
+                    debito=_clamp_decimal(record.get('debito', 0)),
+                    credito=_clamp_decimal(record.get('credito', 0)),
+                    saldo=_clamp_decimal(record.get('saldo', 0)),
                     departamento=record.get('departamento') or None,
                     centro_costo=record.get('centro_costo') or None,
                     proyecto_codigo=record.get('proyecto_codigo', ''),
@@ -961,11 +995,10 @@ class SyncService:
     # ── ITEMACT (MovimientoInventario) ────────────────────────────────────────
 
     _ITEMACT_UPDATE_FIELDS = [
-        'item_codigo', 'item_descripcion', 'location',
+        'item_codigo', 'location',
         'tercero_id', 'tipo', 'batch',
         'fecha', 'periodo',
-        'cantidad', 'valor_unitario', 'costo_peps', 'total',
-        'saldo_unidades', 'saldo_pesos',
+        'cantidad', 'valor_unitario', 'costo_promedio', 'total',
         'lote', 'serie', 'lote_vencimiento',
     ]
 
@@ -993,19 +1026,16 @@ class SyncService:
                     company_id=company_id,
                     conteo=conteo,
                     item_codigo=record.get('item_codigo', ''),
-                    item_descripcion=record.get('item_descripcion', ''),
                     location=record.get('location', ''),
                     tercero_id=record.get('tercero_id', ''),
                     tipo=record.get('tipo', ''),
                     batch=record.get('batch') or None,
                     fecha=record['fecha'],
                     periodo=record.get('periodo', ''),
-                    cantidad=Decimal(str(record.get('cantidad', 0))),
-                    valor_unitario=Decimal(str(record.get('valor_unitario', 0))),
-                    costo_peps=Decimal(str(record.get('costo_peps', 0))),
-                    total=Decimal(str(record.get('total', 0))),
-                    saldo_unidades=Decimal(str(record.get('saldo_unidades', 0))),
-                    saldo_pesos=Decimal(str(record.get('saldo_pesos', 0))),
+                    cantidad=_clamp_decimal(record.get('cantidad', 0)),
+                    valor_unitario=_clamp_decimal(record.get('valor_unitario', 0)),
+                    costo_promedio=_clamp_decimal(record.get('costo_promedio', 0)),
+                    total=_clamp_decimal(record.get('total', 0)),
                     lote=record.get('lote', ''),
                     serie=record.get('serie', ''),
                     lote_vencimiento=record.get('lote_vencimiento') or None,
@@ -1046,3 +1076,55 @@ class SyncService:
             'error_count': len(errors), 'max_conteo': max_conteo,
         })
         return {'inserted': inserted, 'updated': updated, 'errors': errors}
+
+    @staticmethod
+    @transaction.atomic
+    def process_vendedores(company_id, records: list[dict]) -> dict:
+        """
+        Upsert completo de vendedores desde VENDEDOR de Saiopen.
+        Recibe lista de VendedorRecord: {'codigo': 1, 'nombre': '...', 'telefono': '...', 'activo': True}
+        """
+        from apps.contabilidad.models import VendedorSaiopen
+
+        if not records:
+            return {'inserted': 0, 'updated': 0, 'errors': []}
+
+        objects = []
+        for record in records:
+            codigo = int(record.get('codigo', 0))
+            if codigo == 0:
+                continue
+            objects.append(VendedorSaiopen(
+                company_id=company_id,
+                sai_key=str(codigo),
+                codigo=codigo,
+                nombre=str(record.get('nombre', ''))[:30],
+                telefono=str(record.get('telefono', ''))[:16],
+                activo=bool(record.get('activo', True)),
+            ))
+
+        if not objects:
+            return {'inserted': 0, 'updated': 0, 'errors': []}
+
+        existing = set(
+            VendedorSaiopen.objects.filter(
+                company_id=company_id,
+                sai_key__in=[o.sai_key for o in objects],
+            ).values_list('sai_key', flat=True)
+        )
+
+        VendedorSaiopen.objects.bulk_create(
+            objects,
+            update_conflicts=True,
+            unique_fields=['company', 'sai_key'],
+            update_fields=['codigo', 'nombre', 'telefono', 'activo'],
+        )
+
+        inserted = len(objects) - len(existing)
+        updated = len(existing)
+        logger.info('vendedores_synced', extra={
+            'company_id': str(company_id),
+            'inserted': inserted,
+            'updated': updated,
+        })
+        return {'inserted': inserted, 'updated': updated, 'errors': []}

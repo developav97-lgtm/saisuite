@@ -12,12 +12,12 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { CdkDragDrop, CdkDrag, CdkDropList, CdkDragPlaceholder, CdkDragHandle, moveItemInArray } from '@angular/cdk/drag-drop';
+import { MatDialog } from '@angular/material/dialog';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { MatExpansionModule } from '@angular/material/expansion';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -27,10 +27,27 @@ import {
   BIFieldConfig,
   BIFieldDef,
   BIFieldFormat,
+  BIJoinInfo,
 } from '../../models/bi-field.model';
 import { ReportBIVisualization } from '../../models/report-bi.model';
 import { ReportBIService } from '../../services/report-bi.service';
 import { CalcFieldStoreService, CalcFieldTemplate } from '../../services/calc-field-store.service';
+import { getSourceLabel } from '../../models/bi-source.model';
+
+/** Campo enriquecido con metadatos de fuente para el panel unificado. */
+interface FieldGroupItem extends BIFieldDef {
+  source: string;
+  sourceLabel: string;
+  /** true cuando otro campo con la misma etiqueta existe en otra fuente. */
+  showBadge: boolean;
+}
+
+/** Grupo de categoría con campos de todas las fuentes fusionados. */
+interface MergedGroup {
+  category: string;
+  fields: FieldGroupItem[];
+}
+import { CalcFieldDialogComponent, CalcFieldDialogData } from './calc-field-dialog.component';
 
 @Component({
   selector: 'app-field-panel',
@@ -46,7 +63,6 @@ import { CalcFieldStoreService, CalcFieldTemplate } from '../../services/calc-fi
     MatSelectModule,
     MatFormFieldModule,
     MatInputModule,
-    MatExpansionModule,
     MatMenuModule,
     MatButtonModule,
     MatTooltipModule,
@@ -58,6 +74,7 @@ import { CalcFieldStoreService, CalcFieldTemplate } from '../../services/calc-fi
 export class FieldPanelComponent {
   private readonly reportBIService = inject(ReportBIService);
   private readonly calcStore = inject(CalcFieldStoreService);
+  private readonly dialog = inject(MatDialog);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly sources = input<string[]>([]);
@@ -85,58 +102,88 @@ export class FieldPanelComponent {
     { value: 'number',   label: 'Número' },
     { value: 'currency', label: 'Moneda ($)' },
     { value: 'date',     label: 'Fecha' },
+    { value: 'boolean',  label: 'Sí/No' },
   ];
 
-  readonly fieldsByCategory = signal<{ category: string; source: string; fields: BIFieldDef[] }[]>([]);
+  readonly fieldsByCategory = signal<MergedGroup[]>([]);
 
-  /** Campos calculados activos en el reporte actual. */
+  readonly activeJoins = signal<BIJoinInfo[]>([]);
+  private allJoins: BIJoinInfo[] = [];
+  private joinsLoaded = false;
+
   readonly activeCalcFields = computed(() =>
     this.selectedFields().filter(f => f.is_calculated),
   );
 
-  /** Plantillas guardadas en localStorage para las fuentes actuales. */
+  private readonly shortLabels: Record<string, string> = {
+    gl: 'GL', facturacion: 'FAC', facturacion_detalle: 'DET',
+    cartera: 'CART', inventario: 'INV', terceros_saiopen: 'TER',
+    productos: 'PROD', cuentas_contables: 'CC',
+  };
+
+  /** selectedFields enriquecido con showBadge para el panel de orden. */
+  readonly selectedFieldsDisplay = computed(() => {
+    const fields = this.selectedFields();
+    const labelCount = new Map<string, number>();
+    for (const f of fields) {
+      labelCount.set(f.label, (labelCount.get(f.label) ?? 0) + 1);
+    }
+    return fields.map(f => ({
+      ...f,
+      showBadge: (labelCount.get(f.label) ?? 0) > 1,
+      shortSource: this.shortLabels[f.source] ?? f.source.slice(0, 3).toUpperCase(),
+    }));
+  });
+
   readonly savedTemplates = signal<CalcFieldTemplate[]>([]);
 
-  // ── Formulario para nuevo campo calculado ────────────────────
-  calcLabel = '';
-  calcFormula = '';
-  calcFormat: BIFieldFormat = 'number';
+  /** Término de búsqueda para filtrar el listado de campos. */
+  readonly searchTerm = signal('');
 
-  /** Campos métricos disponibles para usar en fórmulas calculadas. */
+  /** Lista de grupos filtrada por el buscador (busca en label y sourceLabel). */
+  readonly filteredFieldsByCategory = computed(() => {
+    const q = this.searchTerm().toLowerCase().trim();
+    const groups = this.fieldsByCategory();
+    if (!q) return groups;
+    return groups
+      .map(g => ({
+        ...g,
+        fields: g.fields.filter(f =>
+          f.label.toLowerCase().includes(q) ||
+          f.sourceLabel.toLowerCase().includes(q),
+        ),
+      }))
+      .filter(g => g.fields.length > 0);
+  });
+
   readonly availableMetrics = computed(() =>
     this.fieldsByCategory()
       .flatMap(g => g.fields)
       .filter(f => f.role === 'metric'),
   );
 
-  insertFieldInFormula(fieldName: string): void {
-    const sep = this.calcFormula.trim().length > 0 ? ' ' : '';
-    this.calcFormula = this.calcFormula + sep + fieldName;
-  }
-
   private lastSourceKey = '';
 
   constructor() {
-    // Efecto: cargar campos del backend cuando cambian las fuentes
     effect(() => {
       const srcs = this.sources();
       const key = [...srcs].sort().join(',');
       if (srcs.length === 0) {
         this.fieldsByCategory.set([]);
+        this.activeJoins.set([]);
+        this.searchTerm.set('');
         this.lastSourceKey = '';
       } else if (key !== this.lastSourceKey) {
         this.lastSourceKey = key;
+        this.searchTerm.set('');
         this.loadFields(srcs);
+        this.updateActiveJoins(srcs);
       }
     });
 
-    // Efecto: cargar plantillas guardadas cuando cambian las fuentes
     effect(() => {
       const srcs = this.sources();
-      if (srcs.length === 0) {
-        this.savedTemplates.set([]);
-        return;
-      }
+      if (srcs.length === 0) { this.savedTemplates.set([]); return; }
       const templates: CalcFieldTemplate[] = [];
       for (const src of srcs) {
         templates.push(...this.calcStore.getTemplates(src));
@@ -145,8 +192,39 @@ export class FieldPanelComponent {
     });
   }
 
+  private updateActiveJoins(srcs: string[]): void {
+    if (srcs.length < 2) { this.activeJoins.set([]); return; }
+    if (!this.joinsLoaded) {
+      this.reportBIService.getJoins()
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: joins => {
+            this.allJoins = joins;
+            this.joinsLoaded = true;
+            this.activeJoins.set(this.filterJoinsForSources(srcs));
+          },
+          error: () => {},
+        });
+    } else {
+      this.activeJoins.set(this.filterJoinsForSources(srcs));
+    }
+  }
+
+  private filterJoinsForSources(srcs: string[]): BIJoinInfo[] {
+    if (srcs.length < 2) return [];
+    return this.allJoins.filter(j =>
+      srcs.includes(j.source_a) && srcs.includes(j.source_b),
+    );
+  }
+
+  getJoinDescription(join: BIJoinInfo): string {
+    const a = getSourceLabel(join.source_a);
+    const b = getSourceLabel(join.source_b);
+    return join.description || `${a} ↔ ${b}`;
+  }
+
   private loadFields(srcs: string[]): void {
-    const allCategories: { category: string; source: string; fields: BIFieldDef[] }[] = [];
+    const raw: { category: string; source: string; fields: BIFieldDef[] }[] = [];
     let pending = srcs.length;
 
     for (const src of srcs) {
@@ -155,24 +233,57 @@ export class FieldPanelComponent {
         .subscribe({
           next: data => {
             for (const [category, fields] of Object.entries(data)) {
-              allCategories.push({ category: `${category}`, source: src, fields });
+              raw.push({ category, source: src, fields: fields as BIFieldDef[] });
             }
             pending--;
-            if (pending === 0) {
-              this.fieldsByCategory.set(allCategories);
-            }
+            if (pending === 0) this.fieldsByCategory.set(this.mergeCategories(raw));
           },
-          error: () => {
-            pending--;
-          },
+          error: () => { pending--; },
         });
     }
   }
 
-  /** Formato por defecto según rol y tipo del campo. */
+  /** Fusiona grupos de igual categoría y calcula si cada campo necesita badge de fuente. */
+  private mergeCategories(
+    raw: { category: string; source: string; fields: BIFieldDef[] }[],
+  ): MergedGroup[] {
+    // 1. Detectar etiquetas duplicadas entre fuentes
+    const labelToSources = new Map<string, Set<string>>();
+    for (const g of raw) {
+      for (const f of g.fields) {
+        if (!labelToSources.has(f.label)) labelToSources.set(f.label, new Set());
+        labelToSources.get(f.label)!.add(g.source);
+      }
+    }
+
+    // 2. Orden de categorías (primer aparición)
+    const catOrder: string[] = [];
+    const seen = new Set<string>();
+    for (const g of raw) {
+      if (!seen.has(g.category)) { catOrder.push(g.category); seen.add(g.category); }
+    }
+
+    // 3. Fusionar campos por categoría
+    const merged = new Map<string, FieldGroupItem[]>();
+    for (const cat of catOrder) merged.set(cat, []);
+
+    for (const g of raw) {
+      const items: FieldGroupItem[] = g.fields.map(f => ({
+        ...f,
+        source: g.source,
+        sourceLabel: getSourceLabel(g.source),
+        showBadge: (labelToSources.get(f.label)?.size ?? 0) > 1,
+      }));
+      merged.get(g.category)!.push(...items);
+    }
+
+    return catOrder.map(cat => ({ category: cat, fields: merged.get(cat)! }));
+  }
+
   defaultFormat(fieldDef: BIFieldDef): BIFieldFormat {
     if (fieldDef.role === 'metric') return 'number';
     if (fieldDef.type === 'date') return 'date';
+    if (fieldDef.type === 'boolean') return 'boolean';
     return 'string';
   }
 
@@ -230,6 +341,7 @@ export class FieldPanelComponent {
       case 'currency': return '$';
       case 'number':   return '#';
       case 'date':     return 'D';
+      case 'boolean':  return 'S';
       default:         return 'T';
     }
   }
@@ -240,66 +352,51 @@ export class FieldPanelComponent {
     this.fieldsChange.emit(fields);
   }
 
-  // ── Campos calculados ─────────────────────────────────────────
-
-  /** Elimina un campo calculado activo del reporte. */
-  removeCalcField(fieldId: string): void {
+  removeField(source: string, field: string): void {
     this.fieldsChange.emit(
-      this.selectedFields().filter(f => f.field !== fieldId),
+      this.selectedFields().filter(f => !(f.source === source && f.field === field)),
     );
   }
 
-  /** Agrega un campo calculado al reporte desde una plantilla guardada. */
-  addTemplateToReport(template: CalcFieldTemplate): void {
-    const source = this.sources()[0] ?? '';
-    const config: BIFieldConfig = {
-      source,
-      field: `__calc_${Date.now()}`,
-      role: 'metric',
-      label: template.label,
-      format: template.format,
-      is_calculated: true,
-      formula: template.formula,
-    };
-    this.fieldsChange.emit([...this.selectedFields(), config]);
+  removeCalcField(fieldId: string): void {
+    this.fieldsChange.emit(this.selectedFields().filter(f => f.field !== fieldId));
   }
 
-  /** Elimina una plantilla guardada del localStorage. */
-  deleteTemplate(template: CalcFieldTemplate): void {
-    const source = this.sources()[0] ?? '';
-    this.calcStore.removeTemplate(source, template.id);
-    this.savedTemplates.update(ts => ts.filter(t => t.id !== template.id));
+  // ── Búsqueda ────────────────────────────────────────────────────
+
+  onSearchInput(event: Event): void {
+    this.searchTerm.set((event.target as HTMLInputElement).value);
   }
 
-  /** Agrega nuevo campo calculado al reporte y guarda la plantilla en localStorage. */
-  addCalculatedField(): void {
-    if (!this.calcLabel.trim() || !this.calcFormula.trim()) return;
-    const source = this.sources()[0] ?? '';
-    const templateId = `tpl_${Date.now()}`;
+  clearSearch(): void {
+    this.searchTerm.set('');
+  }
 
-    // Guardar plantilla para reutilización futura
-    const template: CalcFieldTemplate = {
-      id: templateId,
-      label: this.calcLabel.trim(),
-      formula: this.calcFormula.trim(),
-      format: this.calcFormat,
-    };
-    this.calcStore.saveTemplate(source, template);
-    this.savedTemplates.update(ts => [...ts, template]);
+  // ── Modal campo calculado ────────────────────────────────────────
 
-    // Agregar al reporte actual
-    const config: BIFieldConfig = {
-      source,
-      field: `__calc_${templateId}`,
-      role: 'metric',
-      label: this.calcLabel.trim(),
-      format: this.calcFormat,
-      is_calculated: true,
-      formula: this.calcFormula.trim(),
-    };
-    this.fieldsChange.emit([...this.selectedFields(), config]);
-    this.calcLabel = '';
-    this.calcFormula = '';
-    this.calcFormat = 'number';
+  openCalcDialog(): void {
+    const ref = this.dialog.open(CalcFieldDialogComponent, {
+      data: {
+        sources: this.sources(),
+        metrics: this.availableMetrics(),
+        templates: [...this.savedTemplates()],
+      } satisfies CalcFieldDialogData,
+      width: '480px',
+      maxWidth: '95vw',
+    });
+
+    ref.afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((result: BIFieldConfig | null) => {
+        if (result) {
+          this.fieldsChange.emit([...this.selectedFields(), result]);
+        }
+        // Recargar plantillas (puede haber creado o eliminado una en el dialog)
+        const templates: CalcFieldTemplate[] = [];
+        for (const src of this.sources()) {
+          templates.push(...this.calcStore.getTemplates(src));
+        }
+        this.savedTemplates.set(templates);
+      });
   }
 }

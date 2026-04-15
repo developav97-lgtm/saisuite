@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { SourceSelectorComponent } from './source-selector.component';
-import { BI_SOURCES } from '../../models/bi-source.model';
+import { BI_SOURCES, BI_SOURCE_GROUPS } from '../../models/bi-source.model';
 
 describe('SourceSelectorComponent', () => {
   let fixture: ComponentFixture<SourceSelectorComponent>;
@@ -19,8 +19,27 @@ describe('SourceSelectorComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  it('renders all BI sources', () => {
-    expect(component.sources.length).toBe(BI_SOURCES.length);
+  it('exposes all BI_SOURCE_GROUPS', () => {
+    expect(component.groups).toEqual(BI_SOURCE_GROUPS);
+    expect(component.groups.length).toBe(2);
+  });
+
+  it('sourcesForGroup returns only transaccional sources', () => {
+    const transaccionales = component.sourcesForGroup('transaccional');
+    expect(transaccionales.every(s => s.group === 'transaccional')).toBeTrue();
+    expect(transaccionales.length).toBeGreaterThan(0);
+  });
+
+  it('sourcesForGroup returns only maestro sources', () => {
+    const maestros = component.sourcesForGroup('maestro');
+    expect(maestros.every(s => s.group === 'maestro')).toBeTrue();
+    expect(maestros.length).toBeGreaterThan(0);
+  });
+
+  it('total sources across groups equals BI_SOURCES length', () => {
+    const total = component.sourcesForGroup('transaccional').length
+      + component.sourcesForGroup('maestro').length;
+    expect(total).toBe(BI_SOURCES.length);
   });
 
   it('isSelected returns false when nothing selected', () => {
@@ -47,5 +66,12 @@ describe('SourceSelectorComponent', () => {
     fixture.detectChanges();
     expect(component.isSelected('gl')).toBeTrue();
     expect(component.isSelected('cartera')).toBeFalse();
+  });
+
+  it('new sources terceros_saiopen and productos are available', () => {
+    const codes = BI_SOURCES.map(s => s.code);
+    expect(codes).toContain('terceros_saiopen');
+    expect(codes).toContain('productos');
+    expect(codes).toContain('cuentas_contables');
   });
 });

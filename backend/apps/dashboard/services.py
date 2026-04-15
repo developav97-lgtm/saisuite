@@ -70,7 +70,6 @@ class DashboardService:
             user=user,
             company_id=company_id,
             titulo=data['titulo'],
-            descripcion=data.get('descripcion', ''),
             es_privado=data.get('es_privado', True),
             orientacion=data.get('orientacion', 'portrait'),
             filtros_default=data.get('filtros_default', {}),
@@ -289,6 +288,39 @@ class CardService:
         """Agrega una tarjeta al dashboard."""
         card_type_code = data['card_type_code']
 
+        # Tipo especial bi_report: referencia a un ReportBI existente
+        if card_type_code == 'bi_report':
+            bi_report_id = data.get('bi_report_id')
+            if not bi_report_id:
+                raise ValidationError('bi_report_id es requerido para tarjetas de tipo bi_report.')
+            try:
+                bi_report = ReportBI.objects.get(id=bi_report_id)
+            except ReportBI.DoesNotExist:
+                raise NotFound('Reporte BI no encontrado.')
+
+            card = DashboardCard.objects.create(
+                dashboard_id=dashboard_id,
+                card_type_code='bi_report',
+                chart_type=bi_report.tipo_visualizacion,
+                bi_report=bi_report,
+                pos_x=data.get('pos_x', 0),
+                pos_y=data.get('pos_y', 0),
+                width=data.get('width', 3),
+                height=data.get('height', 2),
+                filtros_config=data.get('filtros_config', {}),
+                titulo_personalizado=data.get('titulo_personalizado', ''),
+                orden=data.get('orden', 0),
+            )
+            logger.info(
+                'bi_report_card_added',
+                extra={
+                    'dashboard_id': str(dashboard_id),
+                    'bi_report_id': str(bi_report_id),
+                    'card_id': card.id,
+                },
+            )
+            return card
+
         # Validate card type exists in catalog
         if card_type_code not in CARD_CATALOG:
             raise ValidationError(f'Tipo de tarjeta no valido: {card_type_code}')
@@ -332,6 +364,19 @@ class CardService:
             if field in data:
                 setattr(card, field, data[field])
                 update_fields.append(field)
+
+        # Actualizar bi_report si se indica
+        if 'bi_report_id' in data:
+            bi_report_id = data['bi_report_id']
+            if bi_report_id is None:
+                card.bi_report = None
+                update_fields.append('bi_report')
+            else:
+                try:
+                    card.bi_report = ReportBI.objects.get(id=bi_report_id)
+                    update_fields.append('bi_report')
+                except ReportBI.DoesNotExist:
+                    raise NotFound('Reporte BI no encontrado.')
 
         if update_fields:
             card.save(update_fields=update_fields)
@@ -655,6 +700,201 @@ class CatalogService:
 
 
 # ──────────────────────────────────────────────
+# Card BI Service — Sprint 4 (filtros 3 capas)
+# ──────────────────────────────────────────────
+
+class CardBIService:
+    """
+    Servicio para tarjetas de tipo 'bi_report' en el dashboard.
+    Implementa el sistema de filtros en 3 capas:
+      Capa 1 — Filtros base del ReportBI original
+      Capa 2 — Overrides por tarjeta (DashboardCard.filtros_config['bi_overrides'])
+      Capa 3 — Filtros globales del dashboard (Dashboard.filtros_default)
+    """
+
+    GRAPH_VIZ_TYPES = {'bar', 'line', 'pie', 'area', 'waterfall', 'kpi', 'gauge'}
+
+    # Campos de fecha reconocidos para la capa 3 de filtros
+    _DATE_FIELDS = frozenset({
+        'fecha', 'fecha_documento', 'fecha_creacion', 'fecha_vencimiento',
+        'date', 'fecha_emision', 'fecha_ingreso',
+    })
+
+    # Campos de tercero reconocidos para la capa 3 de filtros
+    _TERCERO_FIELDS = frozenset({
+        'tercero_id', 'tercero', 'id_n', 'cliente_id', 'proveedor_id',
+    })
+
+    @staticmethod
+    def get_selectable_reports(user, company_id) -> QuerySet:
+        """
+        Lista reportes BI del usuario + compartidos que pueden usarse como tarjeta.
+        Solo tipos gráficos (bar, line, pie, area, waterfall, kpi, gauge).
+        No se incluyen table ni pivot porque no caben en una tarjeta de dashboard.
+        """
+        from django.db.models import Q
+
+        own = ReportBI.all_objects.filter(
+            user=user,
+            company_id=company_id,
+            tipo_visualizacion__in=CardBIService.GRAPH_VIZ_TYPES,
+        )
+        shared_ids = ReportBIShare.objects.filter(
+            compartido_con=user,
+            reporte__company_id=company_id,
+        ).values_list('reporte_id', flat=True)
+        shared = ReportBI.all_objects.filter(
+            id__in=shared_ids,
+            tipo_visualizacion__in=CardBIService.GRAPH_VIZ_TYPES,
+        )
+
+        return (own | shared).select_related('user').distinct()
+
+    @staticmethod
+    def execute_bi_card(card_id: int, dashboard_filters: dict) -> dict:
+        """
+        Ejecuta el reporte BI de una tarjeta aplicando los filtros en 3 capas.
+
+        Args:
+            card_id: ID de la DashboardCard (debe ser card_type_code='bi_report')
+            dashboard_filters: Filtros globales del dashboard (Dashboard.filtros_default)
+
+        Returns:
+            Resultado del BIQueryEngine (columns, rows, total_count)
+        """
+        import copy
+        from types import SimpleNamespace
+
+        try:
+            card = DashboardCard.objects.select_related(
+                'bi_report', 'dashboard',
+            ).get(id=card_id)
+        except DashboardCard.DoesNotExist:
+            raise NotFound('Tarjeta no encontrada.')
+
+        if card.card_type_code != 'bi_report' or not card.bi_report:
+            raise ValidationError(
+                'Esta tarjeta no es de tipo bi_report o no tiene reporte BI asociado.'
+            )
+
+        report = card.bi_report
+        company_id = card.dashboard.company_id
+
+        # ── Capa 1: filtros base del reporte (normalizar a lista) ──────────
+        base_filtros = copy.deepcopy(report.filtros or [])
+        if isinstance(base_filtros, dict):
+            base_filtros = []  # retrocompatibilidad: formato v1 era dict
+
+        # ── Capa 2: overrides por tarjeta ─────────────────────────────────
+        card_overrides = (card.filtros_config or {}).get('bi_overrides', [])
+        merged = CardBIService._apply_overrides(base_filtros, card_overrides)
+
+        # ── Capa 3: filtros globales del dashboard ─────────────────────────
+        final = CardBIService._apply_dashboard_global_filters(merged, dashboard_filters or {})
+
+        # ── Ejecutar vía BIQueryEngine con un proxy del reporte ───────────
+        # SimpleNamespace permite pasar los campos del reporte sin mutar el objeto BD
+        report_proxy = SimpleNamespace(
+            fuentes=report.fuentes,
+            campos_config=report.campos_config,
+            tipo_visualizacion=report.tipo_visualizacion,
+            viz_config=report.viz_config,
+            filtros=final,
+            orden_config=report.orden_config,
+            limite_registros=report.limite_registros,
+        )
+
+        engine = BIQueryEngine()
+        if report.tipo_visualizacion == 'pivot':
+            result = engine.execute_pivot(report_proxy, company_id)
+        else:
+            result = engine.execute(report_proxy, company_id)
+
+        logger.info(
+            'bi_card_executed',
+            extra={
+                'card_id': card_id,
+                'report_id': str(report.id),
+                'company_id': str(company_id),
+                'filter_count': len(final),
+            },
+        )
+        return result
+
+    # ── Helpers de merge de filtros ────────────────────────────────────────
+
+    @staticmethod
+    def _apply_overrides(base_filters: list, overrides: list) -> list:
+        """
+        Aplica overrides de capa 2 sobre los filtros base.
+        Para cada override, busca un filtro coincidente por (source, field)
+        y reemplaza SOLO el value. Si no hay coincidencia, agrega el override.
+        """
+        import copy
+        merged = copy.deepcopy(base_filters)
+
+        for override in overrides:
+            src = override.get('source')
+            field = override.get('field')
+            value = override.get('value')
+
+            matched = False
+            for f in merged:
+                if f.get('source') == src and f.get('field') == field:
+                    f['value'] = value
+                    matched = True
+                    break
+
+            if not matched:
+                merged.append(copy.deepcopy(override))
+
+        return merged
+
+    @staticmethod
+    def _apply_dashboard_global_filters(filters: list, dashboard_filters: dict) -> list:
+        """
+        Aplica filtros globales del dashboard sobre los filtros BI (capa 3).
+        Solo actualiza filtros EXISTENTES — no agrega nuevos filtros.
+        Matching por tipo semántico: fecha, periodo, tercero.
+        """
+        import copy
+        merged = copy.deepcopy(filters)
+
+        fecha_desde = dashboard_filters.get('fecha_desde')
+        fecha_hasta = dashboard_filters.get('fecha_hasta')
+
+        if fecha_desde and fecha_hasta:
+            # Actualizar primer filtro 'between' en un campo de fecha
+            for f in merged:
+                if (
+                    f.get('operator') == 'between'
+                    and f.get('field', '').lower() in CardBIService._DATE_FIELDS
+                ):
+                    f['value'] = [fecha_desde, fecha_hasta]
+                    break
+
+        periodo = dashboard_filters.get('periodo')
+        if periodo:
+            for f in merged:
+                if f.get('field', '').lower() == 'periodo':
+                    f['value'] = periodo
+                    break
+
+        tercero_ids = dashboard_filters.get('tercero_ids')
+        if tercero_ids:
+            ids = tercero_ids if isinstance(tercero_ids, list) else [tercero_ids]
+            for f in merged:
+                if (
+                    f.get('operator') in ('in', 'eq')
+                    and f.get('field', '').lower() in CardBIService._TERCERO_FIELDS
+                ):
+                    f['value'] = ids
+                    break
+
+        return merged
+
+
+# ──────────────────────────────────────────────
 # Report Service (delegates to ReportEngine)
 # ──────────────────────────────────────────────
 
@@ -716,6 +956,202 @@ class ReportService:
 
 
 # ──────────────────────────────────────────────
+# Report BI Validator — Integridad de configuración
+# ──────────────────────────────────────────────
+
+class ReportBIValidator:
+    """
+    Valida la integridad de la configuración JSON de un ReportBI antes de persistir.
+    Llamado desde ReportBIService.create_report() y update_report().
+    Todas las validaciones son ligeras (sin BD), basadas en SOURCE_FIELDS y SOURCE_JOINS_MAP.
+    """
+
+    @staticmethod
+    def get_valid_source_keys() -> set:
+        """Retorna el conjunto de claves de fuente válidas según SOURCE_FIELDS."""
+        from apps.dashboard.bi_engine import SOURCE_FIELDS
+        return set(SOURCE_FIELDS.keys())
+
+    @staticmethod
+    def get_valid_fields_for_source(source: str) -> set:
+        """
+        Retorna el conjunto de field keys disponibles para una fuente.
+        Aplana todas las categorías de SOURCE_FIELDS[source].
+        Retorna set vacío si la fuente no tiene definición de campos.
+        """
+        from apps.dashboard.bi_engine import SOURCE_FIELDS
+        source_def = SOURCE_FIELDS.get(source, {})
+        return {
+            field_def['field']
+            for fields in source_def.values()
+            for field_def in fields
+        }
+
+    @staticmethod
+    def validate_sources(fuentes: list) -> None:
+        """Valida que todas las fuentes existen en SOURCE_FIELDS."""
+        valid = ReportBIValidator.get_valid_source_keys()
+        invalid = [s for s in fuentes if s not in valid]
+        if invalid:
+            raise ValidationError(
+                f"Fuentes no reconocidas: {', '.join(invalid)}. "
+                f"Disponibles: {', '.join(sorted(valid))}."
+            )
+
+    @staticmethod
+    def validate_campos_config(campos_config: list, fuentes: list) -> None:
+        """
+        Valida que cada campo en campos_config:
+        - tenga 'source' dentro de las fuentes declaradas
+        - tenga 'field' válido en esa fuente (si la fuente tiene definición)
+        - tenga 'role' válido ('dimension' | 'metric')
+        """
+        fuentes_set = set(fuentes)
+        # 'column' es válido en pivot (dimensión que actúa como cabecera de columna)
+        valid_roles = {'dimension', 'metric', 'column'}
+        errors = []
+
+        for i, campo in enumerate(campos_config):
+            source = campo.get('source')
+            field = campo.get('field', '')
+            role = campo.get('role')
+            is_calculated = campo.get('is_calculated', False) or str(field).startswith('__calc_')
+
+            if not source:
+                errors.append(f"campos_config[{i}]: falta 'source'.")
+                continue
+            if not field:
+                errors.append(f"campos_config[{i}]: falta 'field'.")
+                continue
+
+            if source not in fuentes_set:
+                errors.append(
+                    f"campos_config[{i}]: source '{source}' no está en fuentes {sorted(fuentes_set)}."
+                )
+                continue
+
+            # Los campos calculados no existen en SOURCE_FIELDS — saltar validación de existencia
+            if not is_calculated:
+                valid_fields = ReportBIValidator.get_valid_fields_for_source(source)
+                if valid_fields and field not in valid_fields:
+                    errors.append(
+                        f"campos_config[{i}]: field '{field}' no existe en fuente '{source}'."
+                    )
+
+            if role and role not in valid_roles:
+                errors.append(
+                    f"campos_config[{i}]: role '{role}' inválido. Use 'dimension', 'metric' o 'column'."
+                )
+
+        if errors:
+            raise ValidationError(errors)
+
+    @staticmethod
+    def validate_joins(fuentes: list) -> None:
+        """
+        Para reportes multi-fuente (>1 fuente), verifica que existe un JOIN
+        definido en SOURCE_JOINS_MAP desde la fuente primaria a cada fuente secundaria.
+        Acepta JOIN directo (forward o reverse).
+        """
+        if len(fuentes) <= 1:
+            return
+
+        from apps.dashboard.bi_engine import SOURCE_JOINS_MAP
+
+        primary = fuentes[0]
+        secondary = fuentes[1:]
+        reachable = set()
+        for (a, b) in SOURCE_JOINS_MAP:
+            if a == primary:
+                reachable.add(b)
+            elif b == primary:
+                reachable.add(a)
+
+        unreachable = [s for s in secondary if s not in reachable]
+        if unreachable:
+            raise ValidationError(
+                f"No existe JOIN definido desde '{primary}' hacia: {', '.join(unreachable)}. "
+                "Revisa SOURCE_JOINS_MAP en bi_engine.py."
+            )
+
+    @staticmethod
+    def validate_viz_config(
+        viz_config: dict,
+        tipo_visualizacion: str,
+        campos_config: list,
+    ) -> None:
+        """
+        Para tipo 'pivot': verifica que row_fields, col_fields y value_fields
+        referencian field keys que existen en campos_config.
+        """
+        if tipo_visualizacion != 'pivot' or not viz_config:
+            return
+
+        available_fields = {c.get('field') for c in campos_config if c.get('field')}
+        errors = []
+
+        for key in ('row_fields', 'col_fields'):
+            for f in viz_config.get(key, []):
+                if available_fields and f not in available_fields:
+                    errors.append(f"viz_config.{key}: '{f}' no está en campos_config.")
+
+        for vf in viz_config.get('value_fields', []):
+            f = vf.get('field') if isinstance(vf, dict) else vf
+            if f and available_fields and f not in available_fields:
+                errors.append(f"viz_config.value_fields: '{f}' no está en campos_config.")
+
+        if errors:
+            raise ValidationError(errors)
+
+    @staticmethod
+    def validate_orden_config(orden_config: list, campos_config: list) -> None:
+        """
+        Verifica que los campos usados en orden_config existen en campos_config
+        y que la dirección es 'asc' o 'desc'.
+        """
+        if not orden_config:
+            return
+
+        available_fields = {c.get('field') for c in campos_config if c.get('field')}
+        valid_directions = {'asc', 'desc'}
+        errors = []
+
+        for i, order in enumerate(orden_config):
+            f = order.get('field')
+            d = order.get('direction', 'asc')
+            if f and available_fields and f not in available_fields:
+                errors.append(f"orden_config[{i}]: '{f}' no está en campos_config.")
+            if d not in valid_directions:
+                errors.append(
+                    f"orden_config[{i}]: direction '{d}' inválido. Use 'asc' o 'desc'."
+                )
+
+        if errors:
+            raise ValidationError(errors)
+
+    @staticmethod
+    def validate_all(
+        fuentes: list,
+        campos_config: list,
+        viz_config: dict,
+        tipo_visualizacion: str,
+        orden_config: list,
+    ) -> None:
+        """
+        Ejecuta todas las validaciones de integridad en orden.
+        Lanza ValidationError con mensajes descriptivos si algo falla.
+        Orden: fuentes → campos → joins → viz_config → orden_config.
+        """
+        ReportBIValidator.validate_sources(fuentes)
+        if campos_config:
+            ReportBIValidator.validate_campos_config(campos_config, fuentes)
+        ReportBIValidator.validate_joins(fuentes)
+        if viz_config:
+            ReportBIValidator.validate_viz_config(viz_config, tipo_visualizacion, campos_config)
+        ReportBIValidator.validate_orden_config(orden_config, campos_config)
+
+
+# ──────────────────────────────────────────────
 # Report BI Service
 # ──────────────────────────────────────────────
 
@@ -744,8 +1180,9 @@ class ReportBIService:
         ).select_related('user')
 
     @staticmethod
-    def get_template_catalog() -> list[dict]:
-        """Retorna el catálogo estático de 12 templates predefinidos (sin BD)."""
+    @staticmethod
+    def get_template_catalog() -> list:
+        """Retorna el catálogo estático de templates predefinidos (sin BD)."""
         from apps.dashboard.bi_templates import REPORT_TEMPLATES
         return [
             {
@@ -753,6 +1190,7 @@ class ReportBIService:
                 'descripcion': t['descripcion'],
                 'fuentes': t['fuentes'],
                 'tipo_visualizacion': t['tipo_visualizacion'],
+                'categoria_galeria': t.get('categoria_galeria'),
             }
             for t in REPORT_TEMPLATES
         ]
@@ -760,12 +1198,25 @@ class ReportBIService:
     @staticmethod
     def create_report(user, company_id, data: dict) -> ReportBI:
         """Crea un nuevo reporte BI."""
+        ReportBIService._validate_limite_registros(data)
+        ReportBIValidator.validate_all(
+            fuentes=data.get('fuentes', []),
+            campos_config=data.get('campos_config', []),
+            viz_config=data.get('viz_config', {}),
+            tipo_visualizacion=data.get('tipo_visualizacion', 'table'),
+            orden_config=data.get('orden_config', []),
+        )
+        es_template = data.get('es_template', False)
+        # Solo staff puede crear templates de galería
+        if es_template and not (getattr(user, 'is_staff', False) or getattr(user, 'is_superadmin', False)):
+            es_template = False
+
         report = ReportBI(
             user=user,
             company_id=company_id,
             titulo=data['titulo'],
-            descripcion=data.get('descripcion', ''),
             es_privado=data.get('es_privado', True),
+            es_template=es_template,
             fuentes=data['fuentes'],
             campos_config=data.get('campos_config', []),
             tipo_visualizacion=data.get('tipo_visualizacion', 'table'),
@@ -773,6 +1224,7 @@ class ReportBIService:
             filtros=data.get('filtros', {}),
             orden_config=data.get('orden_config', []),
             limite_registros=data.get('limite_registros'),
+            categoria_galeria=data.get('categoria_galeria'),
         )
         template_id = data.get('template_origen')
         if template_id:
@@ -806,11 +1258,18 @@ class ReportBIService:
         if getattr(user, 'is_staff', False) or getattr(user, 'is_superadmin', False):
             return report
 
+        # Templates de galería son accesibles (lectura/duplicación) para todos en la empresa
+        if report.es_template:
+            user_company_id = getattr(user, 'company_id', None)
+            if str(report.company_id) == str(user_company_id):
+                return report
+
         raise PermissionDenied('No tienes acceso a este reporte.')
 
     @staticmethod
     def update_report(report_id, user, data: dict) -> ReportBI:
         """Actualiza un reporte BI. Solo dueño o con permiso de edición."""
+        ReportBIService._validate_limite_registros(data)
         report = ReportBIService.get_report(report_id, user)
 
         if report.user_id != user.id:
@@ -820,14 +1279,28 @@ class ReportBIService:
             if not share or not share.puede_editar:
                 raise PermissionDenied('No tienes permiso para editar este reporte.')
 
+        # Validar integridad con la config resultante (actual + cambios del request)
+        fuentes = data.get('fuentes', report.fuentes)
+        campos_config = data.get('campos_config', report.campos_config)
+        viz_config = data.get('viz_config', report.viz_config)
+        tipo_visualizacion = data.get('tipo_visualizacion', report.tipo_visualizacion)
+        orden_config = data.get('orden_config', report.orden_config)
+        ReportBIValidator.validate_all(fuentes, campos_config, viz_config, tipo_visualizacion, orden_config)
+
         updatable = (
-            'titulo', 'descripcion', 'es_privado', 'es_favorito',
+            'titulo', 'es_privado', 'es_favorito',
             'fuentes', 'campos_config', 'tipo_visualizacion',
             'viz_config', 'filtros', 'orden_config', 'limite_registros',
+            'categoria_galeria',
         )
         for field in updatable:
             if field in data:
                 setattr(report, field, data[field])
+
+        # Solo staff puede cambiar es_template
+        if 'es_template' in data:
+            if getattr(user, 'is_staff', False) or getattr(user, 'is_superadmin', False):
+                report.es_template = data['es_template']
 
         report.save()
 
@@ -848,6 +1321,34 @@ class ReportBIService:
             'report_bi_deleted',
             extra={'report_id': str(report_id), 'user_id': str(user.id)},
         )
+
+    @staticmethod
+    @transaction.atomic
+    def duplicate_report(report_id, user, titulo: str) -> 'ReportBI':
+        """Duplica un reporte BI. Cualquier usuario con acceso puede duplicar."""
+        report = ReportBIService.get_report(report_id, user)
+        duplicated = ReportBI(
+            user=user,
+            company_id=report.company_id,
+            titulo=titulo,
+            fuentes=report.fuentes,
+            campos_config=report.campos_config,
+            filtros=report.filtros,
+            orden_config=report.orden_config,
+            tipo_visualizacion=report.tipo_visualizacion,
+            viz_config=report.viz_config,
+            limite_registros=report.limite_registros,
+            es_privado=True,
+            es_favorito=False,
+            es_template=False,
+            template_origen_id=report.id,
+        )
+        duplicated.save()
+        logger.info(
+            'report_bi_duplicated',
+            extra={'original_id': str(report.id), 'new_id': str(duplicated.id), 'user_id': str(user.id)},
+        )
+        return duplicated
 
     @staticmethod
     def toggle_favorite(report_id, user) -> ReportBI:
@@ -878,7 +1379,7 @@ class ReportBIService:
         r.campos_config = data.get('campos_config', [])
         r.tipo_visualizacion = data.get('tipo_visualizacion', 'table')
         r.viz_config = data.get('viz_config', {})
-        r.filtros = data.get('filtros', {})
+        r.filtros = data.get('filtros', [])
         r.orden_config = data.get('orden_config', [])
         r.limite_registros = data.get('limite_registros')
 
@@ -954,8 +1455,6 @@ class ReportBIService:
 
         # Title
         elements.append(Paragraph(report.titulo, styles['Title']))
-        if report.descripcion:
-            elements.append(Paragraph(report.descripcion, styles['Normal']))
         elements.append(Spacer(1, 12))
 
         if 'columns' in result and 'rows' in result:
@@ -1004,6 +1503,19 @@ class ReportBIService:
         if not filters:
             raise ValidationError(f'Fuente no válida: {source}')
         return filters
+
+    @staticmethod
+    def get_joins() -> list:
+        """Retorna el mapa de relaciones entre fuentes para el frontend."""
+        return _bi_engine.get_joins_map()
+
+    @staticmethod
+    def _validate_limite_registros(data: dict) -> None:
+        """Valida que si hay límite de registros, exista al menos un ordenamiento."""
+        if data.get('limite_registros') and not data.get('orden_config'):
+            raise ValidationError(
+                'Para usar límite de registros debe definir al menos un ordenamiento.'
+            )
 
 
 # ──────────────────────────────────────────────
@@ -1183,8 +1695,10 @@ class CfoVirtualService:
     def suggest_report(question: str, company, user=None) -> dict:
         """
         Analiza una pregunta del usuario y sugiere un template de reporte BI.
-        Usa OpenAI para mapear la intención a uno de los 12 templates predefinidos.
-        Retorna: {template_titulo, explanation, config} o None si no aplica.
+        Usa OpenAI para mapear la intención a los templates predefinidos del catálogo.
+        Retorna: {template_titulo, explanation, categoria_galeria, config} o
+                 {template_titulo: null, explanation, categoria_galeria: null, config: null}
+                 si ningún template aplica.
         """
         import json as json_module
         from apps.companies.services import AIUsageService
@@ -1198,26 +1712,62 @@ class CfoVirtualService:
         if not openai_api_key:
             raise ValidationError('El asistente de IA no está configurado.')
 
-        template_names = [t['titulo'] for t in REPORT_TEMPLATES]
         template_catalog = json_module.dumps(
-            [{'titulo': t['titulo'], 'descripcion': t['descripcion'], 'fuentes': t['fuentes']}
-             for t in REPORT_TEMPLATES],
+            [
+                {
+                    'titulo': t['titulo'],
+                    'descripcion': t['descripcion'],
+                    'fuentes': t['fuentes'],
+                    'categoria': t.get('categoria_galeria', ''),
+                }
+                for t in REPORT_TEMPLATES
+            ],
             ensure_ascii=False,
         )
 
         system_prompt = (
-            'Eres un asistente BI que sugiere reportes predefinidos basado en preguntas del usuario. '
-            'Tienes estos templates disponibles:\n'
+            'Eres un asistente BI especializado en análisis financiero y contable para empresas colombianas. '
+            'Tu tarea es: (1) elegir el reporte predefinido más adecuado, y (2) personalizar sus filtros, '
+            'ordenamiento y límite según lo que el usuario solicita.\n\n'
+            'Templates disponibles:\n'
             f'{template_catalog}\n\n'
-            'Responde SOLO con JSON válido: '
-            '{"template_titulo": "nombre exacto del template", '
-            '"explanation": "explicación breve de por qué este reporte responde la pregunta"}\n'
-            'Si ningún template aplica, responde: {"template_titulo": null, "explanation": "razón"}'
+            'REGLAS:\n'
+            '- Elige el template cuyo título/descripción mejor responda la pregunta.\n'
+            '- Si el usuario menciona un período (mes, trimestre, año, año completo), extrae el rango de fechas exacto '
+            'como filtro. Ejemplo: "diciembre 2025" → {"op":"between","value":["2025-12-01","2025-12-31"]}. '
+            '"2025" solo → {"op":"between","value":["2025-01-01","2025-12-31"]}.\n'
+            '- CUENTAS CONTABLES (PUC colombiano — jerarquía exacta):\n'
+            '  Cuando el usuario menciona "cuenta X", "cuentas X", "grupo X" donde X es un número:\n'
+            '  Cuenta única: usa op "eq". Varias cuentas del mismo nivel: usa op "in" con array.\n'
+            '  * 1 dígito (ej: 1, 2) → campo "titulo_codigo". '
+            'Ej: "clase 1" → {"titulo_codigo":{"op":"eq","value":1}}.\n'
+            '  * 2 dígitos (ej: 11, 13, 24) → campo "grupo_codigo". '
+            'Ej: "cuentas 11" → {"grupo_codigo":{"op":"eq","value":11}}. '
+            '"cuentas 11 y 13" → {"grupo_codigo":{"op":"in","value":[11,13]}}.\n'
+            '  * 4 dígitos → campo "cuenta_codigo". '
+            'Ej: "cuentas 1105 y 1110" → {"cuenta_codigo":{"op":"in","value":[1105,1110]}}.\n'
+            '  * 6 dígitos → campo "subcuenta_codigo".\n'
+            '  * 8+ dígitos → campo "auxiliar". '
+            'Ej: "auxiliares 13997501 y 14050505" → {"auxiliar":{"op":"in","value":[13997501,14050505]}}.\n'
+            '  Si las cuentas tienen distintos niveles de dígitos, usa el campo del nivel más bajo (más dígitos).\n'
+            '  Estos filtros solo aplican cuando el template usa la fuente "gl".\n'
+            '- Si el usuario pide "top N" o un ranking, ajusta limite_registros y asegura que orden_campo '
+            'apunte a la métrica principal en dirección desc.\n'
+            '- orden_campo debe ser el nombre exacto de un campo en campos_config del template elegido.\n'
+            '- Si ningún template aplica, devuelve template_titulo como null.\n\n'
+            'Responde SOLO con JSON válido (sin markdown, sin bloques de código):\n'
+            '{"template_titulo": "nombre exacto o null", '
+            '"explanation": "1-2 oraciones explicando por qué este reporte responde la pregunta", '
+            '"filtros_extra": {"titulo_codigo": {"op": "eq", "value": 11}, "fecha": {"op": "between", "value": ["YYYY-MM-DD","YYYY-MM-DD"]}}, '
+            '"orden_campo": "nombre_campo_o_null", '
+            '"orden_direccion": "desc", '
+            '"limite_registros": null}'
+            '\nNota: filtros_extra puede ser {} si no hay filtros específicos. orden_campo puede ser null.'
         )
 
         payload = {
             'model': 'gpt-4o-mini',
-            'max_tokens': 256,
+            'max_tokens': 500,
             'messages': [
                 {'role': 'system', 'content': system_prompt},
                 {'role': 'user', 'content': question},
@@ -1256,19 +1806,72 @@ class CfoVirtualService:
             explanation = parsed.get('explanation', '')
 
             if not titulo:
-                return {'template_titulo': None, 'explanation': explanation, 'config': None}
+                return {
+                    'template_titulo': None,
+                    'explanation': explanation,
+                    'categoria_galeria': None,
+                    'config': None,
+                }
 
             template = next(
                 (t for t in REPORT_TEMPLATES if t['titulo'] == titulo),
                 None,
             )
             if not template:
-                return {'template_titulo': None, 'explanation': explanation, 'config': None}
+                return {
+                    'template_titulo': None,
+                    'explanation': explanation,
+                    'categoria_galeria': None,
+                    'config': None,
+                }
+
+            # Personalizar config con los ajustes del LLM (filtros, orden, límite).
+            config = dict(template)
+            filtros_extra = parsed.get('filtros_extra') or {}
+
+            existing_filtros = config.get('filtros') or {}
+            if isinstance(existing_filtros, list):
+                # V2 (array de filtros): convertir filtros_extra dict → entries V2 y agregar.
+                config['filtros'] = list(existing_filtros)
+                if isinstance(filtros_extra, dict) and filtros_extra:
+                    src = config.get('fuentes', [''])[0]
+                    for field, cond in filtros_extra.items():
+                        if isinstance(cond, dict) and 'op' in cond:
+                            config['filtros'].append({
+                                'source': src, 'field': field,
+                                'op': cond['op'], 'value': cond.get('value'),
+                            })
+            else:
+                # V1 (dict) o vacío: actualizar directamente.
+                config['filtros'] = dict(existing_filtros)
+                if isinstance(filtros_extra, dict):
+                    config['filtros'].update(filtros_extra)
+
+            orden_campo = parsed.get('orden_campo')
+            # Validar que el campo exista en campos_config del template.
+            # Si el LLM alucina un nombre, usar la primera métrica disponible.
+            valid_fields = {c['field'] for c in config.get('campos_config', [])}
+            if orden_campo and orden_campo not in valid_fields:
+                # Fallback: primera métrica del template
+                orden_campo = next(
+                    (c['field'] for c in config.get('campos_config', []) if c.get('role') == 'metric'),
+                    None,
+                )
+            if orden_campo:
+                orden_dir = parsed.get('orden_direccion', 'desc')
+                if orden_dir not in ('asc', 'desc'):
+                    orden_dir = 'desc'
+                config['orden_config'] = [{'field': orden_campo, 'direction': orden_dir}]
+
+            limite = parsed.get('limite_registros')
+            if isinstance(limite, int) and limite > 0:
+                config['limite_registros'] = limite
 
             return {
                 'template_titulo': titulo,
                 'explanation': explanation,
-                'config': template,
+                'categoria_galeria': template.get('categoria_galeria'),
+                'config': config,
             }
         except requests.exceptions.Timeout:
             logger.warning('bi_suggest_timeout', extra={'company_id': str(company.id)})

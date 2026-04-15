@@ -12,8 +12,11 @@ import {
   ReportBIShareRequest,
   ReportBIShare,
   BISuggestResult,
+  ReportBIDuplicateRequest,
+  ReportBIGalleryGroup,
+  StaticTemplate,
 } from '../models/report-bi.model';
-import { BIFieldCategory, BIFilterDef } from '../models/bi-field.model';
+import { BIFieldCategory, BIFilterDef, BIJoinInfo } from '../models/bi-field.model';
 
 @Injectable({ providedIn: 'root' })
 export class ReportBIService {
@@ -98,6 +101,12 @@ export class ReportBIService {
     return this.http.get<ReportBIListItem[]>(`${this.baseUrl}/templates/`);
   }
 
+  /** Catálogo estático del sistema — global, sin seeding por empresa. */
+  getStaticCatalog(): Observable<StaticTemplate[]> {
+    return this.http.get<StaticTemplate[]>(`${this.baseUrl}/catalogo/`);
+  }
+
+
   getSources(): Observable<{ code: string; label: string; description: string; icon: string }[]> {
     return this.http.get<{ code: string; label: string; description: string; icon: string }[]>(
       `${this.baseUrl}/meta/sources/`,
@@ -115,6 +124,14 @@ export class ReportBIService {
   getFilters(source: string): Observable<BIFilterDef[]> {
     const params = new HttpParams().set('source', source);
     return this.http.get<BIFilterDef[]>(`${this.baseUrl}/meta/filters/`, { params });
+  }
+
+  getJoins(): Observable<BIJoinInfo[]> {
+    return this.http.get<BIJoinInfo[]>(`${this.baseUrl}/meta/joins/`);
+  }
+
+  duplicate(id: string, data: ReportBIDuplicateRequest): Observable<ReportBIDetail> {
+    return this.http.post<ReportBIDetail>(`${this.baseUrl}/${id}/duplicate/`, data);
   }
 
   // ── Opciones de filtros ──────────────────────────────────────

@@ -145,6 +145,7 @@ func convertGLRecords(records []firebird.GLRecord) []api.GLRecord {
 			Fecha:              r.Fecha,
 			DueDate:            r.DueDate,
 			Invc:               r.Invc,
+			Cruce:              r.Cruce,
 			TerceroID:          r.TerceroID,
 			TerceroNombre:      r.TerceroNombre,
 			Auxiliar:           r.Auxiliar,

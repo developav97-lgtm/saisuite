@@ -111,8 +111,7 @@ export class FilterPanelComponent implements OnInit {
   // Active filter count for collapsed badge
   readonly activeFilterCount = computed(() => {
     let count = 0;
-    if (this.fechaDesde()) count++;
-    if (this.fechaHasta()) count++;
+    if (this.fechaDesde() || this.fechaHasta()) count++; // rango de fechas = 1 filtro
     if (this.selectedTercero()) count++;
     if (this.selectedProyecto()) count++;
     if (this.selectedDepartamento()) count++;

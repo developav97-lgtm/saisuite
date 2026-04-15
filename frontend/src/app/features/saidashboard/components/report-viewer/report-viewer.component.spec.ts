@@ -33,6 +33,7 @@ describe('ReportViewerComponent', () => {
     orden_config: [],
     limite_registros: null,
     template_origen: null,
+    categoria_galeria: null,
     user: { id: 'u1', email: 'test@test.com', full_name: 'Test User' },
     shares: [],
     created_at: '2026-04-10T00:00:00Z',

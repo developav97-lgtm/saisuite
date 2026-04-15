@@ -18,13 +18,13 @@ describe('ReportListComponent', () => {
     {
       id: 'r1', titulo: 'Balance Q1', descripcion: 'Balance trimestral',
       es_privado: false, es_favorito: true, es_template: false,
-      fuentes: ['gl'], tipo_visualizacion: 'table',
+      fuentes: ['gl'], tipo_visualizacion: 'table', categoria_galeria: null,
       user_email: 'test@test.com', created_at: '2026-04-10', updated_at: '2026-04-10',
     },
     {
       id: 'r2', titulo: 'Ventas por Vendedor', descripcion: '',
       es_privado: true, es_favorito: false, es_template: false,
-      fuentes: ['facturacion'], tipo_visualizacion: 'pivot',
+      fuentes: ['facturacion'], tipo_visualizacion: 'pivot', categoria_galeria: null,
       user_email: 'test@test.com', created_at: '2026-04-09', updated_at: '2026-04-09',
     },
   ];

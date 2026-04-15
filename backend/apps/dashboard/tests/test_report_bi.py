@@ -147,12 +147,15 @@ class BIQueryEngineTest(TestCase):
             )
 
     def test_source_model_map_keys(self):
-        expected = {'gl', 'facturacion', 'facturacion_detalle', 'cartera', 'inventario'}
-        self.assertEqual(set(SOURCE_MODEL_MAP.keys()), expected)
+        # v1: 5 fuentes transaccionales; v2 agregó 10 dimensionales + 1 legacy = 16 total
+        original_sources = {'gl', 'facturacion', 'facturacion_detalle', 'cartera', 'inventario'}
+        self.assertTrue(original_sources.issubset(set(SOURCE_MODEL_MAP.keys())))
+        self.assertEqual(len(SOURCE_MODEL_MAP), 16)
 
     def test_get_available_sources(self):
         sources = self.engine.get_available_sources()
-        self.assertEqual(len(sources), 5)
+        # v2: 5 transaccionales + 10 dimensionales Saiopen + 1 legacy = 16
+        self.assertEqual(len(sources), 16)
         keys = {s['key'] for s in sources}
         self.assertIn('gl', keys)
         self.assertIn('cartera', keys)
@@ -422,8 +425,8 @@ class ReportBIServiceTest(TestCase):
             'titulo': 'Ventas Q1',
             'fuentes': ['gl'],
             'campos_config': [
-                {'field': 'tercero_nombre', 'role': 'dimension', 'label': 'Tercero'},
-                {'field': 'debito', 'role': 'metric', 'aggregation': 'SUM', 'label': 'Total'},
+                {'source': 'gl', 'field': 'tercero_nombre', 'role': 'dimension', 'label': 'Tercero'},
+                {'source': 'gl', 'field': 'debito', 'role': 'metric', 'aggregation': 'SUM', 'label': 'Total'},
             ],
         }
 
@@ -541,7 +544,8 @@ class ReportBIServiceTest(TestCase):
 
     def test_get_sources(self):
         sources = ReportBIService.get_sources()
-        self.assertEqual(len(sources), 5)
+        # v2: 5 transaccionales + 10 dimensionales Saiopen + 1 legacy = 16
+        self.assertEqual(len(sources), 16)
 
     def test_get_fields(self):
         fields = ReportBIService.get_fields('gl')
@@ -566,7 +570,11 @@ class ReportBIServiceTest(TestCase):
         self.assertEqual(reports.count(), 1)
 
     def test_export_pdf_returns_bytes(self):
-        """Test PDF export generates valid bytes."""
+        """Test PDF export generates valid bytes. Requiere reportlab instalado."""
+        try:
+            import reportlab  # noqa: F401
+        except ModuleNotFoundError:
+            self.skipTest('reportlab no instalado en entorno de test')
         report = ReportBIService.create_report(
             self.user, self.company.id, self.report_data,
         )
@@ -588,9 +596,10 @@ class BITemplatesTest(TestCase):
             company=self.company,
         )
 
-    def test_template_catalog_has_12_entries(self):
+    def test_template_catalog_has_expected_entries(self):
         from apps.dashboard.bi_templates import REPORT_TEMPLATES
-        self.assertEqual(len(REPORT_TEMPLATES), 12)
+        # 23 templates originales + 5 nuevos con campos de retenciones y dimensiones
+        self.assertEqual(len(REPORT_TEMPLATES), 28)
 
     def test_all_templates_have_required_keys(self):
         from apps.dashboard.bi_templates import REPORT_TEMPLATES
@@ -632,7 +641,7 @@ class BITemplatesTest(TestCase):
         templates = ReportBI.all_objects.filter(
             company=self.company, es_template=True,
         )
-        self.assertEqual(templates.count(), 12)
+        self.assertEqual(templates.count(), 28)
 
     def test_seed_command_idempotent(self):
         from django.core.management import call_command
@@ -641,7 +650,7 @@ class BITemplatesTest(TestCase):
         templates = ReportBI.all_objects.filter(
             company=self.company, es_template=True,
         )
-        self.assertEqual(templates.count(), 12)
+        self.assertEqual(templates.count(), 28)
 
     def test_seed_command_force_recreates(self):
         from django.core.management import call_command
@@ -655,20 +664,21 @@ class BITemplatesTest(TestCase):
             ReportBI.all_objects.filter(company=self.company, es_template=True)
             .values_list('id', flat=True),
         )
-        self.assertEqual(len(second_ids), 12)
+        self.assertEqual(len(second_ids), 28)
         self.assertTrue(first_ids.isdisjoint(second_ids))
 
     def test_list_templates_returns_seeded(self):
         from django.core.management import call_command
         call_command('seed_bi_templates', str(self.company.id))
         templates = ReportBIService.list_templates(self.company.id)
-        self.assertEqual(templates.count(), 12)
+        self.assertEqual(templates.count(), 28)
 
     def test_get_template_catalog_static(self):
         catalog = ReportBIService.get_template_catalog()
-        self.assertEqual(len(catalog), 12)
+        self.assertEqual(len(catalog), 28)
         self.assertIn('titulo', catalog[0])
         self.assertIn('descripcion', catalog[0])
+        self.assertIn('categoria_galeria', catalog[0])
 
     def test_template_unique_titles(self):
         from apps.dashboard.bi_templates import REPORT_TEMPLATES
@@ -706,7 +716,7 @@ class CfoSuggestReportTest(TestCase):
             'choices': [{
                 'message': {
                     'content': json.dumps({
-                        'template_titulo': 'Aging de Cartera CxC',
+                        'template_titulo': 'Aging de CxC',
                         'explanation': 'Este reporte muestra el aging de cartera.',
                     }),
                 },
@@ -726,7 +736,9 @@ class CfoSuggestReportTest(TestCase):
         self.assertIn('template_titulo', result)
         self.assertIn('explanation', result)
         self.assertIn('config', result)
-        self.assertEqual(result['template_titulo'], 'Aging de Cartera CxC')
+        self.assertIn('categoria_galeria', result)
+        self.assertEqual(result['template_titulo'], 'Aging de CxC')
+        self.assertEqual(result['categoria_galeria'], 'cuentas_cobrar')
         self.assertIsNotNone(result['config'])
 
     def test_suggest_report_no_match(self):
@@ -759,3 +771,217 @@ class CfoSuggestReportTest(TestCase):
 
         self.assertIsNone(result['template_titulo'])
         self.assertIsNone(result['config'])
+
+
+class TestReportBIValidator(TestCase):
+    """Tests para ReportBIValidator — validaciones de integridad de configuración."""
+
+    def setUp(self):
+        from apps.dashboard.services import ReportBIValidator
+        self.validator = ReportBIValidator
+
+    # ── validate_sources ─────────────────────────────────────────────────────
+
+    def test_validate_sources_valid(self):
+        """Fuentes válidas no lanzan excepción."""
+        self.validator.validate_sources(['gl', 'facturacion'])  # no debe lanzar
+
+    def test_validate_sources_invalid(self):
+        """Fuente desconocida lanza ValidationError con el nombre inválido."""
+        from rest_framework.exceptions import ValidationError
+        with self.assertRaises(ValidationError) as ctx:
+            self.validator.validate_sources(['gl', 'fuente_inexistente'])
+        self.assertIn('fuente_inexistente', str(ctx.exception.detail))
+
+    # ── validate_campos_config ────────────────────────────────────────────────
+
+    def test_validate_campos_config_valid(self):
+        """Campos con source y field correctos no lanzan excepción."""
+        self.validator.validate_campos_config(
+            [{'source': 'gl', 'field': 'debito', 'role': 'metric'}],
+            ['gl'],
+        )
+
+    def test_validate_campos_config_source_not_in_fuentes(self):
+        """Campo con source que no está en fuentes lanza ValidationError."""
+        from rest_framework.exceptions import ValidationError
+        with self.assertRaises(ValidationError):
+            self.validator.validate_campos_config(
+                [{'source': 'cartera', 'field': 'saldo', 'role': 'metric'}],
+                ['gl'],  # cartera no está en fuentes
+            )
+
+    def test_validate_campos_config_unknown_field(self):
+        """Campo con field inexistente en la fuente lanza ValidationError."""
+        from rest_framework.exceptions import ValidationError
+        with self.assertRaises(ValidationError) as ctx:
+            self.validator.validate_campos_config(
+                [{'source': 'gl', 'field': 'campo_falso', 'role': 'dimension'}],
+                ['gl'],
+            )
+        self.assertIn('campo_falso', str(ctx.exception.detail))
+
+    def test_validate_campos_config_invalid_role(self):
+        """Role inválido lanza ValidationError."""
+        from rest_framework.exceptions import ValidationError
+        with self.assertRaises(ValidationError):
+            self.validator.validate_campos_config(
+                [{'source': 'gl', 'field': 'debito', 'role': 'invalid_role'}],
+                ['gl'],
+            )
+
+    def test_validate_campos_config_missing_source(self):
+        """Campo sin 'source' lanza ValidationError."""
+        from rest_framework.exceptions import ValidationError
+        with self.assertRaises(ValidationError):
+            self.validator.validate_campos_config(
+                [{'field': 'debito', 'role': 'metric'}],
+                ['gl'],
+            )
+
+    # ── validate_joins ────────────────────────────────────────────────────────
+
+    def test_validate_joins_single_source(self):
+        """Una sola fuente no requiere JOIN — no lanza excepción."""
+        self.validator.validate_joins(['gl'])
+
+    def test_validate_joins_valid_pair(self):
+        """Par con JOIN definido en SOURCE_JOINS_MAP no lanza excepción."""
+        self.validator.validate_joins(['facturacion', 'facturacion_detalle'])
+
+    def test_validate_joins_no_join_defined(self):
+        """Par sin JOIN definido lanza ValidationError."""
+        from rest_framework.exceptions import ValidationError
+        with self.assertRaises(ValidationError):
+            # gl e impuestos no tienen JOIN directo
+            self.validator.validate_joins(['gl', 'impuestos'])
+
+    # ── validate_viz_config ───────────────────────────────────────────────────
+
+    def test_validate_viz_config_non_pivot_ignored(self):
+        """Para tipo != pivot, viz_config con cualquier contenido no lanza excepción."""
+        self.validator.validate_viz_config(
+            {'invalid_key': 'anything'},
+            'bar',
+            [{'source': 'gl', 'field': 'debito', 'role': 'metric'}],
+        )
+
+    def test_validate_viz_config_pivot_valid(self):
+        """viz_config pivot válido (campos existen en campos_config) no lanza."""
+        self.validator.validate_viz_config(
+            {
+                'row_fields': ['vendedor'],
+                'col_fields': ['periodo'],
+                'value_fields': [{'field': 'total', 'aggregation': 'SUM'}],
+            },
+            'pivot',
+            [
+                {'source': 'facturacion', 'field': 'vendedor', 'role': 'dimension'},
+                {'source': 'facturacion', 'field': 'periodo', 'role': 'dimension'},
+                {'source': 'facturacion', 'field': 'total', 'role': 'metric'},
+            ],
+        )
+
+    def test_validate_viz_config_pivot_missing_field(self):
+        """viz_config pivot con campo no en campos_config lanza ValidationError."""
+        from rest_framework.exceptions import ValidationError
+        with self.assertRaises(ValidationError) as ctx:
+            self.validator.validate_viz_config(
+                {'row_fields': ['campo_inexistente'], 'col_fields': ['periodo'], 'value_fields': []},
+                'pivot',
+                [{'source': 'facturacion', 'field': 'periodo', 'role': 'dimension'}],
+            )
+        self.assertIn('campo_inexistente', str(ctx.exception.detail))
+
+    # ── validate_orden_config ─────────────────────────────────────────────────
+
+    def test_validate_orden_config_valid(self):
+        """Orden con campo existente y dirección válida no lanza excepción."""
+        self.validator.validate_orden_config(
+            [{'field': 'debito', 'direction': 'desc'}],
+            [{'source': 'gl', 'field': 'debito', 'role': 'metric'}],
+        )
+
+    def test_validate_orden_config_invalid_direction(self):
+        """Dirección inválida ('DESC' en mayúsculas) lanza ValidationError."""
+        from rest_framework.exceptions import ValidationError
+        with self.assertRaises(ValidationError):
+            self.validator.validate_orden_config(
+                [{'field': 'debito', 'direction': 'DESC'}],  # debe ser lowercase
+                [{'source': 'gl', 'field': 'debito', 'role': 'metric'}],
+            )
+
+    def test_validate_orden_config_unknown_field(self):
+        """Campo de ordenamiento no en campos_config lanza ValidationError."""
+        from rest_framework.exceptions import ValidationError
+        with self.assertRaises(ValidationError) as ctx:
+            self.validator.validate_orden_config(
+                [{'field': 'campo_fantasma', 'direction': 'asc'}],
+                [{'source': 'gl', 'field': 'debito', 'role': 'metric'}],
+            )
+        self.assertIn('campo_fantasma', str(ctx.exception.detail))
+
+    # ── validate_all integración ──────────────────────────────────────────────
+
+    def test_validate_all_valid_config(self):
+        """Configuración completa válida no lanza excepción."""
+        self.validator.validate_all(
+            fuentes=['facturacion'],
+            campos_config=[
+                {'source': 'facturacion', 'field': 'tercero_nombre', 'role': 'dimension'},
+                {'source': 'facturacion', 'field': 'total', 'role': 'metric'},
+            ],
+            viz_config={},
+            tipo_visualizacion='table',
+            orden_config=[{'field': 'total', 'direction': 'desc'}],
+        )
+
+    def test_validate_all_invalid_source_stops_early(self):
+        """Fuente inválida en validate_all lanza antes de llegar a campos."""
+        from rest_framework.exceptions import ValidationError
+        with self.assertRaises(ValidationError):
+            self.validator.validate_all(
+                fuentes=['fuente_inexistente'],
+                campos_config=[{'source': 'fuente_inexistente', 'field': 'x'}],
+                viz_config={},
+                tipo_visualizacion='table',
+                orden_config=[],
+            )
+
+    # ── suggest_report retorna categoria_galeria ──────────────────────────────
+
+    def test_suggest_report_returns_categoria_galeria(self):
+        """suggest_report ahora incluye categoria_galeria en la respuesta."""
+        from unittest.mock import patch, MagicMock
+        import json
+        from apps.companies.models import Company
+        from apps.users.models import User
+
+        company = Company.objects.create(name='Test Co Suggest', nit='900877665')
+        user = User.objects.create_user(
+            email='bi.suggest@test.com', password='pass', company=company,
+        )
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            'choices': [{'message': {'content': json.dumps({
+                'template_titulo': 'Ventas por Vendedor',
+                'explanation': 'Muestra ventas por vendedor.',
+            })}}],
+            'usage': {'prompt_tokens': 40, 'completion_tokens': 20},
+            'model': 'gpt-4o-mini',
+        }
+        mock_response.raise_for_status = MagicMock()
+
+        with patch('apps.dashboard.services.requests.post', return_value=mock_response), \
+             patch('apps.dashboard.services.settings', OPENAI_API_KEY='test-key'), \
+             patch('apps.companies.services.AIUsageService.check_quota', return_value={'allowed': True}), \
+             patch('apps.companies.services.AIUsageService.record_usage'):
+            from apps.dashboard.services import CfoVirtualService
+            result = CfoVirtualService.suggest_report('¿Cómo van las ventas?', company, user)
+
+        self.assertIn('categoria_galeria', result)
+        self.assertEqual(result['template_titulo'], 'Ventas por Vendedor')
+        self.assertEqual(result['categoria_galeria'], 'ventas')
+        self.assertIsNotNone(result['config'])

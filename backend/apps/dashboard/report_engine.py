@@ -141,7 +141,10 @@ class ReportEngine:
         if fecha_hasta:
             qs = qs.filter(fecha__lte=fecha_hasta)
         if periodo:
-            qs = qs.filter(periodo=periodo)
+            if len(str(periodo)) == 4:  # año solo "YYYY" → match todos los meses
+                qs = qs.filter(periodo__startswith=periodo)
+            else:
+                qs = qs.filter(periodo=periodo)
         if tercero_ids:
             qs = qs.filter(tercero_id__in=tercero_ids)
         if proyecto_codigos:

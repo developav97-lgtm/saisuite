@@ -1,29 +1,177 @@
 .field-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
   &__title {
-    margin: 0 0 12px;
+    margin: 0 0 4px;
     font-size: 14px;
     font-weight: 500;
-    color: var(--sc-text-secondary);
+    color: var(--sc-text-muted);
   }
 
   &__empty {
     font-size: 13px;
-    color: var(--sc-text-disabled);
+    color: var(--sc-text-muted);
     padding: 8px 0;
+  }
+
+  // ── JOINs activos ──────────────────────────────────────────────
+  &__joins {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 10px;
+    background: var(--sc-primary-light);
+    border-radius: 8px;
+    border: 1px solid rgba(21, 101, 192, 0.2);
+  }
+
+  &__joins-label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--sc-primary);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+
+    mat-icon {
+      font-size: 14px;
+      width: 14px;
+      height: 14px;
+    }
+  }
+
+  &__join-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    background: var(--sc-surface-card);
+    border: 1px solid var(--sc-surface-border);
+    color: var(--sc-text-muted);
+    cursor: default;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 240px;
+
+    &--fk {
+      border-color: var(--sc-primary);
+      color: var(--sc-primary);
+    }
+  }
+
+  // ── Buscador ───────────────────────────────────────────────────
+  &__search {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--sc-surface-card);
+    padding-bottom: 4px;
+  }
+
+  &__search-input {
+    width: 100%;
+
+    // Icono de lupa compacto
+    mat-icon[matPrefix] {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+      color: var(--sc-text-muted);
+      margin-right: 4px;
+    }
+  }
+
+  // ── Lista plana (el scroll lo maneja el sidebar del builder) ──────
+  &__list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding-right: 2px;
+  }
+
+  &__no-results {
+    font-size: 13px;
+    color: var(--sc-text-muted);
+    padding: 16px 0;
+    text-align: center;
+    margin: 0;
+  }
+
+  // ── Badge de fuente (multi-fuente con etiqueta duplicada) ───────
+  &__search { position: relative; }
+}
+
+// Badge de fuente dentro del checkbox label y panel de orden
+.field-source-badge {
+  display: inline-block;
+  margin-left: 5px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.4;
+  background: var(--sc-primary-container, rgba(21,101,192,0.12));
+  color: var(--sc-primary);
+  vertical-align: middle;
+  letter-spacing: 0.02em;
+
+  &--order {
+    margin-left: 4px;
+    font-size: 9px;
+    padding: 1px 4px;
+  }
+}
+
+.field-panel {
+  // ── Botón campo calculado ──────────────────────────────────────
+  &__calc-btn {
+    width: 100%;
+    margin-top: 4px;
+    justify-content: flex-start !important;
+    color: var(--sc-primary) !important;
+    border-color: var(--sc-primary) !important;
+
+    mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+      margin-right: 6px;
+    }
+  }
+}
+
+// ── Categoría de campo (header de grupo sin acordeón) ─────────────
+.field-category {
+  &__label {
+    display: block;
+    padding: 6px 4px 4px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--sc-text-muted);
+    border-bottom: 1px solid var(--sc-surface-border);
+    margin-bottom: 2px;
   }
 }
 
 // ── Orden de campos (drag-and-drop) ─────────────────────────────
 .field-order {
-  margin-bottom: 16px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--sc-border, #e0e0e0);
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--sc-surface-border);
 
   &__title {
     margin: 0 0 6px;
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--sc-text-secondary);
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--sc-text-muted);
     text-transform: uppercase;
     letter-spacing: 0.5px;
   }
@@ -40,13 +188,12 @@
     gap: 6px;
     padding: 4px 6px;
     border-radius: 6px;
-    background: var(--sc-surface-variant, #f5f5f5);
-    cursor: default;
+    background: var(--sc-surface-header);
 
     &.cdk-drag-preview {
       box-shadow: 0 4px 12px rgba(0, 0, 0, .15);
       border-radius: 6px;
-      background: var(--sc-surface-variant, #f5f5f5);
+      background: var(--sc-surface-header);
     }
 
     &.cdk-drag-animating {
@@ -59,7 +206,7 @@
     font-size: 18px;
     width: 18px;
     height: 18px;
-    color: var(--sc-text-disabled);
+    color: var(--sc-text-muted);
     flex-shrink: 0;
   }
 
@@ -75,15 +222,33 @@
   &__role {
     font-size: 10px;
     font-weight: 600;
-    color: var(--sc-text-secondary);
+    color: var(--sc-text-muted);
     flex-shrink: 0;
+  }
+
+  &__remove {
+    width: 24px !important;
+    height: 24px !important;
+    flex-shrink: 0;
+    opacity: 0;
+    transition: opacity 0.1s;
+
+    mat-icon {
+      font-size: 14px;
+      width: 14px;
+      height: 14px;
+    }
+  }
+
+  &__item:hover &__remove {
+    opacity: 1;
   }
 
   &__placeholder {
     height: 32px;
     border: 1px dashed var(--sc-primary);
     border-radius: 6px;
-    background: var(--sc-primary-light, #e3f2fd);
+    background: var(--sc-primary-light);
   }
 }
 
@@ -92,20 +257,26 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 3px 0;
-  min-height: 36px;
+  padding: 2px 4px;
+  min-height: 34px;
+  border-radius: 6px;
+  transition: background 0.1s;
+
+  &:hover {
+    background: var(--sc-surface-header);
+  }
 
   &__checkbox {
     flex: 1;
     min-width: 0;
     overflow: hidden;
 
-    // Truncar nombre largo
     ::ng-deep .mdc-label {
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
       font-size: 13px;
+      color: var(--sc-text-color);
     }
   }
 
@@ -116,7 +287,6 @@
     flex-shrink: 0;
   }
 
-  // Botón compacto de control (Rol / Agg / Formato)
   &__ctrl-btn {
     height: 28px !important;
     line-height: 28px !important;
@@ -144,78 +314,24 @@
   }
 }
 
-// Ítem activo en el menú
 ::ng-deep .field-item__menu-active {
   font-weight: 600;
   color: var(--sc-primary) !important;
 }
 
-mat-expansion-panel {
-  margin-bottom: 4px;
-}
-
-// ── Campo calculado ───────────────────────────────────────────────
-.calc-field {
-  margin-top: 16px;
-  padding-top: 12px;
-  border-top: 1px solid var(--sc-border, #e0e0e0);
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-
-  &__title {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin: 0;
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--sc-text-secondary);
-
-    mat-icon {
-      font-size: 16px;
-      width: 16px;
-      height: 16px;
-    }
-  }
-
-  &__input {
-    width: 100%;
-  }
-
-  &__chips-label {
-    font-size: 11px;
-    color: var(--sc-text-secondary);
-    margin-bottom: 4px;
-  }
-
-  &__chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
-    margin-bottom: 4px;
-  }
-
-  &__chip {
-    cursor: pointer;
-    font-size: 11px;
-    height: 24px !important;
-    font-family: monospace;
-  }
-}
-
 // ── Campos calculados activos ─────────────────────────────────────
 .calc-active {
-  background: var(--sc-surface-variant, #f5f5f5);
+  background: var(--sc-surface-header);
   border-radius: 8px;
   padding: 8px;
+  border: 1px solid var(--sc-surface-border);
 
   &__label {
     font-size: 10px;
-    font-weight: 600;
+    font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    color: var(--sc-text-secondary);
+    color: var(--sc-text-muted);
     margin-bottom: 6px;
   }
 
@@ -226,7 +342,7 @@ mat-expansion-panel {
     padding: 3px 0;
 
     &:not(:last-child) {
-      border-bottom: 1px solid var(--sc-border, #e0e0e0);
+      border-bottom: 1px solid var(--sc-surface-border);
       margin-bottom: 3px;
     }
   }
@@ -243,11 +359,12 @@ mat-expansion-panel {
     font-size: 12px;
     font-weight: 500;
     flex-shrink: 0;
+    color: var(--sc-text-color);
   }
 
   &__formula {
     font-size: 11px;
-    color: var(--sc-text-secondary);
+    color: var(--sc-text-muted);
     font-family: monospace;
     flex: 1;
     min-width: 0;
@@ -267,83 +384,5 @@ mat-expansion-panel {
       width: 14px;
       height: 14px;
     }
-  }
-}
-
-// ── Plantillas guardadas ──────────────────────────────────────────
-.calc-templates {
-  border-top: 1px dashed var(--sc-border, #e0e0e0);
-  padding-top: 8px;
-
-  &__label {
-    font-size: 10px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: var(--sc-text-secondary);
-    margin-bottom: 6px;
-  }
-
-  &__item {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    padding: 4px 6px;
-    border-radius: 6px;
-    transition: background 150ms;
-
-    &:hover {
-      background: var(--sc-surface-variant, #f5f5f5);
-    }
-  }
-
-  &__icon {
-    font-size: 14px;
-    width: 14px;
-    height: 14px;
-    color: var(--sc-text-secondary);
-    flex-shrink: 0;
-  }
-
-  &__info {
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-    min-width: 0;
-    gap: 1px;
-  }
-
-  &__name {
-    font-size: 12px;
-    font-weight: 500;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  &__formula {
-    font-size: 10px;
-    color: var(--sc-text-secondary);
-    font-family: monospace;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  &__add,
-  &__delete {
-    width: 28px !important;
-    height: 28px !important;
-    flex-shrink: 0;
-
-    mat-icon {
-      font-size: 16px;
-      width: 16px;
-      height: 16px;
-    }
-  }
-
-  &__delete {
-    color: var(--sc-error, #f44336);
   }
 }

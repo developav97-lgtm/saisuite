@@ -1,3 +1,15 @@
+// ── Scroll espejo superior ─────────────────────────────────────
+.scroll-mirror {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+
+  &__phantom {
+    height: 1px; // activa el scroll; el ancho lo pone JS
+  }
+}
+
+// ── Tabla pivot ────────────────────────────────────────────────
 .pivot-table {
   width: 100%;
   border-collapse: collapse;
@@ -5,25 +17,26 @@
 
   th, td {
     padding: 8px 12px;
-    border: 1px solid var(--sc-border, #e0e0e0);
+    border: 1px solid var(--sc-surface-border);
     white-space: nowrap;
+    color: var(--sc-text-color);
   }
 
   &__dim-header {
-    background: var(--sc-surface-variant, #f5f5f5);
+    background: var(--sc-surface-header);
     font-weight: 600;
     text-align: left;
-    text-transform: capitalize;
+    text-transform: none;
   }
 
   &__col-header {
-    background: var(--sc-primary-light, #e3f2fd);
+    background: var(--sc-primary-container, rgba(21, 101, 192, 0.12));
     font-weight: 600;
     text-align: right;
     min-width: 100px;
 
     &--total {
-      background: var(--sc-surface-variant, #f5f5f5);
+      background: var(--sc-surface-header);
     }
   }
 
@@ -35,12 +48,12 @@
   }
 
   &__dim-cell {
-    background: var(--sc-surface, #fff);
+    background: var(--sc-surface-card);
     font-weight: 500;
 
     &--total {
       font-weight: 700;
-      background: var(--sc-surface-variant, #f5f5f5);
+      background: var(--sc-surface-header);
     }
   }
 
@@ -52,22 +65,22 @@
       cursor: pointer;
 
       &:hover {
-        background: var(--sc-primary-light, #e3f2fd);
+        background: var(--sc-primary-container, rgba(21, 101, 192, 0.12));
       }
     }
 
     &--total {
       font-weight: 700;
-      background: var(--sc-surface-variant, #f5f5f5);
+      background: var(--sc-surface-header);
     }
 
     &--grand-total {
       font-weight: 700;
-      background: var(--sc-primary-light, #e3f2fd);
+      background: var(--sc-primary-container, rgba(21, 101, 192, 0.12));
     }
   }
 
   &__totals-row {
-    border-top: 2px solid var(--sc-border, #bdbdbd);
+    border-top: 2px solid var(--sc-surface-border);
   }
 }

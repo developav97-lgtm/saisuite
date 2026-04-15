@@ -127,6 +127,11 @@ CHANNEL_LAYERS = {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
         'CONFIG': {
             'hosts': [REDIS_URL],
+            # Expiración de entradas de grupo: limpia canales huérfanos
+            # (ej. conexiones que cayeron sin close limpio durante hot-reload)
+            'expiry': 60,
+            # Capacidad máxima del canal: previene acumulación ilimitada
+            'capacity': 100,
         },
     },
 }

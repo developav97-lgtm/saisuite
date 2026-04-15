@@ -212,12 +212,55 @@ Registrados en admin:
 
 ## CHUNK-016: Tests
 
-**Backend:** 56 tests en `test_report_bi.py` + 26 tests en `test_new_models.py` = 82 backend tests
+**Backend:** 74 tests en `test_report_bi.py` (incluyendo TestReportBIValidator) + 26 en `test_new_models.py` = 100 backend tests
 **Frontend:** ~146 tests across 12 spec files (service 100%, components 70%+)
-**Total:** ~228 tests
+**Total:** ~246 tests
 
 Cobertura:
 - `report-bi.service.ts`: 100% (15 tests)
 - `ReportBIService` backend: 18+ tests (CRUD, execute, preview, share, permisos)
 - `BIQueryEngine`: 17+ tests (table, pivot, filtros, cartera)
 - Modelos contabilidad: 26 tests (creation, constraints, isolation, cascade)
+- `ReportBIValidator`: 20 tests (sources, campos_config, joins, viz_config, orden_config, validate_all)
+
+---
+
+## CHUNK-017: Validaciones de Integridad (Sprint 5)
+
+La clase `ReportBIValidator` en `services.py` valida la config JSON de un `ReportBI` antes de persistir.
+Se llama automáticamente desde `create_report()` y `update_report()`.
+
+**Validaciones implementadas:**
+
+| Método | Qué valida |
+|--------|-----------|
+| `validate_sources(fuentes)` | Todas las fuentes existen en `SOURCE_FIELDS` |
+| `validate_campos_config(campos_config, fuentes)` | source en fuentes, field en SOURCE_FIELDS[source], role válido |
+| `validate_joins(fuentes)` | Para multi-fuente: existe JOIN en SOURCE_JOINS_MAP |
+| `validate_viz_config(viz_config, tipo, campos_config)` | Para pivot: row/col/value fields existen en campos_config |
+| `validate_orden_config(orden_config, campos_config)` | Campos de orden existen en campos_config, direction asc/desc |
+| `validate_all(...)` | Orquesta todas en orden (fuentes → campos → joins → viz → orden) |
+
+**Errores retornados:** `ValidationError` con mensajes descriptivos indicando índice y tipo de error.
+
+---
+
+## CHUNK-018: CFO Virtual actualización (Sprint 5)
+
+`CfoVirtualService.suggest_report()` ahora:
+- Usa el catálogo completo de templates (23 templates en 8 categorías)
+- Incluye `categoria_galeria` en el catálogo enviado al modelo IA para mejor matching
+- Retorna `categoria_galeria` en la respuesta para navegación directa al template
+- System prompt mejorado con instrucciones de categorías
+
+**Respuesta actualizada:**
+```json
+{
+  "template_titulo": "Aging de CxC",
+  "explanation": "Este reporte muestra el aging...",
+  "categoria_galeria": "cuentas_cobrar",
+  "config": { ... }
+}
+```
+
+`get_template_catalog()` ahora incluye `categoria_galeria` en cada entrada del catálogo estático.

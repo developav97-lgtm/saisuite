@@ -51,7 +51,7 @@ import {
 import { CustomRangoCuentasConfig } from '../../models/report-filter.model';
 
 interface BuilderCard {
-  id: string | null; // null for new unsaved cards
+  id: number | null; // null for new unsaved cards
   card_type_code: string;
   chart_type: ChartType;
   titulo_personalizado: string;
@@ -63,6 +63,7 @@ interface BuilderCard {
   height: number;
   orden: number;
   filtros_config?: Record<string, unknown>;
+  bi_report_id?: string | null;
 }
 
 @Component({
@@ -185,6 +186,7 @@ export class DashboardBuilderComponent implements OnInit {
       height: c.height,
       orden: c.orden,
       filtros_config: c.filtros_config ?? {},
+      bi_report_id: c.bi_report_id ?? null,
     };
   }
 
@@ -245,6 +247,7 @@ export class DashboardBuilderComponent implements OnInit {
 
   private addCard(result: CardSelectorResult): void {
     const cards = this.builderCards();
+    const isBiReport = result.card.code === 'bi_report';
     const newCard: BuilderCard = {
       id: null,
       card_type_code: result.card.code,
@@ -254,10 +257,11 @@ export class DashboardBuilderComponent implements OnInit {
       color: result.card.color,
       pos_x: 0,
       pos_y: cards.length,
-      width: 2,
+      width: isBiReport ? 3 : 2,
       height: 1,
       orden: cards.length,
       filtros_config: result.filtrosConfig ?? {},
+      bi_report_id: result.bi_report_id ?? null,
     };
     this.builderCards.update(list => [...list, newCard]);
     this.hasUnsavedChanges.set(true);
@@ -417,6 +421,7 @@ export class DashboardBuilderComponent implements OnInit {
         titulo_personalizado: c.titulo_personalizado,
         orden: c.orden,
         filtros_config: c.filtros_config ?? {},
+        ...(c.bi_report_id ? { bi_report_id: c.bi_report_id } : {}),
       };
       return this.dashboardService.addCard(dashboardId, create).toPromise();
     });
@@ -434,7 +439,7 @@ export class DashboardBuilderComponent implements OnInit {
       .then(results => {
         if (newCards.length > 0) {
           const newResults = results.slice(0, newCards.length);
-          const newIds = newResults.map(r => (r as { id?: string } | undefined)?.id ?? null);
+          const newIds = newResults.map(r => (r as { id?: number } | undefined)?.id ?? null);
           let newIndex = 0;
           this.builderCards.update(list =>
             list.map(c => {

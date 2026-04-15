@@ -4,6 +4,7 @@ import {
   DestroyRef,
   OnInit,
   computed,
+  effect,
   inject,
   signal,
 } from '@angular/core';
@@ -18,8 +19,9 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatExpansionModule } from '@angular/material/expansion';
+import { MatSelectModule } from '@angular/material/select';
 import { ReportBIService } from '../../services/report-bi.service';
-import { BIFieldConfig } from '../../models/bi-field.model';
+import { BIFieldConfig, BIFilterV2, BIFilterOperator, BISortConfig } from '../../models/bi-field.model';
 import {
   ReportBICreateRequest,
   ReportBIExecuteResult,
@@ -51,6 +53,7 @@ import { ToastService } from '../../../../core/services/toast.service';
     MatButtonToggleModule,
     MatTooltipModule,
     MatExpansionModule,
+    MatSelectModule,
     SourceSelectorComponent,
     FieldPanelComponent,
     FilterBuilderComponent,
@@ -69,6 +72,25 @@ export class ReportBuilderComponent implements OnInit {
   private readonly toast = inject(ToastService);
   private readonly destroyRef = inject(DestroyRef);
 
+  constructor() {
+    // Auto-preview al agregar/quitar campos, cambiar visualización o filtros.
+    // El onCleanup cancela el timer anterior si el efecto vuelve a correr antes de los 700 ms.
+    effect((onCleanup) => {
+      const fields = this.selectedFields();
+      const viz    = this.visualization();
+      const filts  = this.filters();
+
+      // No ejecutar si no hay nada seleccionado
+      if (fields.length === 0 || this.selectedSources().length === 0) return;
+
+      // Suprimir lint: viz y filts se leen solo para registrarlos como dependencias del effect
+      void viz; void filts;
+
+      const timer = setTimeout(() => this.preview(), 700);
+      onCleanup(() => clearTimeout(timer));
+    });
+  }
+
   // ── State ──────────────────────────────────────────────────
   readonly loading = signal(false);
   readonly saving = signal(false);
@@ -76,15 +98,29 @@ export class ReportBuilderComponent implements OnInit {
   readonly reportId = signal<string | null>(null);
 
   readonly titulo = signal('');
-  readonly descripcion = signal('');
   readonly selectedSources = signal<string[]>([]);
   readonly selectedFields = signal<BIFieldConfig[]>([]);
-  readonly filters = signal<Record<string, unknown>>({});
+  readonly filters = signal<BIFilterV2[]>([]);
+  readonly ordenConfig = signal<BISortConfig[]>([]);
+  readonly limiteRegistros = signal<number | null>(null);
   readonly visualization = signal<ReportBIVisualization>('table');
 
   readonly previewResult = signal<ReportBIExecuteResult | null>(null);
 
-  readonly activeFilterCount = computed(() => Object.keys(this.filters()).length);
+  readonly activeFilterCount = computed(() => this.filters().length);
+
+  readonly selectedFieldsForOrder = computed(() =>
+    this.selectedFields().map(f => ({ field: f.field, label: f.label, source: f.source })),
+  );
+
+  readonly limitOptions: { value: number | null; label: string }[] = [
+    { value: null, label: 'Sin límite' },
+    { value: 10,   label: 'Top 10' },
+    { value: 20,   label: 'Top 20' },
+    { value: 50,   label: 'Top 50' },
+    { value: 100,  label: 'Top 100' },
+    { value: 200,  label: 'Top 200' },
+  ];
 
   readonly vizOptions: { value: ReportBIVisualization; label: string; icon: string }[] = [
     { value: 'table',     label: VISUALIZATION_LABELS['table'],     icon: VISUALIZATION_ICONS['table'] },
@@ -145,24 +181,65 @@ export class ReportBuilderComponent implements OnInit {
       return;
     }
 
-    // Cargar preset desde query param ?preset= (sugerencias de IA)
+    // Fallback: ?template=<id> para templates de BD ya sembrados
+    const templateId = this.route.snapshot.queryParamMap.get('template');
+    if (templateId) {
+      this.loading.set(true);
+      this.reportBIService.getById(templateId)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: report => {
+            // No heredar el título — el usuario escribirá el suyo
+            this.selectedSources.set(report.fuentes);
+            this.selectedFields.set(report.campos_config);
+            this.filters.set(Array.isArray(report.filtros) ? report.filtros : []);
+            if (report.orden_config?.length) this.ordenConfig.set(report.orden_config);
+            if (report.limite_registros != null) this.limiteRegistros.set(report.limite_registros);
+            this.visualization.set(report.tipo_visualizacion);
+            this.loading.set(false);
+          },
+          error: () => { this.loading.set(false); },
+        });
+      return;
+    }
+
+    // Cargar preset desde query param ?preset= (sugerencias de IA o templates estáticos)
     const presetParam = this.route.snapshot.queryParamMap.get('preset');
     if (presetParam) {
       try {
         const preset = JSON.parse(presetParam) as {
           titulo?: string;
-          descripcion?: string;
           fuentes?: string[];
           campos_config?: BIFieldConfig[];
           tipo_visualizacion?: ReportBIVisualization;
-          filtros?: Record<string, unknown>;
+          filtros?: BIFilterV2[];
+          orden_config?: BISortConfig[];
+          limite_registros?: number | null;
         };
-        if (preset.titulo)              this.titulo.set(preset.titulo);
-        if (preset.descripcion)         this.descripcion.set(preset.descripcion);
-        if (preset.fuentes?.length)     this.selectedSources.set(preset.fuentes);
+        if (preset.titulo)                this.titulo.set(preset.titulo);
+        if (preset.fuentes?.length)       this.selectedSources.set(preset.fuentes);
         if (preset.campos_config?.length) this.selectedFields.set(preset.campos_config);
-        if (preset.tipo_visualizacion)  this.visualization.set(preset.tipo_visualizacion);
-        if (preset.filtros)             this.filters.set(preset.filtros);
+        if (preset.tipo_visualizacion)    this.visualization.set(preset.tipo_visualizacion);
+        if (Array.isArray(preset.filtros)) {
+          this.filters.set(preset.filtros);
+        } else if (preset.filtros && typeof preset.filtros === 'object') {
+          // Convertir V1 dict → V2 array usando la primera fuente como source
+          const src = preset.fuentes?.[0] ?? '';
+          const v2 = Object.entries(preset.filtros as Record<string, {op: string; value: unknown}>)
+            .map(([field, cond]) => ({
+              source: src, field,
+              operator: cond.op as BIFilterOperator,
+              value: cond.value,
+            }));
+          this.filters.set(v2);
+        }
+        if (preset.orden_config?.length) {
+          // Solo guardar entradas con campo válido en campos_config
+          const validFields = new Set((preset.campos_config ?? []).map(f => f.field));
+          const validOrden = preset.orden_config.filter(o => validFields.has(o.field));
+          this.ordenConfig.set(validOrden);
+        }
+        if (preset.limite_registros != null)    this.limiteRegistros.set(preset.limite_registros);
       } catch {
         // JSON inválido → ignorar preset
       }
@@ -176,10 +253,12 @@ export class ReportBuilderComponent implements OnInit {
       .subscribe({
         next: report => {
           this.titulo.set(report.titulo);
-          this.descripcion.set(report.descripcion);
           this.selectedSources.set(report.fuentes);
           this.selectedFields.set(report.campos_config);
-          this.filters.set(report.filtros);
+          // V2: array de filtros. V1 legacy (dict) se descarta — el backend ejecuta correctamente.
+          this.filters.set(Array.isArray(report.filtros) ? report.filtros : []);
+          if (report.orden_config?.length) this.ordenConfig.set(report.orden_config);
+          if (report.limite_registros != null) this.limiteRegistros.set(report.limite_registros);
           this.visualization.set(report.tipo_visualizacion);
           this.loading.set(false);
         },
@@ -201,7 +280,7 @@ export class ReportBuilderComponent implements OnInit {
     this.selectedFields.set(fields);
   }
 
-  onFiltersChange(filters: Record<string, unknown>): void {
+  onFiltersChange(filters: BIFilterV2[]): void {
     this.filters.set(filters);
   }
 
@@ -222,6 +301,8 @@ export class ReportBuilderComponent implements OnInit {
       tipo_visualizacion: viz,
       viz_config: viz === 'pivot' ? this.pivotVizConfig() : undefined,
       filtros: this.filters(),
+      orden_config: this.ordenConfig(),
+      limite_registros: this.limiteRegistros() ?? 30,
     })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
@@ -243,12 +324,13 @@ export class ReportBuilderComponent implements OnInit {
     const viz = this.visualization();
     const data: ReportBICreateRequest = {
       titulo: this.titulo(),
-      descripcion: this.descripcion(),
       fuentes: this.selectedSources(),
       campos_config: this.selectedFields(),
       tipo_visualizacion: viz,
       viz_config: viz === 'pivot' ? this.pivotVizConfig() : undefined,
       filtros: this.filters(),
+      orden_config: this.ordenConfig(),
+      limite_registros: this.limiteRegistros(),
     };
 
     const obs = this.editMode()
@@ -271,5 +353,29 @@ export class ReportBuilderComponent implements OnInit {
 
   goBack(): void {
     this.router.navigate(['/saidashboard', 'reportes']);
+  }
+
+  // ── Ordenamiento ─────────────────────────────────────────────
+
+  addOrden(): void {
+    const first = this.selectedFields()[0];
+    if (!first) return;
+    this.ordenConfig.update(o => [...o, { field: first.field, direction: 'desc' }]);
+  }
+
+  updateOrdenField(i: number, field: string): void {
+    this.ordenConfig.update(o => o.map((x, idx) => idx === i ? { ...x, field } : x));
+  }
+
+  updateOrdenDir(i: number, direction: 'asc' | 'desc'): void {
+    this.ordenConfig.update(o => o.map((x, idx) => idx === i ? { ...x, direction } : x));
+  }
+
+  removeOrden(i: number): void {
+    this.ordenConfig.update(o => o.filter((_, idx) => idx !== i));
+  }
+
+  onLimiteChange(value: number | null): void {
+    this.limiteRegistros.set(value);
   }
 }

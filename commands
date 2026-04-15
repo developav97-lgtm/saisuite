@@ -5,14 +5,13 @@ admin@demo.com      / demo123
 
 super user para admin django:
 superadmin@valmentech.com / valmen2026!
-QaTest2026!
+Admin1234!
+
 
 admin:
 admin@andina.com
 coord@andina.com
 Admin1234!
-
-
 superadmin:
 superadmin@valmentech.com
 Admin1234!
@@ -21,3 +20,4 @@ soporte:
 soporte@valmentech.com
 Admin1234!
 
+--dangerously-skip-permissions

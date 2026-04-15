@@ -294,8 +294,14 @@ class CrmProducto(BaseModel):
     precio_base    = models.DecimalField(max_digits=15, decimal_places=2, default=0)  # ITEM.PRICE
     unidad_venta   = models.CharField(max_length=20, blank=True)        # ITEM.UOFMSALES
     impuesto       = models.ForeignKey(CrmImpuesto, on_delete=models.SET_NULL, null=True, blank=True)
-    clase          = models.CharField(max_length=10, blank=True)        # ITEM.CLASS
-    grupo          = models.CharField(max_length=10, blank=True)        # ITEM.GRUPO
+    clase          = models.CharField(max_length=10, blank=True)        # ITEM.CLASS (= grupo_codigo)
+    grupo          = models.CharField(max_length=10, blank=True)        # ITEM.GRUPO (= subgrupo_codigo)
+    # Clasificación extendida (desde ITEM + JOINs a LINEA/GRUPO/SUBGRUPO de Saiopen)
+    reffabrica          = models.CharField(max_length=30, blank=True, default='')
+    linea_codigo        = models.CharField(max_length=10, blank=True, default='')  # ITEM.ITEMMSTR
+    linea_descripcion   = models.CharField(max_length=60, blank=True, default='')
+    grupo_descripcion   = models.CharField(max_length=60, blank=True, default='')
+    subgrupo_descripcion = models.CharField(max_length=60, blank=True, default='')
     is_active      = models.BooleanField(default=True)                      # ITEM.ESTADO
     # Sync Saiopen ITEM
     sai_key        = models.CharField(max_length=30, null=True, blank=True)  # ITEM.ITEM

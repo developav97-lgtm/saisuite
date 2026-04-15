@@ -16,6 +16,19 @@ claude
 # Prompt: "Lee CLAUDE.md, ERRORS.md, DECISIONS.md y CONTEXT.md. Resume el estado actual."
 ```
 
+## Levantar el entorno de desarrollo
+
+```bash
+# 1. Servicios en Docker (DB, API, SQS Worker, n8n)
+docker compose up -d
+
+# 2. Frontend en LOCAL (no en Docker)
+cd frontend && ng serve
+```
+
+> El frontend corre directamente en el host (`http://localhost:4200`) para evitar
+> el alto consumo de CPU/RAM causado por file-polling en macOS + Docker.
+
 ## Estructura
 
 ```

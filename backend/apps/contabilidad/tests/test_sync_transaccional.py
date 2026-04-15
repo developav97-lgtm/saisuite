@@ -30,11 +30,20 @@ def _oe_record(**kwargs):
         'id_sucursal': 1,
         'tercero_id': 'C001',
         'tercero_nombre': 'Cliente Test',
+        'tercero_razon_social': 'Cliente Test S.A.S.',
+        'tipo_descripcion': 'Factura de venta',
         'fecha': '2026-01-15',
         'periodo': '2026-01',
         'subtotal': '1000.00',
         'iva': '190.00',
+        'descuento_global': '50.00',
+        'destotal': '50.00',
+        'otroscargos': '0.00',
         'total': '1190.00',
+        'porcrtfte': '1.5000',
+        'reteica': '15.00',
+        'porcentaje_reteica': '0.4140',
+        'reteiva': '10.00',
     }
     defaults.update(kwargs)
     return defaults
@@ -147,6 +156,43 @@ class ProcessOEBatchTest(TestCase):
         self.assertEqual(result['inserted'], 0)
         self.assertGreater(len(result['errors']), 0)
 
+    def test_retenciones_fields_persisted(self):
+        """Nuevos campos de retenciones y cargos se guardan correctamente."""
+        SyncService.process_oe_batch(
+            company_id=self.company.id,
+            records=[_oe_record()],
+        )
+        factura = FacturaEncabezado.objects.get(company=self.company, number=1)
+        self.assertEqual(factura.tercero_razon_social, 'Cliente Test S.A.S.')
+        self.assertEqual(factura.tipo_descripcion, 'Factura de venta')
+        self.assertEqual(factura.destotal, Decimal('50.00'))
+        self.assertEqual(factura.otroscargos, Decimal('0.00'))
+        self.assertEqual(factura.porcrtfte, Decimal('1.5000'))
+        self.assertEqual(factura.reteica, Decimal('15.00'))
+        self.assertEqual(factura.porcentaje_reteica, Decimal('0.4140'))
+        self.assertEqual(factura.reteiva, Decimal('10.00'))
+
+    def test_retenciones_empty_when_not_sent(self):
+        """Si el agente no envía campos de retenciones, quedan en 0/'' sin error."""
+        record = {
+            'number': 2,
+            'tipo': 'FAC',
+            'id_sucursal': 1,
+            'tercero_id': 'C002',
+            'fecha': '2026-01-20',
+            'total': '500.00',
+        }
+        result = SyncService.process_oe_batch(
+            company_id=self.company.id,
+            records=[record],
+        )
+        self.assertEqual(result['inserted'], 1)
+        factura = FacturaEncabezado.objects.get(company=self.company, number=2)
+        self.assertEqual(factura.tercero_razon_social, '')
+        self.assertEqual(factura.tipo_descripcion, '')
+        self.assertEqual(factura.reteica, Decimal('0'))
+        self.assertEqual(factura.reteiva, Decimal('0'))
+
 
 # ─────────────────────────────────────────────────────────────
 # OEDET — FacturaDetalle
@@ -174,6 +220,10 @@ class ProcessOEDetBatchTest(TestCase):
             'item_codigo': 'PROD001',
             'qty_ship': '5.0000',
             'precio_extendido': '500.00',
+            'total_descuento': '10.00',
+            'departamento_codigo': 'DP01',
+            'centro_costo_codigo': 'CC01',
+            'actividad_codigo': 'ACT01',
         }
         defaults.update(kwargs)
         return defaults
@@ -210,6 +260,37 @@ class ProcessOEDetBatchTest(TestCase):
     def test_empty_batch_returns_zeros(self):
         result = SyncService.process_oedet_batch(company_id=self.company.id, records=[])
         self.assertEqual(result, {'inserted': 0, 'updated': 0, 'errors': []})
+
+    def test_dimensiones_fields_persisted(self):
+        """Campos de dimensiones contables (DPTO/CCOST/ACTIVIDAD) se guardan correctamente."""
+        SyncService.process_oedet_batch(
+            company_id=self.company.id,
+            records=[self._oedet_record()],
+        )
+        detalle = FacturaDetalle.objects.get(company=self.company, conteo=1)
+        self.assertEqual(detalle.departamento_codigo, 'DP01')
+        self.assertEqual(detalle.centro_costo_codigo, 'CC01')
+        self.assertEqual(detalle.actividad_codigo, 'ACT01')
+
+    def test_clasificacion_empty_when_not_sent(self):
+        """Si el agente no envía campos de clasificación, quedan vacíos sin error."""
+        record = {
+            'conteo': 2,
+            'factura_number': 1,
+            'factura_tipo': 'FAC',
+            'factura_id_sucursal': 1,
+            'item_codigo': 'PROD002',
+            'qty_ship': '1.0000',
+            'precio_extendido': '100.00',
+        }
+        result = SyncService.process_oedet_batch(
+            company_id=self.company.id,
+            records=[record],
+        )
+        self.assertEqual(result['inserted'], 1)
+        detalle = FacturaDetalle.objects.get(company=self.company, conteo=2)
+        self.assertEqual(detalle.total_descuento, Decimal('0'))
+        self.assertEqual(detalle.departamento_codigo, '')
 
     def test_watermark_updated(self):
         SyncService.process_oedet_batch(
@@ -302,17 +383,17 @@ class ProcessITEMACTBatchTest(TestCase):
         self.assertEqual(result['inserted'], 1)
         self.assertEqual(MovimientoInventario.objects.filter(company=self.company).count(), 1)
 
-    def test_upsert_updates_saldo_unidades(self):
+    def test_upsert_updates_costo_promedio(self):
         SyncService.process_itemact_batch(
             company_id=self.company.id,
-            records=[_itemact_record(saldo_unidades='10.0000')],
+            records=[_itemact_record(costo_promedio='5000.0000')],
         )
         SyncService.process_itemact_batch(
             company_id=self.company.id,
-            records=[_itemact_record(saldo_unidades='20.0000')],
+            records=[_itemact_record(costo_promedio='6000.0000')],
         )
         mov = MovimientoInventario.objects.get(company=self.company, conteo=1)
-        self.assertEqual(mov.saldo_unidades, Decimal('20.0000'))
+        self.assertEqual(mov.costo_promedio, Decimal('6000.0000'))
 
     def test_lote_vencimiento_null_allowed(self):
         result = SyncService.process_itemact_batch(

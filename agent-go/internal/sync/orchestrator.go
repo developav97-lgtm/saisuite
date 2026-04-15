@@ -67,6 +67,26 @@ func (o *Orchestrator) RunWithContext(ctx context.Context) {
 
 	o.logger.Info("starting sync orchestrator", "connections", len(enabled))
 
+	// Inbound sync: Cloud → Sai direction.
+	// - SQS transport + InboundQueueURL configurado → long-polling SQS (producción).
+	// - SyncServerPort > 0 → HTTP server local (LAN, opcional).
+	// Ambos pueden correr simultáneamente si ambos están configurados.
+	if o.cfg.Transport == "sqs" && o.cfg.SQS.InboundQueueURL != "" {
+		inbound := NewInboundSyncConsumer(o.cfg, o.logger)
+		go func() {
+			inbound.Run(ctx)
+		}()
+		o.logger.Info("inbound SQS consumer starting", "queue", o.cfg.SQS.InboundQueueURL)
+	}
+
+	// HTTP server local (fallback para redes LAN donde el agente es accesible directamente).
+	syncSrv := NewSyncServer(o.cfg, o.logger)
+	go func() {
+		if err := syncSrv.ListenAndServe(); err != nil {
+			o.logger.Error("sync server stopped unexpectedly", "error", err)
+		}
+	}()
+
 	var wg stdsync.WaitGroup
 
 	for _, conn := range enabled {

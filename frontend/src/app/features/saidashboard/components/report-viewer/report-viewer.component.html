@@ -12,9 +12,6 @@
         </button>
         <div class="report-viewer__title-block">
           <h1 class="report-viewer__title">{{ rpt.titulo }}</h1>
-          @if (rpt.descripcion) {
-            <p class="report-viewer__description">{{ rpt.descripcion }}</p>
-          }
         </div>
       </div>
 
@@ -60,12 +57,15 @@
         <app-data-table
           [data]="tableResult()"
           [loading]="executing()"
+          [fieldConfigs]="rpt.campos_config"
+          [showPaginator]="false"
           (cellClick)="onTableCellClick($event)">
         </app-data-table>
       } @else if (isPivot()) {
         <app-pivot-table
           [data]="pivotResult()"
           [loading]="executing()"
+          [fieldConfigs]="rpt.campos_config"
           (cellClick)="onPivotCellClick($event)">
         </app-pivot-table>
       } @else if (isChart()) {

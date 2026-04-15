@@ -91,8 +91,24 @@
         </div>
       }
 
+      <!-- BI Report cards grid -->
+      @if (biReportCards().length > 0) {
+        <div class="dv-charts-grid dv-bi-grid">
+          @for (card of biReportCards(); track card.id) {
+            <div class="dv-chart-cell"
+                 [style.grid-column]="'span ' + card.width"
+                 [style.grid-row]="'span ' + card.height">
+              <app-bi-report-card
+                [card]="card"
+                [dashboardId]="dashboard()!.id"
+                [dashboardFilters]="dashboardFiltersMap()" />
+            </div>
+          }
+        </div>
+      }
+
       <!-- Empty state if no cards -->
-      @if (cardsWithData().length === 0) {
+      @if (cardsWithData().length === 0 && biReportCards().length === 0) {
         <div class="sc-empty-state dv-empty">
           <mat-icon>dashboard</mat-icon>
           <p>Este dashboard no tiene tarjetas configuradas.</p>

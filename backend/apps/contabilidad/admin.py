@@ -166,17 +166,19 @@ class TributariaSaiopenAdmin(admin.ModelAdmin):
 class FacturaEncabezadoAdmin(admin.ModelAdmin):
     """Admin readonly para facturas sincronizadas desde OE."""
     list_display = [
-        'number', 'tipo', 'company', 'tercero_nombre',
-        'fecha', 'periodo', 'subtotal', 'iva', 'total',
+        'number', 'tipo', 'tipo_descripcion', 'company', 'tercero_nombre',
+        'fecha', 'periodo', 'subtotal', 'iva', 'reteica', 'total',
         'posted', 'salesman_nombre',
     ]
     list_filter = ['company', 'tipo', 'posted', 'closed', 'periodo']
-    search_fields = ['tercero_nombre', 'tercero_id', 'comentarios']
+    search_fields = ['tercero_nombre', 'tercero_id', 'tercero_razon_social', 'tipo_descripcion', 'comentarios']
     readonly_fields = [
-        'company', 'number', 'tipo', 'id_sucursal',
-        'tercero_id', 'tercero_nombre', 'salesman', 'salesman_nombre',
+        'company', 'number', 'tipo', 'tipo_descripcion', 'id_sucursal',
+        'tercero_id', 'tercero_nombre', 'tercero_razon_social',
+        'salesman', 'salesman_nombre',
         'fecha', 'duedate', 'periodo',
-        'subtotal', 'costo', 'iva', 'descuento_global', 'total',
+        'subtotal', 'costo', 'iva', 'descuento_global', 'destotal', 'otroscargos', 'total',
+        'porcrtfte', 'reteica', 'porcentaje_reteica', 'reteiva',
         'posted', 'closed', 'cod_moneda', 'comentarios', 'sincronizado_en',
     ]
     list_per_page = 50
@@ -206,8 +208,9 @@ class FacturaDetalleAdmin(admin.ModelAdmin):
         'company', 'factura', 'conteo',
         'item_codigo', 'item_descripcion', 'location',
         'qty_order', 'qty_ship', 'precio_unitario', 'precio_extendido',
-        'costo_unitario', 'valor_iva', 'porc_iva', 'descuento',
-        'margen_valor', 'margen_porcentaje', 'proyecto_codigo',
+        'costo_unitario', 'valor_iva', 'porc_iva', 'descuento', 'total_descuento',
+        'margen_valor', 'margen_porcentaje',
+        'departamento_codigo', 'centro_costo_codigo', 'actividad_codigo', 'proyecto_codigo',
         'sincronizado_en',
     ]
     list_per_page = 50
@@ -256,18 +259,16 @@ class MovimientoCarteraAdmin(admin.ModelAdmin):
 class MovimientoInventarioAdmin(admin.ModelAdmin):
     """Admin readonly para movimientos de inventario sincronizados desde ITEMACT."""
     list_display = [
-        'conteo', 'company', 'item_codigo', 'item_descripcion',
-        'fecha', 'periodo', 'cantidad', 'total',
-        'saldo_unidades', 'saldo_pesos', 'location',
+        'conteo', 'company', 'item_codigo',
+        'fecha', 'periodo', 'cantidad', 'valor_unitario', 'costo_promedio', 'total', 'location',
     ]
     list_filter = ['company', 'periodo', 'location']
-    search_fields = ['item_codigo', 'item_descripcion', 'lote', 'serie']
+    search_fields = ['item_codigo', 'lote', 'serie']
     readonly_fields = [
-        'company', 'conteo', 'item_codigo', 'item_descripcion', 'location',
+        'company', 'conteo', 'item_codigo', 'location',
         'tercero_id', 'tipo', 'batch',
         'fecha', 'periodo',
-        'cantidad', 'valor_unitario', 'costo_peps', 'total',
-        'saldo_unidades', 'saldo_pesos',
+        'cantidad', 'valor_unitario', 'costo_promedio', 'total',
         'lote', 'serie', 'lote_vencimiento', 'sincronizado_en',
     ]
     list_per_page = 50

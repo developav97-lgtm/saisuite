@@ -74,7 +74,6 @@ class Command(BaseCommand):
                 user=admin_user,
                 company=company,
                 titulo=tpl_data['titulo'],
-                descripcion=tpl_data['descripcion'],
                 es_privado=False,
                 es_template=True,
                 fuentes=tpl_data['fuentes'],

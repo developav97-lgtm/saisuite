@@ -1,12 +1,13 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  ElementRef,
+  afterEveryRender,
   computed,
   input,
   output,
+  viewChild,
 } from '@angular/core';
-import { MatTableModule } from '@angular/material/table';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { ReportBIPivotResult } from '../../models/report-bi.model';
 import { BIFieldConfig, BIFieldFormat } from '../../models/bi-field.model';
@@ -22,7 +23,7 @@ export interface PivotCellClick {
 @Component({
   selector: 'app-pivot-table',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [MatTableModule, MatTooltipModule, MatProgressBarModule],
+  imports: [MatProgressBarModule],
   templateUrl: './pivot-table.component.html',
   styleUrl: './pivot-table.component.scss',
 })
@@ -32,37 +33,101 @@ export class PivotTableComponent {
   readonly fieldConfigs = input<BIFieldConfig[]>([]);
   readonly cellClick = output<PivotCellClick>();
 
+  // ── Scroll sincronizado (top + bottom) ──────────────────────────
+  private readonly tableWrap = viewChild<ElementRef<HTMLDivElement>>('tableWrap');
+  private readonly topBar    = viewChild<ElementRef<HTMLDivElement>>('topBar');
+  private readonly phantom   = viewChild<ElementRef<HTMLDivElement>>('phantom');
+
+  constructor() {
+    // Sincronizar el ancho del phantom con el contenido real de la tabla
+    afterEveryRender(() => {
+      const wrap = this.tableWrap()?.nativeElement;
+      const ph   = this.phantom()?.nativeElement;
+      if (wrap && ph) {
+        ph.style.width = wrap.scrollWidth + 'px';
+      }
+    });
+  }
+
+  onTableScroll(event: Event): void {
+    const wrap = event.target as HTMLDivElement;
+    const top  = this.topBar()?.nativeElement;
+    if (top) top.scrollLeft = wrap.scrollLeft;
+  }
+
+  onTopScroll(event: Event): void {
+    const top  = event.target as HTMLDivElement;
+    const wrap = this.tableWrap()?.nativeElement;
+    if (wrap) wrap.scrollLeft = top.scrollLeft;
+  }
+
+  // ── Formato ────────────────────────────────────────────────────
+
   private readonly formatMap = computed(() => {
     const map = new Map<string, BIFieldFormat>();
     this.fieldConfigs().forEach(fc => {
       if (fc.format) {
-        map.set(fc.field, fc.format);
         const agg = (fc.aggregation ?? 'sum').toLowerCase();
+        // Fuente primaria
+        map.set(fc.field, fc.format);
         map.set(`${fc.field}_${agg}`, fc.format);
+        // Fuente secundaria — dimensión: sec_{source}_{field}
+        map.set(`sec_${fc.source}_${fc.field}`, fc.format);
+        // Fuente secundaria — métrica: {source}_{field}_{agg}
+        map.set(`${fc.source}_${fc.field}_${agg}`, fc.format);
         if (fc.is_calculated) map.set(fc.field, fc.format);
       }
     });
     return map;
   });
 
-  /** True cuando no hay dimensión de columna (pivot sin columnas → una col por métrica). */
   readonly noColumnMode = computed(() => this.data()?.no_column_mode ?? false);
 
-  /** Number of row-axis dimensions */
-  readonly rowDimCount = computed(() => {
-    const d = this.data();
-    if (!d || d.row_headers.length === 0) return 1;
-    return Object.keys(d.row_headers[0]).length;
+  // ── Mapa field-name → label configurado por el usuario ─────────
+  // Incluye el patrón de anotación secundaria: sec_{source}_{field}
+  // Solo muestra badge de fuente cuando la misma etiqueta aparece en varias fuentes.
+  private readonly shortLabels: Record<string, string> = {
+    gl: 'GL', facturacion: 'FAC', facturacion_detalle: 'DET',
+    cartera: 'CART', inventario: 'INV', terceros_saiopen: 'TER',
+    productos: 'PROD', cuentas_contables: 'CC',
+  };
+
+  private readonly dimLabelMap = computed(() => {
+    const map = new Map<string, string>();
+    const configs = this.fieldConfigs();
+
+    // Detectar etiquetas repetidas entre fuentes
+    const labelSources = new Map<string, string[]>();
+    for (const fc of configs) {
+      if (!labelSources.has(fc.label)) labelSources.set(fc.label, []);
+      labelSources.get(fc.label)!.push(fc.source);
+    }
+
+    for (const fc of configs) {
+      const conflict = (labelSources.get(fc.label)?.length ?? 0) > 1;
+      const badge = this.shortLabels[fc.source] ?? fc.source.slice(0, 3).toUpperCase();
+      const display = conflict ? `${fc.label} (${badge})` : fc.label;
+      // Clave raw: solo la primera config con este field name (fuente primaria).
+      // La secundaria usa únicamente su clave sec_*, para no sobreescribir la primaria.
+      if (!map.has(fc.field)) {
+        map.set(fc.field, display);
+      }
+      // Clave de anotación secundaria: sec_{source}_{field}
+      map.set(`sec_${fc.source}_${fc.field}`, display);
+    }
+    return map;
   });
 
-  /** Row dimension field names */
+  getDimLabel(fieldName: string): string {
+    return this.dimLabelMap().get(fieldName) ?? fieldName;
+  }
+
   readonly rowDimFields = computed(() => {
     const d = this.data();
     if (!d || d.row_headers.length === 0) return [];
     return Object.keys(d.row_headers[0]);
   });
 
-  /** Column header display strings (solo modo con-columna) */
   readonly colKeys = computed(() => {
     const d = this.data();
     if (!d || this.noColumnMode()) return [];
@@ -75,23 +140,13 @@ export class PivotTableComponent {
     return d.col_headers.map(h => Object.values(h).join(' / '));
   });
 
-  /** Value alias de la primera métrica (modo con-columna, legacy) */
-  readonly valueAlias = computed(() => {
-    const d = this.data();
-    return d?.value_aliases?.[0] ?? '';
-  });
-
-  /** Todas las métricas disponibles */
+  readonly valueAlias = computed(() => this.data()?.value_aliases?.[0] ?? '');
   readonly valueAliases = computed(() => this.data()?.value_aliases ?? []);
 
-  /** Row data */
   readonly rowData = computed(() => {
     const d = this.data();
     if (!d) return [];
-    return d.row_headers.map(h => ({
-      headers: h,
-      key: this.headerToKey(h),
-    }));
+    return d.row_headers.map(h => ({ headers: h, key: this.headerToKey(h) }));
   });
 
   readonly hasData = computed(() => {
@@ -99,50 +154,31 @@ export class PivotTableComponent {
     return d !== null && d.row_headers.length > 0;
   });
 
-  // ── Etiquetas de métricas ────────────────────────────────────
+  // ── Labels ─────────────────────────────────────────────────────
 
   getMetricLabel(alias: string): string {
     const d = this.data();
     if (d?.value_labels?.[alias]) return d.value_labels[alias];
-    // Fallback: buscar en fieldConfigs
     const fc = this.fieldConfigs().find(f => {
       const agg = (f.aggregation ?? 'SUM').toLowerCase();
       return `${f.field}_${agg}` === alias;
     });
-    if (fc) return fc.label;
-    return alias;
+    return fc?.label ?? alias;
   }
 
-  // ── Modo sin-columna: valores desde row_totals ───────────────
+  // ── Valores modo sin-columna ────────────────────────────────────
 
   getMetricValue(rowKey: string, alias: string): number | null {
-    const d = this.data();
-    if (!d) return null;
-    const totals = d.row_totals[rowKey];
-    if (!totals) return null;
-    return (totals[alias] as number) ?? null;
+    const totals = this.data()?.row_totals[rowKey];
+    return totals ? (totals[alias] as number) ?? null : null;
   }
 
   getGrandTotalForAlias(alias: string): number | null {
-    const d = this.data();
-    if (!d || !d.grand_total) return null;
-    return (d.grand_total[alias] as number) ?? null;
+    const gt = this.data()?.grand_total;
+    return gt ? (gt[alias] as number) ?? null : null;
   }
 
-  // ── Formato de valores ───────────────────────────────────────
-
-  getMetricFormat(alias: string): BIFieldFormat {
-    return this.formatMap().get(alias) ?? 'number';
-  }
-
-  formatValue(value: number | null, alias: string): string {
-    if (value === null) return '—';
-    const fmt = this.getMetricFormat(alias);
-    const n = value.toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
-    return fmt === 'currency' ? `$ ${n}` : n;
-  }
-
-  // ── Modo con-columna: métodos por alias ──────────────────────
+  // ── Valores modo con-columna ────────────────────────────────────
 
   getCellValueForAlias(rowKey: string, colKey: string, alias: string): number | null {
     const cell = this.data()?.data[`${rowKey}___${colKey}`];
@@ -159,41 +195,15 @@ export class PivotTableComponent {
     return totals ? (totals[alias] as number) ?? null : null;
   }
 
-  // ── Modo con-columna (original) ──────────────────────────────
-
-  getCellValue(rowKey: string, colKey: string): number | null {
-    const d = this.data();
-    if (!d) return null;
-    const cellKey = `${rowKey}___${colKey}`;
-    const cell = d.data[cellKey];
-    if (!cell) return null;
-    const alias = this.valueAlias();
-    return alias ? (cell[alias] as number) ?? null : null;
+  getMetricFormat(alias: string): BIFieldFormat {
+    return this.formatMap().get(alias) ?? 'number';
   }
 
-  getRowTotal(rowKey: string): number | null {
-    const d = this.data();
-    if (!d) return null;
-    const totals = d.row_totals[rowKey];
-    if (!totals) return null;
-    const alias = this.valueAlias();
-    return alias ? (totals[alias] as number) ?? null : null;
-  }
-
-  getColTotal(colKey: string): number | null {
-    const d = this.data();
-    if (!d) return null;
-    const totals = d.col_totals[colKey];
-    if (!totals) return null;
-    const alias = this.valueAlias();
-    return alias ? (totals[alias] as number) ?? null : null;
-  }
-
-  getGrandTotal(): number | null {
-    const d = this.data();
-    if (!d || !d.grand_total) return null;
-    const alias = this.valueAlias();
-    return alias ? (d.grand_total[alias] as number) ?? null : null;
+  formatValue(value: number | null, alias: string): string {
+    const fmt = this.getMetricFormat(alias);
+    if (value === null) return fmt === 'currency' ? '$ 0' : '—';
+    const n = value.toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    return fmt === 'currency' ? `$ ${n}` : n;
   }
 
   onCellClick(rowKey: string, colKey: string, value: number | null): void {

@@ -453,13 +453,22 @@ class AgentToken(models.Model):
     No expira — se revoca manualmente rotando el token.
     Un company puede tener múltiples tokens (multi-PC), pero normalmente uno activo.
     """
-    id         = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    company    = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='agent_tokens')
-    token      = models.CharField(max_length=64, unique=True, editable=False)
-    label      = models.CharField(max_length=100, blank=True, help_text='Etiqueta para identificar el equipo, ej: "PC principal oficina"')
-    is_active  = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    last_used  = models.DateTimeField(null=True, blank=True)
+    id              = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    company         = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='agent_tokens')
+    token           = models.CharField(max_length=64, unique=True, editable=False)
+    label           = models.CharField(max_length=100, blank=True, help_text='Etiqueta para identificar el equipo, ej: "PC principal oficina"')
+    is_active       = models.BooleanField(default=True)
+    # URL de la cola SQS de entrada del agente (dirección SaiCloud → Sai).
+    # Cada empresa debe tener su propia cola dedicada para que los mensajes
+    # no sean visibles a otros agentes. Ejemplo:
+    #   https://sqs.us-east-1.amazonaws.com/123456789/cloud-to-saicloud-empresa1
+    # Dejar vacío si no se usa push Cloud→Sai.
+    sync_server_url = models.CharField(
+        max_length=500, blank=True, default='',
+        help_text='URL de la cola SQS de entrada del agente (Cloud→Sai), ej: https://sqs.us-east-1.amazonaws.com/.../cloud-to-saicloud-empresa1'
+    )
+    created_at      = models.DateTimeField(auto_now_add=True)
+    last_used       = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         verbose_name = 'Token de agente'
