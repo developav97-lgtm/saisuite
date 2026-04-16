@@ -12,6 +12,12 @@
         </button>
         <div class="report-viewer__title-block">
           <h1 class="report-viewer__title">{{ rpt.titulo }}</h1>
+          @if (!esPropietario()) {
+            <span class="report-viewer__shared-badge"
+                  [matTooltip]="'Compartido contigo por ' + rpt.user.email">
+              <mat-icon>group</mat-icon>Compartido
+            </span>
+          }
         </div>
       </div>
 
@@ -40,9 +46,11 @@
             [title]="rpt.titulo"
             [reportId]="rpt.id">
           </app-export-menu>
-          <button mat-icon-button (click)="openShareDialog()" matTooltip="Compartir">
-            <mat-icon>share</mat-icon>
-          </button>
+          @if (esPropietario()) {
+            <button mat-icon-button (click)="openShareDialog()" matTooltip="Compartir">
+              <mat-icon>share</mat-icon>
+            </button>
+          }
           <button mat-stroked-button (click)="goEdit()">
             <mat-icon>edit</mat-icon>
             Editar

@@ -131,32 +131,69 @@ export class ExportMenuComponent {
   private pivotToSheet(d: ReportBIPivotResult) {
     const rows: Record<string, unknown>[] = [];
     const rowDims = d.row_headers.length > 0 ? Object.keys(d.row_headers[0]) : [];
-    const colLabels = d.col_headers.map(h => Object.values(h).join(' / '));
-    const alias = d.value_aliases[0] ?? '';
+    const aliases = d.value_aliases.length > 0 ? d.value_aliases : [];
+    const label = (alias: string) => d.value_labels?.[alias] ?? alias;
+    const multiVal = aliases.length > 1;
 
-    for (const rh of d.row_headers) {
-      const rk = Object.values(rh).map(v => String(v)).join('|');
-      const row: Record<string, unknown> = { ...rh };
-      for (let ci = 0; ci < d.col_headers.length; ci++) {
-        const ck = Object.values(d.col_headers[ci]).map(v => String(v)).join('|');
-        const cell = d.data[`${rk}___${ck}`];
-        row[colLabels[ci]] = cell?.[alias] ?? null;
+    // Replica la misma lógica del backend: None → '' (no 'null')
+    const toKey = (v: unknown) => (v === null || v === undefined) ? '' : String(v);
+    const rowKey = (rh: Record<string, unknown>) => Object.values(rh).map(toKey).join('|');
+    const colKey = (ch: Record<string, unknown>) => Object.values(ch).map(toKey).join('|');
+
+    if (d.no_column_mode || d.col_headers.length === 0) {
+      // Sin dimensión de columna — cada métrica es una columna directa
+      for (const rh of d.row_headers) {
+        const rk = rowKey(rh);
+        const row: Record<string, unknown> = { ...rh };
+        const rt = d.row_totals[rk];
+        for (const alias of aliases) {
+          row[label(alias)] = rt?.[alias] ?? null;
+        }
+        rows.push(row);
       }
-      const rt = d.row_totals[rk];
-      row['Total'] = rt?.[alias] ?? null;
-      rows.push(row);
+      // Fila de totales
+      const totalRow: Record<string, unknown> = {};
+      rowDims.forEach((dim, i) => { totalRow[dim] = i === 0 ? 'Total' : ''; });
+      for (const alias of aliases) {
+        totalRow[label(alias)] = d.grand_total?.[alias] ?? null;
+      }
+      rows.push(totalRow);
+    } else {
+      // Modo cruzado: col_headers definen las columnas
+      const colLabels = d.col_headers.map(h => Object.values(h).join(' / '));
+      for (const rh of d.row_headers) {
+        const rk = rowKey(rh);
+        const row: Record<string, unknown> = { ...rh };
+        for (let ci = 0; ci < d.col_headers.length; ci++) {
+          const ck = colKey(d.col_headers[ci]);
+          const cell = d.data[`${rk}___${ck}`];
+          for (const alias of aliases) {
+            const col = multiVal ? `${colLabels[ci]} - ${label(alias)}` : colLabels[ci];
+            row[col] = cell?.[alias] ?? null;
+          }
+        }
+        const rt = d.row_totals[rk];
+        for (const alias of aliases) {
+          row[multiVal ? `Total - ${label(alias)}` : 'Total'] = rt?.[alias] ?? null;
+        }
+        rows.push(row);
+      }
+      // Fila de totales
+      const totalRow: Record<string, unknown> = {};
+      rowDims.forEach((dim, i) => { totalRow[dim] = i === 0 ? 'Total' : ''; });
+      for (let ci = 0; ci < d.col_headers.length; ci++) {
+        const ck = colKey(d.col_headers[ci]);
+        const ct = d.col_totals[ck];
+        for (const alias of aliases) {
+          const col = multiVal ? `${colLabels[ci]} - ${label(alias)}` : colLabels[ci];
+          totalRow[col] = ct?.[alias] ?? null;
+        }
+      }
+      for (const alias of aliases) {
+        totalRow[multiVal ? `Total - ${label(alias)}` : 'Total'] = d.grand_total?.[alias] ?? null;
+      }
+      rows.push(totalRow);
     }
-
-    // Fila de totales
-    const totalRow: Record<string, unknown> = {};
-    rowDims.forEach((dim, i) => { totalRow[dim] = i === 0 ? 'Total' : ''; });
-    for (let ci = 0; ci < d.col_headers.length; ci++) {
-      const ck = Object.values(d.col_headers[ci]).map(v => String(v)).join('|');
-      const ct = d.col_totals[ck];
-      totalRow[colLabels[ci]] = ct?.[alias] ?? null;
-    }
-    totalRow['Total'] = d.grand_total?.[alias] ?? null;
-    rows.push(totalRow);
 
     return utils.json_to_sheet(rows);
   }

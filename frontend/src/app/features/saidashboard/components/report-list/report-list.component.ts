@@ -70,6 +70,10 @@ export class ReportListComponent implements OnInit {
 
   readonly displayedColumns = ['es_favorito', 'titulo', 'fuentes', 'tipo_visualizacion', 'updated_at', 'acciones'];
 
+  esPropietario(report: ReportBIListItem): boolean {
+    return report.user_id === this.auth.currentUser()?.id;
+  }
+
   // ── Computed ───────────────────────────────────────────────
   readonly filteredReports = computed(() => {
     const query = this.searchText().toLowerCase().trim();
@@ -193,15 +197,22 @@ export class ReportListComponent implements OnInit {
   }
 
   compartir(report: ReportBIListItem): void {
-    this.dialog.open(ReportShareDialogComponent, {
-      width: '520px',
-      data: {
-        reportId: report.id,
-        reportTitle: report.titulo,
-        existingShares: [],
-        currentUserId: this.auth.currentUser()?.id ?? '',
-      } satisfies ReportShareDialogData,
-    });
+    this.reportBIService.getById(report.id)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: detail => {
+          this.dialog.open(ReportShareDialogComponent, {
+            width: '520px',
+            data: {
+              reportId: detail.id,
+              reportTitle: detail.titulo,
+              existingShares: detail.shares ?? [],
+              currentUserId: this.auth.currentUser()?.id ?? '',
+            } satisfies ReportShareDialogData,
+          });
+        },
+        error: () => this.toast.error('No se pudo cargar el reporte.'),
+      });
   }
 
   confirmarEliminar(report: ReportBIListItem): void {

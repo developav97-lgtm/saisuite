@@ -24,7 +24,8 @@ ALLOWED_ATTRIBUTES = {
 
 # Patrón genérico: [CUALQUIER-CODIGO-123] — el prefijo lo define la empresa,
 # no lo valida el sistema. Se busca en todos los catálogos registrados.
-ENTITY_PATTERN = re.compile(r'\[([A-Z0-9]{2,8}-\d{3,})\]')
+# Soporta multi-segmento: [FAC-001], [POS-SAL-2026], [PCON-0002], etc.
+ENTITY_PATTERN = re.compile(r'\[([A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*-\d{3,})\]')
 
 # Registro de entidades enlazables desde el chat.
 # Cada entrada: (app_module, ModelClass, tipo_legible, url_base_angular, nombre_field)

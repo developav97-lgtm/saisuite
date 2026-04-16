@@ -19,6 +19,19 @@ services:
       timeout: 5s
       retries: 5
 
+  # ── Redis (channels + cache) ─────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: saisuite-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   # ── Django API ───────────────────────────────────────────────────
   backend:
     build: ./backend
@@ -32,8 +45,13 @@ services:
       - "8000:8000"
     env_file:
       - ./backend/.env
+    environment:
+      # Sobreescribe Upstash para dev local — usa Redis del contenedor
+      - UPSTASH_REDIS_URL=redis://redis:6379
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
 
   # ── SQS Worker (Agente Saiopen → Django) ────────────────────────
@@ -47,8 +65,12 @@ services:
       - ./docs:/app/docs
     env_file:
       - ./backend/.env
+    environment:
+      - UPSTASH_REDIS_URL=redis://redis:6379
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "pidof python || exit 1"]

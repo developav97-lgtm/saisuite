@@ -86,6 +86,7 @@ export interface ReportBIListItem {
   tipo_visualizacion: ReportBIVisualization;
   categoria_galeria: ReportBICategory | null;
   user_email: string;
+  user_id: string;
   created_at: string;
   updated_at: string;
 }

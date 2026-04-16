@@ -68,6 +68,10 @@ export class ReportViewerComponent implements OnInit {
   readonly result = signal<ReportBIExecuteResult | null>(null);
   readonly drillDown = signal<DrillDownData | null>(null);
 
+  readonly esPropietario = computed(() =>
+    this.report()?.user.id === this.auth.currentUser()?.id,
+  );
+
   readonly vizLabel = computed(() => {
     const r = this.report();
     return r ? VISUALIZATION_LABELS[r.tipo_visualizacion] : '';

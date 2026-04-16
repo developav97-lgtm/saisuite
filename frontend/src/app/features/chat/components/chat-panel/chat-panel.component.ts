@@ -15,6 +15,7 @@ import { PresenceService } from '../../services/presence.service';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { ChatStateService } from '../../../../core/services/chat-state.service';
 import { Conversacion } from '../../models/chat.models';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-chat-panel',
@@ -77,7 +78,8 @@ import { Conversacion } from '../../models/chat.models';
             [conversacion]="activeConversacion()!"
             [currentUserId]="currentUserId()"
             [jumpToId]="jumpTarget()"
-            (back)="backToList()" />
+            (back)="backToList()"
+            (navigate)="close.emit()" />
         } @else {
           <app-chat-list
             [conversaciones]="conversaciones()"

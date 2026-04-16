@@ -26,6 +26,26 @@
     font-weight: 600;
   }
 
+  &__shared-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    margin-top: 4px;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+    background: var(--sc-primary-50, rgba(21, 101, 192, 0.1));
+    color: var(--sc-primary, #1565c0);
+    cursor: default;
+
+    mat-icon {
+      font-size: 14px;
+      width: 14px;
+      height: 14px;
+    }
+  }
+
   &__description {
     margin: 4px 0 0;
     font-size: 14px;

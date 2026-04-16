@@ -12,7 +12,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
-import { DatePipe, DecimalPipe } from '@angular/common';
+import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { AIUsageSummary, Conversacion, Mensaje, ChatReadEvent } from '../../models/chat.models';
@@ -66,7 +66,7 @@ const BOT_SUGGESTIONS: Record<string, string[]> = {
   selector: 'app-chat-window',
   imports: [
     MatIconModule, MatButtonModule, MatProgressBarModule, MatTooltipModule, MatInputModule,
-    MatChipsModule, DatePipe, DecimalPipe, FormsModule, MessageInputComponent,
+    MatChipsModule, DatePipe, FormsModule, MessageInputComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
@@ -101,19 +101,6 @@ const BOT_SUGGESTIONS: Record<string, string[]> = {
         </div>
       </div>
 
-      @if (aiUsage(); as usage) {
-        <div class="chat-window__quota-bar"
-             [class.chat-window__quota-bar--warn]="tokenPct() >= 80"
-             [class.chat-window__quota-bar--danger]="quotaExceeded()">
-          <mat-progress-bar
-            mode="determinate"
-            [value]="tokenPct()"
-            [color]="tokenPct() >= 80 ? 'warn' : 'primary'" />
-          <span class="chat-window__quota-label">
-            {{ usage.ai_tokens_used | number }} / {{ usage.ai_tokens_quota | number }} tokens
-          </span>
-        </div>
-      }
     }
 
     <div class="chat-window__messages"
@@ -1037,30 +1024,6 @@ const BOT_SUGGESTIONS: Record<string, string[]> = {
       letter-spacing: 0.05em;
     }
 
-    .chat-window__quota-bar {
-      padding: 4px 16px 2px;
-      background: var(--sc-surface-card, #fff);
-      border-bottom: 1px solid var(--sc-surface-border, #e2e8f0);
-      flex-shrink: 0;
-
-      mat-progress-bar { border-radius: 4px; }
-    }
-
-    .chat-window__quota-label {
-      font-size: 0.7rem;
-      color: var(--sc-text-secondary, #757575);
-      display: block;
-      text-align: right;
-      margin-top: 2px;
-    }
-
-    .chat-window__quota-bar--warn .chat-window__quota-label {
-      color: #f57c00;
-    }
-
-    .chat-window__quota-bar--danger .chat-window__quota-label {
-      color: #d32f2f;
-    }
 
     .chat-window__quota-exceeded {
       display: flex;
@@ -1198,6 +1161,8 @@ export class ChatWindowComponent implements OnInit {
   readonly currentUserId = input('');
   readonly jumpToId = input<string | null>(null);
   readonly back = output<void>();
+  /** Emitted when the user clicks an entity link — parent should close the chat panel. */
+  readonly navigate = output<void>();
 
   readonly isBot = computed(() => !!this.conversacion().bot_context);
 
@@ -1238,11 +1203,7 @@ export class ChatWindowComponent implements OnInit {
     if (!usage || usage.ai_tokens_quota === 0) return false;
     return usage.ai_tokens_used >= usage.ai_tokens_quota;
   });
-  readonly tokenPct = computed(() => {
-    const usage = this.aiUsage();
-    if (!usage || usage.ai_tokens_quota === 0) return 0;
-    return Math.min(100, Math.round((usage.ai_tokens_used / usage.ai_tokens_quota) * 100));
-  });
+
 
   // Map<mensajeId, rating> para mostrar el estado activo del feedback
   readonly feedbackMap = signal<Map<string, 1 | -1>>(new Map());
@@ -1505,7 +1466,10 @@ export class ChatWindowComponent implements OnInit {
         responde_a_id,
       }).subscribe({
         next: (msg) => {
-          this.messages.update(msgs => [...msgs, msg]);
+          // El WS puede llegar antes que la respuesta HTTP — evitar duplicado
+          if (!this.messages().some(m => m.id === msg.id)) {
+            this.messages.update(msgs => [...msgs, msg]);
+          }
           this.scrollToBottom();
         },
         error: (err) => {
@@ -1532,7 +1496,9 @@ export class ChatWindowComponent implements OnInit {
           responde_a_id,
         }).subscribe({
           next: (msg) => {
-            this.messages.update(msgs => [...msgs, msg]);
+            if (!this.messages().some(m => m.id === msg.id)) {
+              this.messages.update(msgs => [...msgs, msg]);
+            }
             this.scrollToBottom();
           },
         });
@@ -1558,7 +1524,9 @@ export class ChatWindowComponent implements OnInit {
             responde_a_id,
           }).subscribe({
             next: (msg) => {
-              this.messages.update(msgs => [...msgs, msg]);
+              if (!this.messages().some(m => m.id === msg.id)) {
+                this.messages.update(msgs => [...msgs, msg]);
+              }
               this.scrollToBottom();
             },
           });
@@ -1738,20 +1706,40 @@ export class ChatWindowComponent implements OnInit {
   }
 
   onMessagesClick(event: MouseEvent): void {
-    // setPointerCapture() in onSwipeStart redirects click's target to the row element,
-    // so event.target.closest() won't find the <a>. composedPath() contains the full
-    // original path from innermost element to document, working around this.
-    const link = (event.composedPath() as Element[]).find(
-      (el): el is HTMLAnchorElement =>
-        el instanceof HTMLAnchorElement && el.classList.contains('chat-entity-link'),
-    );
-    if (!link) return;
-    event.preventDefault();
-    const href = link.getAttribute('href');
-    if (href) {
-      this.router.navigateByUrl(href);
-      this.back.emit();
+    const target = event.target as Element | null;
+
+    // 1. closest() — works for mouse and synthetic clicks where target is the <a> or child
+    let link: HTMLAnchorElement | null =
+      target?.closest<HTMLAnchorElement>('a.chat-entity-link') ?? null;
+
+    // 2. composedPath() — fallback when Angular/zone wrapping shifts the target
+    if (!link) {
+      link = (event.composedPath() as Element[]).find(
+        (el): el is HTMLAnchorElement =>
+          el instanceof HTMLAnchorElement && el.classList.contains('chat-entity-link'),
+      ) ?? null;
     }
+
+    // 3. elementFromPoint — handles mobile touch where setPointerCapture() in
+    // onSwipeStart redirects the click event to the row element. The click
+    // coordinates still reflect the actual touch position so we can recover
+    // the real target element directly from the viewport coordinates.
+    if (!link && event.clientX && event.clientY) {
+      link = document.elementFromPoint(event.clientX, event.clientY)
+        ?.closest<HTMLAnchorElement>('a.chat-entity-link') ?? null;
+    }
+
+    if (!link) return;
+    const href = link.getAttribute('href');
+    if (!href) return;
+    event.preventDefault();
+    this.navigate.emit();
+    const segments = href.split('/').filter(s => s.length > 0);
+    if (segments.length === 0) return;
+    segments[0] = '/' + segments[0];
+    this.router.navigate(segments).then(ok => {
+      if (!ok) window.location.href = href;
+    });
   }
 
   // ── Swipe-to-reply + Long press context menu ─────────────────────

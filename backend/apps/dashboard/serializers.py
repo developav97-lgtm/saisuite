@@ -259,13 +259,14 @@ class ModuleTrialSerializer(serializers.ModelSerializer):
 class ReportBIListSerializer(serializers.ModelSerializer):
     """Serializer de listado de reportes BI -- campos mínimos."""
     user_email = serializers.CharField(source='user.email', read_only=True)
+    user_id = serializers.UUIDField(source='user.id', read_only=True)
 
     class Meta:
         model = ReportBI
         fields = [
             'id', 'titulo', 'es_privado',
             'es_favorito', 'es_template', 'fuentes',
-            'tipo_visualizacion', 'categoria_galeria', 'user_email',
+            'tipo_visualizacion', 'categoria_galeria', 'user_email', 'user_id',
             'created_at', 'updated_at',
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']

@@ -78,6 +78,11 @@
               <th mat-header-cell *matHeaderCellDef>Título</th>
               <td mat-cell *matCellDef="let row">
                 <span class="report-list__report-title">{{ row.titulo }}</span>
+                @if (!esPropietario(row)) {
+                  <span class="report-list__shared-badge" matTooltip="Compartido contigo por {{ row.user_email }}">
+                    <mat-icon>group</mat-icon>Compartido
+                  </span>
+                }
               </td>
             </ng-container>
 
@@ -125,14 +130,16 @@
                     <mat-icon>content_copy</mat-icon>
                     <span>Duplicar</span>
                   </button>
-                  <button mat-menu-item (click)="compartir(row)">
-                    <mat-icon>share</mat-icon>
-                    <span>Compartir</span>
-                  </button>
-                  <button mat-menu-item (click)="confirmarEliminar(row)">
-                    <mat-icon color="warn">delete</mat-icon>
-                    <span>Eliminar</span>
-                  </button>
+                  @if (esPropietario(row)) {
+                    <button mat-menu-item (click)="compartir(row)">
+                      <mat-icon>share</mat-icon>
+                      <span>Compartir</span>
+                    </button>
+                    <button mat-menu-item (click)="confirmarEliminar(row)">
+                      <mat-icon color="warn">delete</mat-icon>
+                      <span>Eliminar</span>
+                    </button>
+                  }
                 </mat-menu>
               </td>
             </ng-container>
