@@ -17,6 +17,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatChipsModule } from '@angular/material/chips';
+import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 
 import {
@@ -50,26 +52,36 @@ const TITULOS = [
     MatProgressBarModule,
     MatTooltipModule,
     MatChipsModule,
+    MatPaginatorModule,
   ],
   templateUrl: './gl-viewer-page.component.html',
   styleUrl: './gl-viewer-page.component.scss',
 })
 export class GlViewerPageComponent implements OnInit {
-  readonly Math = Math;
   private readonly svc = inject(ContabilidadService);
   private readonly fb  = inject(FormBuilder);
+  private readonly snackBar = inject(MatSnackBar);
 
   readonly titulos = TITULOS;
 
   readonly loading     = signal(false);
   readonly movimientos = signal<MovimientoContable[]>([]);
   readonly totalCount  = signal(0);
+  readonly pageIndex   = signal(0);
+  readonly pageSize    = signal(25);
+  readonly pageSizeOptions = [10, 25, 50, 100];
 
   readonly totalDebito = computed(() =>
     this.movimientos().reduce((acc, m) => acc + parseFloat(m.debito || '0'), 0)
   );
   readonly totalCredito = computed(() =>
     this.movimientos().reduce((acc, m) => acc + parseFloat(m.credito || '0'), 0)
+  );
+  readonly balanceado = computed(() =>
+    Math.abs(this.totalDebito() - this.totalCredito()) < 1
+  );
+  readonly isEmpty = computed(() =>
+    !this.loading() && this.movimientos().length === 0
   );
 
   readonly displayedColumns = [
@@ -85,27 +97,49 @@ export class GlViewerPageComponent implements OnInit {
   });
 
   ngOnInit(): void {
-    this.cargar({});
+    this.cargar(this.buildFiltros(this.form.value));
     this.form.valueChanges.pipe(
       debounceTime(400),
       distinctUntilChanged((a, b) => JSON.stringify(a) === JSON.stringify(b)),
-    ).subscribe(v => this.cargar(this.buildFiltros(v)));
+    ).subscribe(v => {
+      this.pageIndex.set(0);
+      this.cargar(this.buildFiltros(v));
+    });
   }
 
   cargar(filtros: GLFiltros): void {
     this.loading.set(true);
-    this.svc.getMovimientos(filtros).subscribe({
+    const withPaging: GLFiltros = {
+      ...filtros,
+      page: this.pageIndex() + 1,
+      page_size: this.pageSize(),
+    };
+    this.svc.getMovimientos(withPaging).subscribe({
       next: res => {
         this.movimientos.set(res.results);
         this.totalCount.set(res.count);
         this.loading.set(false);
       },
-      error: () => this.loading.set(false),
+      error: () => {
+        this.loading.set(false);
+        this.snackBar.open(
+          'Error al cargar movimientos contables. Intenta nuevamente.',
+          'Cerrar',
+          { panelClass: 'sc-snackbar-error', duration: 5000 },
+        );
+      },
     });
+  }
+
+  onPage(e: PageEvent): void {
+    this.pageIndex.set(e.pageIndex);
+    this.pageSize.set(e.pageSize);
+    this.cargar(this.buildFiltros(this.form.value));
   }
 
   limpiar(): void {
     this.form.reset({ periodo: '', titulo_codigo: '', search: '', fecha_inicio: '', fecha_fin: '' });
+    this.pageIndex.set(0);
   }
 
   private buildFiltros(v: typeof this.form.value): GLFiltros {

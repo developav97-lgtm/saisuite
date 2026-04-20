@@ -1,7 +1,7 @@
 <div class="gl-page">
   <header class="page-header">
     <h1 class="page-title">
-      <mat-icon>receipt_long</mat-icon>
+      <mat-icon aria-hidden="true">receipt_long</mat-icon>
       Libro Mayor (GL)
     </h1>
     @if (totalCount() > 0) {
@@ -128,18 +128,29 @@
 
       <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
       <tr mat-row *matRowDef="let row; columns: displayedColumns;" class="gl-row"></tr>
-
-      <!-- Empty state -->
-      <tr class="mat-row" *matNoDataRow>
-        <td [attr.colspan]="displayedColumns.length">
-          <div class="empty-state">
-            <mat-icon>receipt_long</mat-icon>
-            <p>No se encontraron movimientos con los filtros aplicados.</p>
-          </div>
-        </td>
-      </tr>
     </table>
   </div>
+
+  <!-- Empty state (fuera de mat-table, regla canónica) -->
+  @if (isEmpty()) {
+    <div class="sc-empty-state gl-empty-state">
+      <mat-icon aria-hidden="true">receipt_long</mat-icon>
+      <p>No se encontraron movimientos con los filtros aplicados.</p>
+    </div>
+  }
+
+  <!-- Paginator server-side -->
+  @if (totalCount() > 0) {
+    <mat-paginator
+      [length]="totalCount()"
+      [pageIndex]="pageIndex()"
+      [pageSize]="pageSize()"
+      [pageSizeOptions]="pageSizeOptions"
+      (page)="onPage($event)"
+      showFirstLastButtons
+      aria-label="Paginación de movimientos contables">
+    </mat-paginator>
+  }
 
   <!-- Totales -->
   @if (movimientos().length > 0) {
@@ -157,7 +168,7 @@
           <span class="total-name">Total Crédito:</span>
           <span class="total-value credito">{{ formatMoney(totalCredito()) }}</span>
         </span>
-        <span class="total-item balance" [class.balanced]="Math.abs(totalDebito() - totalCredito()) < 1">
+        <span class="total-item balance" [class.balanced]="balanceado()">
           <span class="total-name">Balance:</span>
           <span class="total-value">{{ formatMoney(totalDebito() - totalCredito()) }}</span>
         </span>

@@ -38,6 +38,8 @@ export interface GLFiltros {
   fecha_inicio?: string;
   fecha_fin?: string;
   search?: string;
+  page?: number;
+  page_size?: number;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -54,6 +56,8 @@ export class ContabilidadService {
     if (filtros.fecha_inicio)  params = params.set('fecha_inicio', filtros.fecha_inicio);
     if (filtros.fecha_fin)     params = params.set('fecha_fin', filtros.fecha_fin);
     if (filtros.search)        params = params.set('search', filtros.search);
+    if (filtros.page)          params = params.set('page', String(filtros.page));
+    if (filtros.page_size)     params = params.set('page_size', String(filtros.page_size));
 
     return this.http.get<GLListResponse>(`${this.base}/movimientos/`, { params });
   }

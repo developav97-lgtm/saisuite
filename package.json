@@ -1,4 +1,10 @@
 {
+  "scripts": {
+    "start": "cd frontend && npm start",
+    "start:backend": "docker-compose up backend",
+    "test:frontend": "cd frontend && npm test",
+    "validate-marco": ".claude/scripts/validate-marco.sh"
+  },
   "devDependencies": {
     "@playwright/mcp": "^0.0.68"
   }

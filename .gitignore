@@ -80,7 +80,11 @@ n8n/.n8n/
 # Scripts backup
 scripts/*.bak
 .playwright-mcp/
-.claude/
+
+# .claude/ — versionar el marco agentic, pero ignorar privados
+.claude/settings.local.json
+.claude/worktrees/
+.claude/*.cache
 
 # Carpetas externas (no parte del proyecto)
 agency-agents/
