@@ -1,8 +1,8 @@
-<div class="le-page">
+<div class="le-page" role="alert" aria-live="assertive">
   <div class="le-card">
 
-    @if (isSessionExpired) {
-      <mat-icon class="le-icon le-icon--session">devices_off</mat-icon>
+    @if (isSessionExpired()) {
+      <mat-icon class="le-icon le-icon--session" aria-hidden="true">devices_off</mat-icon>
       <h1 class="le-title">Sesión cerrada</h1>
       <p class="le-subtitle">
         Tu sesión fue cerrada porque iniciaste sesión en otro dispositivo,
@@ -10,12 +10,12 @@
       </p>
       <div class="le-actions">
         <button mat-raised-button color="primary" (click)="logout()">
-          <mat-icon>login</mat-icon>
+          <mat-icon aria-hidden="true">login</mat-icon>
           Volver a iniciar sesión
         </button>
       </div>
     } @else {
-      <mat-icon class="le-icon">lock_outline</mat-icon>
+      <mat-icon class="le-icon" aria-hidden="true">lock_outline</mat-icon>
       <h1 class="le-title">Licencia no activa</h1>
       <p class="le-subtitle">
         Tu empresa no tiene una licencia activa para acceder a Saicloud.
@@ -23,19 +23,19 @@
 
       <div class="le-contact-box">
         <p class="le-contact-label">Comunícate con tu asesor de ventas:</p>
-        <div class="le-contact-item">
-          <mat-icon>email</mat-icon>
+        <a class="le-contact-item" href="mailto:ventas&#64;valmentech.com">
+          <mat-icon aria-hidden="true">email</mat-icon>
           <span>ventas&#64;valmentech.com</span>
-        </div>
-        <div class="le-contact-item">
-          <mat-icon>phone</mat-icon>
+        </a>
+        <a class="le-contact-item" href="tel:+573000000000">
+          <mat-icon aria-hidden="true">phone</mat-icon>
           <span>+57 300 000 0000</span>
-        </div>
+        </a>
       </div>
 
       <div class="le-actions">
         <button mat-raised-button color="warn" (click)="logout()">
-          <mat-icon>logout</mat-icon>
+          <mat-icon aria-hidden="true">logout</mat-icon>
           Cerrar sesión
         </button>
       </div>

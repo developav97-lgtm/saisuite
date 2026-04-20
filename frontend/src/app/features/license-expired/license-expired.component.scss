@@ -1,20 +1,23 @@
+// license-expired — ruta completa. Usa solo tokens --sc-*.
+
 .le-page {
-  position: fixed;
-  inset: 0;
+  min-height: 100vh;
+  width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--sc-surface-ground, #f5f5f5);
-  z-index: 9999;
+  padding: 1.5rem;
+  background: var(--sc-surface-ground);
 }
 
 .le-card {
   max-width: 460px;
   width: 100%;
   padding: 3rem 2.5rem;
-  background: var(--sc-surface-card, #fff);
-  border-radius: 16px;
-  box-shadow: 0 4px 32px rgba(0, 0, 0, 0.14);
+  background: var(--sc-surface-card);
+  border: 1px solid var(--sc-surface-border);
+  border-radius: var(--sc-radius);
+  box-shadow: var(--sc-shadow-md);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -26,27 +29,32 @@
   font-size: 4.5rem;
   width: 4.5rem;
   height: 4.5rem;
-  color: var(--mat-sys-error, #d32f2f);
+  color: var(--sc-error);
+
+  &--session {
+    color: var(--sc-primary);
+  }
 }
 
 .le-title {
   font-size: 1.7rem;
   font-weight: 700;
   margin: 0;
-  color: var(--mat-sys-on-surface);
+  color: var(--sc-text-color);
 }
 
 .le-subtitle {
   font-size: 1rem;
-  color: var(--mat-sys-on-surface-variant);
+  color: var(--sc-text-muted);
   margin: 0;
   line-height: 1.5;
 }
 
 .le-contact-box {
   width: 100%;
-  background: var(--sc-surface-ground, #f5f5f5);
-  border-radius: 10px;
+  background: var(--sc-surface-ground);
+  border: 1px solid var(--sc-surface-border);
+  border-radius: var(--sc-radius);
   padding: 1rem 1.25rem;
   display: flex;
   flex-direction: column;
@@ -56,7 +64,7 @@
 .le-contact-label {
   font-size: 0.85rem;
   font-weight: 600;
-  color: var(--mat-sys-on-surface-variant);
+  color: var(--sc-text-muted);
   margin: 0 0 0.25rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -67,13 +75,21 @@
   align-items: center;
   gap: 0.5rem;
   font-size: 0.95rem;
-  color: var(--mat-sys-on-surface);
+  color: var(--sc-text-color);
+  text-decoration: none;
+  padding: 0.375rem 0;
+  min-height: 44px;
+  transition: color 0.15s ease;
+
+  &:hover {
+    color: var(--sc-primary);
+  }
 
   mat-icon {
     font-size: 1.1rem;
     width: 1.1rem;
     height: 1.1rem;
-    color: var(--mat-sys-primary);
+    color: var(--sc-primary);
   }
 }
 

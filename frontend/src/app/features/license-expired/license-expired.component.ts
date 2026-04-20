@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -19,9 +19,7 @@ export class LicenseExpiredComponent {
     this.route.snapshot.queryParamMap.get('reason') ?? 'no_license'
   );
 
-  get isSessionExpired(): boolean {
-    return this.reason() === 'session_expired';
-  }
+  readonly isSessionExpired = computed(() => this.reason() === 'session_expired');
 
   logout(): void {
     this.authService.logout();

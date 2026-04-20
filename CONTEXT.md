@@ -338,8 +338,26 @@ Conecta el módulo Proyectos con los datos contables de Saiopen (Firebird/GL).
 
 ---
 
+## COMPLETADO (20 Abril 2026) — BUGFIX-LIC-201 a 207 (fixes validación licencias)
+
+Aplicados los 7 tickets deferidos del reporte `VALIDACION-4x4-LICENCIAS.md`:
+
+- **BUGFIX-LIC-201** — tokens CSS inexistentes reemplazados (`--sc-warning-light/success-light/error-light/--sc-text-muted`) en los 3 componentes.
+- **BUGFIX-LIC-202** — `license-requests` migrado a `mat-table` + `MatPaginator` (DataSource local, 2 tablas con paginator independiente por tab), columnas canónicas y responsive (ocultar columnas secundarias <960px/<680px).
+- **BUGFIX-LIC-203** — dialog con `submitting` signal (lock doble-click) + feedback `MatSnackBar` en error del load de license-requests.
+- **BUGFIX-LIC-204** — `license-expired` sólo usa tokens `--sc-*` (se eliminaron 6 `--mat-sys-*` y 4 fallbacks hex); `role="alert"`; `mailto:`/`tel:` con min-height 44px.
+- **BUGFIX-LIC-205** — `subscriptSizing="dynamic"`, `Validators.maxLength(500)`, `aria-label` en options, `computed()` (typeLabel/unitLabel/isSessionExpired), `aria-hidden` en iconos decorativos, nullish chains innecesarios removidos (modelo `package` non-null).
+- **IMP-LIC-206** — tabla historial usa `sc-status-chip` con nuevas variantes `--pending/--approved/--rejected` agregadas a `styles.scss` (tokens dark-mode aware). Quitado padding override en `.sc-card`.
+- **IMP-LIC-207** — `CommonModule` eliminado (reemplazado por `DatePipe`/`DecimalPipe` directos), fallbacks hex removidos, `position: fixed` + `z-index: 9999` removidos (ruta completa con `min-height: 100vh`), contador de caracteres en nota.
+
+**Build:** `ng build --configuration=development` limpio (sólo warnings pre-existentes de `proyecto-form` / `documento-list`, sin relación).
+**Tests unitarios:** los 3 componentes no tienen `.spec.ts`; no hay tests que romper.
+**Re-validación 4×4 visual:** ✅ PASS — backend Docker + `ng serve` local, 4 combinaciones verificadas por componente, variantes `no_license` y `session_expired` OK. Reporte: `docs/plans/VALIDACION-4x4-LICENCIAS-REVIEW.md`. Observación menor: email podría hacer wrap con `overflow-wrap: anywhere` en viewports <300px (no crítico).
+
+---
+
 ## Próximas prioridades (pendientes REALES)
 
-- **🔴 BUGFIX-LIC-201 a 207** — 7 tickets deferidos de la validación de licencias (bloquean producción). Arranque sugerido: ticket autónomo de los 4 críticos en una sesión.
-- **🟡 Re-validación 4×4 visual con backend activo** — los fixes del GL Contabilidad ya se aplicaron y compilan, pero falta screenshot-check real con Django corriendo.
+- **🟡 Re-validación 4×4 visual con backend activo** — aplica a GL Contabilidad + licencias (ahora). Falta screenshot-check Desktop/Mobile × Light/Dark con Django + `ng serve` corriendo.
+- **🟡 Flujo end-to-end licencias** — crear solicitud → aparece en admin → aprobar → company activa → email enviado (sigue pendiente del reporte).
 - **🔵 Activar workflows N8N en producción** (auto-renovación, KB watcher) — acción manual en n8n UI.

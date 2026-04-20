@@ -3,7 +3,7 @@
   <div class="sc-page-header">
     <h1 class="sc-page-header__title">Solicitudes de licencia</h1>
     <button mat-stroked-button (click)="load()" [disabled]="loading()">
-      <mat-icon>refresh</mat-icon>Actualizar
+      <mat-icon aria-hidden="true">refresh</mat-icon>Actualizar
     </button>
   </div>
 
@@ -18,130 +18,177 @@
       <ng-template mat-tab-label>
         Pendientes
         @if (pending().length > 0) {
-          <span class="lr-tab-badge">{{ pending().length }}</span>
+          <span class="lr-tab-badge" aria-label="Solicitudes pendientes">{{ pending().length }}</span>
         }
       </ng-template>
 
       <div class="lr-tab-content">
-        @if (!loading() && pending().length === 0) {
-          <div class="sc-empty-state">
-            <mat-icon>check_circle</mat-icon>
-            <p>No hay solicitudes pendientes</p>
-          </div>
-        }
+        <div class="table-responsive">
+          <table mat-table [dataSource]="pendingSource" class="lr-table">
 
-        @for (req of pending(); track req.id) {
-          <div class="sc-card lr-request-card">
-            <div class="lr-request-header">
-              <div class="lr-request-meta">
+            <ng-container matColumnDef="company">
+              <th mat-header-cell *matHeaderCellDef>Empresa</th>
+              <td mat-cell *matCellDef="let req">
                 <span class="lr-company">{{ req.company_name }}</span>
-                <span class="lr-type">{{ typeLabels[req.request_type] }}</span>
-              </div>
-              <span class="lr-status lr-status--{{ req.status }}">
-                {{ statusLabels[req.status] }}
-              </span>
-            </div>
+              </td>
+            </ng-container>
 
-            <div class="lr-request-body">
-              <div class="lr-field">
-                <span class="lr-field__label">Paquete</span>
-                <span class="lr-field__value">{{ req.package?.name }}</span>
-              </div>
-              @if (req.package?.quantity) {
-                <div class="lr-field">
-                  <span class="lr-field__label">Cantidad</span>
-                  <span class="lr-field__value">{{ req.package.quantity | number }}</span>
-                </div>
-              }
-              @if (req.package?.price_monthly && +req.package.price_monthly > 0) {
-                <div class="lr-field">
-                  <span class="lr-field__label">Precio mensual</span>
-                  <span class="lr-field__value">${{ +req.package.price_monthly | number:'1.0-0' }} COP</span>
-                </div>
-              }
-              @if (req.notes) {
-                <div class="lr-field lr-field--full">
-                  <span class="lr-field__label">Nota del cliente</span>
-                  <span class="lr-field__value">{{ req.notes }}</span>
-                </div>
-              }
-              <div class="lr-field">
-                <span class="lr-field__label">Solicitado por</span>
-                <span class="lr-field__value">{{ req.created_by_email }}</span>
-              </div>
-              <div class="lr-field">
-                <span class="lr-field__label">Fecha</span>
-                <span class="lr-field__value">{{ req.created_at | date:'dd/MM/yyyy HH:mm' }}</span>
-              </div>
-            </div>
+            <ng-container matColumnDef="type">
+              <th mat-header-cell *matHeaderCellDef>Tipo</th>
+              <td mat-cell *matCellDef="let req">{{ typeLabel(req) }}</td>
+            </ng-container>
 
-            <div class="lr-request-actions">
-              <button mat-raised-button color="primary"
-                      [disabled]="processingId() === req.id"
-                      (click)="approve(req)">
-                <mat-icon>check</mat-icon> Aprobar
-              </button>
-              <button mat-stroked-button color="warn"
-                      [disabled]="processingId() === req.id"
-                      (click)="reject(req)">
-                <mat-icon>close</mat-icon> Rechazar
-              </button>
-            </div>
+            <ng-container matColumnDef="package">
+              <th mat-header-cell *matHeaderCellDef>Paquete</th>
+              <td mat-cell *matCellDef="let req">
+                <div class="lr-package-cell">
+                  <span>{{ req.package.name }}</span>
+                  @if (req.package.quantity) {
+                    <span class="lr-package-qty">{{ req.package.quantity | number }}</span>
+                  }
+                  @if (req.notes) {
+                    <mat-icon class="lr-note-icon" [matTooltip]="req.notes" aria-label="Nota del cliente">sticky_note_2</mat-icon>
+                  }
+                </div>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="price">
+              <th mat-header-cell *matHeaderCellDef class="money-col">Precio mensual</th>
+              <td mat-cell *matCellDef="let req" class="money-col">
+                @if (+req.package.price_monthly > 0) {
+                  ${{ +req.package.price_monthly | number:'1.0-0' }}
+                } @else {
+                  <span class="lr-muted">—</span>
+                }
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="requester">
+              <th mat-header-cell *matHeaderCellDef>Solicitado por</th>
+              <td mat-cell *matCellDef="let req">{{ req.created_by_email ?? '—' }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="date">
+              <th mat-header-cell *matHeaderCellDef>Fecha</th>
+              <td mat-cell *matCellDef="let req">{{ req.created_at | date:'dd/MM/yyyy HH:mm' }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="actions">
+              <th mat-header-cell *matHeaderCellDef class="lr-actions-col">Acciones</th>
+              <td mat-cell *matCellDef="let req" class="lr-actions-col">
+                <button mat-icon-button color="primary"
+                        matTooltip="Aprobar"
+                        aria-label="Aprobar solicitud"
+                        [disabled]="processingId() === req.id"
+                        (click)="approve(req)">
+                  <mat-icon aria-hidden="true">check_circle</mat-icon>
+                </button>
+                <button mat-icon-button color="warn"
+                        matTooltip="Rechazar"
+                        aria-label="Rechazar solicitud"
+                        [disabled]="processingId() === req.id"
+                        (click)="reject(req)">
+                  <mat-icon aria-hidden="true">cancel</mat-icon>
+                </button>
+              </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="pendingColumns"></tr>
+            <tr mat-row *matRowDef="let row; columns: pendingColumns;"></tr>
+          </table>
+        </div>
+
+        @if (pendingEmpty()) {
+          <div class="sc-empty-state">
+            <mat-icon aria-hidden="true">check_circle</mat-icon>
+            <p>No hay solicitudes pendientes</p>
+            <button mat-stroked-button (click)="load()">
+              <mat-icon aria-hidden="true">refresh</mat-icon>Actualizar
+            </button>
           </div>
         }
+
+        <mat-paginator
+          #pendingPaginator
+          [pageSize]="10"
+          [pageSizeOptions]="pageSizeOptions"
+          [hidden]="pendingEmpty()"
+          showFirstLastButtons
+          aria-label="Paginación de solicitudes pendientes">
+        </mat-paginator>
       </div>
     </mat-tab>
 
     <!-- Historial -->
     <mat-tab label="Historial">
       <div class="lr-tab-content">
-        @if (!loading() && resolved().length === 0) {
+        <div class="table-responsive">
+          <table mat-table [dataSource]="resolvedSource" class="lr-table">
+
+            <ng-container matColumnDef="company">
+              <th mat-header-cell *matHeaderCellDef>Empresa</th>
+              <td mat-cell *matCellDef="let req">
+                <span class="lr-company">{{ req.company_name }}</span>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="type">
+              <th mat-header-cell *matHeaderCellDef>Tipo</th>
+              <td mat-cell *matCellDef="let req">{{ typeLabel(req) }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="package">
+              <th mat-header-cell *matHeaderCellDef>Paquete</th>
+              <td mat-cell *matCellDef="let req">
+                <div class="lr-package-cell">
+                  <span>{{ req.package.name }}</span>
+                  @if (req.review_notes) {
+                    <mat-icon class="lr-note-icon" [matTooltip]="req.review_notes" aria-label="Nota de revisión">sticky_note_2</mat-icon>
+                  }
+                </div>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="status">
+              <th mat-header-cell *matHeaderCellDef>Estado</th>
+              <td mat-cell *matCellDef="let req">
+                <span class="sc-status-chip sc-status-chip--{{ req.status }}">
+                  {{ statusLabel(req) }}
+                </span>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="reviewer">
+              <th mat-header-cell *matHeaderCellDef>Revisado por</th>
+              <td mat-cell *matCellDef="let req">{{ req.reviewed_by_email ?? '—' }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="date">
+              <th mat-header-cell *matHeaderCellDef>Fecha</th>
+              <td mat-cell *matCellDef="let req">{{ req.reviewed_at | date:'dd/MM/yyyy HH:mm' }}</td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="resolvedColumns"></tr>
+            <tr mat-row *matRowDef="let row; columns: resolvedColumns;"></tr>
+          </table>
+        </div>
+
+        @if (resolvedEmpty()) {
           <div class="sc-empty-state">
-            <mat-icon>history</mat-icon>
+            <mat-icon aria-hidden="true">history</mat-icon>
             <p>No hay solicitudes procesadas aún</p>
           </div>
         }
 
-        @for (req of resolved(); track req.id) {
-          <div class="sc-card lr-request-card lr-request-card--resolved">
-            <div class="lr-request-header">
-              <div class="lr-request-meta">
-                <span class="lr-company">{{ req.company_name }}</span>
-                <span class="lr-type">{{ typeLabels[req.request_type] }}</span>
-              </div>
-              <span class="lr-status lr-status--{{ req.status }}">
-                {{ statusLabels[req.status] }}
-              </span>
-            </div>
-
-            <div class="lr-request-body">
-              <div class="lr-field">
-                <span class="lr-field__label">Paquete</span>
-                <span class="lr-field__value">{{ req.package?.name }}</span>
-              </div>
-              @if (req.notes) {
-                <div class="lr-field lr-field--full">
-                  <span class="lr-field__label">Nota del cliente</span>
-                  <span class="lr-field__value">{{ req.notes }}</span>
-                </div>
-              }
-              @if (req.review_notes) {
-                <div class="lr-field lr-field--full">
-                  <span class="lr-field__label">Nota de revisión</span>
-                  <span class="lr-field__value">{{ req.review_notes }}</span>
-                </div>
-              }
-              <div class="lr-field">
-                <span class="lr-field__label">Revisado por</span>
-                <span class="lr-field__value">{{ req.reviewed_by_email ?? '—' }}</span>
-              </div>
-              <div class="lr-field">
-                <span class="lr-field__label">Fecha</span>
-                <span class="lr-field__value">{{ req.reviewed_at | date:'dd/MM/yyyy HH:mm' }}</span>
-              </div>
-            </div>
-          </div>
-        }
+        <mat-paginator
+          #resolvedPaginator
+          [pageSize]="10"
+          [pageSizeOptions]="pageSizeOptions"
+          [hidden]="resolvedEmpty()"
+          showFirstLastButtons
+          aria-label="Paginación de historial de solicitudes">
+        </mat-paginator>
       </div>
     </mat-tab>
 
