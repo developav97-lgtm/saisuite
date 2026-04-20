@@ -19,7 +19,36 @@ while IFS= read -r pf; do
 done < <(find "$ROOT" -maxdepth 2 -name "PROGRESS-*.md" -type f 2>/dev/null)
 
 if [[ -z "$ACTIVE_PROGRESS" ]]; then
-    exit 0  # sin PROGRESS activo — sesión limpia
+    # Sin PROGRESS activo — mostrar resumen de tickets recientes completados
+    # y reportes generados para que el modelo tenga contexto y no duplique trabajo.
+    recent_progress=$(find "$ROOT" -maxdepth 2 -name "PROGRESS-*.md" -type f -mtime -7 2>/dev/null | head -5)
+    recent_reports=$(find "$ROOT/docs/plans" -maxdepth 1 -name "*.md" -type f -mtime -7 2>/dev/null | head -5)
+
+    if [[ -n "$recent_progress" || -n "$recent_reports" ]]; then
+        echo "📂 Sesión limpia — sin PROGRESS activo."
+        echo ""
+        if [[ -n "$recent_progress" ]]; then
+            echo "  PROGRESS recientes (7 días):"
+            while IFS= read -r pf; do
+                [[ -z "$pf" ]] && continue
+                status=$(awk '/^status:/ {sub(/^status: */, ""); print; exit}' "$pf" | tr -d '\r')
+                module=$(awk '/^module:/ {sub(/^module: */, ""); print; exit}' "$pf" | tr -d '\r')
+                echo "    [$status] $(basename "$pf") — módulo $module"
+            done <<< "$recent_progress"
+            echo ""
+        fi
+        if [[ -n "$recent_reports" ]]; then
+            echo "  Reportes en docs/plans/ (7 días):"
+            while IFS= read -r rf; do
+                [[ -z "$rf" ]] && continue
+                echo "    $(basename "$rf")"
+            done <<< "$recent_reports"
+            echo ""
+        fi
+        echo "  → Revisar CONTEXT.md \"Próximas prioridades\" para pendientes reales."
+        echo "  → Cruzar con reportes arriba antes de clasificar como pendiente."
+    fi
+    exit 0
 fi
 
 # Extraer campos clave del frontmatter

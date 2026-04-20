@@ -1,7 +1,7 @@
 # CONTEXT.md - Estado del Proyecto Saicloud
 
-**Ultima actualizacion:** 11 Abril 2026
-**Sesion:** Fixes + GL Contabilidad — Tests companies (158 passing), leads table visual, rendimientos CRM, CONT-001 (CERRADO)
+**Ultima actualizacion:** 20 Abril 2026
+**Sesion:** Marco agentic v1 + validaciones 4×4 (contabilidad fixed, licencias reportada)
 
 ---
 
@@ -317,8 +317,29 @@ Conecta el módulo Proyectos con los datos contables de Saiopen (Firebird/GL).
 - **Sidebar:** entrada "Contabilidad GL" en HOME_NAV + `CONTABILIDAD_NAV` propio
 - **Ruta:** `/contabilidad` en `app.routes.ts` (lazy-loaded)
 
-## Próximas prioridades
+## COMPLETADO (20 Abril 2026) — Marco agentic + validaciones 4×4
 
-- Activar workflows N8N en producción (auto-renovación, KB watcher) — acción manual en n8n UI
-- Validación 4×4 (Desktop/Mobile × Light/Dark) del sistema de solicitudes de licencia
-- Validación 4×4 de GL Contabilidad viewer
+### IMP-VAL-001: Validación 4×4 GL Contabilidad + fixes críticos
+- **Reporte:** `docs/plans/VALIDACION-4x4-CONTABILIDAD.md` (23 issues: 4🔴 + 8🟡 + 11🔵)
+- **Fixes aplicados:** CRIT-1/2/3/4 + MAY-1/2/3/4/5/6/7/8 (todos los mayores)
+- **Refactor:** migrado a `sc-page/sc-card/sc-empty-state/sc-status-chip` canónicos, SCSS 168→96 líneas, MatPaginator server-side, tokens reales
+
+### IMP-VAL-002: Validación 4×4 Sistema de Licencias
+- **Reporte:** `docs/plans/VALIDACION-4x4-LICENCIAS.md` (31 issues: 9🔴 + 13🟡 + 9🔵)
+- **Score:** 5.3/10 NEEDS WORK — fixes deferidos como tickets BUGFIX/IMP-LIC-201 a 207
+- **Componentes auditados:** `license-requests`, `license-request-dialog`, `license-expired`
+
+### Marco agentic SaiSuite
+- **18 agentes** project-scoped en `.claude/agents/`
+- **Orquestador** con invocaciones reales (Skill tool + Agent tool), delega según `.claude/PHASE-MAP.md`
+- **Hooks:** SessionStart (lee PROGRESS activos), PreToolUse Bash (bloquea git push sin Fase 7 aprobada)
+- **Scripts:** `validate-marco.sh` (9 checks), `telemetry.sh` / `telemetry-stats.sh`
+- **Manual:** `docs/technical/MARCO-AGENTIC-SAISUITE.md`
+
+---
+
+## Próximas prioridades (pendientes REALES)
+
+- **🔴 BUGFIX-LIC-201 a 207** — 7 tickets deferidos de la validación de licencias (bloquean producción). Arranque sugerido: ticket autónomo de los 4 críticos en una sesión.
+- **🟡 Re-validación 4×4 visual con backend activo** — los fixes del GL Contabilidad ya se aplicaron y compilan, pero falta screenshot-check real con Django corriendo.
+- **🔵 Activar workflows N8N en producción** (auto-renovación, KB watcher) — acción manual en n8n UI.
