@@ -1,27 +1,28 @@
-<div class="gl-page">
-  <header class="page-header">
-    <h1 class="page-title">
+<div class="sc-page">
+  <div class="sc-page-header">
+    <h1 class="sc-page-header__title">
       <mat-icon aria-hidden="true">receipt_long</mat-icon>
       Libro Mayor (GL)
     </h1>
     @if (totalCount() > 0) {
-      <mat-chip-set>
-        <mat-chip highlighted color="primary">{{ totalCount() }} movimientos</mat-chip>
-      </mat-chip-set>
+      <span class="sc-page-header__meta">{{ totalCount() }} movimientos</span>
     }
-  </header>
+  </div>
 
   <!-- Filtros -->
-  <mat-card class="filters-card">
-    <mat-card-content>
+  <div class="sc-card">
+    <div class="sc-card__body">
       <form [formGroup]="form" class="filters-form">
-        <mat-form-field appearance="outline" class="f-periodo">
+        <mat-form-field appearance="outline" class="f-periodo" subscriptSizing="dynamic">
           <mat-label>Periodo</mat-label>
-          <input matInput formControlName="periodo" placeholder="2025-01">
-          <mat-icon matSuffix>calendar_month</mat-icon>
+          <input matInput formControlName="periodo" placeholder="2025-01" maxlength="7">
+          <mat-icon matSuffix aria-hidden="true">calendar_month</mat-icon>
+          @if (form.controls.periodo.touched && form.controls.periodo.invalid) {
+            <mat-error>Formato: YYYY-MM (ej. 2025-01)</mat-error>
+          }
         </mat-form-field>
 
-        <mat-form-field appearance="outline" class="f-titulo">
+        <mat-form-field appearance="outline" class="f-titulo" subscriptSizing="dynamic">
           <mat-label>Clase de cuenta</mat-label>
           <mat-select formControlName="titulo_codigo">
             @for (t of titulos; track t.value) {
@@ -30,28 +31,28 @@
           </mat-select>
         </mat-form-field>
 
-        <mat-form-field appearance="outline" class="f-fecha">
+        <mat-form-field appearance="outline" class="f-fecha" subscriptSizing="dynamic">
           <mat-label>Fecha inicio</mat-label>
           <input matInput formControlName="fecha_inicio" type="date">
         </mat-form-field>
 
-        <mat-form-field appearance="outline" class="f-fecha">
+        <mat-form-field appearance="outline" class="f-fecha" subscriptSizing="dynamic">
           <mat-label>Fecha fin</mat-label>
           <input matInput formControlName="fecha_fin" type="date">
         </mat-form-field>
 
-        <mat-form-field appearance="outline" class="f-search">
+        <mat-form-field appearance="outline" class="f-search" subscriptSizing="dynamic">
           <mat-label>Buscar cuenta, tercero o descripción</mat-label>
           <input matInput formControlName="search" placeholder="Buscar...">
-          <mat-icon matSuffix>search</mat-icon>
+          <mat-icon matSuffix aria-hidden="true">search</mat-icon>
         </mat-form-field>
 
         <button mat-stroked-button type="button" (click)="limpiar()" class="btn-clear">
-          <mat-icon>clear</mat-icon> Limpiar
+          <mat-icon aria-hidden="true">clear</mat-icon> Limpiar
         </button>
       </form>
-    </mat-card-content>
-  </mat-card>
+    </div>
+  </div>
 
   <!-- Loading -->
   @if (loading()) {
@@ -97,7 +98,7 @@
         <th mat-header-cell *matHeaderCellDef>Tipo</th>
         <td mat-cell *matCellDef="let m">
           @if (m.tipo) {
-            <span class="tipo-badge">{{ m.tipo }}</span>
+            <span class="sc-status-chip">{{ m.tipo }}</span>
           } @else {
             <span>—</span>
           }
@@ -154,8 +155,8 @@
 
   <!-- Totales -->
   @if (movimientos().length > 0) {
-    <mat-card class="totals-card">
-      <mat-card-content class="totals-row">
+    <div class="sc-card totals-card">
+      <div class="sc-card__body totals-row">
         <span class="totals-label">
           {{ movimientos().length }} de {{ totalCount() }} registros
         </span>
@@ -172,7 +173,7 @@
           <span class="total-name">Balance:</span>
           <span class="total-value">{{ formatMoney(totalDebito() - totalCredito()) }}</span>
         </span>
-      </mat-card-content>
-    </mat-card>
+      </div>
+    </div>
   }
 </div>

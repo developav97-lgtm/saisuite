@@ -137,6 +137,21 @@ on_user_input(msg):
 - Al terminar → `status: completed`, `current_phase: done`
 - Al retroceder → registrar motivo en `blockers` y retroceder `current_phase`
 
+**Telemetría (obligatoria):** invocar `.claude/scripts/telemetry.sh <ticket_id> <event> <extras_json>` en estos momentos:
+| Evento | Cuándo | Extras recomendados |
+|--------|--------|---------------------|
+| `ticket_start` | Al clasificar ticket | `{"type":"MODULE|FEATURE|BUGFIX|IMPROVEMENT","module":"..."}` |
+| `phase_start` | Al iniciar una fase | `{"phase":"4b","skill":"...","agent":"..."}` |
+| `phase_complete` | Al marcar fase ✅ | `{"phase":"4b","issues_found":N}` |
+| `gate_hit` | Al llegar a gate humano | `{"gate":"plan"}` |
+| `gate_approved` | Al recibir aprobación PO | `{"gate":"plan"}` |
+| `agent_invoked` | Tras cada Agent() | `{"subagent":"Backend Architect","tokens":N}` |
+| `blocker` | Al registrar bloqueo | `{"reason":"..."}` |
+| `rollback` | Al retroceder | `{"from":"7","to":"5","reason":"..."}` |
+| `ticket_complete` | Al finalizar | `{"bugs_fixed":N,"build_status":"ok|fail"}` |
+
+Ver métricas: `.claude/scripts/telemetry-stats.sh` (distribución de eventos + duración promedio por fase).
+
 ---
 
 ## Prompt template de clasificación

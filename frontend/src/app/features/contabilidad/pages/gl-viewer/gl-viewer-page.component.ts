@@ -6,8 +6,7 @@ import {
   inject,
   computed,
 } from '@angular/core';
-import { ReactiveFormsModule, FormBuilder } from '@angular/forms';
-import { MatCardModule } from '@angular/material/card';
+import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { MatTableModule } from '@angular/material/table';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -16,7 +15,6 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatChipsModule } from '@angular/material/chips';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
@@ -42,7 +40,6 @@ const TITULOS = [
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     ReactiveFormsModule,
-    MatCardModule,
     MatTableModule,
     MatFormFieldModule,
     MatInputModule,
@@ -51,7 +48,6 @@ const TITULOS = [
     MatIconModule,
     MatProgressBarModule,
     MatTooltipModule,
-    MatChipsModule,
     MatPaginatorModule,
   ],
   templateUrl: './gl-viewer-page.component.html',
@@ -89,7 +85,7 @@ export class GlViewerPageComponent implements OnInit {
   ];
 
   readonly form = this.fb.group({
-    periodo:       [''],
+    periodo:       ['', [Validators.pattern(/^\d{4}-(0[1-9]|1[0-2])$/)]],
     titulo_codigo: [''],
     search:        [''],
     fecha_inicio:  [''],
@@ -102,6 +98,7 @@ export class GlViewerPageComponent implements OnInit {
       debounceTime(400),
       distinctUntilChanged((a, b) => JSON.stringify(a) === JSON.stringify(b)),
     ).subscribe(v => {
+      if (this.form.invalid) return;
       this.pageIndex.set(0);
       this.cargar(this.buildFiltros(v));
     });

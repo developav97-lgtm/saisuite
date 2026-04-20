@@ -62,9 +62,14 @@ report: docs/plans/VALIDACION-4x4-CONTABILIDAD.md
 | MAY-6 | 🟡 | `Math` expuesto al template | ✅ Fixed — `computed balanceado` |
 | MAY-8 | 🟡 | Sin `tabular-nums` en columnas monetarias | ✅ Fixed |
 | MIN-7 | 🔵 | Icono decorativo sin `aria-hidden` | ✅ Fixed |
+| MAY-1 | 🟡 | No usa sc-page/sc-page-header/sc-card canónicos | ✅ Fixed (IMP-CONT-MAY) |
+| MAY-3 | 🟡 | Validator pattern periodo faltante | ✅ Fixed (IMP-CONT-MAY) |
+| MAY-4 | 🟡 | Chip tipo custom (no sc-status-chip) | ✅ Fixed (IMP-CONT-MAY) |
+| MAY-5 | 🟡 | subscriptSizing="dynamic" ausente | ✅ Fixed (IMP-CONT-MAY) |
 
-**Build post-fix:** compilación exitosa en 1.23s. Sin errores en el componente contabilidad.
-**Verificación:** 5/5 checks vía grep confirman fixes aplicados correctamente.
+**Build post-fix:** compilación exitosa en 0.91s. Sin errores en el componente contabilidad.
+**Verificación:** grep confirma 10 usos de primitivas `sc-*`, 5 `subscriptSizing="dynamic"`, 1 `sc-status-chip`, 0 `.tipo-badge`, Validators.pattern + mat-error aplicados.
+**Refactor colateral:** SCSS reducido de 168 → 96 líneas (eliminadas duplicaciones con primitivas globales), imports `MatCardModule` + `MatChipsModule` removidos.
 **Pending:** re-validación visual completa requiere backend activo (interceptor desloguea con backend caído).
 
 ---
